@@ -1,0 +1,53 @@
+
+.card {
+ width: 20%;
+ height: 254px;
+ 
+ background-color: #F8FBFE;
+ border-radius: 8px;
+ z-index: 1;
+}
+
+
+
+.tools {
+ display: flex;
+ align-items: center;
+ padding: 9px;
+}
+
+.circle {
+ padding: 0 4px;
+}
+
+.box {
+ display: inline-block;
+ align-items: center;
+ width: 10px;
+ height: 10px;
+ padding: 1px;
+ border-radius: 50%;
+}
+
+.red {
+ background-color: #ff605c;
+}
+
+.yellow {
+ background-color: #ffbd44;
+}
+
+.green {
+ background-color: #00ca4e;
+}
+
+
+.card {
+    width: 50%; /* or your default width */
+    transition: cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s;
+}
+
+.card.shrink {
+    width: 100%;
+    transition: cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s;
+}

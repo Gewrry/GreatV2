@@ -31,11 +31,19 @@
                     <p class="text-xl md:text-2xl text-gray-100 mb-10 drop-shadow-md">
                         Where you can experience faster work, accurate Result, Reliable service and more!
                     </p>
-                    <div class="flex gap-4 justify-center flex-wrap">
+                    <div class="flex gap-4 justify-center flex-wrap flex-col">
                         <button
                             class="fill-button px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-lg shadow-xl transition-all duration-300">
                             Login to your Account
                         </button>
+                        <span class="italic text-xs text-white/50">Only for Goverment Use</span>
+                        <span class="w-full border-1 border-white"></span>
+                        <div class="flex flex-col">
+                            <span class="italic text-xs text-white/50">Inquire or Contact us</span>
+                            <span></span>
+                        </div>
+
+
                     </div>
                 </div>
             </section>
@@ -43,31 +51,118 @@
 
 
             <!-- Unique Features Section with Diagonal Layout -->
+            <!-- Unique Features Section with Diagonal Layout -->
             <section class="py-20 px-4 sm:px-6 lg:px-8">
                 <div class="max-w-7xl mx-auto">
                     <h2 class="text-4xl md:text-5xl font-bold text-white text-center mb-16 drop-shadow-lg">
                         Why Choose GReAT?
                     </h2>
 
-                    <div class="flex-row flex ">
-                        <div class="w-full bg-white group mx-2 px-4 py-10" id = "hoverCard1">
-                            <h1>Lorem</h1>
-                            <span>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ut, ad.</span>
-
+                    <div class="flex-row flex">
+                        <!-- Card 1: Boost Income -->
+                        <div class="card mx-2 hover:w-full group">
+                            <div class="tools">
+                                <div class="circle">
+                                    <span class="red box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="yellow box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="green box"></span>
+                                </div>
+                            </div>
+                            <div class="card__content flex items-center justify-center flex-col px-7">
+                                <lord-icon src="https://cdn.lordicon.com/bsdkzyjd.json" trigger="loop"
+                                    colors="primary:#1b1091,secondary:#08a88a" style="width:100px;height:100px">
+                                </lord-icon>
+                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
+                                    More Income!</h1>
+                                <p
+                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
+                                    Boost your productivity and income using our system. You can work faster than
+                                    traditional methods.
+                                </p>
+                            </div>
                         </div>
-                        <div class="w-full bg-white mx-2 px-4 py-10" id = "hoverCard2">
-                            <h1>Lorem</h1>
-                            <span>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ut, ad.</span>
 
+                        <div class="card mx-2 hover:w-full group">
+                            <div class="tools">
+                                <div class="circle">
+                                    <span class="red box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="yellow box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="green box"></span>
+                                </div>
+                            </div>
+                            <div class="card__content flex items-center justify-center flex-col px-7">
+                                <lord-icon src="https://cdn.lordicon.com/fgxwhgfp.json" trigger="hover"
+                                    colors="primary:#3080e8,secondary:#08a88a" style="width:100px;height:100px">
+                                </lord-icon>
+                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
+                                    Secured Data!</h1>
+                                <p
+                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
+                                    Secured Data!
+                                    Our system offers a secure way of storing data, packed with encryption methods that
+                                    hide your data from the eyes of troublemakers.
+                                </p>
+                            </div>
                         </div>
-                        <div class="w-full bg-white mx-2 px-4 py-10" id = "hoverCard3">
-                            <h1>Lorem</h1>
-                            <span>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ut, ad.</span>
-                        </div>
-                        <div class="w-full bg-white mx-2 px-4 py-10" id = "hoverCard4">
-                            <h1>Lorem</h1>
-                            <span>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ut, ad.</span>
 
+                        <div class="card mx-2 hover:w-full group">
+                            <div class="tools">
+                                <div class="circle">
+                                    <span class="red box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="yellow box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="green box"></span>
+                                </div>
+                            </div>
+                            <div class="card__content flex items-center justify-center flex-col px-7">
+                                <lord-icon src="https://cdn.lordicon.com/bsdkzyjd.json" trigger="loop"
+                                    colors="primary:#1b1091,secondary:#08a88a" style="width:100px;height:100px">
+                                </lord-icon>
+                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
+                                    Convient Transactions</h1>
+                                <p
+                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
+                                    Our System provides Online payment for clients that doesnt want to go in LGU of
+                                    their own.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="card mx-2 hover:w-full group">
+                            <div class="tools">
+                                <div class="circle">
+                                    <span class="red box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="yellow box"></span>
+                                </div>
+                                <div class="circle">
+                                    <span class="green box"></span>
+                                </div>
+                            </div>
+                            <div class="card__content flex items-center justify-center flex-col px-7">
+                                <lord-icon src="https://cdn.lordicon.com/bsdkzyjd.json" trigger="loop"
+                                    colors="primary:#1b1091,secondary:#08a88a" style="width:100px;height:100px">
+                                </lord-icon>
+                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
+                                    More Income!</h1>
+                                <p
+                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
+                                    Boost your productivity and income using our system. You can work faster than
+                                    traditional methods.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -136,6 +231,24 @@
         // Ensure autoplay starts
         video.play().catch(function(error) {
             console.log("Autoplay prevented:", error);
+        });
+
+
+
+        // Select all elements with the 'card' class
+        const cards = document.querySelectorAll('.card');
+
+        // Add event listeners to each card
+        cards.forEach(card => {
+            // Mouse enter - add 'shrink' class
+            card.addEventListener('mouseenter', function() {
+                this.classList.add('shrink');
+            });
+
+            // Mouse leave - remove 'shrink' class
+            card.addEventListener('mouseleave', function() {
+                this.classList.remove('shrink');
+            });
         });
     </script>
 </body>
