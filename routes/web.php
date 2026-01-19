@@ -34,4 +34,4 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/accounts/check-employee', [AdminController::class, 'checkEmployee'])->name('accounts.checkEmployee');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

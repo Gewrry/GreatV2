@@ -159,7 +159,7 @@ return view('livewire.admin.accounts-manager', compact(
             'totalAccounts',
             'accountsThisMonth',
             'uniqueDepartments'
-        ))->layout('layouts.admin.app'); // This overrides the layout
+        ))->layout('layouts.admin.app');
     }
 
     // Reset filters

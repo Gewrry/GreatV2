@@ -1,5 +1,5 @@
-@extends('layouts.hr.app')
-@section('slot')
+<x-admin.app>
+    @include('layouts.hr.navigation')
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -211,4 +211,4 @@
             });
         </script>
     @endpush
-@endsection
+</x-admin.app>
