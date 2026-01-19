@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Department;
 use App\Models\EmployeeInfo;
 
-class HumanResourcesController extends Controller
+    class HumanResourcesController extends Controller
 {
     public function create()
     {
