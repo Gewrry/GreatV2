@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'GReAT') }}</title>
+    <title>{{ config('app.name', 'GReAT') }} - Admin</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -14,6 +14,10 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Livewire Styles (Important for Livewire components) -->
+    @livewireStyles
+
     @stack('styles')
 </head>
 
@@ -68,7 +72,6 @@
                             {{ __('Human Resources') }}
                         </x-nav-link>
 
-
                     </div>
                 </div>
 
@@ -79,7 +82,7 @@
         <div class="flex-1 flex flex-col">
 
             <!-- Top Navigation -->
-            @include('layouts.navigation')
+            @include('layouts.hr.navigation') <!-- Fixed: Changed from 'layout.admin.navigation' -->
 
             <!-- Page Heading -->
             @if (isset($header))
@@ -92,11 +95,14 @@
 
             <!-- Page Content -->
             <main class="flex-1 p-6">
-                {{ $slot }}
+                @yield('slot')
             </main>
         </div>
 
     </div>
+
+    <!-- Livewire Scripts (Important for Livewire components) -->
+    @livewireScripts
 
     @stack('scripts')
 </body>

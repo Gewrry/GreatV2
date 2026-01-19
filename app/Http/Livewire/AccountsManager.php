@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Validator;
 class AccountsManager extends Component
 {
     use WithPagination;
-
+    protected $layout = 'layouts.admin.app';
     // Form fields
     public $employee_id = '';
     public $uname = '';
@@ -152,14 +152,14 @@ class AccountsManager extends Component
             ->distinct('departments.id')
             ->count('departments.id');
 
-        return view('livewire.admin.accounts-manager', compact(
+return view('livewire.admin.accounts-manager', compact(
             'employees',
             'accounts',
             'departments',
             'totalAccounts',
             'accountsThisMonth',
             'uniqueDepartments'
-        ));
+        ))->layout('layouts.admin.app'); // This overrides the layout
     }
 
     // Reset filters
