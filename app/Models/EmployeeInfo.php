@@ -69,6 +69,11 @@ class EmployeeInfo extends Model
     /**
      * Get the department that the employee belongs to.
      */
+    public function user()
+    {
+        return $this->hasOne(User::class, 'employee_id');
+    }
+    
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
@@ -136,4 +141,5 @@ class EmployeeInfo extends Model
                 ->orWhere('email', 'like', "%{$search}%");
         });
     }
+    
 }

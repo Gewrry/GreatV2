@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HumanResourcesController;
 
@@ -22,6 +23,15 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/employee-info/create', [HumanResourcesController::class, 'create'])->name('employee-info.create');
     Route::post('/employee-info', [HumanResourcesController::class, 'store'])->name('employee-info.store');
+});
+Route::middleware(['auth'])->group(function () {
+    // Use Livewire component for accounts management
+    Route::get('/accounts', \App\Http\Livewire\AccountsManager::class)->name('accounts.index');
+
+    // Keep AJAX routes for any additional functionality
+    Route::get('/accounts/{id}/details', [AdminController::class, 'show'])->name('accounts.show');
+    Route::get('/accounts/check-username', [AdminController::class, 'checkUsername'])->name('accounts.checkUsername');
+    Route::get('/accounts/check-employee', [AdminController::class, 'checkEmployee'])->name('accounts.checkEmployee');
 });
 
 require __DIR__.'/auth.php';

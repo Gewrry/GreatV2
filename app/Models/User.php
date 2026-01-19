@@ -2,24 +2,27 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
+
+    protected $table = 'users';
+
+    // Tell Laravel to use 'uname' as the username field for authentication
+    public function username()
+    {
+        return 'uname';
+    }
 
     /**
      * The attributes that are mass assignable.
-     *
-     * @var list<string>
      */
     protected $fillable = [
         'uname',
-        'email',
         'password',
         'employee_id',
         'encoded_by',
@@ -28,8 +31,6 @@ class User extends Authenticatable
 
     /**
      * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
      */
     protected $hidden = [
         'password',
@@ -38,14 +39,30 @@ class User extends Authenticatable
 
     /**
      * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+            'encoded_date' => 'datetime', // ADD THIS LINE
             'password' => 'hashed',
         ];
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(EmployeeInfo::class, 'employee_id');
+    }
+
+    public function encodedBy()
+    {
+        return $this->belongsTo(EmployeeInfo::class, 'encoded_by');
+    }
+
+    /**
+     * Accessor for email from employee info.
+     */
+    public function getEmailAttribute()
+    {
+        return $this->employee->email ?? null;
     }
 }

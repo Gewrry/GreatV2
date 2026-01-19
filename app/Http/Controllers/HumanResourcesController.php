@@ -11,7 +11,7 @@ class HumanResourcesController extends Controller
     public function create()
     {
         $departments = Department::orderBy('department_name')->get();
-        return view('admin.create', compact('departments'));
+        return view('hr.create', compact('departments'));
     }
 
     public function store(Request $request)
