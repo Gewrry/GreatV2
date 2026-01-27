@@ -1,3 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    /* existing */
+    --color-green: #10454F;
+    --color-gray: #506266;
+    --color-brown: #818274;
+    --color-lumot: #A3AB78;
+    --color-yellow: #BDE038;
+    --color-white: #fff;
+    --color-blue: #184C78;
+    --color-bluebody: #d8eaf9;
+    --color-logo-blue: #0066B2;
+    --color-logo-teal: #00A99D;
+    --color-logo-green: #7EC845;
+
+    --font-main: "Nunito Sans", sans-serif;
+}

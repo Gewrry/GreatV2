@@ -51,3 +51,40 @@
     width: 100%;
     transition: cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s;
 }
+
+   @keyframes gradient-shift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, rgba(24, 76, 120, 0.9) 0%, rgba(16, 69, 79, 0.9) 100%);
+        backdrop-filter: blur(10px);
+        transition: all 0.4s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(189, 224, 56, 0.3);
+    }
+
+    .stat-number {
+        background: linear-gradient(135deg, #BDE038, #A3AB78);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 800;
+    }
+
+    .gradient-bg {
+        background: linear-gradient(270deg, #184C78, #10454F, #A3AB78);
+        background-size: 600% 600%;
+        animation: gradient-shift 15s ease infinite;
+    }
+
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
