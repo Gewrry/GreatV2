@@ -38,7 +38,7 @@
                                     class="block mt-1 w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm @error('employee_id') border-red-500 @enderror"
                                     required>
                                     <option value="">-- Select Employee --</option>
-                                    @foreach($employees as $employee)
+                                    @foreach ($employees as $employee)
                                         <option value="{{ $employee->id }}">
                                             {{ $employee->employee_id }} - {{ $employee->first_name }}
                                             {{ $employee->last_name }}
@@ -51,7 +51,7 @@
                             </div>
 
                             <!-- Display selected employee info -->
-                            @if($selectedEmployee)
+                            @if ($selectedEmployee)
                                 <div class="p-4 border border-gray-200 rounded-lg bg-gray-50">
                                     <h6 class="font-medium text-gray-900 mb-3">Employee Information</h6>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -170,7 +170,7 @@
                             <div>
                                 <select wire:model.live="department" class="border-gray-300 rounded-md shadow-sm">
                                     <option value="">All Departments</option>
-                                    @foreach($departments as $dept)
+                                    @foreach ($departments as $dept)
                                         <option value="{{ $dept->id }}">
                                             {{ $dept->department_name }}
                                         </option>
@@ -275,7 +275,7 @@
                     </div>
 
                     <!-- Pagination -->
-                    @if($accounts->hasPages())
+                    @if ($accounts->hasPages())
                         <div class="mt-6">
                             {{ $accounts->links() }}
                         </div>
