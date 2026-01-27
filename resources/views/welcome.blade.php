@@ -8,11 +8,7 @@
             autoplay muted playsinline>
             <source src="{{ asset('videos/1.mp4') }}" type="video/mp4">
         </video>
-
-        <!-- Dark Overlay for better content readability -->
         <div class="absolute inset-0 bg-black opacity-50"></div>
-
-        <!-- Gradient Overlay (optional - for more style) -->
         <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-blue opacity-60"></div>
     </div>
 
@@ -20,7 +16,6 @@
     <div class="relative z-10">
         @include('partials.navigation')
 
-        <!-- Your page content goes here -->
         <main class="min-h-screen">
             <!-- Hero Section -->
             <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
@@ -29,187 +24,205 @@
                         Welcome to GReAT System
                     </h1>
                     <p class="text-xl md:text-2xl text-gray-100 mb-10 drop-shadow-md">
-                        Where you can experience faster work, accurate Result, Reliable service and more!
+                        Where you can experience faster work, accurate results, reliable service and more!
                     </p>
-                    <div class="flex gap-4 justify-center flex-wrap flex-col">
-                        <button
-                            class="fill-button px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-lg shadow-xl transition-all duration-300">
+                    <div class="flex gap-4 justify-center items-center flex-col">
+                        <a href="{{ route('login') }}"
+                            class="px-8 py-4 bg-yellow hover:bg-lumot border-2 border-white text-green font-semibold rounded-lg shadow-xl transition-all duration-300 hover:scale-105">
                             Login to your Account
-                        </button>
-                        <span class="italic text-xs text-white/50">Only for Goverment Use</span>
-                        <span class="w-full border-1 border-white"></span>
-                        <div class="flex flex-col">
-                            <span class="italic text-xs text-white/50">Inquire or Contact us</span>
-                            <span></span>
-                        </div>
-
-
+                        </a>
+                        <span class="italic text-xs text-white/50">Only for Government Use</span>
                     </div>
                 </div>
             </section>
 
-
-
-            <!-- Unique Features Section with Diagonal Layout -->
-            <!-- Unique Features Section with Diagonal Layout -->
+            <!-- Bento Grid Features Section -->
             <section class="py-20 px-4 sm:px-6 lg:px-8">
                 <div class="max-w-7xl mx-auto">
                     <h2 class="text-4xl md:text-5xl font-bold text-white text-center mb-16 drop-shadow-lg">
                         Why Choose GReAT?
                     </h2>
 
-                    <div class="flex-row flex">
-                        <!-- Card 1: Boost Income -->
-                        <div class="card mx-2 hover:w-full group">
-                            <div class="tools">
-                                <div class="circle">
-                                    <span class="red box"></span>
+                    <!-- Bento Grid Layout -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-fr">
+                        <!-- Large Card - Boost Income -->
+                        <div
+                            class="md:col-span-2 bg-white/90 backdrop-blur-sm rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                            <div class="flex flex-col md:flex-row items-center gap-6">
+                                <div class="md:w-[20%] w-full flex items-start justify-start">
+                                    <div>
+                                        <lord-icon src="https://cdn.lordicon.com/bsdkzyjd.json" trigger="loop"
+                                            colors="primary:#10454F,secondary:#BDE038" style="width:120px;height:120px">
+                                        </lord-icon>
+                                    </div>
                                 </div>
-                                <div class="circle">
-                                    <span class="yellow box"></span>
+                                <div class="flex-1">
+                                    <h3 class="text-2xl md:text-4xl font-bold text-green mb-3">Boost Your Income</h3>
+                                    <p class="text-gray text-base md:text-lg leading-relaxed">
+                                        Increase productivity and revenue using our advanced system. Work faster and
+                                        more efficiently than traditional methods, maximizing your earning potential.
+                                    </p>
                                 </div>
-                                <div class="circle">
-                                    <span class="green box"></span>
-                                </div>
-                            </div>
-                            <div class="card__content flex items-center justify-center flex-col px-7">
-                                <lord-icon src="https://cdn.lordicon.com/bsdkzyjd.json" trigger="loop"
-                                    colors="primary:#1b1091,secondary:#08a88a" style="width:100px;height:100px">
-                                </lord-icon>
-                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
-                                    More Income!</h1>
-                                <p
-                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
-                                    Boost your productivity and income using our system. You can work faster than
-                                    traditional methods.
-                                </p>
                             </div>
                         </div>
 
-                        <div class="card mx-2 hover:w-full group">
-                            <div class="tools">
-                                <div class="circle">
-                                    <span class="red box"></span>
-                                </div>
-                                <div class="circle">
-                                    <span class="yellow box"></span>
-                                </div>
-                                <div class="circle">
-                                    <span class="green box"></span>
+                        <!-- Small Card - Secured Data -->
+                        <div
+                            class="bg-gradient-to-br from-logo-blue to-logo-teal text-white rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                            <div class="flex-shrink-0 md:w-[20%] w-full flex items-start justify-start mb-4">
+                                <div>
+                                    <lord-icon src="https://cdn.lordicon.com/apbwvyeg.json" trigger="loop"
+                                        colors="primary:#fff,secondary:#BDE038" style="width:120px;height:120px">
+                                    </lord-icon>
                                 </div>
                             </div>
-                            <div class="card__content flex items-center justify-center flex-col px-7">
-                                <lord-icon src="https://cdn.lordicon.com/fgxwhgfp.json" trigger="hover"
-                                    colors="primary:#3080e8,secondary:#08a88a" style="width:100px;height:100px">
-                                </lord-icon>
-                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
-                                    Secured Data!</h1>
-                                <p
-                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
-                                    Secured Data!
-                                    Our system offers a secure way of storing data, packed with encryption methods that
-                                    hide your data from the eyes of troublemakers.
-                                </p>
-                            </div>
+                            <h3 class="text-2xl md:text-3xl font-bold mb-3">Secured Data</h3>
+                            <p class="text-white/90 text-base md:text-lg leading-relaxed">
+                                Enterprise-grade encryption protects your sensitive information from unauthorized
+                                access.
+                            </p>
                         </div>
 
-                        <div class="card mx-2 hover:w-full group">
-                            <div class="tools">
-                                <div class="circle">
-                                    <span class="red box"></span>
-                                </div>
-                                <div class="circle">
-                                    <span class="yellow box"></span>
-                                </div>
-                                <div class="circle">
-                                    <span class="green box"></span>
-                                </div>
-                            </div>
-                            <div class="card__content flex items-center justify-center flex-col px-7">
-                                <lord-icon src="https://cdn.lordicon.com/bsdkzyjd.json" trigger="loop"
-                                    colors="primary:#1b1091,secondary:#08a88a" style="width:100px;height:100px">
+                        <!-- Small Card - Convenient Transactions -->
+                        <div
+                            class="bg-white/90 backdrop-blur-sm rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                            <div class="mb-4">
+                                <lord-icon src="https://cdn.lordicon.com/jectmwqf.json" trigger="loop"
+                                    colors="primary:#10454F,secondary:#BDE038" style="width:100px;height:100px">
                                 </lord-icon>
-                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
-                                    Convient Transactions</h1>
-                                <p
-                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
-                                    Our System provides Online payment for clients that doesnt want to go in LGU of
-                                    their own.
-                                </p>
                             </div>
+                            <h3 class="text-2xl md:text-3xl font-bold text-green mb-3">Convenient Transactions</h3>
+                            <p class="text-gray text-base md:text-lg leading-relaxed">
+                                Our system provides online payment for clients who prefer remote transactions.
+                            </p>
                         </div>
 
-                        <div class="card mx-2 hover:w-full group">
-                            <div class="tools">
-                                <div class="circle">
-                                    <span class="red box"></span>
+                        <!-- Medium Card - Fast Processing -->
+                        <div
+                            class="md:col-span-2 bg-gradient-to-r from-logo-green via-lumot to-logo-teal text-white rounded-3xl p-8 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                            <div class="flex items-center gap-6 flex-col md:flex-row">
+                                <div class="md:w-[20%] w-full flex items-start justify-start">
+                                    <div>
+                                        <lord-icon src="https://cdn.lordicon.com/warimioc.json" trigger="loop"
+                                            colors="primary:#ffffff,secondary:#10454F" style="width:100px;height:100px">
+                                        </lord-icon>
+                                    </div>
                                 </div>
-                                <div class="circle">
-                                    <span class="yellow box"></span>
+                                <div>
+                                    <h3 class="text-2xl md:text-5xl font-bold mb-3">Lightning Fast Processing</h3>
+                                    <p class="text-white/90 text-base md:text-xl leading-relaxed">
+                                        Transform hours of work into minutes with our optimized workflows and automated
+                                        systems designed for maximum efficiency.
+                                    </p>
                                 </div>
-                                <div class="circle">
-                                    <span class="green box"></span>
-                                </div>
-                            </div>
-                            <div class="card__content flex items-center justify-center flex-col px-7">
-                                <lord-icon src="https://cdn.lordicon.com/bsdkzyjd.json" trigger="loop"
-                                    colors="primary:#1b1091,secondary:#08a88a" style="width:100px;height:100px">
-                                </lord-icon>
-                                <h1 class="text-2xl font-bold    transition-opacity duration-300">
-                                    More Income!</h1>
-                                <p
-                                    class="text-xs md:text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 px-2 leading-relaxed">
-                                    Boost your productivity and income using our system. You can work faster than
-                                    traditional methods.
-                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Testimonial/CTA Section with Morphing Shape -->
-            <section class="py-24 px-4 sm:px-6 lg:px-8 relative">
-                <div class="max-w-5xl mx-auto relative">
-                    <!-- Animated background blob -->
-                    <div
-                        class="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full blur-3xl opacity-20 animate-pulse">
+            <!-- Stats Section -->
+            <section class="py-24 px-4 sm:px-6 lg:px-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="text-center mb-16">
+                        <h2 class="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-2xl">
+                            Transforming Government Services
+                        </h2>
+                        <p class="text-xl md:text-2xl text-gray-100 max-w-3xl mx-auto drop-shadow-lg">
+                            Join thousands experiencing the future of efficient governance
+                        </p>
                     </div>
 
-                    <div
-                        class="relative bg-white bg-opacity-10 backdrop-blur-xl border-2 border-white border-opacity-30 rounded-3xl p-12 md:p-16 text-center shadow-2xl">
-                        <div class="mb-8">
-                            <svg class="w-16 h-16 mx-auto text-white opacity-50" fill="currentColor"
-                                viewBox="0 0 24 24">
-                                <path
-                                    d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-                            </svg>
+                    <!-- Bento Stats Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+                        <div
+                            class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/20 transition-all duration-300">
+                            <div class="text-logo-green text-4xl md:text-5xl font-bold mb-2 counter"
+                                data-target="15000">
+                                0</div>
+                            <p class="text-white font-semibold">Active Users</p>
+                            <p class="text-gray-300 text-sm">Across LGUs</p>
                         </div>
-                        <blockquote class="text-2xl md:text-3xl font-medium text-white mb-6 leading-relaxed">
-                            Transform your workflow with a system designed for excellence
-                        </blockquote>
-                        <p class="text-lg text-gray-200 mb-10">
-                            Join thousands of professionals who trust GReAT System for their daily operations
+
+                        <div
+                            class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/20 transition-all duration-300">
+                            <div class="text-logo-green text-4xl md:text-5xl font-bold mb-2 counter" data-target="98">0
+                            </div>
+                            <p class="text-white font-semibold">Success Rate</p>
+                            <p class="text-gray-300 text-sm">Accuracy</p>
+                        </div>
+
+                        <div
+                            class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/20 transition-all duration-300">
+                            <div class="text-logo-green text-4xl md:text-5xl font-bold mb-2 counter" data-target="75">0
+                            </div>
+                            <p class="text-white font-semibold">Time Saved</p>
+                            <p class="text-gray-300 text-sm">Average</p>
+                        </div>
+
+                        <div
+                            class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 hover:bg-white/20 transition-all duration-300">
+                            <div class="text-logo-green text-4xl md:text-5xl font-bold mb-2">24/7</div>
+                            <p class="text-white font-semibold">Availability</p>
+                            <p class="text-gray-300 text-sm">Always On</p>
+                        </div>
+                    </div>
+
+                    <!-- Trust Section -->
+                    <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-10">
+                        <h3 class="text-3xl font-bold text-white text-center mb-8">Trusted Partners</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div
+                                class="bg-white/5 rounded-xl p-6 text-center hover:bg-white/10 transition-all duration-300">
+                                <span class="text-white/80 font-semibold">LGU Partner 1</span>
+                            </div>
+                            <div
+                                class="bg-white/5 rounded-xl p-6 text-center hover:bg-white/10 transition-all duration-300">
+                                <span class="text-white/80 font-semibold">LGU Partner 2</span>
+                            </div>
+                            <div
+                                class="bg-white/5 rounded-xl p-6 text-center hover:bg-white/10 transition-all duration-300">
+                                <span class="text-white/80 font-semibold">LGU Partner 3</span>
+                            </div>
+                            <div
+                                class="bg-white/5 rounded-xl p-6 text-center hover:bg-white/10 transition-all duration-300">
+                                <span class="text-white/80 font-semibold">LGU Partner 4</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA Section -->
+            <section class="py-20 px-4 sm:px-6 lg:px-8">
+                <div class="max-w-4xl mx-auto">
+                    <div
+                        class="bg-gradient-to-r from-logo-blue via-logo-teal to-logo-green rounded-3xl p-12 text-center shadow-2xl">
+                        <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">
+                            Ready to Get Started?
+                        </h2>
+                        <p class="text-xl text-white/90 mb-8">
+                            Transform your workflow today with GReAT System
                         </p>
-                        <button
-                            class="fill-button px-10 py-5 bg-transparent border-2 border-white text-white font-bold text-lg rounded-xl shadow-2xl transition-all duration-300 hover:shadow-3xl">
-                            Get Started Today
-                        </button>
+                        <div class="flex gap-4 justify-center flex-wrap">
+                            <button
+                                class="px-8 py-4 bg-white text-logo-blue font-semibold rounded-lg hover:bg-logo-green hover:text-white transition-all duration-300 hover:scale-105 shadow-lg">
+                                Contact Us
+                            </button>
+                            <button
+                                class="px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-lg hover:bg-white/10 transition-all duration-300">
+                                Learn More
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
         </main>
-
     </div>
 
     @include('partials.footer')
 
     <script>
-        let hover1
-
-
-
-
         // Video playlist
         const videos = [
             "{{ asset('videos/1.mp4') }}",
@@ -220,35 +233,59 @@
         let currentVideoIndex = 0;
         const video = document.getElementById('bgVideo');
 
-        // Play next video when current one ends
-        video.addEventListener('ended', function () {
+        video.addEventListener('ended', function() {
             currentVideoIndex = (currentVideoIndex + 1) % videos.length;
             video.src = videos[currentVideoIndex];
             video.load();
             video.play();
         });
 
-        // Ensure autoplay starts
-        video.play().catch(function (error) {
+        video.play().catch(function(error) {
             console.log("Autoplay prevented:", error);
         });
 
+        // Counter animation
+        function animateCounter(element) {
+            const target = parseInt(element.getAttribute('data-target'));
+            const duration = 2000;
+            const increment = target / (duration / 16);
+            let current = 0;
 
+            const updateCounter = () => {
+                current += increment;
+                if (current < target) {
+                    element.textContent = Math.floor(current).toLocaleString();
+                    requestAnimationFrame(updateCounter);
+                } else {
+                    const text = element.parentElement.querySelector('p').textContent;
+                    element.textContent = target.toLocaleString() + (text.includes('Rate') || text.includes(
+                        'Saved') ? '%' : '+');
+                }
+            };
+            updateCounter();
+        }
 
-        // Select all elements with the 'card' class
-        const cards = document.querySelectorAll('.card');
+        const observerOptions = {
+            threshold: 0.5,
+            rootMargin: '0px 0px -100px 0px'
+        };
 
-        // Add event listeners to each card
-        cards.forEach(card => {
-            // Mouse enter - add 'shrink' class
-            card.addEventListener('mouseenter', function () {
-                this.classList.add('shrink');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const counters = entry.target.querySelectorAll('.counter');
+                    counters.forEach(counter => {
+                        if (counter.textContent === '0') {
+                            animateCounter(counter);
+                        }
+                    });
+                }
             });
+        }, observerOptions);
 
-            // Mouse leave - remove 'shrink' class
-            card.addEventListener('mouseleave', function () {
-                this.classList.remove('shrink');
-            });
-        });
+        const statsSection = document.querySelector('section:nth-of-type(3)');
+        if (statsSection) {
+            observer.observe(statsSection);
+        }
     </script>
 </body>
