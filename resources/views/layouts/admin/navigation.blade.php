@@ -7,23 +7,23 @@
 
                 <div class="hidden md:block">
                     <div class="ml-10 flex items-baseline space-x-4">
-                        <a href="#"
+                        <a href="{{ route('admin.dashboard.index') }}"
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Dashboard
                         </a>
-                        <a href="#"
+                        <a href="{{ route('admin.departments.index') }}"
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Department Management
                         </a>
-                        <a href="#"
+                        <a href="{{route('admin.barangays.index')}}"
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Barangay Management
                         </a>
-                        <a href="#"
+                        <a href="{{route('accounts.index')}}"
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Account Management
                         </a>
-                        <a href="#"
+                        <a href="{{ route('database.backup') }}"
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Backup Database
                         </a>
