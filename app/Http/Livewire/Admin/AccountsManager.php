@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Livewire;
+namespace App\Http\Livewire\Admin;
 
+use App\Http\Livewire\Livewire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\Models\EmployeeInfo;
 use App\Models\Department;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+
 
 class AccountsManager extends Component
 {
@@ -152,7 +154,7 @@ class AccountsManager extends Component
             ->distinct('departments.id')
             ->count('departments.id');
 
-return view('livewire.admin.accounts-manager', compact(
+return view('modules.admin.account_management.accounts-manager', compact(
             'employees',
             'accounts',
             'departments',

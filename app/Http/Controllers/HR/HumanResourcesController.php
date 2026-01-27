@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\HR;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Department;
 use App\Models\EmployeeInfo;
@@ -11,7 +12,7 @@ use App\Models\EmployeeInfo;
     public function create()
     {
         $departments = Department::orderBy('department_name')->get();
-        return view('hr.create', compact('departments'));
+        return view('modules.hr.create', compact('departments'));
     }
 
     public function store(Request $request)

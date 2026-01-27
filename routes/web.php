@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\HumanResourcesController;
-use App\Http\Controllers\RPTController; 
+use App\Http\Controllers\Hr\HumanResourcesController;
+use App\Http\Controllers\RPT\RPTController;
+use App\Http\Livewire\Admin\AccountsManager;
 
 use Illuminate\Support\Facades\Route;
 
@@ -28,8 +29,8 @@ Route::middleware('auth')->group(function () {
 //ADMIN - ACCOUNTS MANAGEMENT
 Route::middleware(['auth'])->group(function () {
     // Use Livewire component for accounts management
-    Route::get('/accounts', \App\Http\Livewire\AccountsManager::class)->name('accounts.index');
-
+    Route::get('/accounts', AccountsManager::class)
+        ->name('accounts.index');
     // Keep AJAX routes for any additional functionality
     Route::get('/accounts/{id}/details', [AdminController::class, 'show'])->name('accounts.show');
     Route::get('/accounts/check-username', [AdminController::class, 'checkUsername'])->name('accounts.checkUsername');

@@ -1,41 +1,42 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\RPT;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
 class RPTController extends Controller
 {
     public function index()
     {
-        return view('rpt.index');
+        return view('modules.rpt.index');
     }
     public function faas_list()
     {
-        return view('rpt.faas_list');
+        return view('modules.rpt.faas_list');
     }
     public function land()
     {
-        return view('rpt.faas_entry.land');
+        return view('modules.rpt.faas_entry.land');
     }
 
     public function building()
     {
-        return view('rpt.faas_entry.building');
+        return view('modules.rpt.faas_entry.building');
     }
 
     public function machine()
     {
-        return view('rpt.faas_entry.machine');
+        return view('modules.rpt.faas_entry.machine');
     }
     public function taxdec_based()
     {
-        return view('rpt.faas_entry.taxdec_based');
+        return view('modules.rpt.faas_entry.taxdec_based');
     }
 
     public function create()
     {
-        return view('rpt.create');
+        return view('modules.rpt.create');
     }
 
     public function store(Request $request)
@@ -50,6 +51,6 @@ class RPTController extends Controller
         // Logic to store the validated data into the database
         // RPTEmployee::create($validated);
 
-        return redirect()->route('rpt.index')->with('success', 'RPT Employee info created successfully.');
+        return redirect()->route('modules.rpt.index')->with('success', 'RPT Employee info created successfully.');
     }
 }
