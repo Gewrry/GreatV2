@@ -10,18 +10,17 @@ class Department extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'department_name',
+        'dep_code',
+        'dep_desc',
+        'category',
+        'sector',
+        'rank_order',
+        'pay_name',
+        'pay_full',
     ];
 
-    /**
-     * Get the employees for the department.
-     */
     public function employees(): HasMany
     {
         return $this->hasMany(EmployeeInfo::class);

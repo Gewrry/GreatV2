@@ -1,10 +1,19 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Hr\HumanResourcesController;
-use App\Http\Controllers\RPT\RPTController;
+
+//Admin Controllers
+use App\Http\Livewire\Admin\AdminDashboard;
 use App\Http\Livewire\Admin\AccountsManager;
+use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\BarangayController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
+
+//HR Controllers
+use App\Http\Controllers\Hr\HumanResourcesController;
+
+//RPT Controllers
+use App\Http\Controllers\RPT\RPTController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -21,20 +30,37 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-    //HR
+//HR
 Route::middleware('auth')->group(function () {
     Route::get('/employee-info/create', [HumanResourcesController::class, 'create'])->name('employee-info.create');
     Route::post('/employee-info', [HumanResourcesController::class, 'store'])->name('employee-info.store');
 });
 //ADMIN - ACCOUNTS MANAGEMENT
 Route::middleware(['auth'])->group(function () {
+
+    // Use Livewire component for admin dashboard
+    Route::get('/admin/dashboard', AdminDashboard::class)
+        ->name('admin.dashboard.index');
+
     // Use Livewire component for accounts management
     Route::get('/accounts', AccountsManager::class)
         ->name('accounts.index');
-    // Keep AJAX routes for any additional functionality
-    Route::get('/accounts/{id}/details', [AdminController::class, 'show'])->name('accounts.show');
-    Route::get('/accounts/check-username', [AdminController::class, 'checkUsername'])->name('accounts.checkUsername');
-    Route::get('/accounts/check-employee', [AdminController::class, 'checkEmployee'])->name('accounts.checkEmployee');
+
+    //DEPARTMENT MANAGEMENT
+    Route::get('/departments', [DepartmentController::class, 'index'])->name('admin.departments.index');
+    Route::post('/departments', [DepartmentController::class, 'store'])->name('admin.departments.store');
+    Route::put('/departments/{department}', [DepartmentController::class, 'update'])->name('admin.departments.update');
+    Route::delete('/departments/{department}', [DepartmentController::class, 'destroy'])->name('admin.departments.destroy');
+
+    // BARANGAY MANAGEMENT
+    Route::get('/barangays', [BarangayController::class, 'index'])->name('admin.barangays.index');
+    Route::post('/barangays', [BarangayController::class, 'store'])->name('admin.barangays.store');
+    Route::put('/barangays/{barangay}', [BarangayController::class, 'update'])->name('admin.barangays.update');
+    Route::delete('/barangays/{barangay}', [BarangayController::class, 'destroy'])->name('admin.barangays.destroy');
+
+
+    Route::get('/backup-database', [DatabaseBackupController::class, 'backup'])
+        ->name('database.backup');
 });
 
 Route::middleware('auth')->group(function () {
