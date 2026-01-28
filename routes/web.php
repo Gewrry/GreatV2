@@ -14,6 +14,11 @@ use App\Http\Controllers\Hr\HumanResourcesController;
 
 //RPT Controllers
 use App\Http\Controllers\RPT\RPTController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RPTA_SettingsController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptAuController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\AdditionalItemController;    
+use App\Http\Controllers\RPT\RPTA_SETTINGS\AssessmentLevelController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\ClassificationController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -78,6 +83,43 @@ Route::middleware('auth')->group(function () {
 
 
     Route::post('/rpt', [RPTController::class, 'store'])->name('rpt.store');
-});
+
+    //RPTA Settings
+    Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpt.rpta_settings.index');
+    Route::get('/rpta_settings/actual_use', [RPTA_SettingsController::class, 'actual_use'])->name('rpt.rpta_settings.actual_use');
+    
+    
+    // Actual Use Routes
+    Route::get('/actual-use', [RptAuController::class, 'index'])->name('rpt.actual-use.index');
+    Route::post('/actual-use', [RptAuController::class, 'store'])->name('rpt.actual-use.store');
+    Route::get('/actual-use/{rptAu}', [RptAuController::class, 'show'])->name('rpt.actual-use.show');
+    Route::post('/actual-use/{rptAu}', [RptAuController::class, 'update'])->name('rpt.actual-use.update');
+    Route::delete('/actual-use/{rptAu}', [RptAuController::class, 'destroy'])->name('rpt.actual-use.destroy');
+
+
+    // Additional Item Routes
+    Route::get('/additional-items', [AdditionalItemController::class, 'index'])->name('rpt.additional-items.index');
+    Route::post('/additional-items', [AdditionalItemController::class, 'store'])->name('rpt.additional-items.store');
+    Route::get('/additional-items/{additionalItem}', [AdditionalItemController::class, 'show'])->name('rpt.additional-items.show');
+    Route::put('/additional-items/{additionalItem}', [AdditionalItemController::class, 'update'])->name('rpt.additional-items.update');
+    Route::delete('/additional-items/{additionalItem}', [AdditionalItemController::class, 'destroy'])->name('rpt.additional-items.destroy');
+
+    // Assessment Level Routes
+    Route::get('/assessment-levels', [AssessmentLevelController::class, 'index'])->name('rpt.assessment-levels.index');
+    Route::post('/assessment-levels', [AssessmentLevelController::class, 'store'])->name('rpt.assessment-levels.store');
+    Route::put('/assessment-levels/{assessmentLevel}', [AssessmentLevelController::class, 'update'])->name('rpt.assessment-levels.update');
+    Route::delete('/assessment-levels/{assessmentLevel}', [AssessmentLevelController::class, 'destroy'])->name('rpt.assessment-levels.destroy');
+    Route::get('/assessment-levels/{assessmentLevel}', [AssessmentLevelController::class, 'show'])->name('rpt.assessment-levels.show');
+
+    // Classification Routes
+    Route::get('/classifications', [ClassificationController::class, 'index'])->name('rpt.classifications.index');
+    Route::post('/classifications', [ClassificationController::class, 'store'])->name('rpt.classifications.store');
+    Route::get('/classifications/{classification}', [ClassificationController::class, 'show'])->name('rpt.classifications.show');
+    Route::put('/classifications/{classification}', [ClassificationController::class, 'update'])->name('rpt.classifications.update');
+    Route::delete('/classifications/{classification}', [ClassificationController::class, 'destroy'])->name('rpt.classifications.destroy');
+    });
+
+
+
 
 require __DIR__ . '/auth.php';

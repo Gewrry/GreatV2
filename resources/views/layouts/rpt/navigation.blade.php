@@ -126,7 +126,7 @@
                         </a>
 
                         <!-- RPTA Settings -->
-                        <a href="#"
+                        <a href="{{route('rpt.rpta_settings.index')}}"
                             class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
