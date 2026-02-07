@@ -19,13 +19,13 @@
     <a href="{{ route('rpt.classifications.index') }}">Classification</a>
         <br>
 
-    <a href="#">Depreciation Rate for Buildings</a>
+    <a href="{{ route('rpt.depreciation-rates.index') }}">Depreciation Rate for Buildings</a>
         <br>
 
-    <a href="#">Owner Selections</a>
+    <a href="{{ route('rpt.owners.index') }}">Owner Selections</a>
         <br>
 
-    <a href="#">Other Improvements for Land</a>
+    <a href="{{ route('rpt.other-improvements.index') }}">Other Improvements for Land</a>
         <br>
 
     <a href="#">Signatories & Revision Year</a>

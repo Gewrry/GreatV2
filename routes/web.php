@@ -19,6 +19,9 @@ use App\Http\Controllers\RPT\RPTA_SETTINGS\RptAuController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\AdditionalItemController;    
 use App\Http\Controllers\RPT\RPTA_SETTINGS\AssessmentLevelController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\ClassificationController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\DepreciationRateBldgController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\OwnerController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\OtherImprovementController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -117,7 +120,28 @@ Route::middleware('auth')->group(function () {
     Route::get('/classifications/{classification}', [ClassificationController::class, 'show'])->name('rpt.classifications.show');
     Route::put('/classifications/{classification}', [ClassificationController::class, 'update'])->name('rpt.classifications.update');
     Route::delete('/classifications/{classification}', [ClassificationController::class, 'destroy'])->name('rpt.classifications.destroy');
-    });
+
+    // Depreciation Rate for Building Routes
+    Route::get('/depreciation-rates', [DepreciationRateBldgController::class, 'index'])->name('rpt.depreciation-rates.index');
+    Route::post('/depreciation-rates', [DepreciationRateBldgController::class, 'store'])->name('rpt.depreciation-rates.store');
+    Route::get('/depreciation-rates/{depreciationRate}', [DepreciationRateBldgController::class, 'show'])->name('rpt.depreciation-rates.show');
+    Route::put('/depreciation-rates/{depreciationRate}', [DepreciationRateBldgController::class, 'update'])->name('rpt.depreciation-rates.update');
+    Route::delete('/depreciation-rates/{depreciationRate}', [DepreciationRateBldgController::class, 'destroy'])->name('rpt.depreciation-rates.destroy');
+  
+    // Owner Selection Routes
+    Route::get('/owners', [OwnerController::class, 'index'])->name('rpt.owners.index');
+    Route::post('/owners', [OwnerController::class, 'store'])->name('rpt.owners.store');
+    Route::get('/owners/{owner}', [OwnerController::class, 'show'])->name('rpt.owners.show');
+    Route::put('/owners/{owner}', [OwnerController::class, 'update'])->name('rpt.owners.update');
+    Route::delete('/owners/{owner}', [OwnerController::class, 'destroy'])->name('rpt.owners.destroy');
+    
+    // Other Improvement Routes
+    Route::get('/other-improvements', [OtherImprovementController::class, 'index'])->name('rpt.other-improvements.index');
+    Route::post('/other-improvements', [OtherImprovementController::class, 'store'])->name('rpt.other-improvements.store');
+    Route::get('/other-improvements/{improvement}', [OtherImprovementController::class, 'show'])->name('rpt.other-improvements.show');
+    Route::put('/other-improvements/{improvement}', [OtherImprovementController::class, 'update'])->name('rpt.other-improvements.update');
+    Route::delete('/other-improvements/{improvement}', [OtherImprovementController::class, 'destroy'])->name('rpt.other-improvements.destroy');
+});
 
 
 
