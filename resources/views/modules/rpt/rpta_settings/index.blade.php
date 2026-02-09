@@ -28,10 +28,10 @@
     <a href="{{ route('rpt.other-improvements.index') }}">Other Improvements for Land</a>
         <br>
 
-    <a href="#">Signatories & Revision Year</a>
+    <a href="{{ route('rpt.signatories.index') }}">Signatories & Revision Year</a>
         <br>
 
-    <a href="#">Transaction Code</a>
+    <a href="{{ route('rpt.transaction_code.index')}}">Transaction Code</a>
         <br>
 
     <a href="#">Update Local Map (Generated via QGIS)   </a>
@@ -40,7 +40,7 @@
     <a href="#">Update PIN / Year for RPU</a>
         <br>
 
-    <a href="#">General Revision of RPUs</a>
+    <a href="{{ route('rpt.general_revision.index') }}">General Revision of RPUs</a>
         <br>
 
     <a href="#">Public Auction Identification for RPTA</a>

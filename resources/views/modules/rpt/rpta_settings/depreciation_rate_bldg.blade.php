@@ -13,7 +13,7 @@
                 class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
             <i class="fas fa-plus mr-2"></i> Add New Depreciation Rate
         </button>
-    </div>
+    </div>  
 
     <!-- Stats Card -->
     <div class="mb-6">

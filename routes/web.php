@@ -16,12 +16,16 @@ use App\Http\Controllers\Hr\HumanResourcesController;
 use App\Http\Controllers\RPT\RPTController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\RPTA_SettingsController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\RptAuController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\AdditionalItemController;    
+use App\Http\Controllers\RPT\RPTA_SETTINGS\AdditionalItemController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\AssessmentLevelController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\ClassificationController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\DepreciationRateBldgController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\OwnerController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\OtherImprovementController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptaSignatoryController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptTransactionCodeController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptaGenRevController;
+
 
 use Illuminate\Support\Facades\Route;
 
@@ -90,8 +94,8 @@ Route::middleware('auth')->group(function () {
     //RPTA Settings
     Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpt.rpta_settings.index');
     Route::get('/rpta_settings/actual_use', [RPTA_SettingsController::class, 'actual_use'])->name('rpt.rpta_settings.actual_use');
-    
-    
+
+
     // Actual Use Routes
     Route::get('/actual-use', [RptAuController::class, 'index'])->name('rpt.actual-use.index');
     Route::post('/actual-use', [RptAuController::class, 'store'])->name('rpt.actual-use.store');
@@ -127,20 +131,43 @@ Route::middleware('auth')->group(function () {
     Route::get('/depreciation-rates/{depreciationRate}', [DepreciationRateBldgController::class, 'show'])->name('rpt.depreciation-rates.show');
     Route::put('/depreciation-rates/{depreciationRate}', [DepreciationRateBldgController::class, 'update'])->name('rpt.depreciation-rates.update');
     Route::delete('/depreciation-rates/{depreciationRate}', [DepreciationRateBldgController::class, 'destroy'])->name('rpt.depreciation-rates.destroy');
-  
+
     // Owner Selection Routes
     Route::get('/owners', [OwnerController::class, 'index'])->name('rpt.owners.index');
     Route::post('/owners', [OwnerController::class, 'store'])->name('rpt.owners.store');
     Route::get('/owners/{owner}', [OwnerController::class, 'show'])->name('rpt.owners.show');
     Route::put('/owners/{owner}', [OwnerController::class, 'update'])->name('rpt.owners.update');
     Route::delete('/owners/{owner}', [OwnerController::class, 'destroy'])->name('rpt.owners.destroy');
-    
+
     // Other Improvement Routes
     Route::get('/other-improvements', [OtherImprovementController::class, 'index'])->name('rpt.other-improvements.index');
     Route::post('/other-improvements', [OtherImprovementController::class, 'store'])->name('rpt.other-improvements.store');
     Route::get('/other-improvements/{improvement}', [OtherImprovementController::class, 'show'])->name('rpt.other-improvements.show');
     Route::put('/other-improvements/{improvement}', [OtherImprovementController::class, 'update'])->name('rpt.other-improvements.update');
     Route::delete('/other-improvements/{improvement}', [OtherImprovementController::class, 'destroy'])->name('rpt.other-improvements.destroy');
+
+    // RPTA Signatories Routes
+    Route::get('/signatories', [RptaSignatoryController::class, 'index'])->name('rpt.signatories.index');
+    Route::post('/signatories', [RptaSignatoryController::class, 'store'])->name('rpt.signatories.store');
+    Route::get('/signatories/{signatory}', [RptaSignatoryController::class, 'show'])->name('rpt.signatories.show');
+    Route::put('/signatories/{signatory}', [RptaSignatoryController::class, 'update'])->name('rpt.signatories.update');
+    Route::delete('/signatories/{signatory}', [RptaSignatoryController::class, 'destroy'])->name('rpt.signatories.destroy');
+    Route::post('/signatories/update-revision-year', [RptaSignatoryController::class, 'updateRevisionYear'])->name('rpt.signatories.update-revision-year');
+    Route::post('/signatories/update-rc-signatory', [RptaSignatoryController::class, 'updateRcSignatory'])->name('rpt.signatories.update-rc-signatory');
+
+    // Transaction Code Routes
+    Route::get('/transaction-codes', [RptTransactionCodeController::class, 'index'])->name('rpt.transaction_code.index');
+    Route::post('/transaction-codes', [RptTransactionCodeController::class, 'store'])->name('rpt.transaction_code.store');
+    Route::get('/transaction-codes/{transaction_code}', [RptTransactionCodeController::class, 'show'])->name('rpt.transaction_code.show');
+    Route::put('/transaction-codes/{transaction_code}', [RptTransactionCodeController::class, 'update'])->name('rpt.transaction_code.update');
+    Route::delete('/transaction-codes/{transaction_code}', [RptTransactionCodeController::class, 'destroy'])->name('rpt.transaction_code.destroy');
+
+    // General Revision Routes
+    Route::get('/general-revision', [RptaGenRevController::class, 'index'])->name('rpt.general_revision.index');
+    Route::get('/general-revision/years', [RptaGenRevController::class, 'getMaxRevisionYear'])->name('rpt.general_revision.years');
+    Route::post('/general-revision/process', [RptaGenRevController::class, 'processRevision'])->name('rpt.general_revision.process');
+    Route::get('/general-revision/list', [RptaGenRevController::class, 'getRevisions'])->name('rpt.general_revision.list');
+    Route::delete('/general-revision/{id}/cancel', [RptaGenRevController::class, 'cancelRevision'])->name('rpt.general_revision.cancel');
 });
 
 
