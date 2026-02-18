@@ -70,11 +70,13 @@
                                                 d="M12 4v16m8-8H4" />
                                         </svg>
                                         <div class="flex flex-col">
-                                            <span class="font-black text-[10px] uppercase tracking-tighter">Issue New</span>
+                                            <span class="font-black text-[10px] uppercase tracking-tighter">Issue
+                                                New</span>
                                             <span class="font-bold">TAX DECLARATION</span>
                                         </div>
                                     </a>
-                                    <div class="px-4 py-2 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-y border-gray-100">
+                                    <div
+                                        class="px-4 py-2 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-y border-gray-100">
                                         Legacy Entry (Direct)
                                     </div>
                                     <a href="{{ route('rpt.faas_entry.land') }}"
@@ -110,7 +112,7 @@
                             </div>
                         </div>
 
-                         <!-- Archive / Inactive -->
+                        <!-- Archive / Inactive -->
                         <a href="{{ route('rpt.faas_list') }}?status=inactive"
                             class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +143,7 @@
                         </a>
 
                         <!-- RPTA Settings -->
-                        <a href="{{route('rpt.rpta_settings.index')}}"
+                        <a href="{{ route('rpt.rpta_settings.index') }}"
                             class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
