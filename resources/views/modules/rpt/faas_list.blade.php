@@ -183,11 +183,11 @@
                         name: 'lot_no',
                         className: 'px-8 py-6',
                         render: function(data, type, row) {
-                            const mainOwner = row.owner_names.split(',')[0];
+                            const owners = row.owner_names;
                             return `<div class="flex flex-col gap-1">
-                                <span class="font-black text-gray-900 text-xs uppercase tracking-tight truncate max-w-[180px]">${mainOwner}</span>
+                                <span class="font-black text-gray-900 text-xs uppercase tracking-tight truncate max-w-[250px]" title="${owners}">${owners}</span>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-[10px] text-gray-400 font-bold">LOT: ${data || 'N/A'}</span>
+                                    <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Lot: ${data || 'N/A'}</span>
                                 </div>
                             </div>`;
                         }

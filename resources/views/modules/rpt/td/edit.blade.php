@@ -80,11 +80,19 @@
             <div class="lg:col-span-2 space-y-6">
                 <!-- TD Information -->
                 <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="p-2 bg-amber-50 rounded-lg text-amber-600">
-                           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div class="flex items-center justify-between gap-3 mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-amber-50 rounded-lg text-amber-600">
+                               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <h3 class="text-lg font-black text-gray-800 uppercase tracking-tight">Identification</h3>
                         </div>
-                        <h3 class="text-lg font-black text-gray-800 uppercase tracking-tight">Identification</h3>
+                        @if($td->statt !== 'CANCELLED')
+                            <button @click="$dispatch('open-modal', 'edit-identification')" class="text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest border border-indigo-100 flex items-center gap-2">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                Edit Identification
+                            </button>
+                        @endif
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-8">
                         <div>
@@ -99,6 +107,31 @@
                             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Barangay</p>
                             <p class="text-sm font-bold text-gray-800">{{ $td->barangay->brgy_name ?? 'N/A' }}</p>
                         </div>
+                    </div>
+                    
+                    @if($td->geometry)
+                    <div class="mt-8 pt-8 border-t border-gray-100">
+                        <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Spatial Boundaries (Adjoining)</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div>
+                                <p class="text-[9px] font-black text-indigo-400 uppercase mb-1">North</p>
+                                <p class="text-xs font-bold text-gray-800">{{ $td->geometry->adj_north ?? '---' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] font-black text-indigo-400 uppercase mb-1">South</p>
+                                <p class="text-xs font-bold text-gray-800">{{ $td->geometry->adj_south ?? '---' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] font-black text-indigo-400 uppercase mb-1">East</p>
+                                <p class="text-xs font-bold text-gray-800">{{ $td->geometry->adj_east ?? '---' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] font-black text-indigo-400 uppercase mb-1">West</p>
+                                <p class="text-xs font-bold text-gray-800">{{ $td->geometry->adj_west ?? '---' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
                         <div>
                             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Revision Year</p>
                             <p class="text-sm font-bold text-gray-800">{{ $td->revised_year }}</p>
@@ -311,52 +344,58 @@
                     @if($td->attachments->count() > 0)
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                             @foreach($td->attachments as $attachment)
-                                <div class="group relative bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:border-logo-teal transition-all">
-                                    <div class="flex items-start gap-3">
-                                        <div class="p-2 bg-white rounded-xl text-logo-teal shadow-sm">
-                                            @if(str_contains($attachment->file_type, 'image'))
-                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            @else
-                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                            @endif
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-bold text-gray-800 truncate" title="{{ $attachment->file_name }}">{{ $attachment->file_name }}</p>
-                                            <p class="text-[10px] text-gray-400 font-bold uppercase truncate tracking-widest">{{ $attachment->description ?? 'No description' }}</p>
-                                        </div>
+                                <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-blue-200 hover:bg-white transition-all">
+                                    <div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                     </div>
-                                    <div class="mt-4">
-                                        <a href="{{ asset('storage/' . $attachment->file_path) }}" target="_blank" class="block w-full text-center bg-white text-gray-600 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-gray-200 hover:bg-gray-50 transition-all">
-                                            View Document
-                                        </a>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-0.5">{{ $attachment->attachment_type ?? 'Other Document' }}</p>
+                                        <p class="text-sm font-bold text-gray-800 truncate">{{ $attachment->file_name }}</p>
                                     </div>
+                                    <a href="{{ Storage::url($attachment->file_path) }}" target="_blank" class="p-2 hover:bg-blue-50 rounded-lg text-gray-400 hover:text-blue-600 transition-all">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    </a>
                                 </div>
                             @endforeach
                         </div>
                     @else
-                        <div class="text-center py-10 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100 mb-8">
-                            <div class="mx-auto w-12 h-12 bg-white rounded-full flex items-center justify-center text-gray-300 shadow-sm mb-3">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                            </div>
-                            <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">No supporting documents attached.</p>
+                        <div class="text-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200 mb-8 overflow-hidden relative">
+                             <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                             <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">No attachments uploaded yet</p>
                         </div>
                     @endif
 
-                    @if($td->statt !== 'APPROVED' && $td->statt !== 'CANCELLED' && $td->statt !== 'ACTIVE')
-                        <div class="p-6 bg-logo-teal/[0.03] rounded-3xl border border-logo-teal/10">
-                            <h4 class="text-[10px] font-black text-logo-teal uppercase tracking-[0.2em] mb-4">Upload New Document</h4>
+                    @if($td->statt !== 'CANCELLED')
+                        <div class="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 px-1">Upload Supporting Document</h4>
                             <form action="{{ route('rpt.td.upload_attachment', $td->id) }}" method="POST" enctype="multipart/form-data">
                                 @csrf
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="relative">
-                                        <input type="file" name="attachment" class="w-full text-xs text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-logo-teal file:text-white hover:file:bg-logo-teal/90 transition-all" required>
+                                    <div class="space-y-1">
+                                        <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Document Category</label>
+                                        <select name="attachment_type" class="w-full bg-white border-gray-200 rounded-xl text-xs px-4 h-11 focus:ring-logo-teal focus:border-logo-teal shadow-sm" required>
+                                            <option value="">Select Category...</option>
+                                            <option value="Land Title / OCT / TCT">Land Title / OCT / TCT</option>
+                                            <option value="Deed of Sale / Transfer">Deed of Sale / Transfer</option>
+                                            <option value="Tax Clearance">Tax Clearance</option>
+                                            <option value="Building Permit / Occupancy">Building Permit / Occupancy</option>
+                                            <option value="Survey Plan / Lot Plan">Survey Plan / Lot Plan</option>
+                                            <option value="Valid ID of Owner">Valid ID of Owner</option>
+                                            <option value="Site Photo">Site Photo</option>
+                                            <option value="Sketch Plan">Sketch Plan</option>
+                                            <option value="Other / Supplemental">Other / Supplemental</option>
+                                        </select>
                                     </div>
-                                    <div class="flex gap-3">
-                                        <input type="text" name="description" placeholder="Short description..." class="flex-1 bg-white border-gray-200 rounded-xl text-xs px-4 h-11 focus:ring-logo-teal focus:border-logo-teal shadow-sm">
-                                        <button type="submit" class="bg-gray-900 text-white px-6 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-gray-900/20">
-                                            Upload
-                                        </button>
+                                    <div class="space-y-1">
+                                        <label class="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">File Attachment</label>
+                                        <input type="file" name="attachment" class="w-full text-xs text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-logo-teal file:text-white hover:file:bg-logo-teal/90 transition-all h-11" required>
                                     </div>
+                                </div>
+                                <div class="flex gap-3 mt-4">
+                                    <input type="text" name="description" placeholder="Short description or notes..." class="flex-1 bg-white border-gray-200 rounded-xl text-xs px-4 h-11 focus:ring-logo-teal focus:border-logo-teal shadow-sm">
+                                    <button type="submit" class="bg-gray-900 text-white px-8 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-gray-900/20 active:scale-95">
+                                        Upload File
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -365,8 +404,39 @@
             </div>
 
             <!-- Sidebar - Totals -->
-            <div class="lg:col-span-1">
-                <div class="bg-gradient-to-br {{ $td->statt === 'CANCELLED' ? 'from-gray-600 to-gray-700' : 'from-logo-teal to-teal-600' }} rounded-2xl shadow-lg p-6 text-white sticky top-6">
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Spatial Mapping Card -->
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden group">
+                    <div class="p-6 border-b border-gray-50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </div>
+                            <h3 class="text-sm font-black text-gray-800 uppercase tracking-tight">Spatial Mapping</h3>
+                        </div>
+                        @if($td->geometry)
+                            <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">PLOTTED</span>
+                        @else
+                            <span class="bg-gray-100 text-gray-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">NO DATA</span>
+                        @endif
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="aspect-video bg-gray-50 rounded-2xl border border-gray-100 mb-4 overflow-hidden relative">
+                            @if($td->geometry)
+                                <div id="mini-map" class="absolute inset-0 z-10"></div>
+                            @else
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 opacity-30">
+                                    <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+                                    <p class="text-[10px] font-black uppercase tracking-widest">Boundary not plotted</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br {{ $td->statt === 'CANCELLED' ? 'from-gray-600 to-gray-700' : 'from-logo-teal to-teal-600' }} rounded-2xl shadow-lg p-6 text-white overflow-hidden relative">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
                     <h3 class="text-lg font-bold mb-6">Assessment Totals</h3>
                     
                     <div class="space-y-4">
@@ -470,23 +540,41 @@
                         Field Inspection
                     </h3>
                     
-                    @if(!$td->inspection_date)
+                    @if(!$td->inspection_date && (!$td->geometry || !$td->geometry->inspector_notes))
                         <div class="bg-gray-50 rounded-xl p-4 border border-dashed border-gray-200 mb-4">
                             <p class="text-xs text-gray-500 italic">No inspection details recorded for this assessment yet.</p>
                         </div>
                     @else
-                        <div class="space-y-3 mb-6">
-                            <div>
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Inspected Date</p>
-                                <p class="text-sm font-bold text-gray-800">{{ \Carbon\Carbon::parse($td->inspection_date)->format('M d, Y') }}</p>
+                        <div class="space-y-4 mb-6">
+                            @if($td->inspection_date)
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Inspected Date</p>
+                                    <p class="text-xs font-bold text-gray-800">{{ \Carbon\Carbon::parse($td->inspection_date)->format('M d, Y') }}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Inspected By</p>
-                                <p class="text-sm font-bold text-gray-800 uppercase">{{ $td->inspected_by }}</p>
+                            @endif
+
+                            @if($td->geometry && $td->geometry->gps_lat)
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">GPS Capture</p>
+                                    <p class="text-xs font-bold text-gray-800">{{ number_format($td->geometry->gps_lat, 6) }}, {{ number_format($td->geometry->gps_lng, 6) }}</p>
+                                </div>
                             </div>
+                            @endif
+
                             <div>
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Inspection Remarks</p>
-                                <p class="text-sm text-gray-600 leading-relaxed">{{ $td->inspection_remarks ?? 'None' }}</p>
+                                <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Observations & Remarks</p>
+                                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100 italic text-[11px] text-gray-600 leading-relaxed shadow-inner">
+                                    {{ $td->inspection_remarks ?: ($td->geometry->inspector_notes ?? 'No formal remarks recorded.') }}
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -515,4 +603,94 @@
             </div>
         </div>
     </div>
+    @push('styles')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        #mini-map { border-radius: 1rem; }
+    </style>
+    @endpush
+
+    @push('scripts')
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        $(document).ready(function() {
+            @if($td->geometry)
+                const miniMap = L.map('mini-map', {
+                    center: [14.5995, 120.9842],
+                    zoom: 15,
+                    zoomControl: false,
+                    attributionControl: false,
+                    dragging: false,
+                    scrollWheelZoom: false
+                });
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+
+                const geoData = @json($td->geometry->geometry);
+                const layer = L.geoJSON(geoData, {
+                    style: {
+                        fillColor: '{{ $td->geometry->fill_color }}',
+                        weight: 2,
+                        opacity: 1,
+                        color: 'white',
+                        fillOpacity: 0.7
+                    }
+                }).addTo(miniMap);
+
+                miniMap.fitBounds(layer.getBounds(), { padding: [10, 10] });
+            @endif
+        });
+    </script>
+    @endpush
+    <!-- Edit Identification Modal -->
+    <x-modal name="edit-identification" :show="false" focusable>
+        <div class="p-8">
+            <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight mb-8 italic">Edit Identification</h2>
+            
+            <form action="{{ route('rpt.td.update', $td->id) }}" method="POST">
+                @csrf
+                @method('PUT')
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Tax Declaration Number</label>
+                        <input type="text" name="td_no" value="{{ $td->td_no }}" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">ARPN</label>
+                        <input type="text" name="arpn" value="{{ $td->arpn }}" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Property Index Number (PIN)</label>
+                        <input type="text" name="pin" value="{{ $td->pin }}" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Revision Year</label>
+                        <select name="revised_year" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal" required>
+                            @foreach($revYears as $ry)
+                                <option value="{{ $ry->rev_yr }}" {{ $td->revised_year == $ry->rev_yr ? 'selected' : '' }}>{{ $ry->rev_yr }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Barangay</label>
+                        <select name="bcode" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal" required>
+                            @foreach($barangays as $brgy)
+                                <option value="{{ $brgy->brgy_code }}" {{ $td->bcode == $brgy->brgy_code ? 'selected' : '' }}>{{ $brgy->brgy_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-6 border-t border-gray-100">
+                    <button type="button" x-on:click="$dispatch('close')" class="bg-gray-100 text-gray-700 font-bold px-6 py-2.5 rounded-2xl hover:bg-gray-200 transition-all text-sm uppercase tracking-widest">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-logo-teal text-white font-bold px-8 py-2.5 rounded-2xl hover:bg-logo-teal/90 transition-all text-sm uppercase tracking-widest shadow-lg shadow-logo-teal/20">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </x-modal>
 </x-admin.app>

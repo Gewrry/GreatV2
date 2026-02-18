@@ -50,14 +50,11 @@
                                 <label class="block text-[10px] font-black uppercase mb-1 text-indigo-100">Revision Type *</label>
                                 <select name="revision_type" id="revision_type" class="w-full bg-white/10 border-white/20 rounded-2xl h-12 px-4 font-bold text-white focus:ring-white/30 focus:border-white/40" required>
                                     <option value="" class="text-gray-800">Select Type</option>
-                                    <option value="Correction of Entry (CE)" {{ old('revision_type') == 'Correction of Entry (CE)' ? 'selected' : '' }} class="text-gray-800">Correction of Entry (CE)</option>
+                                    <option value="General Revision (GR)" {{ old('revision_type') == 'General Revision (GR)' ? 'selected' : '' }} class="text-gray-800">General Revision (GR)</option>
                                     <option value="Physical Change (PC)" {{ old('revision_type') == 'Physical Change (PC)' ? 'selected' : '' }} class="text-gray-800">Physical Change (PC)</option>
                                     <option value="Re-classification (RE)" {{ old('revision_type') == 'Re-classification (RE)' ? 'selected' : '' }} class="text-gray-800">Re-classification (RE)</option>
-                                    <option value="General Revision (GR)" {{ old('revision_type') == 'General Revision (GR)' ? 'selected' : '' }} class="text-gray-800">General Revision (GR)</option>
-                                    <option value="Taxability Change (TX)" {{ old('revision_type') == 'Taxability Change (TX)' ? 'selected' : '' }} class="text-gray-800">Taxability Change (TX)</option>
-                                    <option value="Subdivision (SD)" {{ old('revision_type') == 'Subdivision (SD)' ? 'selected' : '' }} class="text-gray-800">Subdivision (SD)</option>
-                                    <option value="Consolidation (CN)" {{ old('revision_type') == 'Consolidation (CN)' ? 'selected' : '' }} class="text-gray-800">Consolidation (CN)</option>
-                                    <option value="Expropriated/Destruction (EX)" {{ old('revision_type') == 'Expropriated/Destruction (EX)' ? 'selected' : '' }} class="text-gray-800">Expropriated/Destruction (EX)</option>
+                                    <option value="Correction of Entry (CE)" {{ old('revision_type') == 'Correction of Entry (CE)' ? 'selected' : '' }} class="text-gray-800">Correction of Entry (CE)</option>
+                                    <option value="Subdivision/Consolidation" {{ old('revision_type') == 'Subdivision/Consolidation' ? 'selected' : '' }} class="text-gray-800">Subdivision/Consolidation</option>
                                 </select>
                             </div>
                             <div>
@@ -77,45 +74,36 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Main Content -->
                 <div class="lg:col-span-2 space-y-6">
-                    <!-- Property Identification -->
+                    <!-- Owner Management -->
                     <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8">
-                        <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-                            <span class="w-8 h-8 bg-logo-teal/10 text-logo-teal rounded-full flex items-center justify-center">1</span>
-                            Property Identification
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">TD Number</label>
-                                <input type="text" name="td_no" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field" value="{{ old('td_no', $td->td_no) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">ARPN</label>
-                                <input type="text" name="arpn" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field" value="{{ old('arpn', $td->arpn) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">PIN</label>
-                                <input type="text" name="pin" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field" value="{{ old('pin', $td->pin) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Lot Number</label>
-                                <input type="text" name="lot_no" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('lot_no', $revComponent->lot_no) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Survey No / TCT / OCT</label>
-                                <input type="text" name="survey_no" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('survey_no', $revComponent->survey_no) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Barangay</label>
-                                <select name="bcode" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field">
-                                    @php $barangays = \App\Models\Barangay::orderBy('brgy_name')->get(); @endphp
-                                    @foreach($barangays as $brgy)
-                                        <option value="{{ $brgy->bcode }}" {{ (old('bcode', $td->bcode) == $brgy->bcode) ? 'selected' : '' }}>{{ $brgy->brgy_name }}</option>
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-3">
+                                <span class="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center">1</span>
+                                Owner Management
+                            </h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="col-span-2">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Select Owner</label>
+                                <select id="owner_selector" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700">
+                                    <option value="">Select Owner to add</option>
+                                    @foreach($allOwners as $owner)
+                                        <option value="{{ $owner->id }}">{{ $owner->owner_name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Zoning</label>
-                                <input type="text" name="zoning" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('zoning', $revComponent->zoning) }}">
+                            <div class="flex items-end">
+                                <button type="button" id="add-owner-btn" class="w-full bg-indigo-600 text-white font-black py-3 rounded-2xl hover:bg-indigo-700 transition-all text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/20">
+                                    Add Owner
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 rounded-[1.5rem] border border-gray-100 p-6">
+                            <label class="block text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest">Active Owners for this TD</label>
+                            <div id="selected-owners-container" class="space-y-3">
+                                <p class="text-sm text-gray-400 italic" id="no-owners-msg">No owners assigned. Please add at least one owner.</p>
                             </div>
                         </div>
                     </div>
@@ -126,7 +114,18 @@
                             <span class="w-8 h-8 bg-logo-teal/10 text-logo-teal rounded-full flex items-center justify-center">2</span>
                             Land Characteristics
                         </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Lot Number</label>
+                                <input type="text" name="lot_no" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('lot_no', $revComponent->lot_no) }}">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Survey No / TCT / OCT</label>
+                                <input type="text" name="survey_no" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('survey_no', $revComponent->survey_no) }}">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Zoning</label>
+                                <input type="text" name="zoning" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('zoning', $revComponent->zoning) }}">
+                            </div>
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Location Class</label>
                                 <select name="location_class" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field">
@@ -165,7 +164,19 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Area (sqm) *</label>
-                                <input type="number" step="0.01" name="area" id="area" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-black text-gray-800 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('area', $revComponent->area) }}" required>
+                                <div class="relative">
+                                    <input type="number" step="0.01" name="area" id="area" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-black text-gray-800 focus:ring-logo-teal/20 focus:border-logo-teal physical-field rev-field" value="{{ old('area', $revComponent->area) }}" required>
+                                    <button type="button" id="btn-open-gis" class="absolute right-2 top-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
+                                        Map Boundaries
+                                    </button>
+                                </div>
+                                <input type="hidden" name="geometry_json" id="geometry_json">
+                                <input type="hidden" name="gps_lat" id="gps_lat">
+                                <input type="hidden" name="gps_lng" id="gps_lng">
+                                <input type="hidden" name="adj_north" id="adj_north">
+                                <input type="hidden" name="adj_south" id="adj_south">
+                                <input type="hidden" name="adj_east" id="adj_east">
+                                <input type="hidden" name="adj_west" id="adj_west">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Unit Value (₱/sqm) *</label>
@@ -279,9 +290,122 @@
         </form>
     </div>
 
+    <x-rpt.gis-modal />
+
     @push('scripts')
     <script>
         $(document).ready(function() {
+            // Multi-Owner Management
+            const selectedOwners = new Set();
+            
+            // Re-sync initial owners
+            @foreach($td->owners as $owner)
+                selectedOwners.add("{{ $owner->id }}");
+            @endforeach
+
+            function updateOwnerDisplay() {
+                const container = $('#selected-owners-container');
+                const noMsg = $('#no-owners-msg');
+                
+                container.find('.owner-item').remove();
+
+                if (selectedOwners.size === 0) {
+                    noMsg.show();
+                } else {
+                    noMsg.hide();
+                    
+                    const ownerIds = Array.from(selectedOwners);
+                    ownerIds.forEach(id => {
+                        const option = $(`#owner_selector option[value="${id}"]`);
+                        if(option.length) {
+                            const name = option.text().trim();
+                            const html = `
+                                <div class="owner-item flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm animate-fadeIn">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                        </div>
+                                        <span class="font-bold text-gray-700 uppercase text-xs tracking-tight">${name}</span>
+                                    </div>
+                                    <input type="hidden" name="owners[]" value="${id}">
+                                    <button type="button" class="remove-owner-btn text-red-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-xl" data-id="${id}">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            `;
+                            container.append(html);
+                        }
+                    });
+                }
+            }
+
+            $('#add-owner-btn').click(function() {
+                const selectedId = $('#owner_selector').val();
+                if (selectedId && !selectedOwners.has(selectedId)) {
+                    selectedOwners.add(selectedId);
+                    updateOwnerDisplay();
+                    $('#owner_selector').val('');
+                }
+            });
+
+            $(document).on('click', '.remove-owner-btn', function() {
+                const id = $(this).data('id');
+                selectedOwners.delete(id.toString());
+                updateOwnerDisplay();
+            });
+
+            // Initial Display
+            updateOwnerDisplay();
+
+            // GIS Modal Integration
+            $('#btn-open-gis').click(function() {
+                const existingGeo = {!! $td->geometry ? json_encode($td->geometry->geometry) : 'null' !!};
+                const attributes = {
+                    land_use_zone: "{{ $td->geometry->land_use_zone ?? '' }}",
+                    adj_north: "{{ $td->geometry->adj_north ?? '' }}",
+                    adj_south: "{{ $td->geometry->adj_south ?? '' }}",
+                    adj_east: "{{ $td->geometry->adj_east ?? '' }}",
+                    adj_west: "{{ $td->geometry->adj_west ?? '' }}",
+                };
+                
+                openGisModal({
+                    faas_id: "{{ $td->id }}",
+                    geometry: existingGeo,
+                    attributes: attributes
+                });
+            });
+
+            $(document).on('gis-mapping-applied', function(e, data) {
+                if (data.area > 0) {
+                    $('#area').val(data.area.toFixed(2)).trigger('input');
+                    $('#geometry_json').val(JSON.stringify(data.geometry));
+                    
+                    if (data.gps) {
+                        $('#gps_lat').val(data.gps.lat);
+                        $('#gps_lng').val(data.gps.lng);
+                    }
+
+                    // Auto-fill adjoining properties
+                    $('#adj_north').val(data.attributes.adj_north);
+                    $('#adj_south').val(data.attributes.adj_south);
+                    $('#adj_east').val(data.attributes.adj_east);
+                    $('#adj_west').val(data.attributes.adj_west);
+
+                    // Auto-fill zoning if it's currently empty or being mapped
+                    if (!$('input[name="zoning"]').val() || data.attributes.land_use_zone) {
+                         $('input[name="zoning"]').val(data.attributes.land_use_zone);
+                    }
+
+                    // Sync Inspector Notes to Internal Remarks if empty
+                    if (data.attributes.inspector_notes) {
+                        const currentRemarks = $('textarea[name="remarks"]').val();
+                        if (!currentRemarks) {
+                            $('textarea[name="remarks"]').val(data.attributes.inspector_notes);
+                        }
+                    }
+                }
+            });
+
             const currentVal = {{ $revComponent->assessed_value }};
 
             function updateUIBasedOnType() {
@@ -300,7 +424,11 @@
                 if (type === 'Correction of Entry (CE)') {
                     $('.rev-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white');
                     $('.rev-field').filter('select, textarea').css('pointer-events', 'auto');
-                } else if (type === 'Subdivision (SD)' || type === 'Consolidation (CN)') {
+                } else if (type === 'Subdivision/Consolidation') {
+                    if (confirm('The Subdivision & Consolidation tool has moved to a dedicated multi-parcel workflow for better accuracy. Would you like to switch to the Subdivision tool now?')) {
+                        window.location.href = "{{ route('rpt.td.select_revision_type', $td->id) }}";
+                        return;
+                    }
                     $('.rev-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-indigo-500/20');
                     $('.rev-field').filter('select, textarea').css('pointer-events', 'auto');
                 } else if (type === 'Physical Change (PC)') {
@@ -311,9 +439,6 @@
                     $('.tax-field').filter('select, textarea').css('pointer-events', 'auto');
                 } else if (type === 'General Revision (GR)') {
                     $('.valuation-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-indigo-500/20');
-                } else if (type === 'Taxability Change (TX)') {
-                    $('.tax-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-indigo-500/20');
-                    $('.tax-field').filter('select, textarea').css('pointer-events', 'auto');
                 }
             }
 

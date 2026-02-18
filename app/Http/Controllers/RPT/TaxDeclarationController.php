@@ -92,14 +92,48 @@ class TaxDeclarationController extends Controller
     }
 
     /**
+     * Update Tax Declaration master record
+     */
+    public function update(Request $request, $id)
+    {
+        $td = FaasGenRev::findOrFail($id);
+        
+        if ($td->statt === 'CANCELLED') {
+            return back()->with('error', 'Cannot update a cancelled Tax Declaration.');
+        }
+
+        $validated = $request->validate([
+            'td_no' => 'required|string|unique:faas_gen_rev,td_no,' . $id,
+            'arpn' => 'required|string',
+            'pin' => 'nullable|string',
+            'bcode' => 'required|string',
+            'revised_year' => 'required|integer',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            $td->update($validated);
+            DB::commit();
+
+            return redirect()->route('rpt.td.edit', $td->id)
+                ->with('success', 'Tax Declaration identification updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to update Tax Declaration: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Show TD edit/management view
      */
     public function edit($id)
     {
         $td = FaasGenRev::with(['owners', 'lands', 'buildings', 'machines', 'barangay'])
             ->findOrFail($id);
-
-        return view('modules.rpt.td.edit', compact('td'));
+        $barangays = Barangay::orderBy('brgy_name')->get();
+        $revYears = \App\Models\RPT\RptaRevYr::all();
+        
+        return view('modules.rpt.td.edit', compact('td', 'barangays', 'revYears'));
     }
 
     /**
@@ -107,7 +141,7 @@ class TaxDeclarationController extends Controller
      */
     public function addLand($id)
     {
-        $td = FaasGenRev::with(['owners', 'barangay'])->findOrFail($id);
+        $td = FaasGenRev::with(['owners', 'barangay', 'geometry'])->findOrFail($id);
         
         if ($td->statt === 'CANCELLED') {
             return redirect()->route('rpt.td.edit', $td->id)->with('error', 'Cannot add components to a cancelled Tax Declaration.');
@@ -173,6 +207,29 @@ class TaxDeclarationController extends Controller
 
             // Recalculate TD totals
             $td->calculateTotals();
+
+            // Handle Spatial Data if provided
+            if ($request->has('geometry_json') && $request->geometry_json) {
+                $geometry = json_decode($request->geometry_json, true);
+                if ($geometry) {
+                    \App\Models\RPT\FaasGenRevGeometry::updateOrCreate(
+                        ['faas_id' => $td->id],
+                        [
+                            'geometry' => $geometry,
+                            'pin' => $td->pin,
+                            'area_sqm' => $validated['area'],
+                            'gps_lat' => $request->gps_lat,
+                            'gps_lng' => $request->gps_lng,
+                            'land_use_zone' => $request->zoning,
+                            'adj_north' => $request->adj_north,
+                            'adj_south' => $request->adj_south,
+                            'adj_east' => $request->adj_east,
+                            'adj_west' => $request->adj_west,
+                            'fill_color' => '#4F46E5'
+                        ]
+                    );
+                }
+            }
 
             DB::commit();
 
@@ -419,13 +476,15 @@ class TaxDeclarationController extends Controller
      */
     public function selectRevisionType($id)
     {
-        $td = FaasGenRev::findOrFail($id);
+        $td = FaasGenRev::with(['owners', 'barangay', 'geometry'])->findOrFail($id);
         
         if ($td->statt === 'CANCELLED' || $td->statt === 'SUPERSEDED') {
             return redirect()->route('rpt.td.edit', $td->id)->with('error', 'Cannot revise a cancelled or superseded Tax Declaration.');
         }
 
-        return view('modules.rpt.td.revision_type', compact('td'));
+        $allOwners = \App\Models\RPT\FaasRptaOwnerSelect::orderBy('owner_name')->get();
+
+        return view('modules.rpt.td.revision_type', compact('td', 'allOwners'));
     }
 
     /**
@@ -433,10 +492,16 @@ class TaxDeclarationController extends Controller
      */
     public function processRevision(Request $request, $id)
     {
-        $oldTd = FaasGenRev::with(['owners', 'lands', 'buildings', 'machines'])->findOrFail($id);
+        $oldTd = FaasGenRev::with(['owners', 'lands', 'buildings', 'machines', 'geometry'])->findOrFail($id);
         
         if ($oldTd->statt === 'CANCELLED' || $oldTd->statt === 'SUPERSEDED') {
             return redirect()->route('rpt.td.edit', $oldTd->id)->with('error', 'Operation denied: Tax Declaration is already inactive.');
+        }
+
+        $revisionType = $request->input('revision_type');
+
+        if ($revisionType === 'SUBDIV') {
+            return $this->processSubdivision($request, $oldTd);
         }
 
         $validated = $request->validate([
@@ -469,6 +534,15 @@ class TaxDeclarationController extends Controller
                 $newLand->faas_id = $newTd->id;
                 $newLand->save();
             }
+
+            // 4. Replicate Spatial Data (GIS)
+            if ($oldTd->geometry) {
+                $newGeom = $oldTd->geometry->replicate();
+                $newGeom->faas_id = $newTd->id;
+                $newGeom->pin = $newTd->pin;
+                $newGeom->save();
+            }
+
             foreach ($oldTd->buildings as $bldg) {
                 $newBldg = $bldg->replicate();
                 $newBldg->faas_id = $newTd->id;
@@ -480,11 +554,12 @@ class TaxDeclarationController extends Controller
                 $newMach->save();
             }
 
-            // 4. Cancel Old TD
+            // 5. Cancel Old TD
             $oldTd->statt = 'CANCELLED';
+            $oldTd->cancel_reason = $validated['revision_type'];
             $oldTd->save();
 
-            // 5. Log Revision
+            // 6. Log Revision
             \App\Models\RPT\FaasRevisionLog::create([
                 'faas_id' => $newTd->id,
                 'component_type' => 'MASTER',
@@ -507,11 +582,134 @@ class TaxDeclarationController extends Controller
     }
 
     /**
+     * Process multi-parcel subdivision
+     */
+    protected function processSubdivision(Request $request, $oldTd)
+    {
+        $validated = $request->validate([
+            'parcels' => 'required|array|min:2',
+            'parcels.*.td_no' => 'required|string|unique:faas_gen_rev,td_no',
+            'parcels.*.owner_id' => 'required|integer',
+            'parcels.*.area' => 'required|numeric|min:0.0001',
+            'parcels.*.geometry' => 'required|string',
+            'subdiv_reason' => 'required|string',
+            'building_assignments' => 'nullable|array',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $newTdIds = [];
+            $parentLand = $oldTd->lands()->first(); 
+            $buildingAssignments = $request->input('building_assignments', []);
+
+            foreach ($validated['parcels'] as $parcelData) {
+                // 1. Create New Master
+                $newTd = $oldTd->replicate();
+                $newTd->td_no = $parcelData['td_no'];
+                $newTd->previous_td_id = $oldTd->id;
+                $newTd->entry_date = now();
+                $newTd->statt = 'ACTIVE';
+                $newTd->encoded_by = Auth::user()->uname ?? Auth::user()->name ?? 'system';
+                $newTd->save();
+                
+                $newTdIds[] = $newTd->id;
+
+                // 2. Attach Specific Owner
+                $newTd->owners()->attach($parcelData['owner_id']);
+
+                // 3. Create Land Component (Partial)
+                if ($parentLand) {
+                    $newLand = $parentLand->replicate();
+                    $newLand->faas_id = $newTd->id;
+                    $newLand->area = $parcelData['area'];
+                    
+                    // Recompute Values
+                    $newLand->market_value = $newLand->area * $newLand->unit_value * ($newLand->adjustment_factor ?: 1);
+                    $newLand->assessed_value = $newLand->market_value * ($newLand->assessment_level / 100);
+                    $newLand->save();
+                    
+                    // Update Master Totals
+                    $newTd->calculateTotals();
+                }
+
+                // 4. Handle Spatial Data (Unique Polygon for this child)
+                $gisPackage = json_decode($parcelData['geometry'], true);
+                if ($gisPackage) {
+                    $geometry = $gisPackage['geometry'] ?? $gisPackage; // Backward compatibility
+                    $gps = $gisPackage['gps'] ?? null;
+                    $attrs = $gisPackage['attributes'] ?? [];
+
+                    \App\Models\RPT\FaasGenRevGeometry::create([
+                        'faas_id' => $newTd->id,
+                        'pin' => $newTd->pin,
+                        'geometry' => $geometry,
+                        'area_sqm' => $parcelData['area'],
+                        'land_use_zone' => $attrs['land_use_zone'] ?? ($parentLand->zoning ?? ''),
+                        'gps_lat' => $gps['lat'] ?? null,
+                        'gps_lng' => $gps['lng'] ?? null,
+                        'adj_north' => $attrs['adj_north'] ?? null,
+                        'adj_south' => $attrs['adj_south'] ?? null,
+                        'adj_east' => $attrs['adj_east'] ?? null,
+                        'adj_west' => $attrs['adj_west'] ?? null,
+                        'inspector_notes' => $attrs['inspector_notes'] ?? null,
+                        'fill_color' => '#10B981',
+                    ]);
+                }
+
+                // 5. Reassign Buildings based on selection
+                foreach ($oldTd->buildings as $bldg) {
+                    if (isset($buildingAssignments[$bldg->id]) && $buildingAssignments[$bldg->id] === $newTd->td_no) {
+                        $newBldg = $bldg->replicate();
+                        $newBldg->faas_id = $newTd->id;
+                        $newBldg->land_td_no = $newTd->td_no;
+                        $newBldg->save();
+                    }
+                }
+
+                // 6. Reassign Machines based on selection
+                foreach ($oldTd->machines as $mach) {
+                    if (isset($machineAssignments[$mach->id]) && $machineAssignments[$mach->id] === $newTd->td_no) {
+                        $newMach = $mach->replicate();
+                        $newMach->faas_id = $newTd->id;
+                        $newMach->save();
+                    }
+                }
+
+                // 7. Log for Child
+                \App\Models\RPT\FaasRevisionLog::create([
+                    'faas_id' => $newTd->id,
+                    'component_type' => 'MASTER',
+                    'revision_type' => 'SUBDIV',
+                    'reason' => $validated['subdiv_reason'] . " (Partitioned from " . $oldTd->td_no . ")",
+                    'old_values' => ['td_no' => $oldTd->td_no, 'id' => $oldTd->id],
+                    'new_values' => ['td_no' => $newTd->td_no, 'id' => $newTd->id],
+                    'encoded_by' => Auth::user()->uname ?? Auth::user()->name ?? 'system',
+                ]);
+            }
+
+            // 7. Cancel Parent
+            $oldTd->statt = 'CANCELLED';
+            $oldTd->cancel_reason = 'SUBDIVIDED';
+            $oldTd->save();
+
+            DB::commit();
+
+            return redirect()->route('rpt.td.edit', $newTdIds[0])
+                ->with('success', "Subdivision successful. " . count($newTdIds) . " new Tax Declarations have been issued and the parent record has been cancelled for audit.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Subdivision failed: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
      * Show revision form for a component
      */
     public function reviseComponent($id, $type, $component_id)
     {
-        $td = FaasGenRev::with(['owners', 'barangay'])->findOrFail($id);
+        $td = FaasGenRev::with(['owners', 'barangay', 'geometry'])->findOrFail($id);
         
         if ($td->statt === 'CANCELLED') {
             return redirect()->route('rpt.td.edit', $td->id)->with('error', 'Cannot revise components of a cancelled Tax Declaration.');
@@ -538,8 +736,9 @@ class TaxDeclarationController extends Controller
         }
         
         $assessorName = Auth::user()->name ?? 'System';
+        $allOwners = \App\Models\RPT\FaasRptaOwnerSelect::orderBy('owner_name')->get();
         
-        return view($view, compact('td', 'revComponent', 'revYears', 'classifications', 'assessorName'));
+        return view($view, compact('td', 'revComponent', 'revYears', 'classifications', 'assessorName', 'allOwners'));
     }
 
     /**
@@ -574,26 +773,7 @@ class TaxDeclarationController extends Controller
             $oldValues = $revComponent->toArray();
             $oldMasterValues = $td->toArray();
             
-            // Separate master inputs from component inputs
-            $masterFields = ['td_no', 'arpn', 'pin', 'bcode', 'revised_year'];
-            $masterInputs = $request->only($masterFields);
-            
-            // Map rev_year from request to revised_year if exists
-            if ($request->has('rev_year')) {
-                $masterInputs['revised_year'] = $request->rev_year;
-            }
-
             $componentInputs = $request->except(array_merge(['_token', '_method', 'revision_type', 'reason'], ['td_no', 'arpn', 'pin', 'bcode', 'rev_year', 'revised_year']));
-            
-            // Update Master if Correction of Entry or Subdivision
-            $masterChanged = false;
-            foreach ($masterInputs as $key => $value) {
-                if ($value !== null && $td->{$key} != $value) {
-                    $td->{$key} = $value;
-                    $masterChanged = true;
-                }
-            }
-            if ($masterChanged) $td->save();
 
             // Update Component
             $revComponent->update($componentInputs);
@@ -618,8 +798,36 @@ class TaxDeclarationController extends Controller
                 'encoded_by' => Auth::user()->uname ?? Auth::user()->name ?? 'system',
             ]);
 
+            // Sync Owners if provided
+            if ($request->has('owners') && is_array($request->owners)) {
+                $td->owners()->sync($request->owners);
+            }
+
             // Recalculate totals
             $td->calculateTotals();
+
+            // Handle Spatial Data if provided
+            if ($request->has('geometry_json') && $request->geometry_json) {
+                $geometry = json_decode($request->geometry_json, true);
+                if ($geometry) {
+                    \App\Models\RPT\FaasGenRevGeometry::updateOrCreate(
+                        ['faas_id' => $td->id],
+                        [
+                            'geometry' => $geometry,
+                            'pin' => $td->pin,
+                            'area_sqm' => $request->area ?? $revComponent->area,
+                            'gps_lat' => $request->gps_lat,
+                            'gps_lng' => $request->gps_lng,
+                            'land_use_zone' => $request->zoning ?? $revComponent->zoning,
+                            'adj_north' => $request->adj_north,
+                            'adj_south' => $request->adj_south,
+                            'adj_east' => $request->adj_east,
+                            'adj_west' => $request->adj_west,
+                            'fill_color' => '#4F46E5'
+                        ]
+                    );
+                }
+            }
 
             DB::commit();
 
@@ -704,6 +912,14 @@ class TaxDeclarationController extends Controller
                         $land->update(['faas_id' => $newTd->id]);
                         $transferredCount++;
                     }
+                }
+
+                // Migrate spatial data (GIS) if it exists
+                if ($oldTd->geometry) {
+                    $oldTd->geometry->update([
+                        'faas_id' => $newTd->id,
+                        'pin' => $newTd->pin
+                    ]);
                 }
             }
 
@@ -899,13 +1115,14 @@ class TaxDeclarationController extends Controller
                 // Store in public/attachments/faas/{id}
                 $path = $file->storeAs("attachments/faas/{$id}", $filename, 'public');
 
-                \App\Models\RPT\FaasAttachment::create([
-                    'faas_id' => $td->id,
-                    'file_path' => $path,
-                    'file_name' => $originalName,
-                    'file_type' => $file->getClientMimeType(),
-                    'description' => $request->description,
-                ]);
+                $attachment = new \App\Models\RPT\FaasAttachment();
+                $attachment->faas_id = $td->id;
+                $attachment->file_path = $path;
+                $attachment->file_name = $originalName;
+                $attachment->file_type = $file->getClientMimeType();
+                $attachment->description = $request->description;
+                $attachment->attachment_type = $request->attachment_type;
+                $attachment->save();
 
                 return back()->with('success', 'File uploaded successfully.');
             }

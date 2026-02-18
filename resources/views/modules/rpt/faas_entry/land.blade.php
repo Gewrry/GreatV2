@@ -154,6 +154,10 @@
                 <div class="lg:col-span-1 space-y-6">
                     <!-- 3. Land Classification -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full">
+                        <div class="mb-6">
+                            <x-rpt.gis-empty-state />
+                        </div>
+
                         <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-logo-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                             3, 5 & 6. Classification & Computation
@@ -185,7 +189,19 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Area (sqm/ha)</label>
-                                    <input type="number" step="0.0001" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" placeholder="0.0000" required>
+                                    <div class="relative">
+                                        <input type="number" step="0.0001" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4 font-black" placeholder="0.0000" required>
+                                        <button type="button" id="btn-open-gis" class="absolute right-2 top-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">
+                                            Map Boundaries
+                                        </button>
+                                    </div>
+                                    <input type="hidden" name="geometry_json" id="geometry_json">
+                                    <input type="hidden" name="gps_lat" id="gps_lat">
+                                    <input type="hidden" name="gps_lng" id="gps_lng">
+                                    <input type="hidden" name="adj_north" id="adj_north">
+                                    <input type="hidden" name="adj_south" id="adj_south">
+                                    <input type="hidden" name="adj_east" id="adj_east">
+                                    <input type="hidden" name="adj_west" id="adj_west">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Unit Value</label>
@@ -250,10 +266,74 @@
         </form>
     </div>
 
+    <x-rpt.gis-modal />
+
     @push('scripts')
     <script>
         $(document).ready(function() {
+            // GIS Modal Integration
+            $('#btn-open-gis').click(function() {
+                openGisModal();
+            });
+
+            $(document).on('gis-mapping-applied', function(e, data) {
+                if (data.area > 0) {
+                    $('#area').val(data.area.toFixed(4)).trigger('input');
+                    $('#geometry_json').val(JSON.stringify(data.geometry));
+                    
+                    if (data.gps) {
+                        $('#gps_lat').val(data.gps.lat);
+                        $('#gps_lng').val(data.gps.lng);
+                    }
+
+                    // Populate adjoining properties
+                    $('#adj_north').val(data.attributes.adj_north);
+                    $('#adj_south').val(data.attributes.adj_south);
+                    $('#adj_east').val(data.attributes.adj_east);
+                    $('#adj_west').val(data.attributes.adj_west);
+
+                    // Auto-fill zoning if it's currently empty or being mapped
+                    if (!$('input[name="zoning"]').val() || data.attributes.land_use_zone) {
+                         $('input[name="zoning"]').val(data.attributes.land_use_zone);
+                    }
+
+                    // Sync Inspector Notes to Remarks if empty
+                    if (data.attributes.inspector_notes) {
+                        const currentRemarks = $('textarea[name="remarks"]').val();
+                        if (!currentRemarks) {
+                            $('textarea[name="remarks"]').val(data.attributes.inspector_notes);
+                        }
+                    }
+                }
+            });
+
             console.log("Land FAAS form initialized.");
+
+            // GIS Modal Integration
+            $('#btn-open-gis').click(function() {
+                openGisModal();
+            });
+
+            $(document).on('gis-mapping-applied', function(e, data) {
+                if (data.area > 0) {
+                    $('#area').val(data.area.toFixed(2)).trigger('input');
+                    $('#geometry_json').val(JSON.stringify(data.geometry));
+                    
+                    if (data.gps) {
+                        $('#gps_lat').val(data.gps.lat);
+                        $('#gps_lng').val(data.gps.lng);
+                    }
+
+                    $('#adj_north').val(data.attributes.adj_north);
+                    $('#adj_south').val(data.attributes.adj_south);
+                    $('#adj_east').val(data.attributes.adj_east);
+                    $('#adj_west').val(data.attributes.adj_west);
+
+                    // Update UI State
+                    $('#gis-empty-state').hide();
+                    $('#gis-map-preview').removeClass('hidden');
+                }
+            });
 
             // Multi-Owner Management
             const selectedOwners = new Set();

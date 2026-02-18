@@ -113,7 +113,19 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Area (sqm) *</label>
-                                <input type="number" step="0.01" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" value="{{ old('area') }}" required>
+                                <div class="relative">
+                                    <input type="number" step="0.01" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4 font-black" value="{{ old('area') }}" required>
+                                    <button type="button" id="btn-open-gis" class="absolute right-2 top-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">
+                                        Map Boundaries
+                                    </button>
+                                </div>
+                                <input type="hidden" name="geometry_json" id="geometry_json">
+                                <input type="hidden" name="gps_lat" id="gps_lat">
+                                <input type="hidden" name="gps_lng" id="gps_lng">
+                                <input type="hidden" name="adj_north" id="adj_north">
+                                <input type="hidden" name="adj_south" id="adj_south">
+                                <input type="hidden" name="adj_east" id="adj_east">
+                                <input type="hidden" name="adj_west" id="adj_west">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Unit Value (₱/sqm) *</label>
@@ -226,9 +238,60 @@
         </form>
     </div>
 
+    <x-rpt.gis-modal />
+
     @push('scripts')
     <script>
         $(document).ready(function() {
+            // GIS Modal Integration
+            $('#btn-open-gis').click(function() {
+                const existingGeo = {!! $td->geometry ? json_encode($td->geometry->geometry) : 'null' !!};
+                const attributes = {
+                    land_use_zone: "{{ $td->geometry->land_use_zone ?? '' }}",
+                    adj_north: "{{ $td->geometry->adj_north ?? '' }}",
+                    adj_south: "{{ $td->geometry->adj_south ?? '' }}",
+                    adj_east: "{{ $td->geometry->adj_east ?? '' }}",
+                    adj_west: "{{ $td->geometry->adj_west ?? '' }}",
+                };
+                
+                openGisModal({
+                    faas_id: "{{ $td->id }}",
+                    geometry: existingGeo,
+                    attributes: attributes
+                });
+            });
+
+            $(document).on('gis-mapping-applied', function(e, data) {
+                if (data.area > 0) {
+                    $('#area').val(data.area.toFixed(2)).trigger('input');
+                    $('#geometry_json').val(JSON.stringify(data.geometry));
+                    
+                    if (data.gps) {
+                        $('#gps_lat').val(data.gps.lat);
+                        $('#gps_lng').val(data.gps.lng);
+                    }
+
+                    // Auto-fill adjoining properties
+                    $('#adj_north').val(data.attributes.adj_north);
+                    $('#adj_south').val(data.attributes.adj_south);
+                    $('#adj_east').val(data.attributes.adj_east);
+                    $('#adj_west').val(data.attributes.adj_west);
+
+                    // Auto-fill zoning if it's currently empty or being mapped
+                    if (!$('input[name="zoning"]').val() || data.attributes.land_use_zone) {
+                         $('input[name="zoning"]').val(data.attributes.land_use_zone);
+                    }
+
+                    // Sync Inspector Notes to Remarks if empty
+                    if (data.attributes.inspector_notes) {
+                        const currentRemarks = $('textarea[name="remarks"]').val();
+                        if (!currentRemarks || currentRemarks === 'Consolidated Property') {
+                            $('textarea[name="remarks"]').val(data.attributes.inspector_notes);
+                        }
+                    }
+                }
+            });
+
             // Cascading Classification Lookups
             function fetchActualUses() {
                 const assmtKind = $('#assmt_kind').val();

@@ -389,6 +389,29 @@ class RPTController extends Controller
                         'remarks' => $request->remarks,
                         'memoranda' => $request->memoranda
                     ]);
+
+                    // 4. Handle Spatial Data if provided
+                    if ($request->has('geometry_json') && $request->geometry_json) {
+                        $geometry = json_decode($request->geometry_json, true);
+                        if ($geometry) {
+                            \App\Models\RPT\FaasGenRevGeometry::updateOrCreate(
+                                ['faas_id' => $faas->id],
+                                [
+                                    'geometry' => $geometry,
+                                    'pin' => $faas->pin,
+                                    'area_sqm' => $request->area,
+                                    'gps_lat' => $request->gps_lat,
+                                    'gps_lng' => $request->gps_lng,
+                                    'land_use_zone' => $request->zoning,
+                                    'adj_north' => $request->adj_north,
+                                    'adj_south' => $request->adj_south,
+                                    'adj_east' => $request->adj_east,
+                                    'adj_west' => $request->adj_west,
+                                    'fill_color' => '#4F46E5'
+                                ]
+                            );
+                        }
+                    }
                 } elseif ($validated['kind'] === 'machine') {
                     \App\Models\RPT\FaasMachine::create([
                         'faas_id' => $faas->id,

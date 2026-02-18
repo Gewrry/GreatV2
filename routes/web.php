@@ -91,6 +91,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('rpt/td')->name('rpt.td.')->group(function () {
         Route::get('/create', [TaxDeclarationController::class, 'create'])->name('create');
         Route::post('/', [TaxDeclarationController::class, 'store'])->name('store');
+        Route::put('/{id}', [TaxDeclarationController::class, 'update'])->name('update');
         Route::get('/{id}/edit', [TaxDeclarationController::class, 'edit'])->name('edit');
         Route::delete('/{id}', [TaxDeclarationController::class, 'destroy'])->name('destroy');
         Route::delete('/{id}/component', [TaxDeclarationController::class, 'deleteComponent'])->name('delete_component');
@@ -137,9 +138,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/rpt/get-unit-value', [RPTController::class, 'get_unit_value'])->name('rpt.get_unit_value');
     Route::get('/rpt/get-assessment-level', [RPTController::class, 'get_assessment_level'])->name('rpt.get_assessment_level');
 
-    //RPTA Settings
+    // RPTA Settings
     Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpt.rpta_settings.index');
     Route::get('/rpta_settings/actual_use', [RPTA_SettingsController::class, 'actual_use'])->name('rpt.rpta_settings.actual_use');
+
+    // GIS & Mapping
+    Route::prefix('rpt/gis')->name('rpt.gis.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\RPT\GISController::class, 'index'])->name('index');
+        Route::get('/geometries', [\App\Http\Controllers\RPT\GISController::class, 'getGeometries'])->name('get_geometries');
+        Route::post('/update-geometry', [\App\Http\Controllers\RPT\GISController::class, 'updateGeometry'])->name('update_geometry');
+    });
 
 
     // Actual Use Routes
