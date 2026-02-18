@@ -112,6 +112,18 @@
                                     <option value="{{ $revComponent->actual_use }}">{{ $revComponent->actual_use }}</option>
                                 </select>
                             </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Total Cost (Auto)</label>
+                                <input type="number" step="0.01" name="total_cost" id="total_cost" class="w-full bg-white border-gray-100 rounded-lg text-gray-700 font-bold h-11 px-4" value="{{ $revComponent->total_cost }}" readonly>
+                            </div>
+                            <div class="bg-purple-50 border-2 border-purple-100 rounded-2xl p-6">
+                                <label class="block text-[10px] font-black text-purple-700 uppercase mb-1 tracking-widest ml-1">NEW Market Value</label>
+                                <input type="number" step="0.01" name="market_value" id="market_value" class="w-full bg-transparent border-none font-black text-2xl text-purple-800 p-0 focus:ring-0" value="{{ $revComponent->market_value }}" readonly>
+                            </div>
+                            <div class="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-6">
+                                <label class="block text-[10px] font-black text-indigo-700 uppercase mb-1 tracking-widest ml-1">NEW Assessed Value</label>
+                                <input type="number" step="0.01" name="assessed_value" id="assessed_value" class="w-full bg-transparent border-none font-black text-2xl text-indigo-800 p-0 focus:ring-0" value="{{ $revComponent->assessed_value }}" readonly>
+                            </div>
                         </div>
                     </div>
 
@@ -250,10 +262,19 @@
                 const residual = parseFloat($('#residual_percent').val()) || 0;
                 const level = parseFloat($('#assessment_level').val()) || 0;
 
-                const assessed = (cost * (residual/100)) * (level/100);
-                $('#sidebar-assessed-display').text('₱ ' + assessed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                // Total cost for machines also includes freight and insurance in some contexts,
+                // but for revision we simplify based on what's exposed.
+                const totalCost = cost; 
+                const marketValue = totalCost * (residual / 100);
+                const assessedValue = marketValue * (level / 100);
+
+                $('#total_cost').val(totalCost.toFixed(2));
+                $('#market_value').val(marketValue.toFixed(2));
+                $('#assessed_value').val(assessedValue.toFixed(2));
+
+                $('#sidebar-assessed-display').text('₱ ' + assessedValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 
-                const variance = assessed - currentVal;
+                const variance = assessedValue - currentVal;
                 const varianceText = (variance >= 0 ? '+₱ ' : '-₱ ') + Math.abs(variance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 $('#sidebar-variance-display').text(varianceText);
 

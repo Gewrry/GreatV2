@@ -140,6 +140,18 @@
                                 <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Assessment Level (%) *</label>
                                 <input type="number" step="0.01" name="assessment_level" id="assessment_level" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 tax-field rev-field" value="{{ old('assessment_level', $revComponent->assessment_level) }}" required>
                             </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Residual % (Auto)</label>
+                                <input type="number" step="0.01" id="residual_percent" class="w-full bg-white border-gray-100 rounded-lg text-gray-700 font-bold h-11 px-4" readonly>
+                            </div>
+                            <div class="bg-blue-50 border-2 border-blue-100 rounded-2xl p-6">
+                                <label class="block text-[10px] font-black text-blue-700 uppercase mb-1 tracking-widest ml-1">NEW Market Value</label>
+                                <input type="number" step="0.01" name="market_value" id="market_value" class="w-full bg-transparent border-none font-black text-2xl text-blue-800 p-0 focus:ring-0" value="{{ $revComponent->market_value }}" readonly>
+                            </div>
+                            <div class="bg-purple-50 border-2 border-purple-100 rounded-2xl p-6">
+                                <label class="block text-[10px] font-black text-purple-700 uppercase mb-1 tracking-widest ml-1">NEW Assessed Value</label>
+                                <input type="number" step="0.01" name="assessed_value" id="assessed_value" class="w-full bg-transparent border-none font-black text-2xl text-purple-800 p-0 focus:ring-0" value="{{ $revComponent->assessed_value }}" readonly>
+                            </div>
                         </div>
                     </div>
                     <!-- Classification & Use -->
@@ -275,10 +287,15 @@
                 const assLevel = parseFloat($('#assessment_level').val()) || 0;
 
                 const replacementCost = floorArea * unitValue;
-                const marketValue = replacementCost * (1 - (depRate / 100));
+                const residualPercent = 100 - depRate;
+                const marketValue = replacementCost * (residualPercent / 100);
                 const assessedValue = marketValue * (assLevel / 100);
 
                 $('#replacement_cost').val(replacementCost.toFixed(2));
+                $('#residual_percent').val(residualPercent.toFixed(2));
+                $('#market_value').val(marketValue.toFixed(2));
+                $('#assessed_value').val(assessedValue.toFixed(2));
+
                 $('#sidebar-assessed-display').text('₱ ' + assessedValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 
                 const variance = assessedValue - currentVal;
