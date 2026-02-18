@@ -14,6 +14,8 @@ use App\Http\Controllers\Hr\HumanResourcesController;
 
 //RPT Controllers
 use App\Http\Controllers\RPT\RPTController;
+use App\Http\Controllers\RPT\TaxDeclarationController;
+use App\Http\Controllers\RPT\ReportController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\RPTA_SettingsController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\RptAuController;
 use App\Http\Controllers\RPT\RPTA_SETTINGS\AdditionalItemController;
@@ -28,6 +30,8 @@ use App\Http\Controllers\RPT\RPTA_SETTINGS\RptaGenRevController;
 
 
 use Illuminate\Support\Facades\Route;
+
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -81,6 +85,45 @@ Route::middleware('auth')->group(function () {
 
     //Faas List RPT
     Route::get('/rpt/faas_list', [RPTController::class, 'faas_list'])->name(name: 'rpt.faas_list');
+    Route::get('/rpt/faas-view/{id}', [RPTController::class, 'faas_view'])->name('rpt.faas_view');
+
+    // Tax Declaration Management
+    Route::prefix('rpt/td')->name('rpt.td.')->group(function () {
+        Route::get('/create', [TaxDeclarationController::class, 'create'])->name('create');
+        Route::post('/', [TaxDeclarationController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [TaxDeclarationController::class, 'edit'])->name('edit');
+        Route::delete('/{id}', [TaxDeclarationController::class, 'destroy'])->name('destroy');
+        Route::delete('/{id}/component', [TaxDeclarationController::class, 'deleteComponent'])->name('delete_component');
+        
+        // Revisions
+        Route::get('/revision/search', [TaxDeclarationController::class, 'revisionSearch'])->name('revision_search');
+        Route::get('/{id}/revise/{type}/{component_id}', [TaxDeclarationController::class, 'reviseComponent'])->name('revise_component');
+        Route::post('/{id}/revise/{type}/{component_id}', [TaxDeclarationController::class, 'updateRevision'])->name('update_revision');
+        Route::get('/{id}/history', [TaxDeclarationController::class, 'revisionHistory'])->name('history');
+        Route::get('/{id}/revision-type', [TaxDeclarationController::class, 'selectRevisionType'])->name('select_revision_type');
+        Route::post('/{id}/process-revision', [TaxDeclarationController::class, 'processRevision'])->name('process_revision');
+        Route::get('/{id}/transfer', [TaxDeclarationController::class, 'showTransferForm'])->name('transfer');
+        Route::post('/{id}/transfer', [TaxDeclarationController::class, 'processTransfer'])->name('process_transfer');
+        
+        // Component Addition
+        Route::get('/{id}/add-land', [TaxDeclarationController::class, 'addLand'])->name('add_land');
+        Route::post('/{id}/land', [TaxDeclarationController::class, 'storeLand'])->name('store_land');
+        Route::get('/{id}/add-building', [TaxDeclarationController::class, 'addBuilding'])->name('add_building');
+        Route::post('/{id}/building', [TaxDeclarationController::class, 'storeBuilding'])->name('store_building');
+        Route::get('/{id}/add-machine', [TaxDeclarationController::class, 'addMachine'])->name('add_machine');
+        Route::post('/{id}/machine', [TaxDeclarationController::class, 'storeMachine'])->name('store_machine');
+
+        // API
+        Route::get('/api/search/{td_no}', [TaxDeclarationController::class, 'apiSearch'])->name('api_search');
+
+        // Workflow Actions
+        Route::post('/{id}/submit-review', [TaxDeclarationController::class, 'submitReview'])->name('submit_review');
+        Route::post('/{id}/approve', [TaxDeclarationController::class, 'approve'])->name('approve');
+        Route::post('/{id}/cancel', [TaxDeclarationController::class, 'cancel'])->name('cancel');
+        Route::post('/{id}/upload-attachment', [TaxDeclarationController::class, 'uploadAttachment'])->name('upload_attachment');
+        Route::post('/{id}/update-inspection', [TaxDeclarationController::class, 'updateInspection'])->name('update_inspection');
+        Route::get('/{id}/print', [TaxDeclarationController::class, 'printTD'])->name('print');
+    });
 
     //Fast Entry
     Route::get('/rpt/land', [RPTController::class, 'land'])->name('rpt.faas_entry.land');
@@ -90,6 +133,9 @@ Route::middleware('auth')->group(function () {
 
 
     Route::post('/rpt', [RPTController::class, 'store'])->name('rpt.store');
+    Route::get('/rpt/get-actual-uses', [RPTController::class, 'get_actual_uses'])->name('rpt.get_actual_uses');
+    Route::get('/rpt/get-unit-value', [RPTController::class, 'get_unit_value'])->name('rpt.get_unit_value');
+    Route::get('/rpt/get-assessment-level', [RPTController::class, 'get_assessment_level'])->name('rpt.get_assessment_level');
 
     //RPTA Settings
     Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpt.rpta_settings.index');
@@ -168,6 +214,46 @@ Route::middleware('auth')->group(function () {
     Route::post('/general-revision/process', [RptaGenRevController::class, 'processRevision'])->name('rpt.general_revision.process');
     Route::get('/general-revision/list', [RptaGenRevController::class, 'getRevisions'])->name('rpt.general_revision.list');
     Route::delete('/general-revision/{id}/cancel', [RptaGenRevController::class, 'cancelRevision'])->name('rpt.general_revision.cancel');
+
+        Route::prefix('rpt/reports')->name('rpt.reports.')->group(function () {
+            Route::get('/', [ReportController::class, 'index'])->name('index');
+            Route::get('/parcel-list', [ReportController::class, 'parcelList'])->name('parcel_list');
+            Route::get('/rpu-list', [ReportController::class, 'rpuList'])->name('rpu_list');
+            Route::get('/cancelled-list', [ReportController::class, 'cancelledList'])->name('cancelled_list');
+            Route::get('/parcel-list/export/pdf', [ReportController::class, 'exportParcelPDF'])->name('parcel_list.export.pdf');
+            Route::get('/rpu-list/export/pdf', [ReportController::class, 'exportRpuPDF'])->name('rpu_list.export.pdf');
+            Route::get('/cancelled-list/export/pdf', [ReportController::class, 'exportCancelledPDF'])->name('cancelled_list.export.pdf');
+
+            // Valuation Analysis
+            Route::get('/faas-summary', [ReportController::class, 'faasSummary'])->name('faas_summary');
+            Route::get('/faas-summary/export/pdf', [ReportController::class, 'exportFaasSummaryPDF'])->name('faas_summary.export.pdf');
+            
+            Route::get('/td-summary', [ReportController::class, 'tdSummary'])->name('td_summary');
+            Route::get('/td-summary/export/pdf', [ReportController::class, 'exportTdSummaryPDF'])->name('td_summary.export.pdf');
+            
+            Route::get('/taxable-properties', [ReportController::class, 'taxableProperties'])->name('taxable_properties');
+            Route::get('/taxable-properties/export/pdf', [ReportController::class, 'exportTaxablePropertiesPDF'])->name('taxable_properties.export.pdf');
+
+            // Ownership Tracking
+            Route::get('/ownership-history', [ReportController::class, 'ownershipHistory'])->name('ownership_history');
+            Route::get('/ownership-history/export/pdf', [ReportController::class, 'exportOwnershipHistoryPDF'])->name('ownership_history.export.pdf');
+
+            Route::get('/transfer-summary', [ReportController::class, 'transferSummary'])->name('transfer_summary');
+            Route::get('/transfer-summary/export/pdf', [ReportController::class, 'exportTransferSummaryPDF'])->name('transfer_summary.export.pdf');
+
+            Route::get('/multiple-owners', [ReportController::class, 'multipleOwners'])->name('multiple_owners');
+            Route::get('/multiple-owners/export/pdf', [ReportController::class, 'exportMultipleOwnersPDF'])->name('multiple_owners.export.pdf');
+
+            // Audit & History
+            Route::get('/td-audit-log', [ReportController::class, 'tdAuditLog'])->name('td_audit_log');
+            Route::get('/td-audit-log/export/pdf', [ReportController::class, 'exportTdAuditLogPDF'])->name('td_audit_log.export.pdf');
+
+            Route::get('/global-transaction-log', [ReportController::class, 'globalTransactionLog'])->name('global_transaction_log');
+            Route::get('/global-transaction-log/export/pdf', [ReportController::class, 'exportGlobalTransactionLogPDF'])->name('global_transaction_log.export.pdf');
+
+            Route::get('/user-activity-audit', [ReportController::class, 'userActivityAudit'])->name('user_activity_audit');
+            Route::get('/user-activity-audit/export/pdf', [ReportController::class, 'exportUserActivityAuditPDF'])->name('user_activity_audit.export.pdf');
+        });
 });
 
 

@@ -4,7 +4,7 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\RptAuValue;
+use App\Models\RPT\RptAuValue;
 use Illuminate\Http\Request;
 
 class ClassificationController extends Controller

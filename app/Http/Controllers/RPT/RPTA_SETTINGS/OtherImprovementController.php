@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
-use App\Models\RptaOtherImprovement;
+use App\Models\RPT\RptaOtherImprovement;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 

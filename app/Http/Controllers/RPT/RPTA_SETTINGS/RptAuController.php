@@ -4,7 +4,7 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\RptAu;
+use App\Models\RPT\RptAu;
 use Illuminate\Http\Request;
 
 class RptAuController extends Controller

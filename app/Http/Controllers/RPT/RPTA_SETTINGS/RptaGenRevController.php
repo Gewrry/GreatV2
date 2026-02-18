@@ -4,8 +4,8 @@ namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
 
-use App\Models\FaasGenRev;
-use App\Models\RptAuValue;
+use App\Models\RPT\FaasGenRev;
+use App\Models\RPT\RptAuValue;
 use App\Models\Barangay;
 use App\Models\FaasLandTbl1;
 use App\Models\FaasBuilding1;
@@ -112,13 +112,14 @@ class RptaGenRevController extends Controller
 
         $revision = FaasGenRev::create([
             'kind' => $validated['kind'],
+            'td_no' => 'GR-' . strtoupper($validated['kind']) . '-' . $validated['gen_rev'] . '-' . $validated['bcode'],
             'revised_year' => $validated['revised_year'],
             'gen_rev' => $validated['gen_rev'],
             'bcode' => $validated['bcode'],
             'rev_unit_val' => $validated['rev_unit_val'],
             'gen_desc' => $result['description'] ?? '',
             'statt' => 'revised',
-            'encoded_by' => Auth::user()->name ?? 'system',
+            'encoded_by' => Auth::user()->uname ?? Auth::user()->name ?? 'system',
             'entry_date' => $validated['entry_date'],
             'entry_by' => $validated['entry_by'],
         ]);

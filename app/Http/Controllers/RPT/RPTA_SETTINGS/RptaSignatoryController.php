@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\RptaSignatory;
-use App\Models\RptaRevYr;
-use App\Models\Defaultz;
-use App\Models\FaasRptaAudit;
+use App\Models\RPT\RptaSignatory;
+use App\Models\RPT\RptaRevYr;
+use App\Models\RPT\Defaultz;
+use App\Models\RPT\FaasRptaAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;

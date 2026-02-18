@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\RptTcTbl;
-use App\Models\FaasRptaAudit;
+use App\Models\RPT\RptTcTbl;
+use App\Models\RPT\FaasRptaAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\RptaAdditionalItem;
+use App\Models\RPT\RptaAdditionalItem;
 use Illuminate\Http\Request;
 
 class AdditionalItemController extends Controller

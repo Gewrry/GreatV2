@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\RptaDepRateBldg;
+use App\Models\RPT\RptaDepRateBldg;
 use Illuminate\Http\Request;
 
 class DepreciationRateBldgController extends Controller

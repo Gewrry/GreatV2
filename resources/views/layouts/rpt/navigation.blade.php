@@ -16,14 +16,23 @@
                             <span>Dashboard</span>
                         </a>
 
-                        <!-- FAAS List -->
+                        <!-- Tax Declarations -->
                         <a href="{{ route('rpt.faas_list') }}"
                             class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg {{ request()->routeIs('rpt.faas_list') ? 'bg-logo-teal shadow-lg shadow-logo-teal/30' : '' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span>FAAS List</span>
+                            <span>Tax Declarations</span>
+                        </a>
+                        <!-- Revisions -->
+                        <a href="{{ route('rpt.td.revision_search') }}"
+                            class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg {{ request()->routeIs('rpt.td.revision_search*') ? 'bg-logo-teal shadow-lg shadow-logo-teal/30' : '' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>Revisions</span>
                         </a>
 
                         <!-- FAAS Entry Dropdown -->
@@ -53,6 +62,21 @@
                                 class="absolute left-0 mt-2 w-56 rounded-xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-hidden"
                                 style="display: none;">
                                 <div class="py-2">
+                                    <a href="{{ route('rpt.td.create') }}"
+                                        class="group flex items-center gap-3 px-4 py-3 text-sm text-gray hover:bg-logo-teal hover:text-white transition-all duration-200">
+                                        <svg class="w-5 h-5 text-amber-500 group-hover:text-white" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <div class="flex flex-col">
+                                            <span class="font-black text-[10px] uppercase tracking-tighter">Issue New</span>
+                                            <span class="font-bold">TAX DECLARATION</span>
+                                        </div>
+                                    </a>
+                                    <div class="px-4 py-2 bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-y border-gray-100">
+                                        Legacy Entry (Direct)
+                                    </div>
                                     <a href="{{ route('rpt.faas_entry.land') }}"
                                         class="group flex items-center gap-3 px-4 py-3 text-sm text-gray hover:bg-logo-teal hover:text-white transition-all duration-200">
                                         <svg class="w-5 h-5 text-logo-green group-hover:text-white" fill="none"
@@ -82,27 +106,18 @@
                                         </svg>
                                         <span class="font-medium">MACHINE</span>
                                     </a>
-                                    <a href="{{ route('rpt.faas_entry.taxdec_based') }}"
-                                        class="group flex items-center gap-3 px-4 py-3 text-sm text-gray hover:bg-logo-teal hover:text-white transition-all duration-200 border-t border-gray-200">
-                                        <svg class="w-5 h-5 text-yellow group-hover:text-white" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        <span class="font-medium">TAXDEC BASED</span>
-                                    </a>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Cancellations -->
-                        <a href="#"
+                         <!-- Archive / Inactive -->
+                        <a href="{{ route('rpt.faas_list') }}?status=inactive"
                             class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            <span>Cancellations</span>
+                            <span>Archive</span>
                         </a>
 
                         <!-- Search RPU -->
@@ -138,8 +153,8 @@
                         </a>
 
                         <!-- Report -->
-                        <a href="#"
-                            class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg">
+                        <a href="{{ route('rpt.reports.index') }}"
+                            class="group flex items-center gap-2 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 hover:shadow-lg {{ request()->routeIs('rpt.reports.*') ? 'bg-logo-teal shadow-lg shadow-logo-teal/30' : '' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -240,13 +255,13 @@
                         </svg>
                         MACHINE
                     </a>
-                    <a href="{{ route('rpt.faas_entry.taxdec_based') }}"
+                    <a href="{{ route('rpt.td.create') }}"
                         class="flex items-center gap-3 text-white/80 hover:bg-logo-teal/50 hover:text-white px-3 py-2 rounded-lg text-sm transition-all duration-200">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        TAXDEC BASED
+                        TAX DECLARATION
                     </a>
                 </div>
             </div>
@@ -294,8 +309,8 @@
             </a>
 
             <!-- Report -->
-            <a href="#"
-                class="group flex items-center gap-3 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-3 rounded-xl text-base font-medium transition-all duration-200">
+            <a href="{{ route('rpt.reports.index') }}"
+                class="group flex items-center gap-3 text-white/90 hover:bg-logo-teal hover:text-white px-3 py-3 rounded-xl text-base font-medium transition-all duration-200 {{ request()->routeIs('rpt.reports.*') ? 'bg-logo-teal shadow-lg shadow-logo-teal/30' : '' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

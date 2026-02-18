@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\FaasRptaOwnerSelect;
+use App\Models\RPT\FaasRptaOwnerSelect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 

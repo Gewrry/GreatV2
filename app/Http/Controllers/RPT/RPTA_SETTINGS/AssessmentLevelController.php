@@ -4,7 +4,7 @@
 namespace App\Http\Controllers\RPT\RPTA_SETTINGS;
 
 use App\Http\Controllers\Controller;
-use App\Models\RptaAssmntLvl;
+use App\Models\RPT\RptaAssmntLvl;
 use Illuminate\Http\Request;
 
 class AssessmentLevelController extends Controller
