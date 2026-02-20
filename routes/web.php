@@ -113,6 +113,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/building', [TaxDeclarationController::class, 'storeBuilding'])->name('store_building');
         Route::get('/{id}/add-machine', [TaxDeclarationController::class, 'addMachine'])->name('add_machine');
         Route::post('/{id}/machine', [TaxDeclarationController::class, 'storeMachine'])->name('store_machine');
+        Route::get('/{id}/machine/{machine_id}/edit', [TaxDeclarationController::class, 'editMachine'])->name('edit_machine');
+        Route::put('/{id}/machine/{machine_id}', [TaxDeclarationController::class, 'updateMachine'])->name('update_machine');
 
         // API
         Route::get('/api/search/{td_no}', [TaxDeclarationController::class, 'apiSearch'])->name('api_search');

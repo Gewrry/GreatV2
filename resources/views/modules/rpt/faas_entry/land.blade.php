@@ -154,9 +154,7 @@
                 <div class="lg:col-span-1 space-y-6">
                     <!-- 3. Land Classification -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full">
-                        <div class="mb-6">
-                            <x-rpt.gis-empty-state />
-                        </div>
+
 
                         <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-logo-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
@@ -187,22 +185,33 @@
                                 </select>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Area (sqm/ha)</label>
-                                    <div class="relative">
-                                        <input type="number" step="0.0001" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4 font-black" placeholder="0.0000" required>
-                                        <button type="button" id="btn-open-gis" class="absolute right-2 top-1 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">
-                                            Map Boundaries
+                                <div class="col-span-2">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Area (sqm/ha)</label>
+                                <input type="number" step="0.0001" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4 font-black mb-3" placeholder="0.0000" required>
+                                <input type="hidden" name="geometry_json" id="geometry_json">
+                                <input type="hidden" name="gps_lat" id="gps_lat">
+                                <input type="hidden" name="gps_lng" id="gps_lng">
+                                <input type="hidden" name="adj_north" id="adj_north">
+                                <input type="hidden" name="adj_south" id="adj_south">
+                                <input type="hidden" name="adj_east" id="adj_east">
+                                <input type="hidden" name="adj_west" id="adj_west">
+                                <!-- GIS Mapping Card -->
+                                <div id="gis-card" class="rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 p-3 transition-all duration-300">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <div id="gis-status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                                            <div>
+                                                <p id="gis-status-label" class="text-[10px] font-black uppercase tracking-widest text-gray-400">No Boundary Mapped</p>
+                                                <p id="gis-area-label" class="text-[9px] text-gray-400 font-bold mt-0.5">Click Map to plot boundary</p>
+                                            </div>
+                                        </div>
+                                        <button type="button" id="btn-open-gis" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            Map Boundary
                                         </button>
                                     </div>
-                                    <input type="hidden" name="geometry_json" id="geometry_json">
-                                    <input type="hidden" name="gps_lat" id="gps_lat">
-                                    <input type="hidden" name="gps_lng" id="gps_lng">
-                                    <input type="hidden" name="adj_north" id="adj_north">
-                                    <input type="hidden" name="adj_south" id="adj_south">
-                                    <input type="hidden" name="adj_east" id="adj_east">
-                                    <input type="hidden" name="adj_west" id="adj_west">
                                 </div>
+                            </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Unit Value</label>
                                     <input type="number" step="0.01" name="unit_value" id="unit_value" class="w-full bg-gray-100 border-gray-200 rounded-xl text-gray-600 h-11 px-4" value="0.00" readonly>
@@ -271,54 +280,42 @@
     @push('scripts')
     <script>
         $(document).ready(function() {
-            // GIS Modal Integration
+            // Smart GIS Modal Integration
             $('#btn-open-gis').click(function() {
-                openGisModal();
+                const targetArea = parseFloat($('#area').val()) || 0;
+                const brgyCode  = $('select[name="brgy_code"]').val();
+                const brgyName  = $('select[name="brgy_code"] option:selected').text().trim();
+                const lotNo     = $('input[name="lot_no"]').val().trim();
+                const pin       = $('input[name="pin"]').val().trim();
+                const zoning    = $('input[name="zoning"]').val().trim();
+
+                let titleParts = ['New Land FAAS'];
+                if (lotNo)   titleParts.push('Lot ' + lotNo);
+                if (brgyName && brgyName !== 'Select Barangay') titleParts.push(brgyName);
+
+                openGisModal({
+                    title: titleParts.join(' — '),
+                    faas_id: null,
+                    geometry: null,
+                    smart_mode: true,
+                    target_area: targetArea > 0 ? targetArea : null,
+                    brgy_code: brgyCode,
+                    brgy_name: brgyName !== 'Select Barangay' ? brgyName : null,
+                    lot_no: lotNo || null,
+                    pin: pin || null,
+                    attributes: {
+                        land_use_zone: zoning,
+                        adj_north: '', adj_south: '', adj_east: '', adj_west: '', inspector_notes: ''
+                    }
+                });
             });
 
             $(document).on('gis-mapping-applied', function(e, data) {
-                if (data.area > 0) {
-                    $('#area').val(data.area.toFixed(4)).trigger('input');
+                if (data.geometry) {
+                    const area = data.area > 0 ? data.area : parseFloat($('#area').val()) || 0;
+                    $('#area').val(area.toFixed(4)).trigger('input');
                     $('#geometry_json').val(JSON.stringify(data.geometry));
-                    
-                    if (data.gps) {
-                        $('#gps_lat').val(data.gps.lat);
-                        $('#gps_lng').val(data.gps.lng);
-                    }
 
-                    // Populate adjoining properties
-                    $('#adj_north').val(data.attributes.adj_north);
-                    $('#adj_south').val(data.attributes.adj_south);
-                    $('#adj_east').val(data.attributes.adj_east);
-                    $('#adj_west').val(data.attributes.adj_west);
-
-                    // Auto-fill zoning if it's currently empty or being mapped
-                    if (!$('input[name="zoning"]').val() || data.attributes.land_use_zone) {
-                         $('input[name="zoning"]').val(data.attributes.land_use_zone);
-                    }
-
-                    // Sync Inspector Notes to Remarks if empty
-                    if (data.attributes.inspector_notes) {
-                        const currentRemarks = $('textarea[name="remarks"]').val();
-                        if (!currentRemarks) {
-                            $('textarea[name="remarks"]').val(data.attributes.inspector_notes);
-                        }
-                    }
-                }
-            });
-
-            console.log("Land FAAS form initialized.");
-
-            // GIS Modal Integration
-            $('#btn-open-gis').click(function() {
-                openGisModal();
-            });
-
-            $(document).on('gis-mapping-applied', function(e, data) {
-                if (data.area > 0) {
-                    $('#area').val(data.area.toFixed(2)).trigger('input');
-                    $('#geometry_json').val(JSON.stringify(data.geometry));
-                    
                     if (data.gps) {
                         $('#gps_lat').val(data.gps.lat);
                         $('#gps_lng').val(data.gps.lng);
@@ -329,9 +326,22 @@
                     $('#adj_east').val(data.attributes.adj_east);
                     $('#adj_west').val(data.attributes.adj_west);
 
-                    // Update UI State
-                    $('#gis-empty-state').hide();
-                    $('#gis-map-preview').removeClass('hidden');
+                    if (!$('input[name="zoning"]').val() && data.attributes.land_use_zone) {
+                        $('input[name="zoning"]').val(data.attributes.land_use_zone);
+                    }
+                    if (data.attributes.inspector_notes && !$('textarea[name="remarks"]').val()) {
+                        $('textarea[name="remarks"]').val(data.attributes.inspector_notes);
+                    }
+
+                    // Update GIS card UI
+                    $('#gis-status-dot').removeClass('bg-gray-300').addClass('bg-emerald-500 shadow-lg shadow-emerald-500/40');
+                    $('#gis-status-label').text('Boundary Mapped ✓').removeClass('text-gray-400').addClass('text-emerald-700');
+                    $('#gis-area-label').text(area.toLocaleString(undefined, {maximumFractionDigits: 4}) + ' SQM mapped');
+                    $('#gis-card').removeClass('border-dashed border-indigo-200 bg-indigo-50/50').addClass('border-emerald-200 bg-emerald-50');
+                    $('#btn-open-gis').removeClass('bg-indigo-600 hover:bg-indigo-500').addClass('bg-emerald-600 hover:bg-emerald-500').html(`
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        Remap Boundary
+                    `);
                 }
             });
 

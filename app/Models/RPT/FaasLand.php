@@ -14,8 +14,10 @@ class FaasLand extends Model
     protected $fillable = [
         'faas_id',
         'lot_no',
+        'block',
         'survey_no',
         'zoning',
+        'use_restrictions',
         'is_corner',
         'road_type',
         'location_class',
@@ -29,7 +31,8 @@ class FaasLand extends Model
         'assessed_value',
         'effectivity_date',
         'remarks',
-        'memoranda'
+        'memoranda',
+        'improvement_kind_id'
     ];
 
     protected $casts = [
@@ -45,5 +48,10 @@ class FaasLand extends Model
     public function faas()
     {
         return $this->belongsTo(FaasGenRev::class, 'faas_id');
+    }
+
+    public function improvements()
+    {
+        return $this->hasMany(FaasLandImprovement::class, 'land_id');
     }
 }

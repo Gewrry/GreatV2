@@ -14,6 +14,7 @@ class RptaOtherImprovement extends Model
 
     protected $fillable = [
         'kind_name',
+        'category',
         'kind_value',
         'kind_date'
     ];

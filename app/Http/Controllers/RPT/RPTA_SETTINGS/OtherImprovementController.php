@@ -19,6 +19,7 @@ class OtherImprovementController extends Controller
     {
         $request->validate([
             'kind_name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:20',
             'kind_value' => 'required|numeric|min:0',
             'kind_date' => 'required|date'
         ]);
@@ -48,6 +49,7 @@ class OtherImprovementController extends Controller
     {
         $request->validate([
             'kind_name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:20',
             'kind_value' => 'required|numeric|min:0',
             'kind_date' => 'required|date'
         ]);

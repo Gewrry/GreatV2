@@ -26,7 +26,8 @@ class GISController extends Controller
         $faasId = $request->query('faas_id');
         
         $query = FaasGenRevGeometry::with(['faas' => function($q) {
-            $q->select('id', 'td_no', 'arpn', 'pin', 'total_market_value', 'total_assessed_value');
+            $q->select('id', 'td_no', 'arpn', 'pin', 'total_market_value', 'total_assessed_value', 'statt')
+              ->with('owners:owner_name');
         }]);
 
         if ($faasId) {
@@ -47,6 +48,8 @@ class GISController extends Controller
                     'pin' => $geo->pin ?? $geo->faas->pin ?? 'N/A',
                     'market_value' => $geo->faas->total_market_value ?? 0,
                     'assessed_value' => $geo->faas->total_assessed_value ?? 0,
+                    'owner_names' => $geo->faas->owners->pluck('owner_name')->implode(', ') ?: 'N/A',
+                    'status' => $geo->faas->statt ?? 'ACTIVE',
                     'fillColor' => $geo->fill_color,
                     'area_sqm' => $geo->area_sqm,
                     'adj_north' => $geo->adj_north,
