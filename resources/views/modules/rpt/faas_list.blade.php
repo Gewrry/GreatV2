@@ -13,33 +13,14 @@
                 </p>
             </div>
             <div class="flex items-center gap-4">
-                <div class="relative" x-data="{ open: false }">
-                    <button @click="open = !open" class="flex items-center gap-3 bg-gradient-to-br from-logo-teal to-indigo-600 text-white px-8 py-4 rounded-[1.5rem] text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-logo-teal/20 group">
-                        <svg class="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
-                        Add Assessment
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    <div x-show="open" 
-                         @click.away="open = false" 
-                         x-transition:enter="transition ease-out duration-200"
-                         x-transition:enter-start="opacity-0 translate-y-4"
-                         x-transition:enter-end="opacity-100 translate-y-0"
-                         class="absolute right-0 mt-3 w-56 bg-white rounded-[2rem] shadow-2xl border border-gray-100 z-50 py-3 overflow-hidden backdrop-blur-xl bg-white/90" 
-                         style="display: none;">
-                        <a href="{{ route('rpt.faas_entry.land') }}" class="flex items-center gap-3 px-6 py-3.5 text-xs font-black text-gray-700 hover:bg-logo-teal hover:text-white transition-all uppercase tracking-widest">
-                            <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                            LAND
-                        </a>
-                        <a href="{{ route('rpt.faas_entry.building') }}" class="flex items-center gap-3 px-6 py-3.5 text-xs font-black text-gray-700 hover:bg-indigo-600 hover:text-white transition-all uppercase tracking-widest">
-                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                            BUILDING
-                        </a>
-                        <a href="{{ route('rpt.faas_entry.machine') }}" class="flex items-center gap-3 px-6 py-3.5 text-xs font-black text-gray-700 hover:bg-purple-600 hover:text-white transition-all uppercase tracking-widest">
-                            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-                            MACHINE
-                        </a>
-                    </div>
-                </div>
+                <!-- New TD Button -->
+                <a href="{{ route('rpt.td.create') }}"
+                    class="group flex items-center gap-2 bg-gradient-to-br from-logo-teal to-indigo-600 text-white px-8 py-4 rounded-[1.5rem] text-sm font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-logo-teal/20">
+                    <svg class="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>New TD</span>
+                </a>
             </div>
         </div>
 

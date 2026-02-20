@@ -88,8 +88,11 @@
                                 <input type="text" name="arpn" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" placeholder="Optional">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Lot Number</label>
-                                <input type="text" name="lot_no" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Lot Number / Block</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="text" name="lot_no" placeholder="Lot No" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4">
+                                    <input type="text" name="block" placeholder="Block" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4">
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Survey No / TCT / OCT</label>
@@ -108,7 +111,7 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Municipality/City</label>
                                 <input type="text" name="municipality" value="MAJAYJAY" class="w-full bg-gray-100 border-gray-200 rounded-xl text-gray-600 h-11 px-4" readonly>
                             </div>
-                            <div class="md:col-span-2">
+                            <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Province</label>
                                 <input type="text" name="province" value="LAGUNA" class="w-full bg-gray-100 border-gray-200 rounded-xl text-gray-600 h-11 px-4" readonly>
                             </div>
@@ -123,8 +126,11 @@
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Zoning</label>
-                                <input type="text" name="zoning" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Zoning / Utilization</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="text" name="zoning" placeholder="Zone" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4">
+                                    <input type="text" name="use_restrictions" placeholder="Restrictions" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4">
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Corner Lot?</label>
@@ -154,7 +160,6 @@
                 <div class="lg:col-span-1 space-y-6">
                     <!-- 3. Land Classification -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full">
-
 
                         <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-logo-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
@@ -186,32 +191,32 @@
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="col-span-2">
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Area (sqm/ha)</label>
-                                <input type="number" step="0.0001" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4 font-black mb-3" placeholder="0.0000" required>
-                                <input type="hidden" name="geometry_json" id="geometry_json">
-                                <input type="hidden" name="gps_lat" id="gps_lat">
-                                <input type="hidden" name="gps_lng" id="gps_lng">
-                                <input type="hidden" name="adj_north" id="adj_north">
-                                <input type="hidden" name="adj_south" id="adj_south">
-                                <input type="hidden" name="adj_east" id="adj_east">
-                                <input type="hidden" name="adj_west" id="adj_west">
-                                <!-- GIS Mapping Card -->
-                                <div id="gis-card" class="rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 p-3 transition-all duration-300">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <div id="gis-status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                                            <div>
-                                                <p id="gis-status-label" class="text-[10px] font-black uppercase tracking-widest text-gray-400">No Boundary Mapped</p>
-                                                <p id="gis-area-label" class="text-[9px] text-gray-400 font-bold mt-0.5">Click Map to plot boundary</p>
+                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Area (sqm/ha)</label>
+                                    <input type="number" step="0.0001" name="area" id="area" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4 font-black mb-3" placeholder="0.0000" required>
+                                    <input type="hidden" name="geometry_json" id="geometry_json">
+                                    <input type="hidden" name="gps_lat" id="gps_lat">
+                                    <input type="hidden" name="gps_lng" id="gps_lng">
+                                    <input type="hidden" name="adj_north" id="adj_north">
+                                    <input type="hidden" name="adj_south" id="adj_south">
+                                    <input type="hidden" name="adj_east" id="adj_east">
+                                    <input type="hidden" name="adj_west" id="adj_west">
+                                    <!-- GIS Mapping Card -->
+                                    <div id="gis-card" class="rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 p-3 transition-all duration-300">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <div id="gis-status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                                                <div>
+                                                    <p id="gis-status-label" class="text-[10px] font-black uppercase tracking-widest text-gray-400">No Boundary Mapped</p>
+                                                    <p id="gis-area-label" class="text-[9px] text-gray-400 font-bold mt-0.5">Click Map to plot boundary</p>
+                                                </div>
                                             </div>
+                                            <button type="button" id="btn-open-gis" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                Map Boundary
+                                            </button>
                                         </div>
-                                        <button type="button" id="btn-open-gis" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 shadow">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                            Map Boundary
-                                        </button>
                                     </div>
                                 </div>
-                            </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Unit Value</label>
                                     <input type="number" step="0.01" name="unit_value" id="unit_value" class="w-full bg-gray-100 border-gray-200 rounded-xl text-gray-600 h-11 px-4" value="0.00" readonly>
@@ -248,8 +253,17 @@
                             <!-- Administrative Fields -->
                             <div class="space-y-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Date of Effectivity</label>
-                                    <input type="date" name="effectivity_date" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" value="{{ date('Y-m-d') }}">
+                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Effectivity</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <select name="effectivity_quarter" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" required>
+                                            <option value="">Quarter</option>
+                                            <option value="1">1st Qtr</option>
+                                            <option value="2">2nd Qtr</option>
+                                            <option value="3">3rd Qtr</option>
+                                            <option value="4">4th Qtr</option>
+                                        </select>
+                                        <input type="number" name="effectivity_year" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" placeholder="Year" value="{{ date('Y') + 1 }}" required>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Assessor Name</label>
@@ -352,22 +366,18 @@
                 const container = $('#selected-owners-container');
                 const noMsg = $('#no-owners-msg');
                 
-                // Clear container except the message
                 container.find('.owner-item').remove();
 
                 if (selectedOwners.size === 0) {
                     noMsg.show();
-                    // Clear display fields
                     $('#owner_address').val('');
                     $('#owner_tin').val('');
                     $('#owner_tel').val('');
                 } else {
                     noMsg.hide();
                     
-                    // Convert Set to Array for processing
                     const ownerIds = Array.from(selectedOwners);
                     
-                    // Update display fields using the first owner
                     const firstOwnerId = ownerIds[0];
                     const firstOption = $(`#owner_selector option[value="${firstOwnerId}"]`);
                     if(firstOption.length) {
@@ -376,7 +386,6 @@
                         $('#owner_tel').val(firstOption.data('tel') || '');
                     }
 
-                    // Render list
                     ownerIds.forEach(id => {
                         const option = $(`#owner_selector option[value="${id}"]`);
                         if(option.length) {
@@ -412,7 +421,7 @@
 
                 selectedOwners.add(id);
                 updateOwnerDisplay();
-                selector.val(''); // Reset selector
+                selector.val('');
             });
 
             $(document).on('click', '.remove-owner-btn', function() {
@@ -421,21 +430,10 @@
                 updateOwnerDisplay();
             });
 
-            // Form Validation before submit
-            $('#land-faas-form').on('submit', function(e) {
-                if (selectedOwners.size === 0) {
-                    e.preventDefault();
-                    alert('Please execute at least one owner.');
-                    return false;
-                }
-            });
-
             // Cascading Classification Lookups
             function fetchActualUses() {
                 const assmtKind = $('#assmt_kind').val();
                 const revYear = $('#rev_year').val();
-                
-                console.log("Fetching Actual Uses for:", assmtKind, "Year:", revYear);
 
                 if (assmtKind && revYear) {
                     $('#actual_use').prop('disabled', true).html('<option value="">Loading...</option>');
@@ -449,7 +447,6 @@
                             category: 'LAND'
                         },
                         success: function(response) {
-                            console.log("Actual Uses received:", response);
                             let options = '<option value="">Select Actual Use</option>';
                             if(response && response.length > 0) {
                                 response.forEach(function(item) {
@@ -467,7 +464,6 @@
                         }
                     });
 
-                    // Fetch Assessment Level
                     $.ajax({
                         url: "{{ route('rpt.get_assessment_level') }}",
                         type: "GET",
@@ -476,7 +472,6 @@
                             category: 'LAND'
                         },
                         success: function(response) {
-                            console.log("Assessment Level received:", response);
                             $('#assessment_level').val(response.assmnt_percent);
                             calculateFinalValues();
                         }
@@ -494,8 +489,6 @@
                 const actualUse = $(this).val();
                 const assmtKind = $('#assmt_kind').val();
                 const revYear = $('#rev_year').val();
-                
-                console.log("Fetching Unit Value for:", actualUse, assmtKind, revYear);
 
                 if (actualUse && assmtKind && revYear) {
                     $.ajax({
@@ -508,7 +501,6 @@
                             category: 'LAND'
                         },
                         success: function(response) {
-                            console.log("Unit Value received:", response);
                             $('#unit_value').val(response.unit_value);
                             calculateFinalValues();
                         },
@@ -531,7 +523,6 @@
 
                 $('#market_value').val(marketValue.toFixed(2));
                 $('#assessed_value').val(assessedValue.toFixed(2));
-                console.log("Calculated:", { marketValue, assessedValue });
             }
 
             $('#area, #adjustment_factor').on('input', calculateFinalValues);

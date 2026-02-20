@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\RPT\RptTcTbl;
 
 class TaxDeclarationController extends Controller
 {
@@ -31,8 +32,9 @@ class TaxDeclarationController extends Controller
         $owners = FaasRptaOwnerSelect::all();
         $barangays = Barangay::all();
         $assessorName = Auth::user()->name ?? 'System';
+        $transactionCodes = RptTcTbl::all();
         
-        return view('modules.rpt.td.create', compact('owners', 'barangays', 'assessorName'));
+        return view('modules.rpt.td.create', compact('owners', 'barangays', 'assessorName', 'transactionCodes'));
     }
 
     /**
@@ -40,42 +42,55 @@ class TaxDeclarationController extends Controller
      */
     public function store(Request $request)
     {
-        $isNew = $request->transaction_type === 'NEW';
-        
         $validated = $request->validate([
-            'transaction_type' => 'required|in:NEW,REVISION',
-            'td_no' => $isNew ? 'nullable|string|unique:faas_gen_rev,td_no' : 'required|string|unique:faas_gen_rev,td_no',
+            'transaction_code' => 'required|string',
+            'td_no' => 'nullable|string|unique:faas_gen_rev,td_no',
             'arpn' => 'required|string',
             'pin' => 'nullable|string',
             'brgy_code' => 'required|string',
             'rev_year' => 'required|integer',
             'owners' => 'required|array|min:1',
             'owners.*' => 'exists:faas_rpta_owner_select,id',
+            'effectivity_quarter' => 'nullable',
+            'effectivity_year' => 'nullable',
+            'approved_by' => 'nullable',
+            'date_approved' => 'nullable',
+            'remarks' => 'nullable',
+            'memoranda' => 'nullable',
         ], [
-            'td_no.required' => 'Tax Declaration Number is required for Revisions.',
             'arpn.required' => 'ARPN is required to prevent duplicate parcel entries.',
+            'transaction_code.required' => 'Transaction Code is required.',
+            'owners.required' => 'At least one owner must be selected.',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Auto-generate TD No if blank and NEW
+            // Auto-generate TD No if blank
             $tdNo = $validated['td_no'];
-            if (!$tdNo && $isNew) {
+            if (!$tdNo) {
                 $tdNo = 'TMP-FAAS-' . date('Ymd-His') . '-' . rand(1000, 9999);
             }
 
             $td = FaasGenRev::create([
-                'transaction_type' => $validated['transaction_type'],
+                'transaction_type' => 'NEW', // Set default since we removed the toggle
+                'transaction_code' => $validated['transaction_code'],
                 'td_no' => $tdNo,
-                'draft_id' => $isNew ? $tdNo : null,
+                'draft_id' => $tdNo,
                 'arpn' => $validated['arpn'],
-                'pin' => $validated['pin'],
+                'pin' => $validated['pin'] ?? null,
                 'revised_year' => $validated['rev_year'],
                 'gen_rev' => $validated['rev_year'],
+                'revision_type' => null, // Set to null for new records
+                'reason' => null, // Set to null for new records
+                'memoranda' => $validated['memoranda'],
+                'effectivity_quarter' => $validated['effectivity_quarter'],
+                'effectivity_year' => $validated['effectivity_year'],
+                'approved_by' => $validated['approved_by'],
+                'date_approved' => $validated['date_approved'],
                 'bcode' => $validated['brgy_code'],
                 'rev_unit_val' => 0,
-                'gen_desc' => $request->remarks ?? '',
+                'gen_desc' => $validated['remarks'] ?? '',
                 'total_market_value' => 0,
                 'total_assessed_value' => 0,
                 'statt' => 'ACTIVE',
@@ -181,8 +196,9 @@ class TaxDeclarationController extends Controller
         })->orderBy('kind_name')->get();
         
         $allOwners = FaasRptaOwnerSelect::orderBy('owner_name')->get();
+        $transactionCodes = \App\Models\RPT\RptTcTbl::all();
             
-        return view('modules.rpt.td.add_land', compact('td', 'assessorName', 'revYears', 'classifications', 'roadTypes', 'locationClasses', 'otherImprovements', 'allOwners'));
+        return view('modules.rpt.td.add_land', compact('td', 'assessorName', 'revYears', 'classifications', 'roadTypes', 'locationClasses', 'otherImprovements', 'allOwners', 'transactionCodes'));
     }
 
     /**
@@ -221,10 +237,25 @@ class TaxDeclarationController extends Controller
             'improvements.*.remaining_value_percent' => 'nullable|numeric|min:0|max:100',
             'owners' => 'nullable|array',
             'owners.*' => 'exists:faas_rpta_owner_select,id',
+            'effectivity_quarter' => 'required|integer|min:1|max:4',
+            'effectivity_year' => 'required|integer',
+            'revision_type' => 'nullable|string',
+            'reason' => 'nullable|string',
         ]);
 
         try {
             DB::beginTransaction();
+
+            // Update Revision Details if provided
+            if ($request->filled('revision_type') && $request->filled('reason')) {
+                $td->update([
+                    'revision_type' => $request->revision_type,
+                    'reason' => $request->reason,
+                ]);
+            }
+
+            // Construct Effectivity Date
+            $effectivityDate = $request->effectivity_year . '-' . (($request->effectivity_quarter * 3) - 2) . '-01'; // Start of quarter
 
             $land = FaasLand::create([
                 'faas_id' => $td->id,
@@ -244,7 +275,7 @@ class TaxDeclarationController extends Controller
                 'assessment_level' => $validated['assessment_level'],
                 'market_value' => $validated['market_value'],
                 'assessed_value' => $validated['assessed_value'],
-                'effectivity_date' => $request->effectivity_date,
+                'effectivity_date' => $effectivityDate,
                 'remarks' => $request->remarks,
                 'memoranda' => $request->memoranda,
             ]);
@@ -477,7 +508,7 @@ class TaxDeclarationController extends Controller
             'residual_percent' => 'required|numeric|min:0|max:100',
             'assessment_level' => 'required|numeric|min:0|max:100',
             'assmt_kind' => 'required|string',
-            'actual_use' => 'nullable|string', // Machines disable this until kind selected
+            'actual_use' => 'nullable|string',
             'rev_year' => 'required|string',
             'status' => 'required|string',
             'remarks' => 'nullable|string',
@@ -502,22 +533,22 @@ class TaxDeclarationController extends Controller
                 'td_no' => $td->td_no,
                 'pin' => $td->pin,
                 'machine_name' => $validated['machine_name'],
-                'brand_model' => $validated['brand_model'],
-                'serial_no' => $validated['serial_no'],
-                'capacity' => $validated['capacity'],
-                'year_manufactured' => $validated['year_manufactured'],
-                'year_installed' => $validated['year_installed'],
-                'date_acquired' => $validated['date_acquired'],
+                'brand_model' => $validated['brand_model'] ?? null,
+                'serial_no' => $validated['serial_no'] ?? null,
+                'capacity' => $validated['capacity'] ?? null,
+                'year_manufactured' => $validated['year_manufactured'] ?? null,
+                'year_installed' => $validated['year_installed'] ?? null,
+                'date_acquired' => $validated['date_acquired'] ?? null,
                 'acquisition_cost' => $acq,
                 'freight_cost' => $freight,
                 'insurance_cost' => $insurance,
                 'installation_cost' => $install,
-                'estimated_life' => $validated['estimated_life'],
-                'remaining_life' => $validated['remaining_life'],
-                'condition' => $validated['condition'],
-                'supplier_vendor' => $validated['supplier_vendor'],
-                'invoice_no' => $validated['invoice_no'],
-                'funding_source' => $validated['funding_source'],
+                'estimated_life' => $validated['estimated_life'] ?? null,
+                'remaining_life' => $validated['remaining_life'] ?? null,
+                'condition' => $validated['condition'] ?? null,
+                'supplier_vendor' => $validated['supplier_vendor'] ?? null,
+                'invoice_no' => $validated['invoice_no'] ?? null,
+                'funding_source' => $validated['funding_source'] ?? null,
                 'total_cost' => $totalCost,
                 'residual_percent' => $validated['residual_percent'],
                 'market_value' => $marketVal,
@@ -527,7 +558,7 @@ class TaxDeclarationController extends Controller
                 'assessed_value' => $assessedVal,
                 'effectivity_date' => now(),
                 'status' => $validated['status'],
-                'remarks' => $validated['remarks'],
+                'remarks' => $validated['remarks'] ?? null,
                 'memoranda' => $request->memoranda,
             ]);
 

@@ -109,6 +109,33 @@
                     
                     <!-- Main Content -->
                     <div class="lg:col-span-8 space-y-6 lg:space-y-8">
+
+                        <!-- Reference Numbers (ARPN / TD / PIN) — Revision Only -->
+                        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700"></div>
+
+                            <h2 class="text-lg font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-3 mb-8 relative z-10">
+                                <span class="w-8 h-8 bg-indigo-100/50 rounded-xl flex items-center justify-center text-indigo-600">
+                                    <span class="font-inter not-italic">0</span>
+                                </span>
+                                Reference Numbers
+                            </h2>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 relative z-10">
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">ARPN</label>
+                                    <input type="text" name="arpn" value="{{ old('arpn', $revComponent->arpn ?? $td->arpn) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-300 rev-field" placeholder="ARPN">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">TD No.</label>
+                                    <input type="text" name="td_no" value="{{ old('td_no', $td->td_no) }}" class="w-full bg-gray-100 border-transparent rounded-xl h-11 px-4 text-sm font-bold text-gray-500 cursor-not-allowed" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">PIN</label>
+                                    <input type="text" name="pin" value="{{ old('pin', $revComponent->pin ?? $td->pin) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-300 rev-field" placeholder="PIN">
+                                </div>
+                            </div>
+                        </div>
                         
                          <!-- Property Identification -->
                         <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
@@ -138,7 +165,7 @@
                                     <input type="text" value="{{ $td->barangay->brgy_name ?? 'N/A' }}" class="w-full bg-gray-100 border-transparent rounded-xl h-11 px-4 text-sm font-bold text-gray-500 cursor-not-allowed" readonly>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Zoning / Use Restrictions</label>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Zoning / Utilization</label>
                                      <div class="grid grid-cols-2 gap-2">
                                         <input type="text" name="zoning" placeholder="Zone" value="{{ old('zoning', $revComponent->zoning) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-300 physical-field rev-field">
                                         <input type="text" name="use_restrictions" placeholder="Restrictions" value="{{ old('use_restrictions', $revComponent->use_restrictions) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-300 physical-field rev-field">
@@ -176,7 +203,7 @@
                             </div>
 
                             <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 relative z-10">
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 ml-1">Current Revision Owners</label>
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 ml-1">Current Owners</label>
                                 <div id="selected-owners-container" class="space-y-2">
                                     <p class="text-sm text-gray-400 italic py-2" id="no-owners-msg">No owners assigned. Please add at least one owner.</p>
                                 </div>
@@ -245,9 +272,10 @@
                            </div>
 
                              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 relative z-10">
-                                <div class="md:col-span-2">
+                                <div>
                                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Area (sqm) *</label>
-                                    <input type="number" step="0.0001" name="area" id="area" value="{{ old('area', $revComponent->area) }}" class="w-full bg-emerald-50/50 border-emerald-100 rounded-xl h-14 px-4 text-xl font-black text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-gray-300 physical-field rev-field" required>
+                                    <input type="number" step="0.0001" name="area" id="area" value="{{ old('area', $revComponent->area) }}" class="w-full bg-emerald-50/50 border-emerald-100 rounded-xl h-14 px-4 text-xl font-black text-emerald-900 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all physical-field rev-field" required placeholder="0.00">
+
                                     <input type="hidden" name="geometry_json" id="geometry_json" value="{{ $td->geometry ? json_encode($td->geometry->geometry) : '' }}">
                                     <input type="hidden" name="gps_lat" id="gps_lat">
                                     <input type="hidden" name="gps_lng" id="gps_lng">
@@ -269,11 +297,11 @@
                                     <input type="number" step="0.01" name="assessment_level" id="assessment_level" value="{{ old('assessment_level', $revComponent->assessment_level) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all tax-field rev-field" required>
                                 </div>
                                 <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">NEW Base Market Value</label>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">Base Market Value</label>
                                     <input type="text" name="market_value" id="market_value" class="w-full bg-transparent border-none p-0 text-lg font-black text-gray-700 focus:ring-0" readonly value="{{ $revComponent->market_value }}">
                                 </div>
                                 <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
-                                    <label class="block text-[10px] font-black text-indigo-400 uppercase mb-1">NEW Assessed Value</label>
+                                    <label class="block text-[10px] font-black text-indigo-400 uppercase mb-1">Assessed Value</label>
                                     <input type="text" name="assessed_value" id="assessed_value" class="w-full bg-transparent border-none p-0 text-lg font-black text-indigo-700 focus:ring-0" readonly value="{{ $revComponent->assessed_value }}">
                                 </div>
                             </div>
@@ -307,7 +335,7 @@
                              
                             <div class="mt-6 flex justify-end">
                                 <div class="text-right">
-                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Improvements Value</p>
+                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Improvements</p>
                                     <p class="text-2xl font-black text-gray-800" id="total-improvement-display">₱ 0.00</p>
                                 </div>
                             </div>
@@ -322,6 +350,19 @@
                                 Classification & Use
                             </h2>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Effectivity *</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <select name="effectivity_quarter" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer physical-field rev-field" required>
+                                            <option value="">Quarter</option>
+                                            <option value="1" {{ old('effectivity_quarter', $revComponent->effectivity_quarter ?? '') == '1' ? 'selected' : '' }}>1st Qtr</option>
+                                            <option value="2" {{ old('effectivity_quarter', $revComponent->effectivity_quarter ?? '') == '2' ? 'selected' : '' }}>2nd Qtr</option>
+                                            <option value="3" {{ old('effectivity_quarter', $revComponent->effectivity_quarter ?? '') == '3' ? 'selected' : '' }}>3rd Qtr</option>
+                                            <option value="4" {{ old('effectivity_quarter', $revComponent->effectivity_quarter ?? '') == '4' ? 'selected' : '' }}>4th Qtr</option>
+                                        </select>
+                                        <input type="number" name="effectivity_year" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all physical-field rev-field" placeholder="Year" value="{{ old('effectivity_year', $revComponent->effectivity_year ?? date('Y') + 1) }}" required>
+                                    </div>
+                                </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Revision Year</label>
                                     <select name="rev_year" id="rev_year" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer physical-field rev-field" required>
@@ -341,7 +382,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Actual Use</label>
-                                    <select name="actual_use" id="actual_use" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer tax-field rev-field" required>
+                                    <select name="actual_use" id="actual_use" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer tax-field rev-field" disabled required>
                                         <option value="{{ $revComponent->actual_use }}">{{ $revComponent->actual_use }}</option>
                                     </select>
                                 </div>
@@ -401,8 +442,9 @@
                                 @endif
                                 
                                 <div class="p-4 rounded-2xl bg-white/5 border border-white/5 text-[10px] text-emerald-100/60 leading-relaxed italic">
-                                    <strong class="text-emerald-200 block mb-1">Audit Protocol:</strong>
-                                    Saved adjustments will create a new historical record. Manual override requires senior approval.
+                                    <strong class="text-emerald-200 block mb-1">Pricing Formula:</strong>
+                                    Market Value = (Area × Unit) + Improvements<br>
+                                    Assessed Value = Market Value × Level %
                                 </div>
                             </div>
                         </div>
@@ -531,20 +573,20 @@
                 
                 // Reset all to readonly/disabled and remove highlights
                 $('.rev-field').prop('readonly', true).addClass('opacity-60 grayscale-[0.5]').removeClass('bg-white ring-2 ring-emerald-500/20');
-                $('.rev-field').filter('select, textarea').css('pointer-events', 'none');
+                $('.rev-field').filter('select, textarea, button').css('pointer-events', 'none');
                 
                 if (type === 'Correction of Entry (CE)') {
                     $('.rev-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white');
-                    $('.rev-field').filter('select, textarea').css('pointer-events', 'auto');
+                    $('.rev-field').filter('select, textarea, button').css('pointer-events', 'auto');
                 } else if (type === 'Subdivision/Consolidation') {
                     window.location.href = "{{ route('rpt.td.select_revision_type', $td->id) }}?type=SUBDIV";
                     return;
                 } else if (type === 'Physical Change (PC)') {
                     $('.physical-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-emerald-500/20');
-                    $('.physical-field').filter('select, textarea').css('pointer-events', 'auto');
+                    $('.physical-field').filter('select, textarea, button').css('pointer-events', 'auto');
                 } else if (type === 'Re-classification (RE)') {
                     $('.tax-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-emerald-500/20');
-                    $('.tax-field').filter('select, textarea').css('pointer-events', 'auto');
+                    $('.tax-field').filter('select, textarea, button').css('pointer-events', 'auto');
                 } else if (type === 'General Revision (GR)') {
                     $('.valuation-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-emerald-500/20');
                 }
@@ -558,7 +600,7 @@
                 const revYear = $('#rev_year').val();
                 
                 if (assmtKind && revYear) {
-                    $('#actual_use').prop('disabled', true).html('<option value="">Wait...</option>');
+                    $('#actual_use').prop('disabled', true).html('<option value="">Loading...</option>');
                     
                     $.ajax({
                         url: "{{ route('rpt.get_actual_uses') }}",
@@ -576,7 +618,7 @@
                                 });
                                 $('#actual_use').html(options).prop('disabled', false);
                             } else {
-                                $('#actual_use').html('<option value="">None found</option>').prop('disabled', true);
+                                $('#actual_use').html('<option value="">No Actual Use found</option>').prop('disabled', true);
                             }
                         }
                     });
@@ -594,6 +636,8 @@
                             calculateValues();
                         }
                     });
+                } else {
+                    $('#actual_use').prop('disabled', true).html('<option value="">Select Actual Use</option>');
                 }
             }
 
@@ -638,30 +682,30 @@
                 const row = `
                     <div class="improvement-row group relative bg-gray-50/50 rounded-2xl border border-gray-100 p-4 transition-all hover:bg-gray-50 hover:shadow-sm" id="imp-row-${id}">
                         <button type="button" class="remove-improvement absolute top-2 right-2 text-red-300 hover:text-red-500 transition-colors p-1 rev-field">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                             <div class="md:col-span-4">
                                 <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Type</label>
-                                <select name="improvements[${id}][improvement_id]" class="w-full bg-white border-gray-100 rounded-xl px-4 h-10 text-xs font-bold improvement-type focus:ring-emerald-500/20 focus:border-emerald-500 rev-field" required>
+                                <select name="improvements[${id}][improvement_id]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold improvement-type focus:ring-emerald-500/20 focus:border-emerald-500 rev-field" required>
                                     <option value="">Select Structure...</option>
                                     ${otherImprovements.map(imp => `<option value="${imp.id}" data-value="${imp.kind_value || 0}" ${imp.id == improvement_id ? 'selected' : ''}>${imp.kind_name}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Qty</label>
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Quantity</label>
                                 <input type="number" step="0.01" name="improvements[${id}][quantity]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-qty focus:ring-emerald-500/20 focus:border-emerald-500 rev-field" value="${quantity}" required>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Unit Val</label>
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Unit Value</label>
                                 <input type="number" step="0.01" name="improvements[${id}][unit_value]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-val focus:ring-emerald-500/20 focus:border-emerald-500 rev-field" value="${unit_value}" required>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Dep %</label>
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Deprec. %</label>
                                 <input type="number" step="0.01" name="improvements[${id}][depreciation_rate]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-dep focus:ring-emerald-500/20 focus:border-emerald-500 rev-field" value="${data ? data.depreciation_rate : 0}">
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Total</label>
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Total Value</label>
                                 <input type="number" step="0.01" name="improvements[${id}][total_value]" class="w-full bg-gray-100 border-transparent rounded-xl px-3 h-10 text-xs font-black text-emerald-600 imp-total" value="${total_value}" readonly>
                                 <input type="hidden" name="improvements[${id}][remaining_value_percent]" class="imp-rem-val" value="${data ? data.remaining_value_percent : 100}">
                             </div>

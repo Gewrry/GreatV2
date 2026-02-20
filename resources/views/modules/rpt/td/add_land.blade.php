@@ -67,6 +67,33 @@
                     <!-- Main Content -->
                     <div class="lg:col-span-8 space-y-6 lg:space-y-8">
                         
+                    <!-- Revision Details (If Revision) -->
+                    @if($td->transaction_type === 'REVISION')
+                    <div class="bg-indigo-600 rounded-[2rem] shadow-xl p-8 text-white relative overflow-hidden group mb-8">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-white/10 transition-colors duration-700"></div>
+                        <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 class="text-xs font-black uppercase tracking-[0.3em] mb-4 text-indigo-200">Revision Context</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-[10px] font-black uppercase mb-1 text-indigo-100">Revision Type *</label>
+                                        <select name="revision_type" id="revision_type" class="w-full bg-white/10 border-white/20 rounded-2xl h-12 px-4 font-bold text-white focus:ring-white/30 focus:border-white/40 cursor-pointer" required>
+                                            <option value="" class="text-gray-800">Select Type</option>
+                                            @foreach($transactionCodes as $code)
+                                                <option value="{{ $code->tcode }} - {{ $code->tcode_desc }}" {{ (old('revision_type') ?? $td->revision_type) == ($code->tcode . ' - ' . $code->tcode_desc) ? 'selected' : '' }} class="text-gray-800">{{ $code->tcode }} - {{ $code->tcode_desc }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black uppercase mb-1 text-indigo-100">Reason for Revision *</label>
+                                        <textarea name="reason" rows="2" class="w-full bg-white/10 border-white/20 rounded-2xl px-4 py-3 font-medium text-white placeholder:text-indigo-300 focus:ring-white/30 focus:border-white/40" placeholder="Describe why this revision is being made..." required>{{ old('reason') ?? $td->reason }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                          <!-- Property Identification -->
                         <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
                              <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700"></div>
@@ -289,6 +316,19 @@
                             </h2>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                 <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Effectivity *</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <select name="effectivity_quarter" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer" required>
+                                            <option value="">Quarter</option>
+                                            <option value="1">1st Qtr</option>
+                                            <option value="2">2nd Qtr</option>
+                                            <option value="3">3rd Qtr</option>
+                                            <option value="4">4th Qtr</option>
+                                        </select>
+                                        <input type="number" name="effectivity_year" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all" placeholder="Year" value="{{ date('Y') + 1 }}" required>
+                                    </div>
+                                </div>
+                                <div>
                                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Revision Year</label>
                                     <select name="rev_year" id="rev_year" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer" required>
                                         @foreach($revYears as $yr)
@@ -502,28 +542,31 @@
                 const row = `
                     <div class="improvement-row group relative bg-gray-50/50 rounded-2xl border border-gray-100 p-4 transition-all hover:bg-gray-50 hover:shadow-sm" id="imp-row-${id}">
                         <button type="button" class="remove-improvement absolute top-2 right-2 text-red-300 hover:text-red-500 transition-colors p-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                            <div class="md:col-span-5">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                            <div class="md:col-span-4">
                                 <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Type</label>
-                                <select name="improvements[${id}][improvement_id]" class="w-full bg-white border-gray-100 rounded-xl px-4 h-10 text-xs font-bold improvement-type focus:ring-emerald-500/20 focus:border-emerald-500" required>
+                                <select name="improvements[${id}][improvement_id]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold improvement-type focus:ring-emerald-500/20 focus:border-emerald-500" required>
                                     <option value="">Select Structure...</option>
                                     ${otherImprovements.map(imp => `<option value="${imp.id}" data-value="${imp.kind_value || 0}">${imp.kind_name}</option>`).join('')}
                                 </select>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Qty</label>
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Quantity</label>
                                 <input type="number" step="0.01" name="improvements[${id}][quantity]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-qty focus:ring-emerald-500/20 focus:border-emerald-500" value="1" required>
                             </div>
-                            <div class="md:col-span-3">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Unit Val</label>
+                            <div class="md:col-span-2">
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Unit Value</label>
                                 <input type="number" step="0.01" name="improvements[${id}][unit_value]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-val focus:ring-emerald-500/20 focus:border-emerald-500" value="0" required>
                             </div>
                             <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Total</label>
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Deprec. %</label>
+                                <input type="number" step="0.01" name="improvements[${id}][depreciation_rate]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-dep focus:ring-emerald-500/20 focus:border-emerald-500" value="0">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Total Value</label>
                                 <input type="number" step="0.01" name="improvements[${id}][total_value]" class="w-full bg-gray-100 border-transparent rounded-xl px-3 h-10 text-xs font-black text-emerald-600 imp-total" value="0" readonly>
-                                <input type="hidden" name="improvements[${id}][depreciation_rate]" class="imp-dep" value="0">
                                 <input type="hidden" name="improvements[${id}][remaining_value_percent]" class="imp-rem-val" value="100">
                             </div>
                         </div>
