@@ -9,7 +9,8 @@
 
         <!-- Sidebar -->
         <aside id="sidebar"
-            class="fixed lg:relative inset-y-0 left-0 z-30 w-64 bg-white border-r-4 border-logo-teal overflow-y-auto transition-all duration-300 ease-in-out lg:w-64 shadow-xl">
+            class="fixed inset-y-0 left-0 z-30 w-64 bg-white border-r-4 border-logo-teal overflow-y-auto shadow-xl transform transition-transform duration-300">
+
 
             <!-- Logo Header -->
             <div class="sticky top-0 bg-white border-b-2 border-logo-teal p-4 z-10">
@@ -143,14 +144,17 @@
                         </a>
 
                         <!-- BPLS -->
-                        <a href="#"
-                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
-                            <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
+                        <a href="{{ route('bpls.index') }}"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('bpls.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('bpls.*') ? 'text-white' : 'text-logo-blue group-hover:text-logo-green' }}"
                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                             <span>{{ __('BPLS') }}</span>
+                            @if (request()->routeIs('bpls.*'))
+                                <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            @endif
                         </a>
 
                         <!-- MSWD -->
@@ -189,7 +193,20 @@
                             <span>{{ __('RPT') }}</span>
                         </a>
 
-                        <!-- Add more modules with the same pattern... -->
+                        <!-- Treasury -->
+                        <a href="{{ route('treasury.index') }}"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('treasury.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('treasury.*') ? 'text-white' : 'text-yellow group-hover:text-logo-green' }}"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            <span>{{ __('Treasury') }}</span>
+                            @if (request()->routeIs('treasury.*'))
+                                <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            @endif
+                        </a>
+
                     </div>
                 </div>
 
@@ -197,7 +214,7 @@
         </aside>
 
         <!-- Main content -->
-        <div class="flex-1 flex flex-col min-w-0">
+        <div id="main-content" class="flex-1 flex flex-col min-w-0 transition-all duration-300 lg:ml-64">
 
             <!-- Top Navigation -->
             <div class="bg-white border-b-2 border-lumot sticky top-0 z-10 shadow-md">
@@ -232,35 +249,74 @@
             <!-- Page Content -->
             <main class="flex-1 p-4 sm:p-6">
                 <!-- Flash Messages -->
-                @if(session('success'))
-                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" class="mb-6 flex items-center p-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm" role="alert">
-                    <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707Built-9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                    <div class="ml-3 text-sm font-bold">{{ session('success') }}</div>
-                    <button @click="show = false" class="ml-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-100 inline-flex h-8 w-8 transition-colors"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
-                </div>
+                @if (session('success'))
+                    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
+                        class="mb-6 flex items-center p-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm"
+                        role="alert">
+                        <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="ml-3 text-sm font-bold">{{ session('success') }}</div>
+                        <button @click="show = false"
+                            class="ml-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-100 inline-flex h-8 w-8 transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </div>
                 @endif
 
-                @if(session('error'))
-                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 8000)" class="mb-6 flex items-center p-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
-                    <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
-                    <div class="ml-3 text-sm font-bold">{{ session('error') }}</div>
-                    <button @click="show = false" class="ml-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-100 inline-flex h-8 w-8 transition-colors"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
-                </div>
+                @if (session('error'))
+                    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 8000)"
+                        class="mb-6 flex items-center p-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm"
+                        role="alert">
+                        <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        <div class="ml-3 text-sm font-bold">{{ session('error') }}</div>
+                        <button @click="show = false"
+                            class="ml-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-100 inline-flex h-8 w-8 transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </div>
                 @endif
 
                 @if ($errors->any())
-                <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 10000)" class="mb-6 p-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
-                    <div class="flex items-center mb-2">
-                        <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
-                        <span class="ml-3 text-sm font-bold">Please correct the following errors:</span>
-                        <button @click="show = false" class="ml-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-100 inline-flex h-8 w-8 transition-colors"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
+                    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 10000)"
+                        class="mb-6 p-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm"
+                        role="alert">
+                        <div class="flex items-center mb-2">
+                            <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            <span class="ml-3 text-sm font-bold">Please correct the following errors:</span>
+                            <button @click="show = false"
+                                class="ml-auto -mx-1.5 -my-1.5 bg-red-50 text-red-500 rounded-lg focus:ring-2 focus:ring-red-400 p-1.5 hover:bg-red-100 inline-flex h-8 w-8 transition-colors">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                        clip-rule="evenodd"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <ul class="ml-8 list-disc text-xs font-medium">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
-                    <ul class="ml-8 list-disc text-xs font-medium">
-                        @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
                 @endif
 
                 {{ $slot }}
@@ -284,120 +340,68 @@
     <!-- Sidebar Toggle Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const mobileMenuButton = document.getElementById('mobile-menu-button');
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            const menuIcon = document.getElementById('menu-icon');
-
-            let isSidebarOpen = localStorage.getItem('sidebarOpen') !== 'false';
+            const toggleBtn = document.getElementById('mobile-menu-button');
+            const mainContent = document.getElementById('main-content');
 
             function initSidebar() {
-                if (!isSidebarOpen) {
-                    closeSidebar(false);
+                if (window.innerWidth < 1024) {
+                    sidebar.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                } else {
+                    sidebar.classList.remove('-translate-x-full');
+                    overlay.classList.add('hidden');
                 }
             }
 
-            function openSidebar(animate = true) {
-                if (!animate) {
-                    sidebar.style.transition = 'none';
-                }
-
+            function openSidebar() {
+                sidebar.classList.remove('-translate-x-full');
                 if (window.innerWidth < 1024) {
-                    sidebar.style.transform = 'translateX(0)';
                     overlay.classList.remove('hidden');
-                    setTimeout(() => {
-                        overlay.classList.remove('opacity-0');
-                        overlay.classList.add('opacity-100');
-                    }, 10);
-                } else {
-                    sidebar.style.width = '16rem';
-                    sidebar.style.transform = 'translateX(0)';
-                }
-
-                menuIcon.style.transform = 'rotate(0deg)';
-                isSidebarOpen = true;
-                localStorage.setItem('sidebarOpen', 'true');
-
-                if (!animate) {
-                    setTimeout(() => {
-                        sidebar.style.transition = '';
-                    }, 50);
                 }
             }
 
-            function closeSidebar(animate = true) {
-                if (!animate) {
-                    sidebar.style.transition = 'none';
-                }
-
-                if (window.innerWidth < 1024) {
-                    sidebar.style.transform = 'translateX(-100%)';
-                    overlay.classList.remove('opacity-100');
-                    overlay.classList.add('opacity-0');
-                    setTimeout(() => {
-                        overlay.classList.add('hidden');
-                    }, 300);
-                } else {
-                    sidebar.style.width = '0';
-                    sidebar.style.transform = 'translateX(-100%)';
-                }
-
-                menuIcon.style.transform = 'rotate(180deg)';
-                isSidebarOpen = false;
-                localStorage.setItem('sidebarOpen', 'false');
-
-                if (!animate) {
-                    setTimeout(() => {
-                        sidebar.style.transition = '';
-                    }, 50);
-                }
+            function closeSidebar() {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
             }
 
             function toggleSidebar() {
-                if (isSidebarOpen) {
-                    closeSidebar();
-                } else {
+                const isHidden = sidebar.classList.contains('-translate-x-full');
+                if (isHidden) {
                     openSidebar();
+                } else {
+                    closeSidebar();
                 }
             }
 
             initSidebar();
 
-            if (mobileMenuButton) {
-                mobileMenuButton.addEventListener('click', toggleSidebar);
-            }
+            toggleBtn.addEventListener('click', function() {
+                toggleSidebar();
 
-            overlay.addEventListener('click', function() {
-                if (window.innerWidth < 1024) {
-                    closeSidebar();
+                // On desktop, shift main content accordingly
+                if (window.innerWidth >= 1024) {
+                    const isNowHidden = sidebar.classList.contains('-translate-x-full');
+                    mainContent.style.marginLeft = isNowHidden ? '0' : '16rem';
                 }
             });
 
-            document.addEventListener('keydown', function(event) {
-                if (event.key === 'Escape' && isSidebarOpen && window.innerWidth < 1024) {
-                    closeSidebar();
-                }
-            });
+            overlay.addEventListener('click', closeSidebar);
 
-            let resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function() {
-                    if (isSidebarOpen) {
-                        openSidebar(false);
-                    } else {
-                        closeSidebar(false);
-                    }
-                }, 250);
-            });
-
-            const navLinks = sidebar.querySelectorAll('a');
-            navLinks.forEach(link => {
+            sidebar.querySelectorAll('a').forEach(link => {
                 link.addEventListener('click', function() {
-                    if (window.innerWidth < 1024 && isSidebarOpen) {
+                    if (window.innerWidth < 1024) {
                         closeSidebar();
                     }
                 });
+            });
+
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 1024) {
+                    overlay.classList.add('hidden');
+                }
             });
         });
     </script>
