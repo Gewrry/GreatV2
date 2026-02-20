@@ -188,6 +188,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}', [TaxDeclarationController::class, 'destroy'])->name('destroy');                      // DELETE /rpt/td/{id}
         Route::delete('/{id}/component', [TaxDeclarationController::class, 'deleteComponent'])->name('delete_component'); // DELETE /rpt/td/{id}/component
 
+        Route::get('/create', [TaxDeclarationController::class, 'create'])->name('create');
+        Route::post('/', [TaxDeclarationController::class, 'store'])->name('store');
+        Route::put('/{id}', [TaxDeclarationController::class, 'update'])->name('update');
+        Route::get('/{id}/edit', [TaxDeclarationController::class, 'edit'])->name('edit');
+        Route::delete('/{id}', [TaxDeclarationController::class, 'destroy'])->name('destroy');
+        Route::delete('/{id}/component', [TaxDeclarationController::class, 'deleteComponent'])->name('delete_component');
+        
         // Revisions
         Route::get('/revision/search', [TaxDeclarationController::class, 'revisionSearch'])->name('revision_search'); // GET /rpt/td/revision/search
         Route::get('/{id}/revise/{type}/{component_id}', [TaxDeclarationController::class, 'reviseComponent'])->name('revise_component'); // GET /rpt/td/{id}/revise/{type}/{component_id}
@@ -205,6 +212,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/{id}/building', [TaxDeclarationController::class, 'storeBuilding'])->name('store_building');   // POST /rpt/td/{id}/building
         Route::get('/{id}/add-machine', [TaxDeclarationController::class, 'addMachine'])->name('add_machine');       // GET /rpt/td/{id}/add-machine
         Route::post('/{id}/machine', [TaxDeclarationController::class, 'storeMachine'])->name('store_machine');      // POST /rpt/td/{id}/machine
+        Route::get('/{id}/add-land', [TaxDeclarationController::class, 'addLand'])->name('add_land');
+        Route::post('/{id}/land', [TaxDeclarationController::class, 'storeLand'])->name('store_land');
+        Route::get('/{id}/add-building', [TaxDeclarationController::class, 'addBuilding'])->name('add_building');
+        Route::post('/{id}/building', [TaxDeclarationController::class, 'storeBuilding'])->name('store_building');
+        Route::get('/{id}/add-machine', [TaxDeclarationController::class, 'addMachine'])->name('add_machine');
+        Route::post('/{id}/machine', [TaxDeclarationController::class, 'storeMachine'])->name('store_machine');
+        Route::get('/{id}/machine/{machine_id}/edit', [TaxDeclarationController::class, 'editMachine'])->name('edit_machine');
+        Route::put('/{id}/machine/{machine_id}', [TaxDeclarationController::class, 'updateMachine'])->name('update_machine');
 
         // API
         Route::get('/api/search/{td_no}', [TaxDeclarationController::class, 'apiSearch'])->name('api_search');       // GET /rpt/td/api/search/{td_no}
@@ -233,6 +248,17 @@ Route::middleware('auth')->group(function () {
     // RPTA Settings
     Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpt.rpta_settings.index');        // GET /rpta_settings
     Route::get('/rpta_settings/actual_use', [RPTA_SettingsController::class, 'actual_use'])->name('rpt.rpta_settings.actual_use'); // GET /rpta_settings/actual_use
+    // RPTA Settings
+    Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpt.rpta_settings.index');
+    Route::get('/rpta_settings/actual_use', [RPTA_SettingsController::class, 'actual_use'])->name('rpt.rpta_settings.actual_use');
+
+    // GIS & Mapping
+    Route::prefix('rpt/gis')->name('rpt.gis.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\RPT\GISController::class, 'index'])->name('index');
+        Route::get('/geometries', [\App\Http\Controllers\RPT\GISController::class, 'getGeometries'])->name('get_geometries');
+        Route::post('/update-geometry', [\App\Http\Controllers\RPT\GISController::class, 'updateGeometry'])->name('update_geometry');
+    });
+
 
     // Actual Use Routes
     Route::get('/actual-use', [RptAuController::class, 'index'])->name('rpt.actual-use.index');                      // GET /actual-use

@@ -1,188 +1,445 @@
 <x-admin.app>
     @include('layouts.rpt.navigation')
-    
-    <div class="p-6">
-        <div class="mb-6">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h1 class="text-2xl font-black text-gray-800 tracking-tight font-inter italic uppercase">REVISE MACHINERY</h1>
-                    <p class="text-sm text-gray-500">Tax Declaration: <span class="font-bold text-purple-600">{{ $td->td_no }}</span></p>
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+
+    <div class="min-h-screen bg-gray-50/50">
+        
+        <!-- Grand Header -->
+        <div class="relative bg-gradient-to-r from-purple-900 via-fuchsia-900 to-indigo-900 text-white overflow-hidden shadow-2xl">
+            <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+            <div class="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+            <div class="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
+
+            <div class="relative max-w-7xl mx-auto px-6 py-12">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                    <div class="w-full">
+                        <div class="flex flex-wrap items-center gap-3 mb-2">
+                             <a href="{{ route('rpt.td.edit', $td->id) }}" class="group flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-[10px] font-black uppercase tracking-widest text-purple-200 hover:bg-white/20 transition-all">
+                                <svg class="w-3 h-3 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                Cancel Revision
+                            </a>
+                            <span class="px-3 py-1 rounded-full border border-purple-400/30 bg-purple-500/20 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-purple-200">
+                                Revision Mode
+                            </span>
+                        </div>
+                        <h1 class="text-3xl md:text-5xl font-black tracking-tighter text-white font-inter italic mb-2">
+                            REVISE MACHINERY
+                        </h1>
+                        <div class="flex flex-col md:flex-row md:items-center gap-4 text-purple-100">
+                             <p class="font-medium text-sm flex items-center gap-2">
+                                 TD No: <span class="font-bold text-white bg-white/10 px-2 py-0.5 rounded">{{ $td->td_no }}</span>
+                            </p>
+                            <span class="hidden md:inline text-purple-500/50">|</span>
+                            <p class="font-medium text-sm flex items-center gap-2">
+                                Current Assessed: <span class="font-black text-white italic">₱ {{ number_format($revComponent->assessed_value, 2) }}</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <a href="{{ route('rpt.td.edit', $td->id) }}" class="bg-gray-100 text-gray-700 font-bold px-6 py-2 rounded-2xl hover:bg-gray-200 transition-all text-sm uppercase tracking-widest">
-                    Cancel Revision
-                </a>
             </div>
         </div>
 
-        <form action="{{ route('rpt.td.update_revision', [$td->id, 'MACH', $revComponent->id]) }}" method="POST">
-            @csrf
-            
-            @if($td->statt === 'CANCELLED')
-                <div class="mb-8 bg-red-600 rounded-[2.5rem] p-8 text-white flex items-center gap-6 shadow-xl animate-pulse">
-                    <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H8m13-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-12 -mt-8">
+
+            @if ($errors->any())
+                <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl mb-8 shadow-sm animate-fade-in-down">
+                    <div class="flex items-center gap-3 mb-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <span class="font-bold uppercase tracking-widest text-xs">Please fix the following errors</span>
                     </div>
-                    <div>
-                        <h4 class="text-xl font-black italic uppercase">Tax Declaration Frozen</h4>
-                        <p class="text-red-100 font-medium font-inter">This record is marked as CANCELLED and is kept for historical audit trail only. No further modifications are permitted.</p>
-                    </div>
+                    <ul class="list-disc list-inside text-sm ml-2">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             @endif
-            <div class="bg-purple-600 rounded-[2.5rem] shadow-xl p-8 mb-8 text-white relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-                <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <h3 class="text-xs font-black uppercase tracking-[0.3em] mb-4 text-purple-200">Revision Context</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-[10px] font-black uppercase mb-1 text-purple-100">Revision Type *</label>
-                                <select name="revision_type" id="revision_type" class="w-full bg-white/10 border-white/20 rounded-2xl h-12 px-4 font-bold text-white focus:ring-white/30 focus:border-white/40" required>
-                                    <option value="" class="text-gray-800">Select Type</option>
-                                    <option value="Correction of Entry (CE)" {{ old('revision_type') == 'Correction of Entry (CE)' ? 'selected' : '' }} class="text-gray-800">Correction of Entry (CE)</option>
-                                    <option value="Physical Change (PC)" {{ old('revision_type') == 'Physical Change (PC)' ? 'selected' : '' }} class="text-gray-800">Physical Change (PC)</option>
-                                    <option value="Re-classification (RE)" {{ old('revision_type') == 'Re-classification (RE)' ? 'selected' : '' }} class="text-gray-800">Re-classification (RE)</option>
-                                    <option value="General Revision (GR)" {{ old('revision_type') == 'General Revision (GR)' ? 'selected' : '' }} class="text-gray-800">General Revision (GR)</option>
-                                    <option value="Taxability Change (TX)" {{ old('revision_type') == 'Taxability Change (TX)' ? 'selected' : '' }} class="text-gray-800">Taxability Change (TX)</option>
-                                    <option value="Subdivision (SD)" {{ old('revision_type') == 'Subdivision (SD)' ? 'selected' : '' }} class="text-gray-800">Subdivision (SD)</option>
-                                    <option value="Consolidation (CN)" {{ old('revision_type') == 'Consolidation (CN)' ? 'selected' : '' }} class="text-gray-800">Consolidation (CN)</option>
-                                    <option value="Expropriated/Destruction (EX)" {{ old('revision_type') == 'Expropriated/Destruction (EX)' ? 'selected' : '' }} class="text-gray-800">Expropriated/Destruction (EX)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black uppercase mb-1 text-purple-100">Reason for Revision *</label>
-                                <textarea name="reason" rows="2" class="w-full bg-white/10 border-white/20 rounded-2xl px-4 py-3 font-medium text-white placeholder:text-purple-300" placeholder="Reason for this machinery update..." required>{{ old('reason') }}</textarea>
-                            </div>
+
+            <form action="{{ route('rpt.td.update_revision', [$td->id, 'MACH', $revComponent->id]) }}" method="POST" id="machine-form">
+                @csrf
+                
+                @if($td->statt === 'CANCELLED')
+                    <div class="mb-8 bg-red-600 rounded-[2.5rem] p-8 text-white flex items-center gap-6 shadow-xl animate-pulse">
+                        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H8m13-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-black italic uppercase">Tax Declaration Frozen</h4>
+                            <p class="text-red-100 font-medium font-inter">This record is marked as CANCELLED. Revision is for historical purposes.</p>
                         </div>
                     </div>
-                </div>
-            </div>
+                @endif
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">TD Number</label>
-                                <input type="text" name="td_no" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field" value="{{ old('td_no', $td->td_no) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">ARPN</label>
-                                <input type="text" name="arpn" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field" value="{{ old('arpn', $td->arpn) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">PIN</label>
-                                <input type="text" name="pin" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field" value="{{ old('pin', $td->pin) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Barangay</label>
-                                <select name="bcode" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold text-gray-700 master-field rev-field">
-                                    @foreach(\App\Models\Barangay::orderBy('brgy_name')->get() as $brgy)
-                                        <option value="{{ $brgy->bcode }}" {{ (old('bcode', $td->bcode) == $brgy->bcode) ? 'selected' : '' }}>{{ $brgy->brgy_name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Machine Name</label>
-                                <input type="text" name="machine_name" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold physical-field rev-field" value="{{ old('machine_name', $revComponent->machine_name) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Acquisition Cost *</label>
-                                <input type="number" step="0.01" name="acquisition_cost" id="acquisition_cost" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-black valuation-field rev-field" value="{{ old('acquisition_cost', $revComponent->acquisition_cost) }}" required>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Residual Percent (%)</label>
-                                <input type="number" step="0.01" name="residual_percent" id="residual_percent" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold physical-field rev-field" value="{{ old('residual_percent', $revComponent->residual_percent) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Assessment Level (%)</label>
-                                <input type="number" step="0.01" name="assessment_level" id="assessment_level" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold tax-field rev-field" value="{{ old('assessment_level', $revComponent->assessment_level) }}">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Assessment Kind</label>
-                                <select name="assmt_kind" id="assmt_kind" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold tax-field rev-field" required>
-                                    <option value="">Select Kind</option>
-                                    @foreach($classifications as $class)
-                                        <option value="{{ $class->assmt_kind }}" {{ old('assmt_kind', $revComponent->assmt_kind) == $class->assmt_kind ? 'selected' : '' }}>{{ $class->assmt_kind }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Actual Use</label>
-                                <select name="actual_use" id="actual_use" class="w-full bg-gray-50 border-gray-100 rounded-2xl h-12 px-6 font-bold tax-field rev-field" required>
-                                    <option value="{{ $revComponent->actual_use }}">{{ $revComponent->actual_use }}</option>
-                                </select>
-                            </div>
-                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-1 tracking-widest ml-1">Total Cost (Auto)</label>
-                                <input type="number" step="0.01" name="total_cost" id="total_cost" class="w-full bg-white border-gray-100 rounded-lg text-gray-700 font-bold h-11 px-4" value="{{ $revComponent->total_cost }}" readonly>
-                            </div>
-                            <div class="bg-purple-50 border-2 border-purple-100 rounded-2xl p-6">
-                                <label class="block text-[10px] font-black text-purple-700 uppercase mb-1 tracking-widest ml-1">NEW Market Value</label>
-                                <input type="number" step="0.01" name="market_value" id="market_value" class="w-full bg-transparent border-none font-black text-2xl text-purple-800 p-0 focus:ring-0" value="{{ $revComponent->market_value }}" readonly>
-                            </div>
-                            <div class="bg-indigo-50 border-2 border-indigo-100 rounded-2xl p-6">
-                                <label class="block text-[10px] font-black text-indigo-700 uppercase mb-1 tracking-widest ml-1">NEW Assessed Value</label>
-                                <input type="number" step="0.01" name="assessed_value" id="assessed_value" class="w-full bg-transparent border-none font-black text-2xl text-indigo-800 p-0 focus:ring-0" value="{{ $revComponent->assessed_value }}" readonly>
+                <!-- Revision Context Card -->
+                <div class="bg-purple-600 rounded-[2.5rem] shadow-xl p-8 mb-8 text-white relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-white/10 transition-colors duration-700"></div>
+                    <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-xs font-black uppercase tracking-[0.3em] mb-4 text-purple-200">Revision Context</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase mb-1 text-purple-100">Revision Type *</label>
+                                    <select name="revision_type" id="revision_type" class="w-full bg-white/10 border-white/20 rounded-2xl h-12 px-4 font-bold text-white focus:ring-white/30 focus:border-white/40 cursor-pointer" required>
+                                        <option value="" class="text-gray-800">Select Type</option>
+                                        <option value="General Revision (GR)" {{ old('revision_type', $revComponent->revision_type) == 'General Revision (GR)' ? 'selected' : '' }} class="text-gray-800">General Revision (GR)</option>
+                                        <option value="Physical Change (PC)" {{ old('revision_type', $revComponent->revision_type) == 'Physical Change (PC)' ? 'selected' : '' }} class="text-gray-800">Physical Change (PC)</option>
+                                        <option value="Re-classification (RE)" {{ old('revision_type', $revComponent->revision_type) == 'Re-classification (RE)' ? 'selected' : '' }} class="text-gray-800">Re-classification (RE)</option>
+                                        <option value="Correction of Entry (CE)" {{ old('revision_type', $revComponent->revision_type) == 'Correction of Entry (CE)' ? 'selected' : '' }} class="text-gray-800">Correction of Entry (CE)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black uppercase mb-1 text-purple-100">Reason for Revision *</label>
+                                    <textarea name="reason" rows="2" class="w-full bg-white/10 border-white/20 rounded-2xl px-4 py-3 font-medium text-white placeholder:text-purple-300 focus:ring-white/30 focus:border-white/40" placeholder="Describe why this machinery update is being made..." required>{{ old('reason', $revComponent->reason) }}</textarea>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Remarks & Memoranda -->
-                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
-                        <h3 class="text-sm font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-3">
-                            <span class="w-8 h-8 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center">2</span>
-                            Internal Remarks & Memoranda
-                        </h3>
-                        <div class="grid grid-cols-1 gap-6">
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Internal Remarks</label>
-                                <textarea name="remarks" rows="2" class="w-full bg-gray-50 border-gray-100 rounded-2xl px-6 py-4 font-medium text-gray-700 rev-field text-field">{{ old('remarks', $revComponent->remarks) }}</textarea>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-2">Memoranda</label>
-                                <textarea name="memoranda" rows="3" class="w-full bg-gray-50 border-gray-100 rounded-2xl px-6 py-4 font-medium text-gray-700 rev-field text-field">{{ old('memoranda', $revComponent->memoranda) }}</textarea>
-                            </div>
+                         <div class="flex flex-col justify-end items-end text-right">
+                            <p class="text-[10px] font-black uppercase tracking-[0.5em] text-purple-200 mb-1">Current Assessed Value</p>
+                            <p class="text-5xl font-black font-inter tracking-tighter italic">₱ {{ number_format($revComponent->assessed_value, 2) }}</p>
+                            <p class="text-[10px] italic text-purple-200 mt-2 font-bold uppercase tracking-widest">Historical trace active</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-1">
-                    <div class="bg-gradient-to-br from-purple-600 to-purple-800 rounded-[2.5rem] shadow-2xl p-8 text-white sticky top-6 sticky top-6">
-                        <h3 class="text-xl font-black mb-1 uppercase tracking-tight">MACHINERY VALUATION</h3>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                    
+                    <!-- Main Content -->
+                    <div class="lg:col-span-8 space-y-6 lg:space-y-8">
                         
-                        <div class="mt-8 space-y-6">
-                            <div class="bg-white/10 rounded-3xl p-6">
-                                <div class="space-y-4 text-xs font-bold">
-                                    <div class="flex justify-between items-center text-lg">
-                                        <span>NEW Assessed:</span>
-                                        <span id="sidebar-assessed-display">₱ 0.00</span>
+                         <!-- Machinery Information -->
+                        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
+                             <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700"></div>
+                            
+                            <h2 class="text-lg font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-3 mb-8 relative z-10">
+                                <span class="w-8 h-8 bg-purple-100/50 rounded-xl flex items-center justify-center text-purple-600">
+                                    <span class="font-inter not-italic">1</span>
+                                </span>
+                                Machinery Information
+                            </h2>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 relative z-10">
+                                <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Machine Name *</label>
+                                    <input type="text" name="machine_name" value="{{ old('machine_name', $revComponent->machine_name) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-300 physical-field rev-field" required>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Brand & Model</label>
+                                    <input type="text" name="brand_model" value="{{ old('brand_model', $revComponent->brand_model) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-300 physical-field rev-field">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Serial Number</label>
+                                    <input type="text" name="serial_no" value="{{ old('serial_no', $revComponent->serial_no) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-300 physical-field rev-field">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Capacity</label>
+                                    <input type="text" name="capacity" value="{{ old('capacity', $revComponent->capacity) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-300 physical-field rev-field">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Condition Status</label>
+                                    <select name="status" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer physical-field rev-field">
+                                        <option value="Functioning" {{ old('status', $revComponent->status) == 'Functioning' ? 'selected' : '' }}>Functioning</option>
+                                        <option value="Non-Functioning" {{ old('status', $revComponent->status) == 'Non-Functioning' ? 'selected' : '' }}>Non-Functioning</option>
+                                        <option value="Dismantled" {{ old('status', $revComponent->status) == 'Dismantled' ? 'selected' : '' }}>Dismantled</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                         <!-- Supplemental Details -->
+                        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
+                            <h2 class="text-lg font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-3 mb-8 relative z-10">
+                                <span class="w-8 h-8 bg-purple-100/50 rounded-xl flex items-center justify-center text-purple-600">
+                                    <span class="font-inter not-italic">2</span>
+                                </span>
+                                Supplemental Details
+                            </h2>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 relative z-10">
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Years (Mfg / Install)</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input type="number" name="year_manufactured" value="{{ old('year_manufactured', $revComponent->year_manufactured) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all physical-field rev-field">
+                                        <input type="number" name="year_installed" value="{{ old('year_installed', $revComponent->year_installed) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all physical-field rev-field">
                                     </div>
-                                    <div class="pt-2 border-t border-white/10 flex justify-between items-center text-purple-300">
-                                        <span>VARIANCE:</span>
-                                        <span id="sidebar-variance-display" class="font-black text-sm">₱ 0.00</span>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Useful Life (Est / Rem)</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input type="number" name="estimated_life" value="{{ old('estimated_life', $revComponent->estimated_life) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all physical-field rev-field">
+                                        <input type="number" name="remaining_life" value="{{ old('remaining_life', $revComponent->remaining_life) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all physical-field rev-field">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Date Acquired</label>
+                                    <input type="date" name="date_acquired" value="{{ old('date_acquired', $revComponent->date_acquired) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all physical-field rev-field">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Supplier / Vendor</label>
+                                    <input type="text" name="supplier_vendor" value="{{ old('supplier_vendor', $revComponent->supplier_vendor) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-300 physical-field rev-field">
+                                </div>
+                                 <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Invoice No. & Funding</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input type="text" name="invoice_no" value="{{ old('invoice_no', $revComponent->invoice_no) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-300 physical-field rev-field">
+                                        <input type="text" name="funding_source" value="{{ old('funding_source', $revComponent->funding_source) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all placeholder:text-gray-300 physical-field rev-field">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Owner Management -->
+                        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
+                             <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700"></div>
+                            
+                            <h2 class="text-lg font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-3 mb-8 relative z-10">
+                                <span class="w-8 h-8 bg-purple-100/50 rounded-xl flex items-center justify-center text-purple-600">
+                                    <span class="font-inter not-italic">2.5</span>
+                                </span>
+                                Owner Management
+                            </h2>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 relative z-10">
+                                <div class="md:col-span-2">
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Select Owner to Add</label>
+                                    <select id="owner_selector" class="w-full bg-gray-50 border-gray-100 rounded-xl h-12 px-6 font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer rev-field">
+                                        <option value="">Select Owner...</option>
+                                        @foreach($allOwners as $owner)
+                                            <option value="{{ $owner->id }}">{{ $owner->owner_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="flex items-end">
+                                    <button type="button" id="add-owner-btn" class="w-full bg-purple-50 text-purple-600 font-black h-12 rounded-xl hover:bg-purple-100 transition-all text-[10px] uppercase tracking-widest border border-purple-100 rev-field">
+                                        Add Owner
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 relative z-10">
+                                <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 ml-1">Current Revision Owners</label>
+                                <div id="selected-owners-container" class="space-y-2">
+                                    <p class="text-sm text-gray-400 italic py-2" id="no-owners-msg">No owners assigned. Please add at least one owner.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Valuation -->
+                        <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden group">
+                           <div class="absolute top-0 right-0 w-48 h-48 bg-purple-50 rounded-full -mr-24 -mt-24 group-hover:scale-110 transition-transform duration-700"></div>
+
+                           <div class="flex justify-between items-center mb-8 relative z-10">
+                                <h2 class="text-lg font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-3">
+                                    <span class="w-8 h-8 bg-purple-100/50 rounded-xl flex items-center justify-center text-purple-600">
+                                        <span class="font-inter not-italic">3</span>
+                                    </span>
+                                    Machine Valuation
+                                </h2>
+                           </div>
+
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 relative z-10">
+                                 <!-- Cost Breakdown First -->
+                                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+                                     <div>
+                                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Acquisition Cost *</label>
+                                        <input type="number" step="0.01" name="acquisition_cost" id="acquisition_cost" value="{{ old('acquisition_cost', $revComponent->acquisition_cost) }}" class="w-full bg-purple-50/50 border-purple-100 rounded-xl h-11 px-4 text-sm font-bold text-purple-900 focus:ring-purple-500/20 focus:border-purple-500 transition-all valuation-field rev-field" required placeholder="0.00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Freight</label>
+                                        <input type="number" step="0.01" name="freight_cost" id="freight_cost" value="{{ old('freight_cost', $revComponent->freight_cost) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all valuation-field rev-field" placeholder="0.00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Insurance</label>
+                                        <input type="number" step="0.01" name="insurance_cost" id="insurance_cost" value="{{ old('insurance_cost', $revComponent->insurance_cost) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all valuation-field rev-field" placeholder="0.00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Installation</label>
+                                        <input type="number" step="0.01" name="installation_cost" id="installation_cost" value="{{ old('installation_cost', $revComponent->installation_cost) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all valuation-field rev-field" placeholder="0.00">
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-1">Total Base Cost</label>
+                                    <input type="text" id="total_cost_display" class="w-full bg-transparent border-none p-0 text-lg font-black text-gray-700 focus:ring-0" readonly value="{{ number_format($revComponent->total_cost, 2) }}">
+                                    <input type="hidden" name="total_cost" id="total_cost" value="{{ $revComponent->total_cost }}">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Residual / Dep. Rate (%)</label>
+                                    <input type="number" step="0.01" name="residual_percent" id="residual_percent" value="{{ old('residual_percent', $revComponent->residual_percent) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all physical-field rev-field" required>
+                                    <p class="text-[10px] text-gray-400 mt-1 ml-1">Remaining percentage (e.g. 80%)</p>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Assessment Level (%) *</label>
+                                    <input type="number" step="0.01" name="assessment_level" id="assessment_level" value="{{ old('assessment_level', $revComponent->assessment_level) }}" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all tax-field rev-field" required>
+                                </div>
+                                
+                                <div class="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                                    <label class="block text-[10px] font-black text-purple-400 uppercase mb-1">NEW Market Value</label>
+                                    <input type="text" name="market_value" id="market_value" class="w-full bg-transparent border-none p-0 text-lg font-black text-purple-700 focus:ring-0" readonly value="{{ $revComponent->market_value }}">
+                                </div>
+                                <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+                                    <label class="block text-[10px] font-black text-indigo-400 uppercase mb-1">NEW Assessed Value</label>
+                                    <input type="text" name="assessed_value" id="assessed_value" class="w-full bg-transparent border-none p-0 text-lg font-black text-indigo-700 focus:ring-0" readonly value="{{ $revComponent->assessed_value }}">
+                                </div>
+                            </div>
+                        </div>
+
+                         <!-- Classification -->
+                         <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-8">
+                            <h2 class="text-lg font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-3 mb-8">
+                                <span class="w-8 h-8 bg-purple-100/50 rounded-xl flex items-center justify-center text-purple-600">
+                                    <span class="font-inter not-italic">4</span>
+                                </span>
+                                Classification & Use
+                            </h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Assessment Kind</label>
+                                    <select name="assmt_kind" id="assmt_kind" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer tax-field rev-field" required>
+                                        <option value="">Select Kind...</option>
+                                        @foreach($classifications as $class)
+                                            <option value="{{ $class->assmt_kind }}" {{ old('assmt_kind', $revComponent->assmt_kind) == $class->assmt_kind ? 'selected' : '' }}>{{ $class->assmt_kind }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Actual Use</label>
+                                    <select name="actual_use" id="actual_use" class="w-full bg-gray-50 border-gray-100 rounded-xl h-11 px-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all cursor-pointer tax-field rev-field" required>
+                                        <option value="{{ $revComponent->actual_use }}">{{ $revComponent->actual_use }}</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-1 md:col-span-2 space-y-4">
+                                    <div>
+                                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Notes / Remarks</label>
+                                        <textarea name="remarks" rows="2" class="w-full bg-gray-50 border-gray-100 rounded-xl p-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all rev-field" placeholder="Enter specific remarks...">{{ old('remarks', $revComponent->remarks) }}</textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-gray-400 uppercase mb-2 ml-1">Memoranda</label>
+                                        <textarea name="memoranda" rows="3" class="w-full bg-gray-50 border-gray-100 rounded-xl p-4 text-sm font-bold text-gray-700 focus:ring-purple-500/20 focus:border-purple-500 transition-all rev-field" placeholder="Enter Memoranda...">{{ old('memoranda', $revComponent->memoranda) }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+
+                    <!-- Sidebar -->
+                    <div class="lg:col-span-4 space-y-8">
+                         <div class="bg-gradient-to-br from-purple-800 to-indigo-900 rounded-[2.5rem] shadow-2xl p-8 text-white relative overflow-hidden sticky top-6">
+                            <div class="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                            <div class="absolute bottom-0 left-0 w-32 h-32 bg-pink-500/20 rounded-full blur-3xl"></div>
+
+                            <h3 class="font-black uppercase tracking-tight text-purple-200 mb-8 relative z-10 text-sm italic">REVISION SUMMARY</h3>
+                            
+                            <div class="space-y-6 relative z-10">
+                                <div class="bg-white/10 rounded-2xl p-6 border border-white/10 backdrop-blur-sm">
+                                    <p class="text-[10px] uppercase font-black tracking-widest text-purple-200 mb-3">Computation Check</p>
+                                    <div class="space-y-4">
+                                        <div class="flex justify-between items-center opacity-60">
+                                            <span class="text-[10px] font-black uppercase tracking-widest">Current:</span>
+                                            <span class="font-black">₱ {{ number_format($revComponent->assessed_value, 2) }}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-white">
+                                            <span class="text-xs font-black uppercase tracking-widest italic">New Final:</span>
+                                            <span class="text-2xl font-black tracking-tighter" id="sidebar-assessed-display">₱ {{ number_format($revComponent->assessed_value, 2) }}</span>
+                                        </div>
+                                        <div class="pt-4 border-t border-white/10 flex justify-between items-center">
+                                            <span class="text-[10px] font-black uppercase tracking-widest">VARIANCE:</span>
+                                            <span id="sidebar-variance-display" class="font-black text-lg text-purple-300">₱ 0.00</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            @if($td->statt !== 'CANCELLED')
-                                <button type="submit" class="w-full bg-white text-purple-700 font-black py-5 rounded-3xl shadow-xl hover:-translate-y-1 transition-all uppercase tracking-widest text-sm">
-                                    Apply Revision
+                             <div class="mt-8 pt-8 border-t border-white/10 relative z-10 space-y-4">
+                                
+                                @if($td->statt !== 'CANCELLED')
+                                <button type="submit" class="group w-full flex items-center justify-between p-5 bg-white text-purple-900 rounded-3xl font-black uppercase tracking-widest hover:bg-purple-50 transition-all shadow-xl hover:-translate-y-1 active:scale-95">
+                                    <span class="italic">Commit Revision</span>
+                                    <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                 </button>
-                            @else
+                                @else
                                 <div class="w-full bg-white/20 text-white font-black py-5 rounded-3xl text-center uppercase tracking-widest text-sm border border-white/30 backdrop-blur-sm">
                                     Record Locked
                                 </div>
-                            @endif
+                                @endif
+                                
+                                <div class="p-4 rounded-2xl bg-white/5 border border-white/5 text-[10px] text-purple-200/60 leading-relaxed italic">
+                                    <strong class="text-purple-200 block mb-1">Audit Protocol:</strong>
+                                    All machinery acquisitions, freight additions, and residual value adjustments are tracked historically.
+                                </div>
+                            </div>
                         </div>
                     </div>
+
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 
     @push('scripts')
     <script>
         $(document).ready(function() {
+             // Multi-Owner Management
+             const selectedOwners = new Set();
+            
+            // Re-sync initial owners
+            @foreach($td->owners as $owner)
+                selectedOwners.add("{{ $owner->id }}");
+            @endforeach
+
+            function updateOwnerDisplay() {
+                const container = $('#selected-owners-container');
+                const noMsg = $('#no-owners-msg');
+                
+                container.find('.owner-item').remove();
+
+                if (selectedOwners.size === 0) {
+                    noMsg.show();
+                } else {
+                    noMsg.hide();
+                    
+                    const ownerIds = Array.from(selectedOwners);
+                    ownerIds.forEach(id => {
+                        const option = $(`#owner_selector option[value="${id}"]`);
+                        if(option.length) {
+                            const name = option.text().trim();
+                            const html = `
+                                <div class="owner-item flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm animate-fade-in-up" data-id="${id}">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-xs font-bold text-gray-700">${name}</span>
+                                    </div>
+                                    <input type="hidden" name="owners[]" value="${id}">
+                                    <button type="button" class="remove-owner-btn text-red-400 hover:text-red-600 transition-colors p-1" data-id="${id}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            `;
+                            container.append(html);
+                        }
+                    });
+                }
+            }
+
+            $('#add-owner-btn').click(function() {
+                const selectedId = $('#owner_selector').val();
+                if (selectedId && !selectedOwners.has(selectedId)) {
+                    selectedOwners.add(selectedId);
+                    updateOwnerDisplay();
+                    $('#owner_selector').val('');
+                }
+            });
+
+            $(document).on('click', '.remove-owner-btn', function() {
+                const id = $(this).data('id');
+                selectedOwners.delete(id.toString());
+                updateOwnerDisplay();
+            });
+
+            // Initial Display
+            updateOwnerDisplay();
+
             const currentVal = {{ $revComponent->assessed_value }};
 
             function updateUIBasedOnType() {
@@ -195,41 +452,41 @@
                 }
                 
                 // Reset all to readonly/disabled and remove highlights
-                $('.rev-field').prop('readonly', true).addClass('opacity-60 grayscale-[0.5]').removeClass('bg-white ring-2 ring-purple-500/10');
+                $('.rev-field').prop('readonly', true).addClass('opacity-60 grayscale-[0.5]').removeClass('bg-white ring-2 ring-purple-500/20');
                 $('.rev-field').filter('select, textarea').css('pointer-events', 'none');
                 
                 if (type === 'Correction of Entry (CE)') {
                     $('.rev-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white');
                     $('.rev-field').filter('select, textarea').css('pointer-events', 'auto');
-                } else if (type === 'Subdivision (SD)' || type === 'Consolidation (CN)') {
-                    $('.rev-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/10');
-                    $('.rev-field').filter('select, textarea').css('pointer-events', 'auto');
                 } else if (type === 'Physical Change (PC)') {
-                    $('.physical-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/10');
+                    $('.physical-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/20');
                     $('.physical-field').filter('select, textarea').css('pointer-events', 'auto');
                 } else if (type === 'Re-classification (RE)') {
-                    $('.tax-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/10');
+                    $('.tax-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/20');
                     $('.tax-field').filter('select, textarea').css('pointer-events', 'auto');
                 } else if (type === 'General Revision (GR)') {
-                    $('.valuation-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/10');
-                } else if (type === 'Taxability Change (TX)') {
-                    $('.tax-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/10');
-                    $('.tax-field').filter('select, textarea').css('pointer-events', 'auto');
+                    $('.valuation-field').prop('readonly', false).removeClass('opacity-60 grayscale-[0.5]').addClass('bg-white ring-2 ring-purple-500/20');
                 }
             }
 
             $('#revision_type').on('change', updateUIBasedOnType);
 
+            // Cascading Classification Lookups
             function fetchActualUses() {
                 const assmtKind = $('#assmt_kind').val();
                 const revYear = "{{ $td->revised_year }}";
                 
                 if (assmtKind) {
                     $('#actual_use').prop('disabled', true).html('<option value="">Wait...</option>');
+                    
                     $.ajax({
                         url: "{{ route('rpt.get_actual_uses') }}",
                         type: "GET",
-                        data: { assmt_kind: assmtKind, rev_year: revYear, category: 'MACHINE' },
+                        data: {
+                            assmt_kind: assmtKind,
+                            rev_year: revYear,
+                            category: 'MACHINE'
+                        },
                         success: function(response) {
                             let options = '<option value="">Select Actual Use</option>';
                             if(response && response.length > 0) {
@@ -243,13 +500,17 @@
                         }
                     });
 
+                    // Fetch Assessment Level
                     $.ajax({
                         url: "{{ route('rpt.get_assessment_level') }}",
                         type: "GET",
-                        data: { assmt_kind: assmtKind, category: 'MACHINE' },
+                        data: {
+                            assmt_kind: assmtKind,
+                            category: 'MACHINE'
+                        },
                         success: function(response) {
                             $('#assessment_level').val(response.assmnt_percent);
-                            calc();
+                            calculateValues();
                         }
                     });
                 }
@@ -257,36 +518,43 @@
 
             $('#assmt_kind').on('change', fetchActualUses);
 
-            function calc() {
-                const cost = parseFloat($('#acquisition_cost').val()) || 0;
-                const residual = parseFloat($('#residual_percent').val()) || 0;
-                const level = parseFloat($('#assessment_level').val()) || 0;
+            function calculateValues() {
+                const acquisCost = parseFloat($('#acquisition_cost').val()) || 0;
+                const freightCost = parseFloat($('#freight_cost').val()) || 0;
+                const insuranceCost = parseFloat($('#insurance_cost').val()) || 0;
+                const installCost = parseFloat($('#installation_cost').val()) || 0;
+                const residualPct = parseFloat($('#residual_percent').val()) || 0;
+                const assessLevel = parseFloat($('#assessment_level').val()) || 0;
 
-                // Total cost for machines also includes freight and insurance in some contexts,
-                // but for revision we simplify based on what's exposed.
-                const totalCost = cost; 
-                const marketValue = totalCost * (residual / 100);
-                const assessedValue = marketValue * (level / 100);
+                const totalBaseCost = acquisCost + freightCost + insuranceCost + installCost;
+                
+                // Market Value = Total Base Cost * (Residual % / 100)
+                const marketValue = totalBaseCost * (residualPct / 100);
+                
+                // Assessed Value = Market Value * (Assessment Level / 100)
+                const assessedValue = marketValue * (assessLevel / 100);
 
-                $('#total_cost').val(totalCost.toFixed(2));
+                $('#total_cost').val(totalBaseCost.toFixed(2));
+                $('#total_cost_display').val(totalBaseCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 $('#market_value').val(marketValue.toFixed(2));
                 $('#assessed_value').val(assessedValue.toFixed(2));
-
+                
+                // Update sidebar displays
                 $('#sidebar-assessed-display').text('₱ ' + assessedValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 
                 const variance = assessedValue - currentVal;
                 const varianceText = (variance >= 0 ? '+₱ ' : '-₱ ') + Math.abs(variance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 $('#sidebar-variance-display').text(varianceText);
-
-                if (variance > 0) $('#sidebar-variance-display').removeClass('text-purple-300').addClass('text-green-300 font-black');
-                else if (variance < 0) $('#sidebar-variance-display').removeClass('text-purple-300').addClass('text-red-300');
-                else $('#sidebar-variance-display').addClass('text-purple-300').removeClass('text-green-300 text-red-300');
+                
+                if (variance > 0) $('#sidebar-variance-display').removeClass('text-purple-300').addClass('text-green-400 font-bold underline');
+                else if (variance < 0) $('#sidebar-variance-display').removeClass('text-purple-300').addClass('text-red-200');
+                else $('#sidebar-variance-display').addClass('text-purple-300').removeClass('text-green-400 font-bold underline text-red-200');
             }
 
-            $('#acquisition_cost, #residual_percent, #assessment_level').on('input', calc);
+            $('#acquisition_cost, #freight_cost, #insurance_cost, #installation_cost, #residual_percent, #assessment_level').on('input change', calculateValues);
             
             // Initialization
-            calc();
+            calculateValues();
             updateUIBasedOnType();
         });
     </script>

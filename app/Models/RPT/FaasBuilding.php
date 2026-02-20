@@ -13,6 +13,7 @@ class FaasBuilding extends Model
 
     protected $fillable = [
         'faas_id',
+        'building_code',
         'land_td_no',
         'building_type',
         'structure_type',
@@ -33,6 +34,7 @@ class FaasBuilding extends Model
         'assessed_value',
         'effectivity_date',
         'status',
+        'condition',
         'remarks',
         'memoranda'
     ];
@@ -53,5 +55,10 @@ class FaasBuilding extends Model
     public function faas()
     {
         return $this->belongsTo(FaasGenRev::class, 'faas_id');
+    }
+
+    public function improvements()
+    {
+        return $this->hasMany(FaasBuildingImprovement::class, 'building_id');
     }
 }

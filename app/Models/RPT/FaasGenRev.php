@@ -86,6 +86,11 @@ class FaasGenRev extends Model
         return $this->hasMany(FaasAttachment::class, 'faas_id');
     }
 
+    public function geometry()
+    {
+        return $this->hasOne(FaasGenRevGeometry::class, 'faas_id');
+    }
+
     /**
      * Calculate and update total market value and assessed value
      * from all attached components (lands, buildings, machines)

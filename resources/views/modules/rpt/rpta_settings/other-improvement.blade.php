@@ -105,6 +105,10 @@
                         </th>
                         <th scope="col"
                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Category
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Actions
                         </th>
                     </tr>
@@ -113,7 +117,7 @@
                     @forelse($improvements as $item)
                         <tr id="row-{{ $item->id }}" class="hover:bg-gray-50 transition-colors duration-150"
                             data-name="{{ strtolower($item->kind_name) }}" data-value="{{ $item->kind_value }}"
-                            data-date="{{ $item->kind_date }}">
+                            data-date="{{ $item->kind_date }}" data-category="{{ $item->category }}">
                             <td class="px-6 py-4">
                                 <div class="flex items-start">
                                     <div
@@ -150,6 +154,11 @@
                                         </div>
                                     </div>
                                 </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full {{ ($item->category ?? '') === 'BUILDING' ? 'bg-indigo-100 text-indigo-700' : (($item->category ?? '') === 'LAND' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700') }}">
+                                    {{ $item->category ?: 'UNASSIGNED' }}
+                                </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-2">
@@ -249,6 +258,22 @@
                                 placeholder="Enter improvement kind (e.g., Swimming Pool, Gazebo, etc.)">
                             <div class="text-xs text-gray-500 mt-1">
                                 Describe the type of improvement
+                            </div>
+                        </div>
+
+                        <!-- Category -->
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-700 mb-2">
+                                Category <span class="text-red-500">*</span>
+                            </label>
+                            <select id="category" name="category" required
+                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200">
+                                <option value="">Select Category</option>
+                                <option value="LAND">LAND</option>
+                                <option value="BUILDING">BUILDING</option>
+                            </select>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Where this improvement will be available
                             </div>
                         </div>
 
@@ -649,6 +674,7 @@
 
                     document.getElementById('form_id').value = data.id;
                     document.getElementById('kind_name').value = data.kind_name || '';
+                    document.getElementById('category').value = data.category || '';
                     document.getElementById('kind_value').value = data.kind_value || '';
                     document.getElementById('kind_date').value = data.kind_date ? data.kind_date.split('T')[0] : ''; // Format date for input
 
@@ -792,6 +818,7 @@
                         },
                         body: JSON.stringify({
                             kind_name: kindName,
+                            category: document.getElementById('category').value,
                             kind_value: kindValue,
                             kind_date: kindDateInput.value
                         })
