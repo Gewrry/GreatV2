@@ -363,8 +363,8 @@ class TaxDeclarationController extends Controller
             $q->where('category', 'BUILDING')->orWhereNull('category');
         })->orderBy('kind_name')->get();
         
-    return view('modules.rpt.td.add_building', compact('td', 'assessorName', 'revYears', 'classifications', 'depRates', 'otherImprovements', 'allOwners'));
-}
+        return view('modules.rpt.td.add_building', compact('td', 'assessorName', 'revYears', 'classifications', 'depRates', 'otherImprovements', 'allOwners'));
+    }
 
     /**
      * Store building component for TD
@@ -457,13 +457,12 @@ class TaxDeclarationController extends Controller
     public function addMachine($id)
     {
         $td = FaasGenRev::with(['owners', 'barangay'])->findOrFail($id);
-        
+
         if ($td->statt === 'CANCELLED') {
-            return redirect()->route('rpt.td.edit', $td->id)->with('error', 'Cannot add components to a cancelled Tax Declaration.');
+            return redirect()->route('rpt.td.edit', $td->id)
+                ->with('error', 'Cannot add components to a cancelled Tax Declaration.');
         }
 
-        $assessorName = Auth::user()->name ?? 'System';
-        
         $revYears = \App\Models\RPT\RptaRevYr::all();
         $allOwners = FaasRptaOwnerSelect::orderBy('owner_name')->get();
 
@@ -473,113 +472,182 @@ class TaxDeclarationController extends Controller
             ->orderBy('assmt_kind')
             ->get();
 
-        return view('modules.rpt.td.add_machine', compact('td', 'assessorName', 'revYears', 'classifications', 'allOwners'));
+        return view('modules.rpt.td.add_machine', compact(
+            'td',
+            'revYears',
+            'classifications',
+            'allOwners'
+        ));
     }
 
-    /**
-     * Store machine component for TD
-     */
     public function storeMachine(Request $request, $id)
     {
         $td = FaasGenRev::findOrFail($id);
 
         if ($td->statt === 'CANCELLED') {
-            return redirect()->route('rpt.td.edit', $td->id)->with('error', 'Operation denied: Tax Declaration is frozen.');
+            return redirect()->route('rpt.td.edit', $td->id)
+                ->with('error', 'Operation denied: Tax Declaration is frozen.');
         }
 
         $validated = $request->validate([
+            // ── Identification ──────────────────────────────────────────
             'machine_name' => 'required|string|max:255',
             'brand_model' => 'nullable|string|max:255',
             'serial_no' => 'nullable|string|max:255',
             'capacity' => 'nullable|string|max:255',
+            'supplier_vendor' => 'nullable|string|max:255',
+
+            // ── Timeline ────────────────────────────────────────────────
             'year_manufactured' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
             'year_installed' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
+            'year_acquired' => 'required|integer|min:1900|max:' . (date('Y') + 1),
             'date_acquired' => 'nullable|date',
-            'acquisition_cost' => 'required|numeric|min:0',
-            'freight_cost' => 'nullable|numeric|min:0',
-            'insurance_cost' => 'nullable|numeric|min:0',
-            'installation_cost' => 'nullable|numeric|min:0',
-            'estimated_life' => 'nullable|integer|min:0',
+
+            // ── Physical ────────────────────────────────────────────────
+            'condition' => 'nullable|string|max:50',
+            'estimated_life' => 'required|integer|min:1',
             'remaining_life' => 'nullable|integer|min:0',
-            'condition' => 'nullable|string|max:255',
-            'supplier_vendor' => 'nullable|string|max:255',
             'invoice_no' => 'nullable|string|max:255',
             'funding_source' => 'nullable|string|max:255',
-            'residual_percent' => 'required|numeric|min:0|max:100',
+
+            // ── Costs ───────────────────────────────────────────────────
+            'acquisition_cost' => 'required|numeric|min:0',
+            'freight_cost' => 'nullable|numeric|min:0',
+            'installation_cost' => 'nullable|numeric|min:0',
+            'other_cost' => 'nullable|numeric|min:0',
+
+            // ── Computed (sent as hidden fields by the form) ─────────────
+            'total_cost' => 'nullable|numeric|min:0',
+            'age' => 'nullable|integer|min:0',
+            'depreciation_rate' => 'nullable|numeric|min:0',
+            'residual_percent' => 'nullable|numeric|min:0|max:100',
+            'residual_minimum' => 'required|numeric|min:0|max:100',
+            'market_value' => 'nullable|numeric|min:0',
             'assessment_level' => 'required|numeric|min:0|max:100',
+            'assessed_value' => 'nullable|numeric|min:0',
+
+            // ── Classification ──────────────────────────────────────────
             'assmt_kind' => 'required|string',
             'actual_use' => 'nullable|string',
             'rev_year' => 'required|string',
             'status' => 'required|string',
+
+            // ── Notes ───────────────────────────────────────────────────
             'remarks' => 'nullable|string',
+            'memoranda' => 'nullable|string',
+
+            // ── Owners ──────────────────────────────────────────────────
             'owners' => 'nullable|array',
             'owners.*' => 'exists:faas_rpta_owner_select,id',
         ]);
 
-        $acq = $validated['acquisition_cost'];
-        $freight = $validated['freight_cost'] ?? 0;
-        $insurance = $validated['insurance_cost'] ?? 0;
-        $install = $validated['installation_cost'] ?? 0;
-        $totalCost = $acq + $freight + $insurance + $install;
+        // ── Recompute server-side (single source of truth) ───────────────────────
+        // Never trust the client's computed values blindly; recalculate here.
 
-        $marketVal = $totalCost * ($validated['residual_percent'] / 100);
-        $assessedVal = $marketVal * ($validated['assessment_level'] / 100);
+        $acq = (float) ($validated['acquisition_cost'] ?? 0);
+        $freight = (float) ($validated['freight_cost'] ?? 0);
+        $install = (float) ($validated['installation_cost'] ?? 0);
+        $other = (float) ($validated['other_cost'] ?? 0);
+        $totalCost = $acq + $freight + $install + $other;
+
+        // Age = Current Year - Year Acquired
+        $yearAcquired = (int) $validated['year_acquired'];
+        $age = max(0, (int) date('Y') - $yearAcquired);
+
+        // DepRate = Age / UsefulLife (capped at 1.0)
+        $usefulLife = (int) $validated['estimated_life'];
+        $depRate = $usefulLife > 0 ? min($age / $usefulLife, 1.0) : 0.0;
+
+        // Remaining% = max(1 - DepRate, ResidualMinimum)
+        $residualMin = (float) $validated['residual_minimum'];
+        $remainingPct = max((1 - $depRate) * 100, $residualMin);
+
+        // Market Value = Base × (Remaining% / 100)
+        $marketValue = $totalCost * ($remainingPct / 100);
+
+        // Assessed Value = Market Value × (Assessment Level / 100)
+        $assessLevel = (float) $validated['assessment_level'];
+        $assessedVal = $marketValue * ($assessLevel / 100);
 
         try {
             DB::beginTransaction();
 
-            $mach = FaasMachine::create([
+            FaasMachine::create([
+                // ── Parent Reference ─────────────────────────────────────
                 'faas_id' => $td->id,
                 'td_no' => $td->td_no,
                 'pin' => $td->pin,
+
+                // ── Identification ───────────────────────────────────────
                 'machine_name' => $validated['machine_name'],
                 'brand_model' => $validated['brand_model'] ?? null,
                 'serial_no' => $validated['serial_no'] ?? null,
                 'capacity' => $validated['capacity'] ?? null,
+                'supplier_vendor' => $validated['supplier_vendor'] ?? null,
+
+                // ── Timeline ─────────────────────────────────────────────
                 'year_manufactured' => $validated['year_manufactured'] ?? null,
                 'year_installed' => $validated['year_installed'] ?? null,
+                'year_acquired' => $yearAcquired,
                 'date_acquired' => $validated['date_acquired'] ?? null,
-                'acquisition_cost' => $acq,
-                'freight_cost' => $freight,
-                'insurance_cost' => $insurance,
-                'installation_cost' => $install,
-                'estimated_life' => $validated['estimated_life'] ?? null,
-                'remaining_life' => $validated['remaining_life'] ?? null,
+
+                // ── Physical ─────────────────────────────────────────────
                 'condition' => $validated['condition'] ?? null,
-                'supplier_vendor' => $validated['supplier_vendor'] ?? null,
+                'estimated_life' => $usefulLife,
+                'remaining_life' => $validated['remaining_life'] ?? null,
                 'invoice_no' => $validated['invoice_no'] ?? null,
                 'funding_source' => $validated['funding_source'] ?? null,
-                'total_cost' => $totalCost,
-                'residual_percent' => $validated['residual_percent'],
-                'market_value' => $marketVal,
+
+                // ── Costs ────────────────────────────────────────────────
+                'acquisition_cost' => $acq,
+                'freight_cost' => $freight,
+                'installation_cost' => $install,
+                'other_cost' => $other,
+                'total_cost' => round($totalCost, 2),
+
+                // ── Depreciation ─────────────────────────────────────────
+                'age' => $age,
+                'depreciation_rate' => round($depRate * 100, 2),   // stored as %
+                'residual_percent' => round($remainingPct, 2),
+
+                // ── Valuation ────────────────────────────────────────────
+                'market_value' => round($marketValue, 2),
+                'assessment_level' => round($assessLevel, 2),
+                'assessed_value' => round($assessedVal, 2),
+
+                // ── Classification ───────────────────────────────────────
                 'assmt_kind' => $validated['assmt_kind'],
-                'actual_use' => $validated['actual_use'] ?? ($validated['assmt_kind'] === 'Taxable' ? 'Commercial' : 'Government'),
-                'assessment_level' => $validated['assessment_level'],
-                'assessed_value' => $assessedVal,
+                'actual_use' => $validated['actual_use'] ?? null,
+                'rev_year' => $validated['rev_year'],
+
+                // ── Record ───────────────────────────────────────────────
                 'effectivity_date' => now(),
                 'status' => $validated['status'],
                 'remarks' => $validated['remarks'] ?? null,
-                'memoranda' => $request->memoranda,
+                'memoranda' => $validated['memoranda'] ?? null,
             ]);
 
             // Sync owners if provided
-            if ($request->has('owners')) {
+            if ($request->has('owners') && is_array($request->owners)) {
                 $td->owners()->sync($request->owners);
             }
 
-            // Recalculate TD totals
+            // Recalculate parent TD totals
             $td->calculateTotals();
 
             DB::commit();
 
             return redirect()->route('rpt.td.edit', $td->id)
                 ->with('success', 'Machine component added successfully.');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to add machine: ' . $e->getMessage()])
+
+            return back()
+                ->withErrors(['error' => 'Failed to add machine: ' . $e->getMessage()])
                 ->withInput();
         }
-    }
+    }   
 
     /**
      * Delete a component (land, building, or machine)
@@ -624,7 +692,7 @@ class TaxDeclarationController extends Controller
      */
     public function revisionSearch(Request $request)
     {
-        $query = FaasGenRev::with(['owners', 'barangay', 'lands', 'buildings', 'machines', 'successor.owners']);
+        $query = FaasGenRev::with(['owners', 'barangay', 'lands', 'buildings', 'machines', 'successors.owners']);
         
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
@@ -642,15 +710,35 @@ class TaxDeclarationController extends Controller
      */
     public function selectRevisionType($id)
     {
-        $td = FaasGenRev::with(['owners', 'barangay', 'geometry'])->findOrFail($id);
-        
+        $td = FaasGenRev::with(['owners', 'barangay', 'geometry', 'lands', 'buildings', 'machines'])->findOrFail($id);
+
         if ($td->statt === 'CANCELLED' || $td->statt === 'SUPERSEDED') {
             return redirect()->route('rpt.td.edit', $td->id)->with('error', 'Cannot revise a cancelled or superseded Tax Declaration.');
         }
 
         $allOwners = \App\Models\RPT\FaasRptaOwnerSelect::orderBy('owner_name')->get();
 
-        return view('modules.rpt.td.revision_type', compact('td', 'allOwners'));
+        $revYears = \App\Models\RPT\RptaRevYr::all();
+        $classifications = \App\Models\RPT\RptAuValue::where('au_cat', 'LAND')
+            ->select('assmt_kind')
+            ->distinct()
+            ->orderBy('assmt_kind')
+            ->get();
+        $roadTypes = \App\Models\RPT\RptRoadType::orderBy('name')->get();
+        $locationClasses = \App\Models\RPT\RptLocationClass::orderBy('name')->get();
+        $otherImprovements = \App\Models\RPT\RptaOtherImprovement::where(function ($q) {
+            $q->where('category', 'LAND')->orWhereNull('category');
+        })->orderBy('kind_name')->get();
+
+        return view('modules.rpt.td.revision_type', compact(
+            'td',
+            'allOwners',
+            'revYears',
+            'classifications',
+            'roadTypes',
+            'locationClasses',
+            'otherImprovements'
+        ));
     }
 
     /**
@@ -750,6 +838,9 @@ class TaxDeclarationController extends Controller
     /**
      * Process multi-parcel subdivision
      */
+    /**
+     * Process multi-parcel subdivision
+     */
     protected function processSubdivision(Request $request, $oldTd)
     {
         $validated = $request->validate([
@@ -758,10 +849,31 @@ class TaxDeclarationController extends Controller
             'parcels.*.lot_no' => 'required|string',
             'parcels.*.arp_no' => 'required|string',
             'parcels.*.pin' => 'required|string',
-            'parcels.*.owner_id' => 'required|integer',
+            'parcels.*.owners' => 'required|array|min:1',
+            'parcels.*.owners.*' => 'required|integer|exists:faas_rpta_owner_select,id',
             'parcels.*.area' => 'required|numeric|min:0.0001',
             'parcels.*.geometry' => 'required|string',
+            'parcels.*.block' => 'nullable|string',
+            'parcels.*.survey_no' => 'nullable|string',
+            'parcels.*.zoning' => 'nullable|string',
+            'parcels.*.use_restrictions' => 'nullable|string',
             'parcels.*.location_desc' => 'nullable|string',
+            'parcels.*.location_class' => 'nullable|string',
+            'parcels.*.road_type' => 'nullable|string',
+            'parcels.*.is_corner' => 'nullable|in:0,1',
+            'parcels.*.unit_value' => 'nullable|numeric|min:0',
+            'parcels.*.adjustment_factor' => 'nullable|numeric',
+            'parcels.*.assessment_level' => 'nullable|numeric|min:0|max:100',
+            'parcels.*.market_value' => 'nullable|numeric|min:0',
+            'parcels.*.assessed_value' => 'nullable|numeric|min:0',
+            'parcels.*.effectivity_quarter' => 'nullable|in:1,2,3,4',
+            'parcels.*.effectivity_year' => 'nullable|integer',
+            'parcels.*.rev_year' => 'nullable|string',
+            'parcels.*.assmt_kind' => 'nullable|string',
+            'parcels.*.actual_use' => 'nullable|string',
+            'parcels.*.remarks' => 'nullable|string',
+            'parcels.*.memoranda' => 'nullable|string',
+            'parcels.*.improvements' => 'nullable|array',
             'subdiv_reason' => 'required|string',
             'building_assignments' => 'nullable|array',
             'machine_assignments' => 'nullable|array',
@@ -771,11 +883,12 @@ class TaxDeclarationController extends Controller
             DB::beginTransaction();
 
             $newTdIds = [];
-            $parentLand = $oldTd->lands()->first(); 
+            $parentLand = $oldTd->lands()->first();
             $buildingAssignments = $request->input('building_assignments', []);
             $machineAssignments = $request->input('machine_assignments', []);
 
             foreach ($validated['parcels'] as $parcelData) {
+
                 // 1. Create New Master
                 $newTd = $oldTd->replicate();
                 $newTd->td_no = $parcelData['td_no'];
@@ -786,33 +899,82 @@ class TaxDeclarationController extends Controller
                 $newTd->statt = 'ACTIVE';
                 $newTd->encoded_by = Auth::user()->uname ?? Auth::user()->name ?? 'system';
                 $newTd->save();
-                
+
                 $newTdIds[] = $newTd->id;
 
-                // 2. Attach Specific Owner
-                $newTd->owners()->attach($parcelData['owner_id']);
+                // 2. Attach All Owners (array)
+                $newTd->owners()->attach($parcelData['owners']);
 
-                // 3. Create Land Component (Partial)
+                // 3. Create Land Component
                 if ($parentLand) {
                     $newLand = $parentLand->replicate();
                     $newLand->faas_id = $newTd->id;
+
+                    // Identity fields
                     $newLand->lot_no = $parcelData['lot_no'];
+                    $newLand->block = $parcelData['block'] ?? $parentLand->block;
+                    $newLand->survey_no = $parcelData['survey_no'] ?? $parentLand->survey_no;
+
+                    // Location / classification fields
+                    $newLand->zoning = $parcelData['zoning'] ?? $parentLand->zoning;
+                    $newLand->use_restrictions = $parcelData['use_restrictions'] ?? $parentLand->use_restrictions;
+                    $newLand->location_class = $parcelData['location_class'] ?? $parentLand->location_class;
+                    $newLand->road_type = $parcelData['road_type'] ?? $parentLand->road_type;
+                    $newLand->is_corner = $parcelData['is_corner'] ?? $parentLand->is_corner;
+                    $newLand->memoranda = $parcelData['memoranda'] ?? ($parcelData['location_desc'] ?? $parentLand->memoranda);
+                    $newLand->remarks = $parcelData['remarks'] ?? $parentLand->remarks;
+
+                    // Effectivity / classification
+                    $newLand->effectivity_quarter = $parcelData['effectivity_quarter'] ?? $parentLand->effectivity_quarter;
+                    $newLand->effectivity_year = $parcelData['effectivity_year'] ?? $parentLand->effectivity_year;
+                    $newLand->rev_year = $parcelData['rev_year'] ?? $parentLand->rev_year;
+                    $newLand->assmt_kind = $parcelData['assmt_kind'] ?? $parentLand->assmt_kind;
+                    $newLand->actual_use = $parcelData['actual_use'] ?? $parentLand->actual_use;
+
+                    // Valuation — prefer form-supplied values, fall back to parent
                     $newLand->area = $parcelData['area'];
-                    $newLand->memoranda = $parcelData['location_desc'] ?? $parentLand->memoranda;
-                    
-                    // Recompute Values
-                    $newLand->market_value = $newLand->area * $newLand->unit_value * ($newLand->adjustment_factor ?: 1);
-                    $newLand->assessed_value = $newLand->market_value * ($newLand->assessment_level / 100);
+                    $newLand->unit_value = $parcelData['unit_value'] ?? $parentLand->unit_value;
+                    $newLand->adjustment_factor = $parcelData['adjustment_factor'] ?? $parentLand->adjustment_factor;
+                    $newLand->assessment_level = $parcelData['assessment_level'] ?? $parentLand->assessment_level;
+
+                    // Use form-computed values when available, otherwise recompute
+                    if (!empty($parcelData['market_value'])) {
+                        $newLand->market_value = $parcelData['market_value'];
+                        $newLand->assessed_value = $parcelData['assessed_value'] ?? ($newLand->market_value * ($newLand->assessment_level / 100));
+                    } else {
+                        $adjFactor = 1 + (($newLand->adjustment_factor ?? 0) / 100);
+                        $newLand->market_value = $newLand->area * $newLand->unit_value * $adjFactor;
+                        $newLand->assessed_value = $newLand->market_value * (($newLand->assessment_level ?? 0) / 100);
+                    }
+
                     $newLand->save();
-                    
+
+                    // 3a. Save Land Improvements if any
+                    if (!empty($parcelData['improvements'])) {
+                        foreach ($parcelData['improvements'] as $imp) {
+                            if (empty($imp['improvement_id']))
+                                continue;
+                            \App\Models\RPT\FaasLandImprovement::create([
+                                'land_id' => $newLand->id,
+                                'faas_id' => $newTd->id,
+                                'improvement_id' => $imp['improvement_id'],
+                                'quantity' => $imp['quantity'] ?? 1,
+                                'unit_value' => $imp['unit_value'] ?? 0,
+                                'depreciation_rate' => $imp['depreciation_rate'] ?? 0,
+                                'remaining_value_percent' => $imp['remaining_value_percent'] ?? 100,
+                                'total_value' => $imp['total_value'] ?? 0,
+                            ]);
+                        }
+                    }
+
                     // Update Master Totals
                     $newTd->calculateTotals();
                 }
 
-                // 4. Handle Spatial Data (Unique Polygon for this child)
+                // 4. Handle Spatial Data
                 $gisPackage = json_decode($parcelData['geometry'], true);
                 if ($gisPackage) {
-                    $geometry = $gisPackage['geometry'] ?? $gisPackage; // Backward compatibility
+                    $geometry = $gisPackage['geometry'] ?? $gisPackage;
                     $gps = $gisPackage['gps'] ?? null;
                     $attrs = $gisPackage['attributes'] ?? [];
 
@@ -821,7 +983,7 @@ class TaxDeclarationController extends Controller
                         'pin' => $newTd->pin,
                         'geometry' => $geometry,
                         'area_sqm' => $parcelData['area'],
-                        'land_use_zone' => $attrs['land_use_zone'] ?? ($parentLand->zoning ?? ''),
+                        'land_use_zone' => $attrs['land_use_zone'] ?? ($parcelData['zoning'] ?? ($parentLand->zoning ?? '')),
                         'gps_lat' => $gps['lat'] ?? null,
                         'gps_lng' => $gps['lng'] ?? null,
                         'adj_north' => $attrs['adj_north'] ?? null,
@@ -833,7 +995,7 @@ class TaxDeclarationController extends Controller
                     ]);
                 }
 
-                // 5. Reassign Buildings based on selection
+                // 5. Reassign Buildings
                 foreach ($oldTd->buildings as $bldg) {
                     if (isset($buildingAssignments[$bldg->id]) && $buildingAssignments[$bldg->id] === $newTd->td_no) {
                         $newBldg = $bldg->replicate();
@@ -843,7 +1005,7 @@ class TaxDeclarationController extends Controller
                     }
                 }
 
-                // 6. Reassign Machines based on selection
+                // 6. Reassign Machines
                 foreach ($oldTd->machines as $mach) {
                     if (isset($machineAssignments[$mach->id]) && $machineAssignments[$mach->id] === $newTd->td_no) {
                         $newMach = $mach->replicate();
@@ -852,7 +1014,7 @@ class TaxDeclarationController extends Controller
                     }
                 }
 
-                // 7. Log for Child
+                // 7. Log for Child TD
                 \App\Models\RPT\FaasRevisionLog::create([
                     'faas_id' => $newTd->id,
                     'component_type' => 'MASTER',
@@ -864,9 +1026,8 @@ class TaxDeclarationController extends Controller
                 ]);
             }
 
-            // 7. Cancel Parent
+            // 8. Cancel Parent TD
             $oldTd->statt = 'CANCELLED';
-            // $oldTd->cancel_reason = 'SUBDIVIDED'; // Column does not exist
             $oldTd->inspection_remarks = ($oldTd->inspection_remarks ?? '') . ' [CANCELLED: SUBDIVIDED]';
             $oldTd->save();
 

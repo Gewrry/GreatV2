@@ -57,17 +57,24 @@ class RPTController extends Controller
     public function faas_list(Request $request)
     {
         if ($request->ajax()) {
-            $query = \App\Models\RPT\FaasGenRev::with(['barangay', 'lands', 'buildings', 'machines', 'owners', 'predecessor', 'successor.owners']);
-
-            // In the new system, we list Tax Declarations. Components are linked.
+            $query = \App\Models\RPT\FaasGenRev::with([
+                'barangay',
+                'lands',
+                'buildings',
+                'machines',
+                'owners',
+                'predecessor',
+                // Load ALL successors (one-to-many: a subdivided TD has multiple children)
+                'successors.owners',
+            ]);
 
             // Filter by Barangay
-            if ($request->has('brgy_code') && !empty($request->brgy_code)) {
+            if ($request->filled('brgy_code')) {
                 $query->where('bcode', $request->brgy_code);
             }
 
             // Filter by Status
-            if ($request->has('status') && !empty($request->status)) {
+            if ($request->filled('status')) {
                 if ($request->status === 'inactive') {
                     $query->whereIn('statt', ['CANCELLED', 'SUPERSEDED']);
                 } else {
@@ -76,100 +83,109 @@ class RPTController extends Controller
             }
 
             // Filter by Category (Kind)
-            if ($request->has('kind') && !empty($request->kind)) {
+            if ($request->filled('kind')) {
                 $kind = strtolower($request->kind);
-                $query->whereHas($kind.'s'); // Check if it has the specific relation (lands, buildings, machines)
+                $query->whereHas($kind . 's');
             }
 
             return \Yajra\DataTables\Facades\DataTables::of($query)
                 ->addIndexColumn()
-                ->addColumn('kind', function($row){
+                ->addColumn('kind', function ($row) {
                     $kinds = [];
-                    if ($row->lands->count() > 0) $kinds[] = 'LAND';
-                    if ($row->buildings->count() > 0) $kinds[] = 'BLDG';
-                    if ($row->machines->count() > 0) $kinds[] = 'MACH';
+                    if ($row->lands->count() > 0)
+                        $kinds[] = 'LAND';
+                    if ($row->buildings->count() > 0)
+                        $kinds[] = 'BLDG';
+                    if ($row->machines->count() > 0)
+                        $kinds[] = 'MACH';
                     return !empty($kinds) ? implode(', ', $kinds) : 'N/A';
                 })
-                ->addColumn('td_no', function($row){
-                    return $row->td_no;
+                ->addColumn('td_no', fn($row) => $row->td_no)
+                ->addColumn('arpn', fn($row) => $row->arpn ?? 'N/A')
+                ->addColumn('pin', fn($row) => $row->pin ?? 'N/A')
+                ->addColumn('owner_names', fn($row) => $row->owners->pluck('owner_name')->implode(', '))
+                ->addColumn('brgy', fn($row) => $row->barangay?->brgy_name ?? 'N/A')
+                ->addColumn('lot_no', fn($row) => $row->lot_no ?? 'N/A')
+                ->addColumn('revised_year', fn($row) => $row->revised_year)
+                ->addColumn('assessed_value', fn($row) => '₱ ' . number_format($row->total_assessed_value, 2))
+
+                // ── Successor(s) — supports 1 transfer OR N subdivision parcels ──────
+                ->addColumn('transferred_to', function ($row) {
+
+                    // Prefer the new `successors` (hasMany) relationship.
+                    // Fall back to `successor` (hasOne) for backward compatibility.
+                    $children = null;
+
+                    if (method_exists($row, 'successors') && $row->relationLoaded('successors')) {
+                        $children = $row->successors;
+                    } elseif (method_exists($row, 'successor') && $row->successor) {
+                        // Wrap single successor in a collection so the rest of the
+                        // code stays uniform.
+                        $children = collect([$row->successor]);
+                    }
+
+                    if (!$children || $children->isEmpty()) {
+                        return null;
+                    }
+
+                    return $children->map(function ($child) {
+                        return [
+                            'td_no' => $child->td_no,
+                            'owners' => $child->owners->pluck('owner_name')->implode(', ') ?: 'New Owner',
+                        ];
+                    })->values()->all();   // plain array — safe for JSON
                 })
-                ->addColumn('arpn', function($row){
-                    return $row->arpn ?? 'N/A';
+
+                ->addColumn('predecessor', function ($row) {
+                    if (!$row->predecessor)
+                        return null;
+                    return [
+                        'td_no' => $row->predecessor->td_no,
+                    ];
                 })
-                ->addColumn('pin', function($row){
-                    return $row->pin ?? 'N/A';
-                })
-                ->addColumn('owner_names', function($row){
-                    return $row->owners->pluck('owner_name')->implode(', ');
-                })
-                ->addColumn('brgy', function($row){
-                    return $row->barangay ? $row->barangay->brgy_name : 'N/A';
-                })
-                ->addColumn('lot_no', function($row){
-                    return $row->lot_no ?? 'N/A';
-                })
-                ->addColumn('revised_year', function($row){
-                    return $row->revised_year;
-                })
-                 ->addColumn('assessed_value', function($row){
-                    return '₱ ' . number_format($row->total_assessed_value, 2);
-                })
-                ->addColumn('action', function($row){
+
+                ->addColumn('action', function ($row) {
                     return '
                         <div class="flex gap-2 justify-center">
-                            <a href="'.route('rpt.faas_view', $row->id).'" class="text-blue-600 hover:text-blue-800">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            <a href="' . route('rpt.faas_view', $row->id) . '" class="text-blue-600 hover:text-blue-800">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
                             </a>
                         </div>
                     ';
                 })
-                ->addColumn('transferred_to', function($row){
-                    if ($row->successor) {
-                        $owners = $row->successor->owners->pluck('owner_name')->implode(', ');
-                        return [
-                            'td_no' => $row->successor->td_no,
-                            'owners' => $owners ?: 'New Owner'
-                        ];
-                    }
-                    return null;
-                })
+
                 ->filter(function ($query) use ($request) {
                     $searchValue = null;
-                    if ($request->has('search') && !empty($request->search['value'])) {
+                    if ($request->filled('search') && !empty($request->search['value'])) {
                         $searchValue = $request->search['value'];
-                    } elseif ($request->has('search_value') && !empty($request->search_value)) {
+                    } elseif ($request->filled('search_value')) {
                         $searchValue = $request->search_value;
                     }
 
                     if ($searchValue) {
                         $query->where(function ($q) use ($searchValue) {
-                            $q->whereHas('owners', function ($q) use ($searchValue) {
-                                $q->where('owner_name', 'like', "%{$searchValue}%");
-                            })
-                            ->orWhere('td_no', 'like', "%{$searchValue}%")
-                            ->orWhere('arpn', 'like', "%{$searchValue}%")
-                            ->orWhere('pin', 'like', "%{$searchValue}%")
-                            ->orWhere('lot_no', 'like', "%{$searchValue}%")
-                            ->orWhereHas('lands', function ($q) use ($searchValue) {
-                                $q->where('survey_no', 'like', "%{$searchValue}%");
-                            })
-                            ->orWhereHas('buildings', function ($q) use ($searchValue) {
-                                $q->where('building_type', 'like', "%{$searchValue}%")
-                                  ->orWhere('structure_type', 'like', "%{$searchValue}%")
-                                  ->orWhere('permit_no', 'like', "%{$searchValue}%");
-                            })
-                            ->orWhereHas('machines', function ($q) use ($searchValue) {
-                                $q->where('machine_name', 'like', "%{$searchValue}%")
-                                  ->orWhere('brand_model', 'like', "%{$searchValue}%")
-                                  ->orWhere('serial_no', 'like', "%{$searchValue}%");
-                            });
+                            $q->whereHas('owners', fn($q) => $q->where('owner_name', 'like', "%{$searchValue}%"))
+                                ->orWhere('td_no', 'like', "%{$searchValue}%")
+                                ->orWhere('arpn', 'like', "%{$searchValue}%")
+                                ->orWhere('pin', 'like', "%{$searchValue}%")
+                                ->orWhere('lot_no', 'like', "%{$searchValue}%")
+                                ->orWhereHas('lands', fn($q) => $q->where('survey_no', 'like', "%{$searchValue}%"))
+                                ->orWhereHas('buildings', fn($q) => $q->where('building_type', 'like', "%{$searchValue}%")
+                                    ->orWhere('structure_type', 'like', "%{$searchValue}%")
+                                    ->orWhere('permit_no', 'like', "%{$searchValue}%"))
+                                ->orWhereHas('machines', fn($q) => $q->where('machine_name', 'like', "%{$searchValue}%")
+                                    ->orWhere('brand_model', 'like', "%{$searchValue}%")
+                                    ->orWhere('serial_no', 'like', "%{$searchValue}%"));
                         });
                     }
                 })
                 ->rawColumns(['action'])
                 ->make(true);
         }
-        
+
         $barangays = \App\Models\Barangay::orderBy('brgy_name')->get();
         return view('modules.rpt.faas_list', compact('barangays'));
     }

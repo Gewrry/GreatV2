@@ -1,7 +1,7 @@
 <x-admin.app>
     @include('layouts.rpt.navigation')
 
-    <div class="p-8 max-w-4xl mx-auto">
+    <div class="p-8 max-w-5xl mx-auto">
         <div class="mb-10 text-center">
             <div class="flex items-center justify-center gap-4 mb-4">
                 <div class="p-3 bg-green-100 rounded-2xl text-green-600">
@@ -38,12 +38,11 @@
             @csrf
             <input type="hidden" name="revision_type" value="SUBDIV">
 
-            <div class="max-w-4xl mx-auto">
+            <div class="max-w-5xl mx-auto">
                 <!-- Main Container: Issuance Details -->
-                <div class="bg-gray-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden flex flex-col justify-center min-h-[600px]">
+                <div class="bg-gray-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden flex flex-col justify-center">
                     <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-                    
-                    
+
                     <div id="subdivision-issuance">
 
                         <div class="flex items-center justify-between mb-6">
@@ -60,7 +59,7 @@
                                 <input type="hidden" id="parent-total-area" value="{{ $td->lands()->sum('area') }}">
                             </div>
 
-                            <div id="parcels-container" class="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div id="parcels-container" class="space-y-6 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
                                 <!-- Parcel Rows Added Here -->
                             </div>
 
@@ -98,7 +97,6 @@
                                     Auto-Suggest
                                 </button>
                             </div>
-                            
                             <div class="space-y-4">
                                 @foreach($td->buildings as $bldg)
                                 <div class="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 group hover:border-white/20 transition-all">
@@ -129,7 +127,6 @@
                                     <p class="text-[10px] text-white/40 mt-1 uppercase font-bold tracking-widest">Assign equipment to their new parcels</p>
                                 </div>
                             </div>
-                            
                             <div class="space-y-4">
                                 @foreach($td->machines as $mach)
                                 <div class="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 group hover:border-white/20 transition-all">
@@ -162,6 +159,16 @@
             const parentArea = parseFloat($('#parent-total-area').val());
             const parentGeometry = {!! $td->geometry ? json_encode($td->geometry->geometry) : 'null' !!};
 
+            // Classification data for cascading dropdowns
+            const transactionCodes = @json($transactionCodes ?? []);
+            const locationClasses = @json($locationClasses ?? []);
+            const roadTypes = @json($roadTypes ?? []);
+            const classifications = @json($classifications ?? []);
+            const revYears = @json($revYears ?? []);
+            const otherImprovements = @json($otherImprovements ?? []);
+            const allOwners = @json($allOwners ?? []);
+            // Current owners of the parent TD — seeded into every new parcel row by default
+            const tdOwners = @json($td->owners->map(fn($o) => ['id' => $o->id, 'owner_name' => $o->owner_name]));
 
             function syncBuildingOptions() {
                 const options = $('.parcel-row').map(function() {
@@ -188,7 +195,7 @@
 
                 const diff = Math.abs(total - parentArea);
                 const isAreaValid = diff <= 0.5;
-                
+
                 let allMapped = true;
                 $('.parcel-geometry-input').each(function() {
                     if (!$(this).val()) allMapped = false;
@@ -197,8 +204,8 @@
                 const btn = $('#submit-subdiv-btn');
                 const buildingSection = $('#building-assignment-section');
                 const machineSection = $('#machine-assignment-section');
-
                 const hint = $('#subdiv-validation-hint');
+
                 if (isAreaValid && allMapped) {
                     btn.prop('disabled', false).removeClass('bg-emerald-500/50').addClass('bg-emerald-500');
                     $('#current-total-area').removeClass('text-red-400').addClass('text-emerald-400');
@@ -219,21 +226,12 @@
                 syncBuildingOptions();
             }
 
-            // Auto-Suggest Assignment using Turf.js
             $('#btn-auto-assign').click(function() {
                 $('.building-target-select').each(function() {
-                    const select = $(this);
-                    const buildingId = select.attr('name').match(/\d+/)[0];
-                    
-                    // We need building coordinates. If not available, we can't auto-suggest.
-                    // For now, let's assume we fetch them or they are in the data-attributes.
-                    // Since we don't have them yet, we'll just show a "Feature Coming Soon" or use center of parcel.
                     alert('Building coordinates not found in parent TD. Manual assignment required.');
                 });
             });
 
-
-            // Prevent Enter-key submission from hidden fields or wrong buttons
             $('form').on('keydown', function(e) {
                 if (e.keyCode == 13 && !$(e.target).is('textarea')) {
                     e.preventDefault();
@@ -241,84 +239,514 @@
                 }
             });
 
-            function addParcelRow(data = null) {
-                parcelCount++;
-                const tdNo = data ? data.td_no : '';
-                const ownerId = data ? data.owner_id : '';
-                const area = data ? data.area : '';
-                let geometry = data ? data.geometry : '';
-                
-                // Ensure geometry is a string (could be an object from old() data)
-                if (geometry && typeof geometry === 'object') {
-                    geometry = JSON.stringify(geometry);
+            // ─── Cascading Dropdowns per Parcel ─────────────────────────────────────
+
+            function fetchActualUsesForRow($row) {
+                const assmtKind = $row.find('.parcel-assmt-kind').val();
+                const revYear = $row.find('.parcel-rev-year').val();
+                const $actualUse = $row.find('.parcel-actual-use');
+
+                if (assmtKind && revYear) {
+                    $actualUse.prop('disabled', true).html('<option value="">Loading...</option>');
+
+                    $.ajax({
+                        url: "{{ route('rpt.get_actual_uses') }}",
+                        type: "GET",
+                        data: { assmt_kind: assmtKind, rev_year: revYear, category: 'LAND' },
+                        success: function(response) {
+                            let options = '<option value="">Select Actual Use</option>';
+                            if (response && response.length > 0) {
+                                response.forEach(function(item) {
+                                    options += `<option value="${item.actual_use}">${item.actual_use}</option>`;
+                                });
+                                $actualUse.html(options).prop('disabled', false);
+                            } else {
+                                $actualUse.html('<option value="">No Actual Use found</option>').prop('disabled', true);
+                            }
+                        }
+                    });
+
+                    $.ajax({
+                        url: "{{ route('rpt.get_assessment_level') }}",
+                        type: "GET",
+                        data: { assmt_kind: assmtKind, category: 'LAND' },
+                        success: function(response) {
+                            $row.find('.parcel-assessment-level').val(response.assmnt_percent);
+                            calculateParcelValues($row);
+                        }
+                    });
+                } else {
+                    $actualUse.prop('disabled', true).html('<option value="">Select Actual Use</option>');
                 }
+            }
 
-                const isMapped = !!geometry;
+            $(document).on('change', '.parcel-assmt-kind, .parcel-rev-year', function() {
+                fetchActualUsesForRow($(this).closest('.parcel-row'));
+            });
 
-                const html = `
-                    <div class="parcel-row bg-white/5 p-5 rounded-2xl border border-white/10 relative group animate-fade-in-up">
-                        <button type="button" class="remove-parcel-btn absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
+            $(document).on('change', '.parcel-actual-use', function() {
+                const $row = $(this).closest('.parcel-row');
+                const actualUse = $(this).val();
+                const assmtKind = $row.find('.parcel-assmt-kind').val();
+                const revYear = $row.find('.parcel-rev-year').val();
+
+                if (actualUse && assmtKind && revYear) {
+                    $.ajax({
+                        url: "{{ route('rpt.get_unit_value') }}",
+                        type: "GET",
+                        data: { assmt_kind: assmtKind, actual_use: actualUse, rev_year: revYear, category: 'LAND' },
+                        success: function(response) {
+                            $row.find('.parcel-unit-value').val(response.unit_value);
+                            calculateParcelValues($row);
+                        }
+                    });
+                }
+            });
+
+            // ─── Per-Parcel Value Calculation ────────────────────────────────────────
+
+            function calculateParcelValues($row) {
+                const area = parseFloat($row.find('.parcel-area-input').val()) || 0;
+                const unitValue = parseFloat($row.find('.parcel-unit-value').val()) || 0;
+                const adjFactor = parseFloat($row.find('.parcel-adj-factor').val()) || 0;
+                const assessmentLevel = parseFloat($row.find('.parcel-assessment-level').val()) || 0;
+
+                const baseMarketValue = area * unitValue;
+                const landMarketValue = baseMarketValue + (baseMarketValue * (adjFactor / 100));
+
+                let improvementsVal = 0;
+                $row.find('.imp-total').each(function() {
+                    improvementsVal += parseFloat($(this).val()) || 0;
+                });
+                $row.find('.parcel-total-improvement').text('₱ ' + improvementsVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+                const totalMarketValue = landMarketValue + improvementsVal;
+                const assessedValue = totalMarketValue * (assessmentLevel / 100);
+
+                $row.find('.parcel-market-value').val(totalMarketValue.toFixed(2));
+                $row.find('.parcel-assessed-value').val(assessedValue.toFixed(2));
+
+                $row.find('.parcel-display-market').text('₱ ' + totalMarketValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $row.find('.parcel-display-assessed').text('₱ ' + assessedValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            }
+
+            $(document).on('input', '.parcel-area-input, .parcel-unit-value, .parcel-adj-factor, .parcel-assessment-level', function() {
+                calculateParcelValues($(this).closest('.parcel-row'));
+                validateSubdivision();
+            });
+
+            // ─── Improvements per Parcel ─────────────────────────────────────────────
+
+            let improvementCounts = {};
+
+            $(document).on('click', '.parcel-add-improvement', function() {
+                const $row = $(this).closest('.parcel-row');
+                const pIndex = $row.data('parcel-index');
+                if (!improvementCounts[pIndex]) improvementCounts[pIndex] = 0;
+                const impId = improvementCounts[pIndex]++;
+
+                $row.find('.parcel-no-improvements-msg').hide();
+
+                const impRow = `
+                    <div class="improvement-row group relative bg-white/5 rounded-2xl border border-white/10 p-4 transition-all hover:border-white/20" id="imp-row-${pIndex}-${impId}">
+                        <button type="button" class="remove-improvement absolute top-2 right-2 text-red-400 hover:text-red-300 transition-colors p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
-                        
-                        <div class="grid grid-cols-4 gap-3 mb-3">
-                            <div class="col-span-1">
-                                <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Lot No</label>
-                                <input type="text" name="parcels[${parcelCount}][lot_no]" value="${data ? data.lot_no : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold" placeholder="e.g. 1-A" required>
-                            </div>
-                            <div class="col-span-1">
-                                <label class="block text-[8px] font-black text-white/50 uppercase mb-1">ARP No</label>
-                                <input type="text" name="parcels[${parcelCount}][arp_no]" value="${data ? data.arp_no : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold" placeholder="NEW-ARP-..." required>
-                            </div>
-                            <div class="col-span-1">
-                                <label class="block text-[8px] font-black text-white/50 uppercase mb-1">PIN</label>
-                                <input type="text" name="parcels[${parcelCount}][pin]" value="${data ? data.pin : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold" placeholder="Derived PIN" required>
-                            </div>
-                            <div class="col-span-1">
-                                <label class="block text-[8px] font-black text-white/50 uppercase mb-1">New TD No</label>
-                                <input type="text" name="parcels[${parcelCount}][td_no]" value="${tdNo}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold" placeholder="TD-${new Date().getFullYear()}-..." required>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-                            <div>
-                                <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Owner</label>
-                                <select name="parcels[${parcelCount}][owner_id]" class="w-full bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-[10px] font-bold" required>
-                                    <option value="">Select Owner</option>
-                                    @foreach($allOwners as $o)
-                                        <option value="{{ $o->id }}" ${ownerId == "{{ $o->id }}" ? 'selected' : ''}>{{ $o->owner_name }}</option>
-                                    @endforeach
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                            <div class="col-span-2 md:col-span-2">
+                                <label class="block text-[8px] font-black text-white/40 uppercase mb-1">Type</label>
+                                <select name="parcels[${pIndex}][improvements][${impId}][improvement_id]" class="w-full bg-gray-800 border-white/20 rounded-xl px-3 h-10 text-xs font-bold text-white improvement-type focus:ring-indigo-500/30" required>
+                                    <option value="">Select Structure...</option>
+                                    ${otherImprovements.map(imp => `<option value="${imp.id}" data-value="${imp.kind_value || 0}">${imp.kind_name}</option>`).join('')}
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Location / Description</label>
-                                <input type="text" name="parcels[${parcelCount}][location_desc]" value="${data ? data.location_desc : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold" placeholder="Specific location notes...">
+                                <label class="block text-[8px] font-black text-white/40 uppercase mb-1">Quantity</label>
+                                <input type="number" step="0.01" name="parcels[${pIndex}][improvements][${impId}][quantity]" class="w-full bg-white/10 border-white/20 rounded-xl px-3 h-10 text-xs font-bold text-white imp-qty" value="1" required>
                             </div>
-                        </div>
-                        
-                        <div class="flex items-center gap-3">
-                            <div class="flex-1">
-                                <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Area (SQM)</label>
-                                <input type="number" step="0.0001" name="parcels[${parcelCount}][area]" value="${area}" class="parcel-area-input w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-black" placeholder="0.0000" required>
+                            <div>
+                                <label class="block text-[8px] font-black text-white/40 uppercase mb-1">Unit Value</label>
+                                <input type="number" step="0.01" name="parcels[${pIndex}][improvements][${impId}][unit_value]" class="w-full bg-white/10 border-white/20 rounded-xl px-3 h-10 text-xs font-bold text-white imp-val" value="0" required>
                             </div>
-                            <div class="pt-4">
-                                <button type="button" class="btn-map-parcel ${isMapped ? 'bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-500'} text-white px-4 h-10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2" data-index="${parcelCount}">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    <span>${isMapped ? 'Remap' : 'Map'}</span>
-                                </button>
-                                <input type="hidden" name="parcels[${parcelCount}][geometry]" value='${geometry}' class="parcel-geometry-input">
+                            <div>
+                                <label class="block text-[8px] font-black text-white/40 uppercase mb-1">Deprec. %</label>
+                                <input type="number" step="0.01" name="parcels[${pIndex}][improvements][${impId}][depreciation_rate]" class="w-full bg-white/10 border-white/20 rounded-xl px-3 h-10 text-xs font-bold text-white imp-dep" value="0">
                             </div>
-                        </div>
-                        <div class="parcel-status-indicator mt-2 text-[8px] font-black uppercase tracking-tighter ${isMapped ? 'text-emerald-400' : 'text-red-400'}">
-                             ${isMapped ? 'Mapped ✓' : 'Not Mapped'}
+                            <div class="col-span-2 md:col-span-1">
+                                <label class="block text-[8px] font-black text-white/40 uppercase mb-1">Total Value</label>
+                                <input type="number" step="0.01" name="parcels[${pIndex}][improvements][${impId}][total_value]" class="w-full bg-black/30 border-transparent rounded-xl px-3 h-10 text-xs font-black text-emerald-400 imp-total" value="0" readonly>
+                                <input type="hidden" name="parcels[${pIndex}][improvements][${impId}][remaining_value_percent]" class="imp-rem-val" value="100">
+                            </div>
                         </div>
                     </div>
                 `;
+                $row.find('.parcel-improvements-container').append(impRow);
+            });
+
+            $(document).on('click', '.remove-improvement', function() {
+                const $impRow = $(this).closest('.improvement-row');
+                const $parcelRow = $impRow.closest('.parcel-row');
+                $impRow.remove();
+                if ($parcelRow.find('.improvement-row').length === 0) {
+                    $parcelRow.find('.parcel-no-improvements-msg').show();
+                }
+                calculateParcelValues($parcelRow);
+            });
+
+            $(document).on('change', '.improvement-type', function() {
+                const unitVal = $(this).find(':selected').data('value') || 0;
+                $(this).closest('.improvement-row').find('.imp-val').val(unitVal).trigger('input');
+            });
+
+            $(document).on('input', '.imp-qty, .imp-val, .imp-dep', function() {
+                const $impRow = $(this).closest('.improvement-row');
+                const $parcelRow = $impRow.closest('.parcel-row');
+                const qty = parseFloat($impRow.find('.imp-qty').val()) || 0;
+                const val = parseFloat($impRow.find('.imp-val').val()) || 0;
+                const dep = parseFloat($impRow.find('.imp-dep').val()) || 0;
+                const residualPercent = 100 - dep;
+                const marketVal = qty * val * (residualPercent / 100);
+                $impRow.find('.imp-total').val(marketVal.toFixed(2));
+                $impRow.find('.imp-rem-val').val(residualPercent.toFixed(2));
+                calculateParcelValues($parcelRow);
+            });
+
+            // ─── Owner Management per Parcel ─────────────────────────────────────────
+
+            $(document).on('click', '.parcel-add-owner-btn', function() {
+                const $row = $(this).closest('.parcel-row');
+                const pIndex = $row.data('parcel-index');
+                const $selector = $row.find('.parcel-owner-selector');
+                const ownerId = $selector.val();
+                const ownerName = $selector.find('option:selected').text();
+                if (!ownerId) return;
+                if ($row.find(`.owner-item[data-id="${ownerId}"]`).length > 0) {
+                    alert('This owner is already added.');
+                    return;
+                }
+                const html = `
+                    <div class="owner-item flex justify-between items-center bg-white/10 p-2 rounded-xl border border-white/10" data-id="${ownerId}">
+                        <span class="text-xs font-bold text-white/80">${ownerName}</span>
+                        <input type="hidden" name="parcels[${pIndex}][owners][]" value="${ownerId}">
+                        <button type="button" class="remove-owner-btn text-red-400 hover:text-red-300 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                `;
+                $row.find('.parcel-owners-container').append(html);
+                $selector.val('');
+            });
+
+            $(document).on('click', '.remove-owner-btn', function() {
+                $(this).closest('.owner-item').remove();
+            });
+
+            // ─── Build Parcel Row HTML ────────────────────────────────────────────────
+
+            function buildOwnerOptions(selectedId) {
+                let opts = '<option value="">Select Owner...</option>';
+                allOwners.forEach(function(o) {
+                    opts += `<option value="${o.id}" ${selectedId == o.id ? 'selected' : ''}>${o.owner_name}</option>`;
+                });
+                return opts;
+            }
+
+            function buildRevYearOptions(selected) {
+                let opts = '';
+                revYears.forEach(function(yr) {
+                    opts += `<option value="${yr.rev_yr}" ${yr.rev_yr == selected ? 'selected' : ''}>${yr.rev_yr}</option>`;
+                });
+                return opts;
+            }
+
+            function buildClassificationOptions(selected) {
+                let opts = '<option value="">Select Kind...</option>';
+                classifications.forEach(function(c) {
+                    opts += `<option value="${c.assmt_kind}" ${c.assmt_kind == selected ? 'selected' : ''}>${c.assmt_kind}</option>`;
+                });
+                return opts;
+            }
+
+            function buildLocationClassOptions(selected) {
+                let opts = '<option value="">Select Class...</option>';
+                locationClasses.forEach(function(lc) {
+                    opts += `<option value="${lc.name}" ${lc.name == selected ? 'selected' : ''}>${lc.name}</option>`;
+                });
+                return opts;
+            }
+
+            function buildRoadTypeOptions(selected) {
+                let opts = '<option value="">Select Road...</option>';
+                roadTypes.forEach(function(rt) {
+                    opts += `<option value="${rt.name}" ${rt.name == selected ? 'selected' : ''}>${rt.name}</option>`;
+                });
+                return opts;
+            }
+
+            function addParcelRow(data = null) {
+                parcelCount++;
+                const idx = parcelCount;
+
+                const tdNo = data ? data.td_no : '';
+                const area = data ? data.area : '';
+                let geometry = data ? data.geometry : '';
+                if (geometry && typeof geometry === 'object') geometry = JSON.stringify(geometry);
+                const isMapped = !!geometry;
+
+                const defaultRevYear = revYears.length > 0 ? revYears[0].rev_yr : '';
+
+                const html = `
+                    <div class="parcel-row bg-white/5 rounded-[2rem] border border-white/10 relative group animate-fade-in-up overflow-hidden" data-parcel-index="${idx}">
+                        
+                        <!-- Remove Button -->
+                        <button type="button" class="remove-parcel-btn absolute top-4 right-4 bg-red-500/80 hover:bg-red-500 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+
+                        <!-- Parcel Header -->
+                        <div class="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/10">
+                            <span class="text-[10px] font-black uppercase tracking-widest text-indigo-300">Parcel ${idx}</span>
+                            <div class="parcel-status-indicator text-[8px] font-black uppercase tracking-tighter ${isMapped ? 'text-emerald-400' : 'text-red-400'}">
+                                ${isMapped ? '● Mapped' : '○ Not Mapped'}
+                            </div>
+                        </div>
+
+                        <div class="p-6 space-y-6">
+
+                            <!-- Section 1: Property Identification -->
+                            <div>
+                                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Property Identification</p>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Lot No</label>
+                                        <input type="text" name="parcels[${idx}][lot_no]" value="${data ? data.lot_no : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="e.g. 1-A" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Block</label>
+                                        <input type="text" name="parcels[${idx}][block]" value="${data ? data.block : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="Block">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">ARP No</label>
+                                        <input type="text" name="parcels[${idx}][arp_no]" value="${data ? data.arp_no : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="NEW-ARP-..." required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">PIN</label>
+                                        <input type="text" name="parcels[${idx}][pin]" value="${data ? data.pin : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="Derived PIN" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">New TD No</label>
+                                        <input type="text" name="parcels[${idx}][td_no]" value="${tdNo}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="TD-${new Date().getFullYear()}-..." required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Survey No / TCT</label>
+                                        <input type="text" name="parcels[${idx}][survey_no]" value="${data ? data.survey_no : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="Survey No">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Zoning</label>
+                                        <input type="text" name="parcels[${idx}][zoning]" value="${data ? data.zoning : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="Zone">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Use Restrictions</label>
+                                        <input type="text" name="parcels[${idx}][use_restrictions]" value="${data ? data.use_restrictions : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="Restrictions">
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Location / Description</label>
+                                    <input type="text" name="parcels[${idx}][location_desc]" value="${data ? data.location_desc : ''}" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white placeholder:text-white/20" placeholder="Specific location notes...">
+                                </div>
+                            </div>
+
+                            <!-- Section 2: Owner Management -->
+                            <div>
+                                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Owner Management</p>
+                                <div class="flex gap-2 mb-3">
+                                    <select class="parcel-owner-selector flex-1 bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30">
+                                        ${buildOwnerOptions(data ? data.owner_id : '')}
+                                    </select>
+                                    <button type="button" class="parcel-add-owner-btn bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 px-4 h-10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-indigo-500/30">
+                                        Add Owner
+                                    </button>
+                                </div>
+                                <div class="parcel-owners-container bg-black/20 rounded-xl p-3 min-h-[48px] space-y-2 border border-white/5">
+                                    <!-- Owners populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Section 3: Characteristics -->
+                            <div>
+                                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Characteristics</p>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Location Class</label>
+                                        <select name="parcels[${idx}][location_class]" class="w-full bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30">
+                                            ${buildLocationClassOptions(data ? data.location_class : '')}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Road Type</label>
+                                        <select name="parcels[${idx}][road_type]" class="w-full bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30">
+                                            ${buildRoadTypeOptions(data ? data.road_type : '')}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Corner Lot?</label>
+                                        <div class="flex items-center gap-4 h-10">
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="parcels[${idx}][is_corner]" value="1" ${data && data.is_corner == '1' ? 'checked' : ''} class="w-4 h-4 text-indigo-500 focus:ring-indigo-500 border-gray-600 bg-gray-800">
+                                                <span class="text-xs font-bold text-white/70">Yes</span>
+                                            </label>
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="parcels[${idx}][is_corner]" value="0" ${!data || data.is_corner != '1' ? 'checked' : ''} class="w-4 h-4 text-indigo-500 focus:ring-indigo-500 border-gray-600 bg-gray-800">
+                                                <span class="text-xs font-bold text-white/70">No</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 4: Valuation -->
+                            <div>
+                                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Land Valuation</p>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div class="col-span-2">
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Area (SQM) *</label>
+                                        <div class="flex gap-2">
+                                            <input type="number" step="0.0001" name="parcels[${idx}][area]" value="${area}" class="parcel-area-input flex-1 bg-emerald-900/30 border-emerald-500/30 rounded-xl h-12 px-3 text-sm font-black text-emerald-300 placeholder:text-white/20 focus:ring-emerald-500/30 focus:border-emerald-500/50" placeholder="0.0000" required>
+                                            <button type="button" class="btn-map-parcel ${isMapped ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-indigo-600 hover:bg-indigo-500'} text-white px-4 h-12 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shrink-0" data-index="${idx}">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                <span>${isMapped ? 'Remap' : 'Map'}</span>
+                                            </button>
+                                            <input type="hidden" name="parcels[${idx}][geometry]" value='${geometry}' class="parcel-geometry-input">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Unit Value (₱/sqm)</label>
+                                        <input type="number" step="0.01" name="parcels[${idx}][unit_value]" value="${data ? data.unit_value : ''}" class="parcel-unit-value w-full bg-white/10 border-white/20 rounded-xl h-12 px-3 text-xs font-bold text-white placeholder:text-white/20 focus:ring-indigo-500/30" placeholder="0.00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Adj. Factor (%)</label>
+                                        <input type="number" step="0.01" name="parcels[${idx}][adjustment_factor]" value="${data ? data.adjustment_factor : 0}" class="parcel-adj-factor w-full bg-white/10 border-white/20 rounded-xl h-12 px-3 text-xs font-bold text-white focus:ring-indigo-500/30">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Assessment Level (%)</label>
+                                        <input type="number" step="0.01" name="parcels[${idx}][assessment_level]" value="${data ? data.assessment_level : ''}" class="parcel-assessment-level w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Market Value</label>
+                                        <input type="text" name="parcels[${idx}][market_value]" class="parcel-market-value w-full bg-black/30 border-transparent rounded-xl h-10 px-3 text-xs font-black text-white/70" value="0.00" readonly>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-indigo-300/80 uppercase mb-1">Assessed Value</label>
+                                        <input type="text" name="parcels[${idx}][assessed_value]" class="parcel-assessed-value w-full bg-indigo-900/30 border-indigo-500/20 rounded-xl h-10 px-3 text-xs font-black text-indigo-300" value="0.00" readonly>
+                                    </div>
+                                    <div class="col-span-2 flex items-center justify-between bg-black/20 rounded-xl px-4 h-10 border border-white/5">
+                                        <span class="text-[8px] font-black text-white/30 uppercase">Market</span>
+                                        <span class="parcel-display-market text-sm font-black text-white/70">₱ 0.00</span>
+                                        <span class="text-[8px] font-black text-white/30 uppercase">Assessed</span>
+                                        <span class="parcel-display-assessed text-sm font-black text-indigo-300">₱ 0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 5: Land Improvements -->
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <p class="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Land Improvements</p>
+                                    <button type="button" class="parcel-add-improvement text-[8px] font-black uppercase text-emerald-400 hover:text-emerald-300 flex items-center gap-1 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 transition-all">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                        Add Item
+                                    </button>
+                                </div>
+                                <div class="parcel-improvements-container space-y-3"></div>
+                                <div class="parcel-no-improvements-msg text-center py-6 bg-white/5 rounded-2xl border border-dashed border-white/10 text-[9px] font-bold text-white/20 uppercase tracking-widest">No improvements added</div>
+                                <div class="mt-3 flex justify-end">
+                                    <span class="text-[9px] font-black text-white/40 uppercase mr-2 self-center">Total Improvements:</span>
+                                    <span class="parcel-total-improvement text-sm font-black text-emerald-400">₱ 0.00</span>
+                                </div>
+                            </div>
+
+                            <!-- Section 6: Classification & Use -->
+                            <div>
+                                <p class="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 mb-3">Classification & Use</p>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Effectivity Quarter</label>
+                                        <select name="parcels[${idx}][effectivity_quarter]" class="w-full bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30" required>
+                                            <option value="">Quarter</option>
+                                            <option value="1">1st Qtr</option>
+                                            <option value="2">2nd Qtr</option>
+                                            <option value="3">3rd Qtr</option>
+                                            <option value="4">4th Qtr</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Effectivity Year</label>
+                                        <input type="number" name="parcels[${idx}][effectivity_year]" class="w-full bg-white/10 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white" placeholder="Year" value="${new Date().getFullYear() + 1}" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Revision Year</label>
+                                        <select name="parcels[${idx}][rev_year]" class="parcel-rev-year w-full bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30" required>
+                                            ${buildRevYearOptions(defaultRevYear)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Assessment Kind</label>
+                                        <select name="parcels[${idx}][assmt_kind]" class="parcel-assmt-kind w-full bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30" required>
+                                            ${buildClassificationOptions(data ? data.assmt_kind : '')}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Actual Use</label>
+                                        <select name="parcels[${idx}][actual_use]" class="parcel-actual-use w-full bg-gray-800 border-white/20 rounded-xl h-10 px-3 text-xs font-bold text-white focus:ring-indigo-500/30" disabled required>
+                                            <option value="">Select Actual Use</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-span-2 md:col-span-3">
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Remarks</label>
+                                        <textarea name="parcels[${idx}][remarks]" rows="2" class="w-full bg-white/10 border-white/20 rounded-xl p-3 text-xs font-bold text-white placeholder:text-white/20 focus:ring-indigo-500/30" placeholder="Enter specific remarks...">${data ? data.remarks : ''}</textarea>
+                                    </div>
+                                    <div class="col-span-2 md:col-span-3">
+                                        <label class="block text-[8px] font-black text-white/50 uppercase mb-1">Memoranda</label>
+                                        <textarea name="parcels[${idx}][memoranda]" rows="2" class="w-full bg-white/10 border-white/20 rounded-xl p-3 text-xs font-bold text-white placeholder:text-white/20 focus:ring-indigo-500/30" placeholder="Enter memoranda...">${data ? data.memoranda : ''}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                `;
+
                 $('#parcels-container').append(html);
+
+                const $newRow = $(`.parcel-row[data-parcel-index="${idx}"]`);
+
+                // Determine which owners to seed into this row:
+                // - On restore from old(): use data.owners array (already validated IDs)
+                // - On fresh row: seed the TD's current owners as a sensible default
+                const ownerIdsToSeed = (data && data.owners && data.owners.length)
+                    ? data.owners.map(id => parseInt(id))
+                    : tdOwners.map(o => o.id);  // default: inherit parent TD owners
+
+                ownerIdsToSeed.forEach(function(ownerId) {
+                    const owner = allOwners.find(o => o.id == ownerId);
+                    if (!owner) return;
+                    // Avoid duplicates
+                    if ($newRow.find(`.owner-item[data-id="${ownerId}"]`).length > 0) return;
+                    $newRow.find('.parcel-owners-container').append(`
+                        <div class="owner-item flex justify-between items-center bg-white/10 p-2 rounded-xl border border-white/10" data-id="${ownerId}">
+                            <span class="text-xs font-bold text-white/80">${owner.owner_name}</span>
+                            <input type="hidden" name="parcels[${idx}][owners][]" value="${ownerId}">
+                            <button type="button" class="remove-owner-btn text-red-400 hover:text-red-300 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    `);
+                });
+
                 validateSubdivision();
             }
 
-            // Restore from session on redirect back (MUST be before updateSubdivState)
+            // Restore from session on redirect back
             @if(old('parcels'))
                 @foreach(old('parcels') as $p)
                     addParcelRow(@json($p));
@@ -328,7 +756,7 @@
             // Initial Setup
             if (parcelCount === 0) {
                 addParcelRow();
-                addParcelRow(); // Start with at least 2 parcels
+                addParcelRow();
             }
 
             $(document).on('click', '#add-parcel-btn', function() {
@@ -344,16 +772,15 @@
                 }
             });
 
-            $(document).on('input', '.parcel-area-input', validateSubdivision);
+            // ─── Mapping Integration (unchanged) ────────────────────────────────────
 
-            // Mapping Integration
             let currentMappingIndex = null;
+
             $(document).on('click', '.btn-map-parcel', function() {
                 currentMappingIndex = $(this).data('index');
                 const row = $(this).closest('.parcel-row');
                 const existingGeo = row.find('.parcel-geometry-input').val();
-                
-                // Get other already mapped polygons to show as background (context)
+
                 const otherGeometries = [];
                 $('.parcel-geometry-input').each(function() {
                     const idx = $(this).closest('.parcel-row').find('.btn-map-parcel').data('index');
@@ -377,8 +804,8 @@
                 openGisModal({
                     title: `Map Parcel ${currentMappingIndex}`,
                     geometry: parsedGeo,
-                    context_geometries: otherGeometries, // New: show other siblings
-                    parent_boundary: parentGeometry, // Important: containment check reference
+                    context_geometries: otherGeometries,
+                    parent_boundary: parentGeometry,
                     target_area: targetArea
                 });
             });
@@ -386,9 +813,10 @@
             $(document).on('gis-mapping-applied', function(e, data) {
                 if (currentMappingIndex !== null) {
                     const row = $(`.btn-map-parcel[data-index="${currentMappingIndex}"]`).closest('.parcel-row');
-                    row.find('.parcel-geometry-input').val(JSON.stringify(data)); // Store full data object
+                    row.find('.parcel-geometry-input').val(JSON.stringify(data));
                     row.find('.parcel-area-input').val(data.area.toFixed(4)).trigger('input');
-                    row.find('.parcel-status-indicator').removeClass('text-red-400').addClass('text-emerald-400').text('Mapped ✓');
+                    row.find('.parcel-status-indicator').removeClass('text-red-400').addClass('text-emerald-400').text('● Mapped');
+                    row.find('.btn-map-parcel').removeClass('bg-indigo-600 hover:bg-indigo-500').addClass('bg-emerald-600 hover:bg-emerald-500').find('span').text('Remap');
                     validateSubdivision();
                 }
             });

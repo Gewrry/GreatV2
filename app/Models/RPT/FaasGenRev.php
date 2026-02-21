@@ -55,14 +55,17 @@ class FaasGenRev extends Model
         return $this->belongsTo(Barangay::class, 'bcode', 'brgy_code');
     }
 
+    public function successors()
+    {
+        return $this->hasMany(FaasGenRev::class, 'previous_td_id');
+    }
+
+    /**
+     * The parent TD this record was created from.
+     */
     public function predecessor()
     {
         return $this->belongsTo(FaasGenRev::class, 'previous_td_id');
-    }
-
-    public function successor()
-    {
-        return $this->hasOne(FaasGenRev::class, 'previous_td_id');
     }
 
     public function owners()

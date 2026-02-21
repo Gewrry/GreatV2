@@ -408,264 +408,261 @@
     <x-rpt.gis-modal />
 
     @push('scripts')
-    <script>
-        $(document).ready(function() {
-            // GIS Modal Integration
-            $('#btn-open-gis').click(function() {
-                const existingGeo = {!! $td->geometry ? json_encode($td->geometry->geometry) : 'null' !!};
-                const attributes = {
-                    land_use_zone: "{{ $td->geometry->land_use_zone ?? '' }}",
-                    adj_north: "{{ $td->geometry->adj_north ?? '' }}",
-                    adj_south: "{{ $td->geometry->adj_south ?? '' }}",
-                    adj_east: "{{ $td->geometry->adj_east ?? '' }}",
-                    adj_west: "{{ $td->geometry->adj_west ?? '' }}",
-                };
-                
-                openGisModal({
-                    faas_id: "{{ $td->id }}",
-                    geometry: existingGeo,
-                    attributes: attributes
+        <script>
+            $(document).ready(function() {
+                // GIS Modal Integration
+                $('#btn-open-gis').click(function() {
+                    const existingGeo = {!! $td->geometry ? json_encode($td->geometry->geometry) : 'null' !!};
+                    const attributes = {
+                        land_use_zone: "{{ $td->geometry->land_use_zone ?? '' }}",
+                        adj_north: "{{ $td->geometry->adj_north ?? '' }}",
+                        adj_south: "{{ $td->geometry->adj_south ?? '' }}",
+                        adj_east: "{{ $td->geometry->adj_east ?? '' }}",
+                        adj_west: "{{ $td->geometry->adj_west ?? '' }}",
+                    };
+
+                    openGisModal({
+                        faas_id: "{{ $td->id }}",
+                        geometry: existingGeo,
+                        attributes: attributes
+                    });
                 });
-            });
 
-            $(document).on('gis-mapping-applied', function(e, data) {
-                if (data.area > 0) {
-                    $('#area').val(data.area.toFixed(2)).trigger('input');
-                    $('#geometry_json').val(JSON.stringify(data.geometry));
-                    
-                    if (data.gps) {
-                        $('#gps_lat').val(data.gps.lat);
-                        $('#gps_lng').val(data.gps.lng);
-                    }
+                $(document).on('gis-mapping-applied', function(e, data) {
+                    if (data.area > 0) {
+                        $('#area').val(data.area.toFixed(2)).trigger('input');
+                        $('#geometry_json').val(JSON.stringify(data.geometry));
 
-                    // Auto-fill adjoining properties
-                    $('#adj_north').val(data.attributes.adj_north);
-                    $('#adj_south').val(data.attributes.adj_south);
-                    $('#adj_east').val(data.attributes.adj_east);
-                    $('#adj_west').val(data.attributes.adj_west);
-
-                    // Auto-fill zoning
-                    if (!$('input[name="zoning"]').val() || data.attributes.land_use_zone) {
-                         $('input[name="zoning"]').val(data.attributes.land_use_zone);
-                    }
-
-                    // Sync Inspector Notes
-                    if (data.attributes.inspector_notes) {
-                        const currentRemarks = $('textarea[name="remarks"]').val();
-                        if (!currentRemarks || currentRemarks === 'Consolidated Property') {
-                            $('textarea[name="remarks"]').val(data.attributes.inspector_notes);
+                        if (data.gps) {
+                            $('#gps_lat').val(data.gps.lat);
+                            $('#gps_lng').val(data.gps.lng);
                         }
-                    }
-                }
-            });
 
-            // Cascading Classification Lookups
-            function fetchActualUses() {
-                const assmtKind = $('#assmt_kind').val();
-                const revYear = $('#rev_year').val();
-                
-                if (assmtKind && revYear) {
-                    $('#actual_use').prop('disabled', true).html('<option value="">Loading...</option>');
-                    
-                    $.ajax({
-                        url: "{{ route('rpt.get_actual_uses') }}",
-                        type: "GET",
-                        data: {
-                            assmt_kind: assmtKind,
-                            rev_year: revYear,
-                            category: 'LAND'
-                        },
-                        success: function(response) {
-                            let options = '<option value="">Select Actual Use</option>';
-                            if(response && response.length > 0) {
-                                response.forEach(function(item) {
-                                    options += `<option value="${item.actual_use}">${item.actual_use}</option>`;
-                                });
-                                $('#actual_use').html(options).prop('disabled', false);
-                            } else {
-                                $('#actual_use').html('<option value="">No Actual Use found</option>').prop('disabled', true);
+                        // Auto-fill adjoining properties
+                        $('#adj_north').val(data.attributes.adj_north);
+                        $('#adj_south').val(data.attributes.adj_south);
+                        $('#adj_east').val(data.attributes.adj_east);
+                        $('#adj_west').val(data.attributes.adj_west);
+
+                        // Auto-fill zoning
+                        if (!$('input[name="zoning"]').val() || data.attributes.land_use_zone) {
+                             $('input[name="zoning"]').val(data.attributes.land_use_zone);
+                        }
+
+                        // Sync Inspector Notes
+                        if (data.attributes.inspector_notes) {
+                            const currentRemarks = $('textarea[name="remarks"]').val();
+                            if (!currentRemarks || currentRemarks === 'Consolidated Property') {
+                                $('textarea[name="remarks"]').val(data.attributes.inspector_notes);
                             }
                         }
-                    });
+                    }
+                });
 
-                    // Fetch Assessment Level
-                    $.ajax({
-                        url: "{{ route('rpt.get_assessment_level') }}",
-                        type: "GET",
-                        data: {
-                            assmt_kind: assmtKind,
-                            category: 'LAND'
-                        },
-                        success: function(response) {
-                            $('#assessment_level').val(response.assmnt_percent);
-                            calculateValues();
-                        }
-                    });
-                } else {
-                    $('#actual_use').prop('disabled', true).html('<option value="">Select Actual Use</option>');
+                // Cascading Classification Lookups
+                function fetchActualUses() {
+                    const assmtKind = $('#assmt_kind').val();
+                    const revYear = $('#rev_year').val();
+
+                    if (assmtKind && revYear) {
+                        $('#actual_use').prop('disabled', true).html('<option value="">Loading...</option>');
+
+                        $.ajax({
+                            url: "{{ route('rpt.get_actual_uses') }}",
+                            type: "GET",
+                            data: {
+                                assmt_kind: assmtKind,
+                                rev_year: revYear,
+                                category: 'LAND'
+                            },
+                            success: function(response) {
+                                let options = '<option value="">Select Actual Use</option>';
+                                if(response && response.length > 0) {
+                                    response.forEach(function(item) {
+                                        options += `<option value="${item.actual_use}">${item.actual_use}</option>`;
+                                    });
+                                    $('#actual_use').html(options).prop('disabled', false);
+                                } else {
+                                    $('#actual_use').html('<option value="">No Actual Use found</option>').prop('disabled', true);
+                                }
+                            }
+                        });
+
+                        // Fetch Assessment Level
+                        $.ajax({
+                            url: "{{ route('rpt.get_assessment_level') }}",
+                            type: "GET",
+                            data: {
+                                assmt_kind: assmtKind,
+                                category: 'LAND'
+                            },
+                            success: function(response) {
+                                $('#assessment_level').val(response.assmnt_percent);
+                                calculateValues();
+                            }
+                        });
+                    } else {
+                        $('#actual_use').prop('disabled', true).html('<option value="">Select Actual Use</option>');
+                    }
                 }
-            }
 
-            $('#assmt_kind, #rev_year').on('change', fetchActualUses);
+                $('#assmt_kind, #rev_year').on('change', fetchActualUses);
 
-            // Fetch Unit Value
-            $('#actual_use').on('change', function() {
-                const actualUse = $(this).val();
-                const assmtKind = $('#assmt_kind').val();
-                const revYear = $('#rev_year').val();
-                
-                if (actualUse && assmtKind && revYear) {
-                    $.ajax({
-                        url: "{{ route('rpt.get_unit_value') }}",
-                        type: "GET",
-                        data: {
-                            assmt_kind: assmtKind,
-                            actual_use: actualUse,
-                            rev_year: revYear,
-                            category: 'LAND'
-                        },
-                        success: function(response) {
-                            $('#unit_value').val(response.unit_value);
-                            calculateValues();
-                        }
-                    });
-                }
-            });
+                // Fetch Unit Value
+                $('#actual_use').on('change', function() {
+                    const actualUse = $(this).val();
+                    const assmtKind = $('#assmt_kind').val();
+                    const revYear = $('#rev_year').val();
 
-            // Improvements Repeater Logic
-            let improvementCount = 0;
-            const otherImprovements = @json($otherImprovements);
+                    if (actualUse && assmtKind && revYear) {
+                        $.ajax({
+                            url: "{{ route('rpt.get_unit_value') }}",
+                            type: "GET",
+                            data: {
+                                assmt_kind: assmtKind,
+                                actual_use: actualUse,
+                                rev_year: revYear,
+                                category: 'LAND'
+                            },
+                            success: function(response) {
+                                $('#unit_value').val(response.unit_value);
+                                calculateValues();
+                            }
+                        });
+                    }
+                });
 
-            function addImprovementRow(data = null) {
-                $('#no-improvements-msg').hide();
-                const id = improvementCount++;
-                const row = `
-                    <div class="improvement-row group relative bg-gray-50/50 rounded-2xl border border-gray-100 p-4 transition-all hover:bg-gray-50 hover:shadow-sm" id="imp-row-${id}">
-                        <button type="button" class="remove-improvement absolute top-2 right-2 text-red-300 hover:text-red-500 transition-colors p-1">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                            <div class="md:col-span-4">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Type</label>
-                                <select name="improvements[${id}][improvement_id]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold improvement-type focus:ring-emerald-500/20 focus:border-emerald-500" required>
-                                    <option value="">Select Structure...</option>
-                                    ${otherImprovements.map(imp => `<option value="${imp.id}" data-value="${imp.kind_value || 0}">${imp.kind_name}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Quantity</label>
-                                <input type="number" step="0.01" name="improvements[${id}][quantity]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-qty focus:ring-emerald-500/20 focus:border-emerald-500" value="1" required>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Unit Value</label>
-                                <input type="number" step="0.01" name="improvements[${id}][unit_value]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-val focus:ring-emerald-500/20 focus:border-emerald-500" value="0" required>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Deprec. %</label>
-                                <input type="number" step="0.01" name="improvements[${id}][depreciation_rate]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-dep focus:ring-emerald-500/20 focus:border-emerald-500" value="0">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Total Value</label>
-                                <input type="number" step="0.01" name="improvements[${id}][total_value]" class="w-full bg-gray-100 border-transparent rounded-xl px-3 h-10 text-xs font-black text-emerald-600 imp-total" value="0" readonly>
-                                <input type="hidden" name="improvements[${id}][remaining_value_percent]" class="imp-rem-val" value="100">
+                // Improvements Repeater Logic
+                let improvementCount = 0;
+                const otherImprovements = @json($otherImprovements);
+
+                function addImprovementRow(data = null) {
+                    $('#no-improvements-msg').hide();
+                    const id = improvementCount++;
+                    const row = `
+                        <div class="improvement-row group relative bg-gray-50/50 rounded-2xl border border-gray-100 p-4 transition-all hover:bg-gray-50 hover:shadow-sm" id="imp-row-${id}">
+                            <button type="button" class="remove-improvement absolute top-2 right-2 text-red-300 hover:text-red-500 transition-colors p-1">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                <div class="md:col-span-4">
+                                    <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Type</label>
+                                    <select name="improvements[${id}][improvement_id]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold improvement-type focus:ring-emerald-500/20 focus:border-emerald-500" required>
+                                        <option value="">Select Structure...</option>
+                                        ${otherImprovements.map(imp => `<option value="${imp.id}" data-value="${imp.kind_value || 0}">${imp.kind_name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Quantity</label>
+                                    <input type="number" step="0.01" name="improvements[${id}][quantity]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-qty focus:ring-emerald-500/20 focus:border-emerald-500" value="1" required>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Unit Value</label>
+                                    <input type="number" step="0.01" name="improvements[${id}][unit_value]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-val focus:ring-emerald-500/20 focus:border-emerald-500" value="0" required>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Deprec. %</label>
+                                    <input type="number" step="0.01" name="improvements[${id}][depreciation_rate]" class="w-full bg-white border-gray-100 rounded-xl px-3 h-10 text-xs font-bold imp-dep focus:ring-emerald-500/20 focus:border-emerald-500" value="0">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Total Value</label>
+                                    <input type="number" step="0.01" name="improvements[${id}][total_value]" class="w-full bg-gray-100 border-transparent rounded-xl px-3 h-10 text-xs font-black text-emerald-600 imp-total" value="0" readonly>
+                                    <input type="hidden" name="improvements[${id}][remaining_value_percent]" class="imp-rem-val" value="100">
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                $('#improvements-container').append(row);
-            }
-
-            $('#add-improvement').click(function() {
-                addImprovementRow();
-            });
-
-            $(document).on('click', '.remove-improvement', function() {
-                $(this).closest('.improvement-row').remove();
-                if ($('.improvement-row').length === 0) $('#no-improvements-msg').show();
-                calculateValues();
-            });
-
-            $(document).on('change', '.improvement-type', function() {
-                const unitVal = $(this).find(':selected').data('value') || 0;
-                $(this).closest('.improvement-row').find('.imp-val').val(unitVal).trigger('input');
-            });
-
-            $(document).on('input', '.imp-qty, .imp-val, .imp-dep', function() {
-                const row = $(this).closest('.improvement-row');
-                const qty = parseFloat(row.find('.imp-qty').val()) || 0;
-                const val = parseFloat(row.find('.imp-val').val()) || 0;
-                const dep = parseFloat(row.find('.imp-dep').val()) || 0;
-                
-                const replacementCost = qty * val;
-                const residualPercent = 100 - dep;
-                const marketVal = replacementCost * (residualPercent / 100);
-                
-                row.find('.imp-total').val(marketVal.toFixed(2));
-                row.find('.imp-rem-val').val(residualPercent.toFixed(2));
-                calculateValues();
-            });
-
-            function calculateValues() {
-                const area = parseFloat($('#area').val()) || 0;
-                const unitValue = parseFloat($('#unit_value').val()) || 0;
-                const adjFactor = parseFloat($('#adjustment_factor').val()) || 0;
-                const assessmentLevel = parseFloat($('#assessment_level').val()) || 0;
-
-                // Land Market Value
-                const baseMarketValue = area * unitValue;
-                const landMarketValue = baseMarketValue + (baseMarketValue * (adjFactor / 100));
-
-                // Improvements Total
-                let improvementsVal = 0;
-                $('.imp-total').each(function() {
-                    improvementsVal += parseFloat($(this).val()) || 0;
-                });
-                $('#total-improvement-display').text('₱ ' + improvementsVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-
-                const totalMarketValue = landMarketValue + improvementsVal;
-                const assessedValue = totalMarketValue * (assessmentLevel / 100);
-
-                $('#market_value').val(totalMarketValue.toFixed(2));
-                $('#assessed_value').val(assessedValue.toFixed(2));
-                
-                // Update sidebar displays
-                $('#sidebar-market-display').text('₱ ' + totalMarketValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-                $('#sidebar-assessed-display').text('₱ ' + assessedValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-            }
-
-            $('#area, #unit_value, #adjustment_factor, #assessment_level').on('input', calculateValues);
-
-            // Owner Management JS
-            $('#add-owner-btn').click(function() {
-                const selector = $('#owner_selector');
-                const ownerId = selector.val();
-                const ownerName = selector.find('option:selected').text();
-
-                if (!ownerId) return;
-
-                if ($(`.owner-item[data-id="${ownerId}"]`).length > 0) {
-                    alert('This owner is already added.');
-                    return;
+                    `;
+                    $('#improvements-container').append(row);
                 }
 
-                const html = `
-                    <div class="owner-item flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm animate-fade-in-up" data-id="${ownerId}">
-                        <span class="text-xs font-bold text-gray-700">${ownerName}</span>
-                        <input type="hidden" name="owners[]" value="${ownerId}">
-                        <button type="button" class="remove-owner-btn text-red-400 hover:text-red-600 transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                `;
+                $('#add-improvement').click(function() {
+                    addImprovementRow();
+                });
 
-                $('#selected-owners-container').append(html);
-                selector.val('');
-            });
+                $(document).on('click', '.remove-improvement', function() {
+                    $(this).closest('.improvement-row').remove();
+                    if ($('.improvement-row').length === 0) $('#no-improvements-msg').show();
+                    calculateValues();
+                });
 
-            $(document).on('click', '.remove-owner-btn', function() {
-                $(this).closest('.owner-item').remove();
+                $(document).on('change', '.improvement-type', function() {
+                    const unitVal = $(this).find(':selected').data('value') || 0;
+                    $(this).closest('.improvement-row').find('.imp-val').val(unitVal).trigger('input');
+                });
+
+                $(document).on('input', '.imp-qty, .imp-val, .imp-dep', function () {
+                    const row = $(this).closest('.improvement-row');
+                    const qty = parseFloat(row.find('.imp-qty').val()) || 0;
+                    const val = parseFloat(row.find('.imp-val').val()) || 0;
+                    const dep = parseFloat(row.find('.imp-dep').val()) || 0;
+
+                    const replacementCost = qty * val;
+                    const residualPercent = 100 - dep;
+                    const marketVal = replacementCost * (residualPercent / 100);
+
+                    row.find('.imp-total').val(marketVal);           // ← no rounding
+                    row.find('.imp-rem-val').val(residualPercent);   // ← no rounding
+                    calculateValues();
+                });
+
+                function calculateValues() {
+                    const area = parseFloat($('#area').val()) || 0;
+                    const unitValue = parseFloat($('#unit_value').val()) || 0;
+                    const adjFactor = parseFloat($('#adjustment_factor').val()) || 0;
+                    const assessmentLevel = parseFloat($('#assessment_level').val()) || 0;
+
+                    const baseMarketValue = area * unitValue;
+                    const landMarketValue = baseMarketValue + (baseMarketValue * (adjFactor / 100));
+
+                    let improvementsVal = 0;
+                    $('.imp-total').each(function () {
+                        improvementsVal += parseFloat($(this).val()) || 0;
+                    });
+                    $('#total-improvement-display').text('₱ ' + improvementsVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+                    const totalMarketValue = landMarketValue + improvementsVal;
+                    const assessedValue = (landMarketValue * (assessmentLevel / 100)) + improvementsVal;
+
+                    $('#market_value').val(totalMarketValue);    // ← no rounding
+                    $('#assessed_value').val(assessedValue);     // ← no rounding
+
+                    $('#sidebar-market-display').text('₱ ' + totalMarketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                    $('#sidebar-assessed-display').text('₱ ' + assessedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                }
+
+                $('#area, #unit_value, #adjustment_factor, #assessment_level').on('input', calculateValues);
+
+                // Owner Management JS
+                $('#add-owner-btn').click(function() {
+                    const selector = $('#owner_selector');
+                    const ownerId = selector.val();
+                    const ownerName = selector.find('option:selected').text();
+
+                    if (!ownerId) return;
+
+                    if ($(`.owner-item[data-id="${ownerId}"]`).length > 0) {
+                        alert('This owner is already added.');
+                        return;
+                    }
+
+                    const html = `
+                        <div class="owner-item flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm animate-fade-in-up" data-id="${ownerId}">
+                            <span class="text-xs font-bold text-gray-700">${ownerName}</span>
+                            <input type="hidden" name="owners[]" value="${ownerId}">
+                            <button type="button" class="remove-owner-btn text-red-400 hover:text-red-600 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    `;
+
+                    $('#selected-owners-container').append(html);
+                    selector.val('');
+                });
+
+                $(document).on('click', '.remove-owner-btn', function() {
+                    $(this).closest('.owner-item').remove();
+                });
             });
-        });
-    </script>
+        </script>
     @endpush
 </x-admin.app>
