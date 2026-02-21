@@ -14,9 +14,7 @@
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
-
                     <div class="absolute inset-0 bg-green/40 backdrop-blur-sm" @click="closeModal()"></div>
-
                     <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-2xl max-h-[92vh] flex flex-col"
                         x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
@@ -24,7 +22,6 @@
                         x-transition:leave="transition ease-in duration-150"
                         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
                         x-transition:leave-end="opacity-0 scale-95 translate-y-2">
-
                         {{-- Header --}}
                         <div class="flex items-center justify-between px-5 py-4 border-b border-lumot/20 shrink-0">
                             <div class="flex items-center gap-3">
@@ -49,15 +46,14 @@
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">1. Details</button>
                                 <span class="text-gray/30 text-xs">›</span>
-                                <button
-                                    @click="if(modal.form.capital_investment && modal.form.mode_of_payment) { computeFees().then(() => { modal.step = 2; }); }"
+                                <button @click="modal.step = 2; computeFees()"
                                     :disabled="!modal.form.capital_investment || !modal.form.mode_of_payment"
                                     :class="modal.step === 2 ? 'bg-logo-teal text-white shadow' :
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">2.
                                     Assessment</button>
                                 <span class="text-gray/30 text-xs">›</span>
-                                <button @click="if(modal.totalDue > 0) modal.step = 3" :disabled="modal.totalDue === 0"
+                                <button @click="computeFees(); modal.step = 3" :disabled="modal.totalDue === 0"
                                     :class="modal.step === 3 ? 'bg-logo-teal text-white shadow' :
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">3.
@@ -71,10 +67,8 @@
                                 </svg>
                             </button>
                         </div>
-
                         {{-- Scrollable body --}}
                         <div class="overflow-y-auto flex-1 p-5">
-
                             {{-- ── STEP 1: Details ── --}}
                             <div x-show="modal.step === 1" class="space-y-4">
                                 <div>
@@ -86,7 +80,6 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray mb-1.5">Business Scale</label>
                                     <select x-model="modal.form.business_scale"
-                                        @change="if(modal.form.capital_investment && modal.form.mode_of_payment) computeFees()"
                                         class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                         <option value="">-- Select Scale --</option>
                                         <option value="Micro (Assets up to P3M)">Micro (Assets up to P3M)</option>
@@ -102,8 +95,7 @@
                                         <span
                                             class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray/50 font-semibold">₱</span>
                                         <input type="number" x-model="modal.form.capital_investment"
-                                            @input.debounce.400ms="computeFees()" placeholder="0.00" step="0.01"
-                                            min="0"
+                                            @input="computeFees()" placeholder="0.00" step="0.01" min="0"
                                             class="w-full pl-7 pr-3 text-sm border border-lumot/30 rounded-xl py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30">
                                     </div>
                                     <p class="text-[10px] text-gray/50 mt-1">Used as the basis for computing all taxes
@@ -113,20 +105,14 @@
                                     <label class="block text-xs font-bold text-gray mb-2">Mode of Payment</label>
                                     <div class="grid grid-cols-3 gap-2">
                                         <template
-                                            x-for="opt in [
-                                                { value: 'quarterly',   label: 'Quarterly',   sub: '4 payments', icon: '4×' },
-                                                { value: 'semi_annual', label: 'Semi-Annual', sub: '2 payments', icon: '2×' },
-                                                { value: 'annual',      label: 'Annual',      sub: '1 payment',  icon: '1×' },
-                                            ]"
+                                            x-for="opt in [{ value: 'quarterly', label: 'Quarterly', sub: '4 payments', icon: '4×' },{ value: 'semi_annual', label: 'Semi-Annual', sub: '2 payments', icon: '2×' },{ value: 'annual', label: 'Annual', sub: '1 payment', icon: '1×' }]"
                                             :key="opt.value">
                                             <label class="cursor-pointer">
                                                 <input type="radio" :value="opt.value"
                                                     x-model="modal.form.mode_of_payment" @change="computeFees()"
                                                     class="peer hidden">
                                                 <div
-                                                    class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal
-                                                    border-2 border-lumot/30 rounded-xl p-3 text-center transition-all duration-150
-                                                    hover:border-logo-teal/50 hover:bg-logo-teal/5 select-none">
+                                                    class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal border-2 border-lumot/30 rounded-xl p-3 text-center transition-all duration-150 hover:border-logo-teal/50 hover:bg-logo-teal/5 select-none">
                                                     <p class="text-2xl font-extrabold" x-text="opt.icon"></p>
                                                     <p class="text-[11px] font-bold mt-0.5" x-text="opt.label"></p>
                                                     <p class="text-[9px] opacity-70 mt-0.5" x-text="opt.sub"></p>
@@ -135,38 +121,12 @@
                                         </template>
                                     </div>
                                 </div>
-
-                                {{-- Computing indicator --}}
-                                <div x-show="modal.computing"
-                                    class="flex items-center gap-2 p-3 bg-logo-teal/5 border border-logo-teal/20 rounded-xl">
-                                    <svg class="w-4 h-4 text-logo-teal animate-spin" fill="none"
-                                        viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                                    </svg>
-                                    <span class="text-xs font-semibold text-logo-teal">Computing fees…</span>
-                                </div>
-
-                                {{-- Live preview total --}}
-                                <div x-show="!modal.computing && modal.totalDue > 0"
+                                <div x-show="modal.totalDue > 0"
                                     class="flex items-center justify-between p-3 bg-logo-teal/5 border border-logo-teal/20 rounded-xl">
                                     <p class="text-xs font-bold text-gray">Estimated Total Tax Due</p>
                                     <p class="text-sm font-extrabold text-logo-teal"
                                         x-text="'₱' + Number(modal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
                                     </p>
-                                </div>
-
-                                {{-- Compute error --}}
-                                <div x-show="modal.computeError" x-cloak
-                                    class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-                                    <svg class="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span class="text-xs font-semibold text-red-500"
-                                        x-text="modal.computeError"></span>
                                 </div>
                             </div>
 
@@ -202,16 +162,12 @@
                                         <p class="text-[10px] font-extrabold text-gray/70 uppercase text-right">Tax Due
                                         </p>
                                     </div>
-                                    <template x-for="fee in modal.fees" :key="fee.id ?? fee.name">
+                                    <template x-for="fee in modal.fees" :key="fee.name">
                                         <div
                                             class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/30">
                                             <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
                                             <p class="text-xs text-gray/60 text-center font-mono"
-                                                x-text="fee.base_type === 'gross_sales'
-                                                    ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2})
-                                                    : fee.base_type === 'scale'
-                                                        ? fee.scale_label
-                                                        : '—'">
+                                                x-text="'₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2})">
                                             </p>
                                             <p class="text-xs font-bold text-green text-right"
                                                 x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
@@ -226,18 +182,17 @@
                                         </p>
                                     </div>
                                     <div class="px-4 py-2 bg-lumot/10 flex items-center justify-between">
-                                        <p class="text-[10px] text-gray/60">
-                                            Mode: <span class="font-bold capitalize"
+                                        <p class="text-[10px] text-gray/60">Mode: <span class="font-bold capitalize"
                                                 x-text="modal.form.mode_of_payment ? modal.form.mode_of_payment.replace('_',' ') : '—'"></span>
                                         </p>
-                                        <p class="text-[10px] text-gray/60">
-                                            Per installment: <span class="font-bold text-logo-teal"
+                                        <p class="text-[10px] text-gray/60">Per installment: <span
+                                                class="font-bold text-logo-teal"
                                                 x-text="modal.perInstallment > 0 ? '₱' + Number(modal.perInstallment).toLocaleString('en-PH', {minimumFractionDigits: 2}) : '—'"></span>
                                         </p>
                                     </div>
                                 </div>
-                                <p class="text-[10px] text-gray/40 text-center">Computed using LGU fee rules configured
-                                    in the system.</p>
+                                <p class="text-[10px] text-gray/40 text-center">Computed using standard Laguna LGU
+                                    revenue code rates.</p>
                             </div>
 
                             {{-- ── STEP 3: Payment Schedule ── --}}
@@ -287,7 +242,7 @@
                                 </div>
                             </div>
 
-                            {{-- Feedback messages --}}
+                            {{-- Feedback --}}
                             <div x-show="modal.saved" x-cloak
                                 class="flex items-center gap-2 p-3 bg-logo-green/10 border border-logo-green/20 rounded-xl mt-4">
                                 <svg class="w-4 h-4 text-logo-green shrink-0" fill="none" viewBox="0 0 24 24"
@@ -307,29 +262,25 @@
                                 <span class="text-xs font-semibold text-red-500" x-text="modal.error"></span>
                             </div>
                         </div>
-
                         {{-- Footer --}}
                         <div
                             class="flex items-center justify-between gap-2 px-5 py-4 border-t border-lumot/20 shrink-0">
                             <div class="flex gap-2">
                                 <button x-show="modal.step > 1" @click="modal.step--"
-                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
-                                    ← Back
-                                </button>
+                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">←
+                                    Back</button>
                                 <button @click="closeModal()"
-                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
-                                    Cancel
-                                </button>
+                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
                             </div>
                             <div class="flex gap-2">
                                 <button x-show="modal.step < 3"
-                                    @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){ computeFees().then(() => modal.step++); } else if(modal.step === 2){ modal.step++; }"
-                                    :disabled="modal.step === 1 && (!modal.form.capital_investment || !modal.form
-                                        .mode_of_payment || modal.computing)"
+                                    @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){ computeFees(); modal.step++; } else if(modal.step === 2){ modal.step++; }"
+                                    :disabled="modal.step === 1 && (!modal.form.capital_investment || !modal.form.mode_of_payment)"
                                     class="px-5 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                                     Next →
                                 </button>
-                                <button @click="saveAssess()" :disabled="modal.saving || modal.totalDue === 0"
+                                <button x-show="modal.step === 3" @click="approvePayment()"
+                                    :disabled="modal.saving || modal.totalDue === 0"
                                     class="px-5 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                                     <svg x-show="modal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
                                         viewBox="0 0 24 24">
@@ -337,9 +288,569 @@
                                             stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
-                                    <span x-text="modal.saving ? 'Saving...' : 'Save Assessment'"></span>
+                                    <svg x-show="!modal.saving" class="w-3.5 h-3.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span x-text="modal.saving ? 'Approving...' : 'Approve to Payment'"></span>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- VIEW MODAL                                                  --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                <div x-show="viewModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+                    <div class="absolute inset-0 bg-green/40 backdrop-blur-sm" @click="viewModal.open = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-2xl max-h-[92vh] flex flex-col"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+                        {{-- Header --}}
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-lumot/20 shrink-0">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-9 h-9 rounded-xl bg-logo-blue/10 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5 text-logo-blue" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-extrabold text-green">Business Details</h3>
+                                    <p class="text-[11px] text-gray truncate max-w-[240px]"
+                                        x-text="viewModal.entry?.business_name"></p>
+                                </div>
+                            </div>
+                            <button @click="viewModal.open = false"
+                                class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        {{-- Body --}}
+                        <div class="overflow-y-auto flex-1 p-5 space-y-4" x-show="!viewModal.loading">
+                            {{-- Status badge --}}
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-bold px-3 py-1 rounded-full border"
+                                    :class="{
+                                        'bg-green-50 text-logo-green border-green-200': viewModal.entry
+                                            ?.status === 'approved',
+                                        'bg-red-50 text-red-500 border-red-200': viewModal.entry
+                                            ?.status === 'rejected',
+                                        'bg-blue-50 text-logo-blue border-blue-200': viewModal.entry
+                                            ?.status === 'for_renewal',
+                                        'bg-orange-50 text-orange-500 border-orange-200': viewModal.entry
+                                            ?.status === 'retired',
+                                        'bg-gray-50 text-gray border-gray-200': viewModal.entry
+                                            ?.status === 'cancelled',
+                                        'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved', 'rejected',
+                                            'for_renewal', 'cancelled', 'retired'
+                                        ].includes(viewModal.entry?.status)
+                                    }"
+                                    x-text="viewModal.entry?.status ? viewModal.entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                </span>
+                            </div>
+                            {{-- Business Info --}}
+                            <div class="bg-bluebody/60 rounded-xl p-4 space-y-2">
+                                <p class="text-[10px] font-extrabold text-gray/60 uppercase tracking-wider mb-2">
+                                    Business Information</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Name</p>
+                                        <p class="text-xs font-bold text-green"
+                                            x-text="viewModal.entry?.business_name || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Trade Name</p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.trade_name || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">TIN No.</p>
+                                        <p class="text-xs text-gray font-mono"
+                                            x-text="viewModal.entry?.tin_no || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Type</p>
+                                        <p class="text-xs text-gray"
+                                            x-text="viewModal.entry?.type_of_business || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Nature</p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.business_nature || '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Scale</p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.business_scale || '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Capital / Gross Sales
+                                        </p>
+                                        <p class="text-xs text-logo-teal font-bold"
+                                            x-text="viewModal.entry?.capital_investment ? '₱' + Number(viewModal.entry.capital_investment).toLocaleString('en-PH',{minimumFractionDigits:2}) : '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Mode of Payment</p>
+                                        <p class="text-xs text-gray capitalize"
+                                            x-text="viewModal.entry?.mode_of_payment ? viewModal.entry.mode_of_payment.replace('_',' ') : '—'">
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- Owner Info --}}
+                            <div class="bg-bluebody/60 rounded-xl p-4 space-y-2">
+                                <p class="text-[10px] font-extrabold text-gray/60 uppercase tracking-wider mb-2">Owner
+                                    Information</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Last Name</p>
+                                        <p class="text-xs font-bold text-green"
+                                            x-text="viewModal.entry?.last_name || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">First Name</p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.first_name || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Middle Name</p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.middle_name || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Mobile No.</p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.mobile_no || '—'"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- Address --}}
+                            <div class="bg-bluebody/60 rounded-xl p-4 space-y-2">
+                                <p class="text-[10px] font-extrabold text-gray/60 uppercase tracking-wider mb-2">
+                                    Business Address</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Barangay</p>
+                                        <p class="text-xs text-gray"
+                                            x-text="viewModal.entry?.business_barangay || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Municipality</p>
+                                        <p class="text-xs text-gray"
+                                            x-text="viewModal.entry?.business_municipality || '—'"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- Retirement Info (shown only when retired) --}}
+                            <div x-show="viewModal.entry?.status === 'retired'"
+                                class="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2">
+                                <p class="text-[10px] font-extrabold text-orange-600 uppercase tracking-wider mb-2">
+                                    Retirement Information</p>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Retirement Date</p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.retirement_date || '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Retired At</p>
+                                        <p class="text-xs text-gray"
+                                            x-text="viewModal.entry?.retired_at ? viewModal.entry.retired_at.substring(0,10) : '—'">
+                                        </p>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Reason</p>
+                                        <p class="text-xs text-gray"
+                                            x-text="viewModal.entry?.retirement_reason || '—'"></p>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Remarks</p>
+                                        <p class="text-xs text-gray"
+                                            x-text="viewModal.entry?.retirement_remarks || '—'"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- Meta --}}
+                            <div class="flex items-center justify-between text-[10px] text-gray/40">
+                                <span
+                                    x-text="'Registered: ' + (viewModal.entry?.created_at ? viewModal.entry.created_at.substring(0,10) : '—')"></span>
+                                <span x-text="'ID: ' + (viewModal.entry?.id || '—')"></span>
+                            </div>
+                        </div>
+                        <div x-show="viewModal.loading" class="flex-1 flex items-center justify-center p-10">
+                            <svg class="w-8 h-8 animate-spin text-logo-teal" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10"
+                                    stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                        </div>
+                        {{-- Footer --}}
+                        <div
+                            class="flex items-center justify-between gap-2 px-5 py-4 border-t border-lumot/20 shrink-0">
+                            <button @click="viewModal.open = false"
+                                class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Close</button>
+                            {{-- Quick-action: Change Status --}}
+                            <div class="flex gap-2">
+                                <button x-show="viewModal.entry?.status !== 'retired'"
+                                    @click="viewModal.open = false; openRetireModal(viewModal.entry)"
+                                    class="px-4 py-2 bg-orange-500 text-white text-xs font-bold rounded-xl hover:bg-orange-600 transition-colors flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                    Retire Business
+                                </button>
+                                <button x-show="viewModal.entry?.status === 'retired'"
+                                    @click="viewModal.open = false; openCertModal(viewModal.entry)"
+                                    class="px-4 py-2 bg-logo-teal text-white text-xs font-bold rounded-xl hover:bg-green transition-colors flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    View Certificate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- STATUS CHANGE MODAL                                         --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                <div x-show="statusModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100">
+                    <div class="absolute inset-0 bg-green/40 backdrop-blur-sm" @click="statusModal.open = false">
+                    </div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-md flex flex-col"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-lumot/20">
+                            <h3 class="text-sm font-extrabold text-green">Change Status</h3>
+                            <button @click="statusModal.open = false"
+                                class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <p class="text-xs text-gray">Changing status for: <span class="font-bold text-green"
+                                    x-text="statusModal.entry?.business_name"></span></p>
+                            <div>
+                                <label class="block text-xs font-bold text-gray mb-1.5">New Status</label>
+                                <select x-model="statusModal.form.status"
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white text-gray">
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="for_renewal">For Renewal</option>
+                                    <option value="for_payment">For Payment</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray mb-1.5">Remarks <span
+                                        class="font-normal text-gray/50">(optional)</span></label>
+                                <textarea x-model="statusModal.form.remarks" rows="3" placeholder="Add remarks or notes..."
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
+                            </div>
+                            <div x-show="statusModal.error" class="text-xs text-red-500 font-semibold"
+                                x-text="statusModal.error"></div>
+                        </div>
+                        <div class="flex gap-2 px-5 py-4 border-t border-lumot/20">
+                            <button @click="statusModal.open = false"
+                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
+                            <button @click="saveStatus()" :disabled="statusModal.saving"
+                                class="flex-1 px-4 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                                <svg x-show="statusModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
+                                    viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                                <span x-text="statusModal.saving ? 'Saving...' : 'Save Status'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- RETIRE MODAL                                                --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                <div x-show="retireModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100">
+                    <div class="absolute inset-0 bg-orange-900/40 backdrop-blur-sm" @click="retireModal.open = false">
+                    </div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl border border-orange-200 w-full max-w-md flex flex-col"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-orange-100">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-extrabold text-orange-600">Retire Business</h3>
+                                    <p class="text-[11px] text-gray truncate max-w-[220px]"
+                                        x-text="retireModal.entry?.business_name"></p>
+                                </div>
+                            </div>
+                            <button @click="retireModal.open = false"
+                                class="p-1.5 rounded-lg text-gray hover:text-orange-500 hover:bg-orange-50 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            {{-- Warning banner --}}
+                            <div class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                                <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <p class="text-[11px] text-orange-700 font-semibold">This action will permanently
+                                    retire the business. A retirement certificate will be issued.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray mb-1.5">Retirement Date <span
+                                        class="text-red-400">*</span></label>
+                                <input type="date" x-model="retireModal.form.retirement_date"
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray mb-1.5">Reason for Retirement <span
+                                        class="text-red-400">*</span></label>
+                                <select x-model="retireModal.form.retirement_reason"
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 bg-white text-gray mb-2">
+                                    <option value="">-- Select Reason --</option>
+                                    <option value="Business Closure">Business Closure</option>
+                                    <option value="Owner Deceased">Owner Deceased</option>
+                                    <option value="Relocation to Another LGU">Relocation to Another LGU</option>
+                                    <option value="Change of Business Ownership">Change of Business Ownership</option>
+                                    <option value="Voluntary Retirement">Voluntary Retirement</option>
+                                    <option value="Revocation of Permit">Revocation of Permit</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                {{-- Custom reason if "Other" --}}
+                                <textarea x-show="retireModal.form.retirement_reason === 'Other'" x-model="retireModal.form.retirement_reason_custom"
+                                    rows="2" placeholder="Please specify reason..."
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none mt-2"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray mb-1.5">Additional Remarks <span
+                                        class="font-normal text-gray/50">(optional)</span></label>
+                                <textarea x-model="retireModal.form.retirement_remarks" rows="2" placeholder="Any additional notes..."
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none"></textarea>
+                            </div>
+                            <div x-show="retireModal.error" class="text-xs text-red-500 font-semibold"
+                                x-text="retireModal.error"></div>
+                        </div>
+                        <div class="flex gap-2 px-5 py-4 border-t border-orange-100">
+                            <button @click="retireModal.open = false"
+                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
+                            <button @click="submitRetire()"
+                                :disabled="retireModal.saving || !retireModal.form.retirement_date || !retireModal.form
+                                    .retirement_reason"
+                                class="flex-1 px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                                <svg x-show="retireModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
+                                    viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                                <svg x-show="!retireModal.saving" class="w-3.5 h-3.5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
+                                <span x-text="retireModal.saving ? 'Retiring...' : 'Confirm Retirement'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- RETIREMENT CERTIFICATE MODAL                               --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                <div x-show="certModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100">
+                    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" @click="certModal.open = false">
+                    </div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-xl flex flex-col"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-lumot/20">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-9 h-9 rounded-xl bg-logo-teal/10 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5 text-logo-teal" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-sm font-extrabold text-green">Retirement Certificate</h3>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button @click="printCert()"
+                                    class="px-3 py-1.5 bg-logo-teal text-white text-xs font-bold rounded-xl hover:bg-green transition-colors flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print
+                                </button>
+                                <button @click="certModal.open = false"
+                                    class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Certificate Content --}}
+                        <div class="overflow-y-auto flex-1 p-6" id="retirement-certificate-print">
+                            <div class="text-center mb-6">
+                                <p class="text-[10px] font-bold text-gray/60 uppercase tracking-widest">Republic of the
+                                    Philippines</p>
+                                <p class="text-[10px] font-bold text-gray/60">Province of Laguna</p>
+                                <p class="text-sm font-extrabold text-green uppercase tracking-wide mt-1">Municipal
+                                    Government</p>
+                                <p class="text-[10px] text-gray/60">Business Permit and Licensing System</p>
+                                <div class="w-16 h-0.5 bg-logo-teal mx-auto my-3"></div>
+                                <h2 class="text-lg font-extrabold text-green uppercase tracking-widest">Certificate of
+                                    Business Retirement</h2>
+                                <p class="text-[11px] text-gray/60 mt-1">This certifies that the business described
+                                    herein has been officially retired.</p>
+                            </div>
+
+                            <div class="border-2 border-logo-teal/30 rounded-xl p-5 space-y-3 bg-logo-teal/5 mb-5">
+                                <div class="grid grid-cols-2 gap-y-3 gap-x-4">
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Name</p>
+                                        <p class="text-sm font-extrabold text-green"
+                                            x-text="certModal.entry?.business_name || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Trade Name</p>
+                                        <p class="text-sm font-bold text-gray"
+                                            x-text="certModal.entry?.trade_name || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Owner</p>
+                                        <p class="text-sm text-gray"
+                                            x-text="certModal.entry ? certModal.entry.last_name + ', ' + certModal.entry.first_name + (certModal.entry.middle_name ? ' ' + certModal.entry.middle_name : '') : '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">TIN No.</p>
+                                        <p class="text-sm text-gray font-mono"
+                                            x-text="certModal.entry?.tin_no || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Type</p>
+                                        <p class="text-sm text-gray"
+                                            x-text="certModal.entry?.type_of_business || '—'"></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Nature</p>
+                                        <p class="text-sm text-gray" x-text="certModal.entry?.business_nature || '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Address</p>
+                                        <p class="text-sm text-gray"
+                                            x-text="(certModal.entry?.business_barangay || '') + (certModal.entry?.business_municipality ? ', ' + certModal.entry.business_municipality : '') || '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Retirement Date</p>
+                                        <p class="text-sm font-bold text-orange-500"
+                                            x-text="certModal.entry?.retirement_date || '—'"></p>
+                                    </div>
+                                    <div class="col-span-2">
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Reason for Retirement
+                                        </p>
+                                        <p class="text-sm text-gray"
+                                            x-text="certModal.entry?.retirement_reason || '—'"></p>
+                                    </div>
+                                    <div x-show="certModal.entry?.retirement_remarks" class="col-span-2">
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Remarks</p>
+                                        <p class="text-sm text-gray"
+                                            x-text="certModal.entry?.retirement_remarks || ''"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-gray/60 text-center leading-relaxed">
+                                This certificate is issued upon request of the above-named business owner and confirms
+                                that the business has been duly retired in the records of the Municipal Business Permit
+                                and Licensing Office.
+                            </p>
+
+                            <div class="mt-8 grid grid-cols-2 gap-6">
+                                <div class="text-center">
+                                    <div class="border-b-2 border-gray/30 mb-1 pb-8"></div>
+                                    <p class="text-[10px] font-bold text-gray/60 uppercase">Business Owner /
+                                        Representative</p>
+                                    <p class="text-[9px] text-gray/40">Signature over Printed Name</p>
+                                </div>
+                                <div class="text-center">
+                                    <div class="border-b-2 border-gray/30 mb-1 pb-8"></div>
+                                    <p class="text-[10px] font-bold text-gray/60 uppercase">BPLO Officer</p>
+                                    <p class="text-[9px] text-gray/40">Signature over Printed Name</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between mt-6 pt-4 border-t border-lumot/20">
+                                <p class="text-[10px] text-gray/40" x-text="'Issued: ' + (certModal.issuedAt || '—')">
+                                </p>
+                                <p class="text-[10px] text-gray/40"
+                                    x-text="'Ref. No.: BPL-RET-' + (certModal.entry?.id ? String(certModal.entry.id).padStart(6,'0') : '000000')">
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 px-5 py-4 border-t border-lumot/20">
+                            <button @click="certModal.open = false"
+                                class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Close</button>
+                            <button @click="printCert()"
+                                class="px-5 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors flex items-center gap-2">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Print Certificate
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -352,18 +863,8 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span
-                            class="text-xs font-semibold text-logo-teal bg-logo-teal/10 px-3 py-1 rounded-full border border-logo-teal/20">
-                            {{ $totalCount }} Total
-                        </span>
-                        <a href="{{ route('bpls.fee-rules.index') }}"
-                            class="flex items-center gap-1.5 px-4 py-2 bg-white text-logo-teal border border-logo-teal/30 text-xs font-bold rounded-xl hover:bg-logo-teal/5 transition-colors">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            Fee Rules
-                        </a>
+                            class="text-xs font-semibold text-logo-teal bg-logo-teal/10 px-3 py-1 rounded-full border border-logo-teal/20">{{ $totalCount }}
+                            Total</span>
                         <a href="{{ route('bpls.business-entries.index') }}"
                             class="flex items-center gap-1.5 px-4 py-2 bg-logo-teal text-white text-xs font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -376,7 +877,7 @@
                 </div>
 
                 {{-- ── Stat Pills ── --}}
-                <div class="grid grid-cols-3 gap-3 mb-5">
+                <div class="grid grid-cols-4 gap-3 mb-5">
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-blue/10 flex items-center justify-center shrink-0">
@@ -419,6 +920,20 @@
                             <p class="text-lg font-extrabold text-green">{{ $approvedCount }}</p>
                         </div>
                     </div>
+                    <div
+                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray">Retired</p>
+                            <p class="text-lg font-extrabold text-orange-500">{{ $retiredCount }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ── Filters + View Toggle ── --}}
@@ -448,7 +963,9 @@
                             <option value="approved">Approved</option>
                             <option value="rejected">Rejected</option>
                             <option value="for_renewal">For Renewal</option>
+                            <option value="for_payment">For Payment</option>
                             <option value="cancelled">Cancelled</option>
+                            <option value="retired">Retired</option>
                         </select>
                         <select x-model="filters.type" @change="resetAndFetch()"
                             class="text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white shrink-0">
@@ -530,9 +1047,8 @@
                     <p class="text-sm font-bold text-gray">No entries found</p>
                     <p class="text-xs text-gray/60 mt-1">Try adjusting your search or filters.</p>
                     <button @click="filters.q = ''; filters.status = 'all'; filters.type = 'all'; resetAndFetch()"
-                        class="mt-4 px-4 py-2 bg-logo-teal/10 text-logo-teal text-xs font-bold rounded-xl hover:bg-logo-teal/20 transition-colors">
-                        Clear Filters
-                    </button>
+                        class="mt-4 px-4 py-2 bg-logo-teal/10 text-logo-teal text-xs font-bold rounded-xl hover:bg-logo-teal/20 transition-colors">Clear
+                        Filters</button>
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════ --}}
@@ -548,9 +1064,10 @@
                                         'bg-logo-green': entry.status === 'approved',
                                         'bg-red-400': entry.status === 'rejected',
                                         'bg-logo-blue': entry.status === 'for_renewal',
+                                        'bg-orange-400': entry.status === 'retired',
                                         'bg-gray-300': entry.status === 'cancelled',
-                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled'].includes(
-                                            entry.status)
+                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled',
+                                            'retired'].includes(entry.status)
                                     }">
                                 </div>
                                 <div class="p-4">
@@ -561,19 +1078,23 @@
                                             <p class="text-[11px] text-gray truncate mt-0.5"
                                                 x-text="entry.trade_name || ''" x-show="entry.trade_name"></p>
                                         </div>
-                                        <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                        <span
+                                            class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
                                             :class="{
                                                 'bg-green-50 text-logo-green border-green-200': entry
                                                     .status === 'approved',
                                                 'bg-red-50 text-red-500 border-red-200': entry.status === 'rejected',
                                                 'bg-blue-50 text-logo-blue border-blue-200': entry
                                                     .status === 'for_renewal',
+                                                'bg-orange-50 text-orange-500 border-orange-200': entry
+                                                    .status === 'retired',
                                                 'bg-gray-50 text-gray border-gray-200': entry.status === 'cancelled',
                                                 'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved',
-                                                    'rejected', 'for_renewal', 'cancelled'
+                                                    'rejected', 'for_renewal', 'cancelled', 'retired'
                                                 ].includes(entry.status)
                                             }"
-                                            x-text="entry.status ? entry.status.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                            @click="openStatusModal(entry)" title="Click to change status"
+                                            x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-1.5 mb-3 p-2 bg-bluebody/50 rounded-lg">
@@ -587,51 +1108,68 @@
                                     </div>
                                     <div class="space-y-1.5 mb-3">
                                         <template x-if="entry.tin_no">
-                                            <div class="flex items-center gap-1.5">
-                                                <span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">TIN</span>
-                                                <span class="text-xs text-gray font-mono"
-                                                    x-text="entry.tin_no"></span>
+                                            <div class="flex items-center gap-1.5"><span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">TIN</span><span
+                                                    class="text-xs text-gray font-mono" x-text="entry.tin_no"></span>
                                             </div>
                                         </template>
                                         <template x-if="entry.type_of_business">
-                                            <div class="flex items-center gap-1.5">
-                                                <span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Type</span>
-                                                <span class="text-xs text-gray truncate"
-                                                    x-text="entry.type_of_business"></span>
-                                            </div>
+                                            <div class="flex items-center gap-1.5"><span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Type</span><span
+                                                    class="text-xs text-gray truncate"
+                                                    x-text="entry.type_of_business"></span></div>
                                         </template>
                                         <template x-if="entry.business_nature">
-                                            <div class="flex items-center gap-1.5">
-                                                <span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Nature</span>
-                                                <span class="text-xs text-gray truncate"
-                                                    x-text="entry.business_nature"></span>
-                                            </div>
+                                            <div class="flex items-center gap-1.5"><span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Nature</span><span
+                                                    class="text-xs text-gray truncate"
+                                                    x-text="entry.business_nature"></span></div>
                                         </template>
                                         <template x-if="entry.capital_investment">
-                                            <div class="flex items-center gap-1.5">
-                                                <span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Capital</span>
-                                                <span class="text-xs text-gray"
+                                            <div class="flex items-center gap-1.5"><span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Capital</span><span
+                                                    class="text-xs text-gray"
                                                     x-text="'₱' + Number(entry.capital_investment).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
                                             </div>
                                         </template>
                                         <template x-if="entry.mode_of_payment">
-                                            <div class="flex items-center gap-1.5">
-                                                <span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Payment</span>
-                                                <span class="text-xs text-gray capitalize"
-                                                    x-text="entry.mode_of_payment.replace('_',' ')"></span>
-                                            </div>
+                                            <div class="flex items-center gap-1.5"><span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Payment</span><span
+                                                    class="text-xs text-gray capitalize"
+                                                    x-text="entry.mode_of_payment.replace('_',' ')"></span></div>
                                         </template>
                                     </div>
+                                    {{-- Footer actions --}}
                                     <div class="flex items-center justify-between pt-3 border-t border-lumot/20">
                                         <span class="text-[10px] text-gray/50"
                                             x-text="entry.created_at ? entry.created_at.substring(0,10) : '—'"></span>
                                         <div class="flex gap-1.5">
-                                            <button type="button" @click="openModal(entry)" title="Assess"
+                                            {{-- Payment button --}}
+                                            <a x-show="entry.status === 'for_payment' || entry.status === 'approved'"
+                                                :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-green hover:bg-green transition-colors">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                </svg>
+                                                Payment
+                                            </a>
+                                            {{-- Retirement Certificate button --}}
+                                            <button type="button" x-show="entry.status === 'retired'"
+                                                @click="openCertModal(entry)"
+                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Certificate
+                                            </button>
+                                            {{-- Assess button --}}
+                                            <button type="button"
+                                                x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired'"
+                                                @click="openModal(entry)" title="Assess"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor" stroke-width="2.5">
@@ -640,7 +1178,8 @@
                                                 </svg>
                                                 Assess
                                             </button>
-                                            <a href="#" title="View"
+                                            {{-- View button (eye icon) --}}
+                                            <button type="button" @click="openViewModal(entry)" title="View Details"
                                                 class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor" stroke-width="2">
@@ -649,7 +1188,7 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
-                                            </a>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -723,7 +1262,8 @@
                                                 x-text="entry.mode_of_payment ? entry.mode_of_payment.replace('_',' ') : '—'">
                                             </td>
                                             <td class="px-4 py-3">
-                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                                <span
+                                                    class="text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
                                                     :class="{
                                                         'bg-green-50 text-logo-green border-green-200': entry
                                                             .status === 'approved',
@@ -731,18 +1271,43 @@
                                                             .status === 'rejected',
                                                         'bg-blue-50 text-logo-blue border-blue-200': entry
                                                             .status === 'for_renewal',
+                                                        'bg-orange-50 text-orange-500 border-orange-200': entry
+                                                            .status === 'retired',
                                                         'bg-gray-50 text-gray border-gray-200': entry
                                                             .status === 'cancelled',
                                                         'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved',
-                                                            'rejected', 'for_renewal', 'cancelled'
+                                                            'rejected', 'for_renewal', 'cancelled', 'retired'
                                                         ].includes(entry.status)
                                                     }"
-                                                    x-text="entry.status ? entry.status.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                                    @click="openStatusModal(entry)" title="Click to change status"
+                                                    x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3">
                                                 <div class="flex items-center gap-1">
-                                                    <button type="button" @click="openModal(entry)"
+                                                    <a x-show="entry.status === 'for_payment' || entry.status === 'approved'"
+                                                        :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-green hover:bg-green transition-colors whitespace-nowrap">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        </svg>
+                                                        Payment
+                                                    </a>
+                                                    <button type="button" x-show="entry.status === 'retired'"
+                                                        @click="openCertModal(entry)"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                        Cert
+                                                    </button>
+                                                    <button type="button"
+                                                        x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired'"
+                                                        @click="openModal(entry)"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
@@ -751,16 +1316,19 @@
                                                         </svg>
                                                         Assess
                                                     </button>
-                                                    <a href="#"
+                                                    {{-- View button --}}
+                                                    <button type="button" @click="openViewModal(entry)"
+                                                        title="View Details"
                                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
-                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2">
+                                                        <svg class="w-3.5 h-3.5" fill="none"
+                                                            viewBox="0 0 24 24" stroke="currentColor"
+                                                            stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                         </svg>
-                                                    </a>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -784,9 +1352,10 @@
                                         'bg-logo-green': entry.status === 'approved',
                                         'bg-red-400': entry.status === 'rejected',
                                         'bg-logo-blue': entry.status === 'for_renewal',
+                                        'bg-orange-400': entry.status === 'retired',
                                         'bg-gray-300': entry.status === 'cancelled',
-                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled'].includes(
-                                            entry.status)
+                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled',
+                                            'retired'].includes(entry.status)
                                     }">
                                 </div>
                                 <div class="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-5 gap-x-4">
@@ -819,26 +1388,54 @@
                                     </div>
                                     <div class="hidden sm:block">
                                         <p class="text-[10px] text-gray/60 font-bold uppercase">Location</p>
-                                        <p class="text-xs text-gray truncate" x-text="entry.business_barangay || '—'">
-                                        </p>
+                                        <p class="text-xs text-gray truncate"
+                                            x-text="entry.business_barangay || '—'"></p>
                                     </div>
                                 </div>
                                 <div class="shrink-0 flex items-center gap-2">
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                    <span
+                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
                                         :class="{
                                             'bg-green-50 text-logo-green border-green-200': entry
                                                 .status === 'approved',
                                             'bg-red-50 text-red-500 border-red-200': entry.status === 'rejected',
                                             'bg-blue-50 text-logo-blue border-blue-200': entry
                                                 .status === 'for_renewal',
+                                            'bg-teal-50 text-logo-teal border-teal-200': entry
+                                                .status === 'for_payment',
+                                            'bg-orange-50 text-orange-500 border-orange-200': entry
+                                                .status === 'retired',
                                             'bg-gray-50 text-gray border-gray-200': entry.status === 'cancelled',
                                             'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved', 'rejected',
-                                                'for_renewal', 'cancelled'
+                                                'for_renewal', 'for_payment', 'cancelled', 'retired'
                                             ].includes(entry.status)
                                         }"
-                                        x-text="entry.status ? entry.status.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                        @click="openStatusModal(entry)" title="Click to change status"
+                                        x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
                                     </span>
-                                    <button type="button" @click="openModal(entry)"
+                                    <a x-show="entry.status === 'for_payment' || entry.status === 'approved'"
+                                        :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-green hover:bg-green transition-colors whitespace-nowrap">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Payment
+                                    </a>
+                                    <button type="button" x-show="entry.status === 'retired'"
+                                        @click="openCertModal(entry)"
+                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Cert
+                                    </button>
+                                    <button type="button"
+                                        x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired'"
+                                        @click="openModal(entry)"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
@@ -847,7 +1444,8 @@
                                         </svg>
                                         Assess
                                     </button>
-                                    <a href="#"
+                                    {{-- View button --}}
+                                    <button type="button" @click="openViewModal(entry)" title="View Details"
                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2">
@@ -856,7 +1454,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </template>
@@ -865,11 +1463,9 @@
 
                 {{-- ── Pagination ── --}}
                 <div x-show="!loading && lastPage > 1" x-cloak class="flex items-center justify-between mt-2">
-                    <p class="text-xs text-gray">
-                        Showing <span class="font-bold text-green" x-text="from"></span>
-                        to <span class="font-bold text-green" x-text="to"></span>
-                        of <span class="font-bold text-green" x-text="total"></span> entries
-                    </p>
+                    <p class="text-xs text-gray">Showing <span class="font-bold text-green" x-text="from"></span>
+                        to <span class="font-bold text-green" x-text="to"></span> of <span
+                            class="font-bold text-green" x-text="total"></span> entries</p>
                     <div class="flex items-center gap-1">
                         <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
                             :class="currentPage === 1 ? 'text-gray/30 cursor-not-allowed' :
@@ -881,8 +1477,7 @@
                                 :class="page === currentPage ? 'bg-logo-teal text-white border-logo-teal shadow-sm' :
                                     'bg-white text-gray border-lumot/20 hover:border-logo-teal/40 hover:text-logo-teal'"
                                 class="px-3 py-1.5 text-xs font-bold rounded-xl border transition-colors"
-                                x-text="page">
-                            </button>
+                                x-text="page"></button>
                         </template>
                         <button @click="goToPage(currentPage + 1)" :disabled="currentPage === lastPage"
                             :class="currentPage === lastPage ? 'text-gray/30 cursor-not-allowed' :
@@ -911,10 +1506,10 @@
                     filters: {
                         q: '',
                         status: 'all',
-                        type: 'all',
+                        type: 'all'
                     },
 
-                    // ── Modal state ──────────────────────────────────────────────
+                    // ── Assess Modal ──────────────────────────────────────────────────
                     modal: {
                         open: false,
                         saving: false,
@@ -922,8 +1517,6 @@
                         error: null,
                         entry: null,
                         step: 1,
-                        computing: false,
-                        computeError: null,
                         fees: [],
                         schedule: [],
                         totalDue: 0,
@@ -932,18 +1525,57 @@
                             business_nature: '',
                             business_scale: '',
                             capital_investment: '',
-                            mode_of_payment: '',
+                            mode_of_payment: ''
                         },
                     },
 
+                    // ── View Modal ────────────────────────────────────────────────────
+                    viewModal: {
+                        open: false,
+                        loading: false,
+                        entry: null
+                    },
+
+                    // ── Status Change Modal ───────────────────────────────────────────
+                    statusModal: {
+                        open: false,
+                        saving: false,
+                        error: null,
+                        entry: null,
+                        form: {
+                            status: '',
+                            remarks: ''
+                        },
+                    },
+
+                    // ── Retire Modal ──────────────────────────────────────────────────
+                    retireModal: {
+                        open: false,
+                        saving: false,
+                        error: null,
+                        entry: null,
+                        form: {
+                            retirement_date: '',
+                            retirement_reason: '',
+                            retirement_reason_custom: '',
+                            retirement_remarks: ''
+                        },
+                    },
+
+                    // ── Retirement Certificate Modal ──────────────────────────────────
+                    certModal: {
+                        open: false,
+                        entry: null,
+                        issuedAt: ''
+                    },
+
+                    // ── ASSESS modal methods ──────────────────────────────────────────
                     openModal(entry) {
                         this.modal.entry = entry;
                         this.modal.open = true;
                         this.modal.saved = false;
                         this.modal.error = null;
                         this.modal.saving = false;
-                        this.modal.computing = false;
-                        this.modal.computeError = null;
                         this.modal.step = 1;
                         this.modal.fees = [];
                         this.modal.schedule = [];
@@ -955,28 +1587,96 @@
                             capital_investment: entry.capital_investment || '',
                             mode_of_payment: entry.mode_of_payment || '',
                         };
-                        // Auto-compute if we already have the values
-                        if (this.modal.form.capital_investment && this.modal.form.mode_of_payment) {
-                            this.computeFees();
-                        }
+                        if (this.modal.form.capital_investment) this.computeFees();
                     },
 
                     closeModal() {
                         this.modal.open = false;
                     },
 
-                    // ── Fee Computation — calls the DB-backed API endpoint ────────
-                    async computeFees() {
-                        const gs = parseFloat(this.modal.form.capital_investment);
-                        const mode = this.modal.form.mode_of_payment;
-
-                        if (!gs || !mode) return;
-
-                        this.modal.computing = true;
-                        this.modal.computeError = null;
-
+                    // ── VIEW modal ────────────────────────────────────────────────────
+                    async openViewModal(entry) {
+                        this.viewModal.open = true;
+                        this.viewModal.loading = true;
+                        this.viewModal.entry = entry; // show immediately with local data
                         try {
-                            const res = await window.fetch('{{ route('bpls.fee-rules.compute') }}', {
+                            const res = await window.fetch(`{{ url('bpls/business-list') }}/${entry.id}`, {
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            const data = await res.json();
+                            this.viewModal.entry = data;
+                        } catch (e) {
+                            // fallback: just use local entry data already set
+                        } finally {
+                            this.viewModal.loading = false;
+                        }
+                    },
+
+                    // ── STATUS modal ──────────────────────────────────────────────────
+                    openStatusModal(entry) {
+                        this.statusModal.entry = entry;
+                        this.statusModal.form.status = entry.status || 'pending';
+                        this.statusModal.form.remarks = '';
+                        this.statusModal.error = null;
+                        this.statusModal.saving = false;
+                        this.statusModal.open = true;
+                    },
+
+                    async saveStatus() {
+                        this.statusModal.saving = true;
+                        this.statusModal.error = null;
+                        try {
+                            const url = `{{ url('bpls/business-list') }}/${this.statusModal.entry.id}/change-status`;
+                            const res = await window.fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify(this.statusModal.form),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Failed to update status.');
+                            // Update the entry in the list reactively
+                            const idx = this.entries.findIndex(e => e.id === this.statusModal.entry.id);
+                            if (idx !== -1) this.entries[idx] = data.entry;
+                            this.statusModal.open = false;
+                        } catch (err) {
+                            this.statusModal.error = err.message;
+                        } finally {
+                            this.statusModal.saving = false;
+                        }
+                    },
+
+                    // ── RETIRE modal ──────────────────────────────────────────────────
+                    openRetireModal(entry) {
+                        this.retireModal.entry = entry;
+                        this.retireModal.form = {
+                            retirement_date: new Date().toISOString().split('T')[0],
+                            retirement_reason: '',
+                            retirement_reason_custom: '',
+                            retirement_remarks: '',
+                        };
+                        this.retireModal.error = null;
+                        this.retireModal.saving = false;
+                        this.retireModal.open = true;
+                    },
+
+                    async submitRetire() {
+                        this.retireModal.saving = true;
+                        this.retireModal.error = null;
+                        try {
+                            const reason = this.retireModal.form.retirement_reason === 'Other' ?
+                                this.retireModal.form.retirement_reason_custom :
+                                this.retireModal.form.retirement_reason;
+
+                            if (!reason) throw new Error('Please provide a retirement reason.');
+
+                            const url = `{{ url('bpls/business-list') }}/${this.retireModal.entry.id}/retire`;
+                            const res = await window.fetch(url, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -984,37 +1684,227 @@
                                     'Accept': 'application/json',
                                 },
                                 body: JSON.stringify({
-                                    capital_investment: gs,
-                                    business_scale: this.modal.form.business_scale,
-                                    mode_of_payment: mode,
+                                    retirement_date: this.retireModal.form.retirement_date,
+                                    retirement_reason: reason,
+                                    retirement_remarks: this.retireModal.form.retirement_remarks,
                                 }),
                             });
-
                             const data = await res.json();
-
-                            if (!res.ok) {
-                                throw new Error(data.message || 'Computation failed.');
-                            }
-
-                            this.modal.fees = data.fees;
-                            this.modal.totalDue = data.total_due;
-                            this.modal.perInstallment = data.per_installment;
-                            this.modal.schedule = data.schedule;
-
+                            if (!res.ok) throw new Error(data.message || 'Failed to retire business.');
+                            // Update entry in list
+                            const idx = this.entries.findIndex(e => e.id === this.retireModal.entry.id);
+                            if (idx !== -1) this.entries[idx] = data.entry;
+                            this.retireModal.open = false;
+                            // Automatically open certificate
+                            setTimeout(() => this.openCertModal(data.entry), 400);
                         } catch (err) {
-                            this.modal.computeError = err.message;
+                            this.retireModal.error = err.message;
                         } finally {
-                            this.modal.computing = false;
+                            this.retireModal.saving = false;
                         }
                     },
 
-                    // ── Save Assessment ──────────────────────────────────────────
-                    async saveAssess() {
+                    // ── CERTIFICATE modal ─────────────────────────────────────────────
+                    openCertModal(entry) {
+                        this.certModal.entry = entry;
+                        this.certModal.issuedAt = new Date().toLocaleDateString('en-PH', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                        this.certModal.open = true;
+                    },
+
+                    printCert() {
+                        const content = document.getElementById('retirement-certificate-print').innerHTML;
+                        const win = window.open('', '_blank', 'width=800,height=900');
+                        win.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Business Retirement Certificate</title>
+                        <meta charset="UTF-8">
+                        <style>
+                            * { box-sizing: border-box; margin: 0; padding: 0; }
+                            body { font-family: Arial, sans-serif; padding: 32px; color: #222; }
+                            .text-center { text-align: center; }
+                            .text-right { text-align: right; }
+                            p, span { display: block; line-height: 1.5; }
+                            .grid { display: grid; }
+                            .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+                            .col-span-2 { grid-column: span 2; }
+                            .gap-3 { gap: 12px; }
+                            .gap-6 { gap: 24px; }
+                            .gap-y-3 { row-gap: 12px; }
+                            .gap-x-4 { column-gap: 16px; }
+                            .mb-1 { margin-bottom: 4px; }
+                            .mb-5 { margin-bottom: 20px; }
+                            .mb-6 { margin-bottom: 24px; }
+                            .mt-1 { margin-top: 4px; }
+                            .mt-6 { margin-top: 24px; }
+                            .mt-8 { margin-top: 32px; }
+                            .p-5 { padding: 20px; }
+                            .pb-8 { padding-bottom: 32px; }
+                            .pt-4 { padding-top: 16px; }
+                            .my-3 { margin: 12px auto; }
+                            .w-16 { width: 64px; }
+                            .h-0-5 { height: 2px; }
+                            .border-b-2 { border-bottom: 2px solid #d1d5db; }
+                            .border-t { border-top: 1px solid #e5e7eb; }
+                            .border-2 { border: 2px solid #99f6e4; }
+                            .rounded-xl { border-radius: 12px; }
+                            .uppercase { text-transform: uppercase; }
+                            .tracking-widest { letter-spacing: 0.15em; }
+                            .tracking-wider { letter-spacing: 0.08em; }
+                            .font-extrabold { font-weight: 900; }
+                            .font-bold { font-weight: 700; }
+                            .font-mono { font-family: monospace; }
+                            .leading-relaxed { line-height: 1.6; }
+                            .text-lg { font-size: 1.125rem; }
+                            .text-sm { font-size: 0.875rem; }
+                            .text-xs { font-size: 0.75rem; }
+                            .bg-teal { background: #f0fdfb; }
+                            .divider { height: 2px; background: #14b8a6; width: 64px; margin: 12px auto; }
+                            @media print { body { padding: 16px; } }
+                        </style>
+                    </head>
+                    <body>${content}</body>
+                    </html>
+                `);
+                        win.document.close();
+                        setTimeout(() => {
+                            win.focus();
+                            win.print();
+                        }, 500);
+                    },
+
+                    // ── Fee Computation ───────────────────────────────────────────────
+                    computeFees() {
+                        const gs = parseFloat(this.modal.form.capital_investment) || 0;
+                        const scale = this.modal.form.business_scale || '';
+                        const S0 = (() => {
+                            if (scale.includes('Micro')) return 1;
+                            if (scale.includes('Small')) return 2;
+                            if (scale.includes('Medium')) return 3;
+                            if (scale.includes('Large')) return 4;
+                            return 1;
+                        })();
+                        const lbtRate = (() => {
+                            if (gs <= 300000) return 0.018;
+                            if (gs <= 1000000) return 0.0175;
+                            if (gs <= 2000000) return 0.016;
+                            if (gs <= 3000000) return 0.015;
+                            if (gs <= 4000000) return 0.0145;
+                            if (gs <= 5000000) return 0.014;
+                            if (gs <= 6500000) return 0.013;
+                            if (gs <= 8000000) return 0.012;
+                            if (gs <= 10000000) return 0.011;
+                            if (gs <= 15000000) return 0.010;
+                            if (gs <= 20000000) return 0.009;
+                            if (gs <= 30000000) return 0.008;
+                            if (gs <= 40000000) return 0.007;
+                            if (gs <= 50000000) return 0.006;
+                            return 0.005;
+                        })();
+                        const grossSalesTax = gs * lbtRate;
+                        const mayorPermit = S0 === 1 ? 500 : S0 === 2 ? 1000 : S0 === 3 ? 2000 : S0 === 4 ? 3000 : 5000;
+                        const garbageFee = S0 === 1 ? 350 : S0 === 2 ? 400 : S0 === 3 ? 450 : S0 === 4 ? 600 : 800;
+                        const annualInspectionFee = gs > 0 ? 200 : 0;
+                        const sanitaryFee = 100;
+                        const stickerFee = 200;
+                        const zoneFee = 500;
+                        this.modal.fees = [{
+                                name: 'Gross Sales Tax',
+                                base: gs,
+                                amount: grossSalesTax
+                            },
+                            {
+                                name: "Business Permit (Mayor's Permit)",
+                                base: gs,
+                                amount: mayorPermit
+                            },
+                            {
+                                name: 'Garbage Fees',
+                                base: gs,
+                                amount: garbageFee
+                            },
+                            {
+                                name: 'Annual Inspection Fee',
+                                base: gs > 0 ? 1 : 0,
+                                amount: annualInspectionFee
+                            },
+                            {
+                                name: 'Sanitary Permit Fee',
+                                base: 1,
+                                amount: sanitaryFee
+                            },
+                            {
+                                name: 'Sticker Fee',
+                                base: 1,
+                                amount: stickerFee
+                            },
+                            {
+                                name: 'Locational / Zoning Fee',
+                                base: 1,
+                                amount: zoneFee
+                            },
+                        ];
+                        this.modal.totalDue = this.modal.fees.reduce((s, f) => s + f.amount, 0);
+                        this.computeSchedule();
+                    },
+
+                    computeSchedule() {
+                        const total = this.modal.totalDue;
+                        const mode = this.modal.form.mode_of_payment;
+                        const year = new Date().getFullYear();
+                        let schedule = [];
+                        if (mode === 'annual') {
+                            schedule = [{
+                                date: `January 20, ${year}`,
+                                amount: total
+                            }];
+                            this.modal.perInstallment = total;
+                        } else if (mode === 'semi_annual') {
+                            const half = Math.round((total / 2) * 100) / 100;
+                            schedule = [{
+                                date: `February 16, ${year}`,
+                                amount: half
+                            }, {
+                                date: `July 20, ${year}`,
+                                amount: total - half
+                            }];
+                            this.modal.perInstallment = half;
+                        } else if (mode === 'quarterly') {
+                            const quarter = Math.round((total / 4) * 100) / 100;
+                            const rem = Math.round((total - quarter * 3) * 100) / 100;
+                            schedule = [{
+                                    date: `February 16, ${year}`,
+                                    amount: quarter
+                                },
+                                {
+                                    date: `April 20, ${year}`,
+                                    amount: quarter
+                                },
+                                {
+                                    date: `July 20, ${year}`,
+                                    amount: quarter
+                                },
+                                {
+                                    date: `October 20, ${year}`,
+                                    amount: rem
+                                },
+                            ];
+                            this.modal.perInstallment = quarter;
+                        }
+                        this.modal.schedule = schedule;
+                    },
+
+                    async approvePayment() {
                         this.modal.saving = true;
                         this.modal.saved = false;
                         this.modal.error = null;
                         try {
-                            const url = `{{ url('bpls/business-list') }}/${this.modal.entry.id}/assess`;
+                            const url = `{{ url('bpls/business-list') }}/${this.modal.entry.id}/approve-payment`;
                             const res = await window.fetch(url, {
                                 method: 'POST',
                                 headers: {
@@ -1024,21 +1914,15 @@
                                 },
                                 body: JSON.stringify({
                                     ...this.modal.form,
-                                    total_due: this.modal.totalDue,
+                                    total_due: this.modal.totalDue
                                 }),
                             });
                             const data = await res.json();
-                            if (!res.ok) throw new Error(data.message || 'Failed to save.');
-
-                            const idx = this.entries.findIndex(e => e.id === this.modal.entry.id);
-                            if (idx !== -1) this.entries[idx] = data.entry;
-                            this.modal.entry = data.entry;
+                            if (!res.ok) throw new Error(data.message || 'Failed to approve.');
                             this.modal.saved = true;
-
                             setTimeout(() => {
-                                this.modal.saved = false;
-                                this.closeModal();
-                            }, 1400);
+                                window.location.href = data.redirect_url;
+                            }, 600);
                         } catch (err) {
                             this.modal.error = err.message;
                         } finally {
@@ -1046,7 +1930,7 @@
                         }
                     },
 
-                    // ── List / Pagination ────────────────────────────────────────
+                    // ── List / Pagination ─────────────────────────────────────────────
                     get pageRange() {
                         const start = Math.max(1, this.currentPage - 2);
                         const end = Math.min(this.lastPage, this.currentPage + 2);
@@ -1082,7 +1966,7 @@
                                 q: this.filters.q,
                                 status: this.filters.status,
                                 type: this.filters.type,
-                                page: this.currentPage,
+                                page: this.currentPage
                             });
                             const res = await window.fetch(`{{ route('bpls.business-list.search') }}?${params}`);
                             const data = await res.json();
