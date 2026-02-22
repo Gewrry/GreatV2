@@ -305,6 +305,137 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+//Online BPLS routes
+// routes/web.php
+use App\Http\Controllers\Client\AuthController;
+use App\Http\Controllers\Client\ApplicationController;
+use App\Http\Controllers\Client\DashboardController;
+use App\Http\Controllers\Client\DocumentUploadController;
+use App\Http\Controllers\Client\PaymentController;
+
+// =============================================================================
+// CLIENT PORTAL
+// =============================================================================
+Route::prefix('portal')->name('client.')->group(function () {
+
+    // ── Guest-only routes ─────────────────────────────────────────────────
+    Route::middleware('guest:client')->group(function () {
+        Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+        Route::post('/login', [AuthController::class, 'login']);
+        Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+        Route::post('/register', [AuthController::class, 'register']);
+    });
+
+    // ── Authenticated routes ──────────────────────────────────────────────
+    Route::middleware('client.auth')->group(function () {
+
+        // Logout
+        Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+        // Dashboard
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Applications — list, create, show, edit
+        Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
+        Route::post('/apply', [ApplicationController::class, 'store'])->name('apply.store');
+        Route::get('/applications', [ApplicationController::class, 'index'])->name('applications.index');
+        Route::get('/applications/{application}', [ApplicationController::class, 'show'])->name('applications.show');
+
+        // ── ADDED: Edit (draft) and resubmit (returned) ───────────────────
+        Route::get('/applications/{application}/edit', [ApplicationController::class, 'edit'])->name('applications.edit');
+        Route::put('/applications/{application}', [ApplicationController::class, 'update'])->name('applications.update');
+        // ─────────────────────────────────────────────────────────────────
+
+        // Documents
+        Route::get('/applications/{application}/documents', [DocumentUploadController::class, 'index'])->name('documents.index');
+        Route::post('/applications/{application}/documents', [DocumentUploadController::class, 'upload'])->name('documents.upload');
+        Route::delete('/applications/{application}/documents/{document}', [DocumentUploadController::class, 'destroy'])->name('documents.destroy');
+        Route::post('/applications/{application}/documents/submit', [DocumentUploadController::class, 'submit'])->name('documents.submit');
+
+        // Payment
+        Route::get('/applications/{application}/payment', [PaymentController::class, 'show'])->name('payment.show');
+        Route::post('/applications/{application}/payment', [PaymentController::class, 'initiate'])->name('payment.initiate');
+        Route::post('/applications/{application}/payment/confirm', [PaymentController::class, 'confirm'])->name('payment.confirm');
+        Route::get('/applications/{application}/payment/success', [PaymentController::class, 'success'])->name('payment.success');
+
+        // Permit download
+        Route::get('/applications/{application}/permit/download', [ApplicationController::class, 'downloadPermit'])->name('permit.download');
+
+        // Search
+        Route::get('/search-owner', [BusinessEntriesController::class, 'searchOwner'])->name('search-owner');
+        Route::get('/search-business', [BusinessEntriesController::class, 'searchBusiness'])->name('search-business');
+    });
+});
+use App\Http\Controllers\BPLS\Online\BplsApplicationReviewController;
+
+Route::prefix('bpls/online')->name('bpls.online.')->group(function () {
+
+    // ── Application Queue (list) ─────────────────────────────────────────────
+    Route::get(
+        '/application',
+        [BplsApplicationReviewController::class, 'index']
+    )
+        ->name('application.index');
+
+    // ── Application Detail ───────────────────────────────────────────────────
+    Route::get(
+        '/application/{application}',
+        [BplsApplicationReviewController::class, 'show']
+    )
+        ->name('application.show');
+
+    // ── Document Actions ─────────────────────────────────────────────────────
+    Route::post(
+        '/documents/{document}/verify',
+        [BplsApplicationReviewController::class, 'verifyDocument']
+    )
+        ->name('documents.verify');
+
+    Route::post(
+        '/documents/{document}/reject',
+        [BplsApplicationReviewController::class, 'rejectDocument']
+    )
+        ->name('documents.reject');
+
+    // ── Application Workflow Actions ─────────────────────────────────────────
+    Route::post(
+        '/application/{application}/approve',
+        [BplsApplicationReviewController::class, 'approve']
+    )
+        ->name('application.approve');
+
+    Route::post(
+        '/application/{application}/return',
+        [BplsApplicationReviewController::class, 'returnToClient']
+    )
+        ->name('application.return');
+
+    Route::post(
+        '/application/{application}/reject',
+        [BplsApplicationReviewController::class, 'reject']
+    )
+        ->name('application.reject');
+
+    Route::post(
+        '/application/{application}/assess',
+        [BplsApplicationReviewController::class, 'assess']
+    )
+        ->name('application.assess');
+
+    Route::post(
+        '/application/{application}/mark-paid',
+        [BplsApplicationReviewController::class, 'markPaid']
+    )
+        ->name('application.mark-paid');
+
+    Route::post(
+        '/application/{application}/final-approve',
+        [BplsApplicationReviewController::class, 'finalApprove']
+    )
+        ->name('application.final-approve');
+});
+
+
 // Treasury
 Route::get('/treasury', fn() => view('modules.treasury.index'))->name('treasury.index');
 Route::get('/treasury/bpls-payment', [BplsPaymentController::class, 'index'])->name('bpls_payment');
