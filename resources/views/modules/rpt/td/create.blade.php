@@ -22,66 +22,42 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Main Content -->
                 <div class="lg:col-span-2 space-y-6">
-                    <!-- Transaction Type Selector -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-logo-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                            Transaction Type
-                        </h3>
-                        <div class="grid grid-cols-2 gap-4 p-1 bg-gray-100 rounded-2xl relative">
-                            <input type="radio" name="transaction_type" id="type_new" value="NEW" class="hidden peer/new" checked>
-                            <label for="type_new" class="relative z-10 flex items-center justify-center gap-2 py-4 rounded-xl cursor-pointer font-black text-sm uppercase tracking-widest transition-all peer-checked/new:bg-white peer-checked/new:text-logo-teal peer-checked/new:shadow-sm text-gray-500">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                New Property
-                            </label>
-
-                            <input type="radio" name="transaction_type" id="type_revision" value="REVISION" class="hidden peer/rev">
-                            <label for="type_revision" class="relative z-10 flex items-center justify-center gap-2 py-4 rounded-xl cursor-pointer font-black text-sm uppercase tracking-widest transition-all peer-checked/rev:bg-white peer-checked/rev:text-indigo-600 peer-checked/rev:shadow-sm text-gray-500">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                Revision / Update
-                            </label>
-                        </div>
-                    </div>
-
                     <!-- TD Identification -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <svg class="w-5 h-5 text-logo-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             Tax Declaration Information
                         </h3>
+                        
+                        <!-- Transaction Code Row -->
+                        <div class="mb-6 pb-6 border-b border-gray-100">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Transaction Code *</label>
+                            <select name="transaction_code" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" required>
+                                <option value="">Select Transaction Type</option>
+                                @foreach($transactionCodes as $code)
+                                    <option value="{{ $code->tcode }} - {{ $code->tcode_desc }}" {{ old('transaction_code') == $code->tcode ? 'selected' : '' }}>
+                                        {{ $code->tcode }} - {{ $code->tcode_desc }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-400 mt-2">Select the type of transaction for this tax declaration</p>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1" id="td_no_label">Tax Declaration No. <span class="text-red-500 hidden" id="td_no_req">*</span></label>
-                                <div class="relative">
-                                    <input type="text" name="td_no" id="td_no_input" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4 pr-10" placeholder="TD-XXXXXXXX" value="{{ old('td_no') }}">
-                                    <div class="absolute right-3 top-1/2 -translate-y-1/2 hidden" id="search-spinner">
-                                        <svg class="animate-spin h-5 w-5 text-logo-teal" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-400 mt-1" id="td_no_help">Optional for New - System will generate TMP-FAAS-...</p>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tax Declaration No.</label>
+                                <input type="text" name="td_no" id="td_no_input" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" placeholder="Enter Tax Declaration No." value="{{ old('td_no') }}">
+                                <p class="text-xs text-gray-400 mt-1">Optional - System will generate if left blank</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">ARPN *</label>
                                 <input type="text" name="arpn" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" value="{{ old('arpn') }}" required>
                                 <p class="text-xs text-gray-400 mt-1">Assessment Roll Property Number (Required)</p>
                             </div>
-                            <div class="md:col-span-2 hidden" id="found-badge-container">
-                                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <div class="bg-indigo-600 p-2 rounded-lg text-white">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs font-black text-indigo-900 uppercase tracking-widest">Historical Record Found</p>
-                                            <p class="text-sm font-bold text-indigo-700" id="found-context">Loading summary...</p>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="text-xs font-black text-indigo-600 uppercase hover:underline" onclick="clearAutoFill()">Clear</button>
-                                </div>
-                            </div>
+
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">PIN (Property Index Number)</label>
-                                <input type="text" name="pin" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" value="{{ old('pin') }}" placeholder="000-00-000-00-000">
+                                <input type="text" name="pin" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" value="{{ old('pin') }}" placeholder="000-00-000-00-000" required>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Barangay *</label>
@@ -90,15 +66,6 @@
                                     @foreach($barangays as $brgy)
                                         <option value="{{ $brgy->brgy_code }}" {{ old('brgy_code') == $brgy->brgy_code ? 'selected' : '' }}>{{ $brgy->brgy_name }}</option>
                                     @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Revision Year *</label>
-                                <select name="rev_year" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" required>
-                                    <option value="">Select Year</option>
-                                    @for($year = date('Y'); $year >= 2020; $year--)
-                                        <option value="{{ $year }}" {{ old('rev_year', date('Y')) == $year ? 'selected' : '' }}>{{ $year }}</option>
-                                    @endfor
                                 </select>
                             </div>
                         </div>
@@ -143,10 +110,58 @@
                         </div>
                     </div>
 
+                    <!-- Assessment Details -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-logo-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            Assessment Details
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Effectivity *</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <select name="effectivity_quarter" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" required>
+                                        <option value="">Quarter</option>
+                                        <option value="1">1st Qtr</option>
+                                        <option value="2">2nd Qtr</option>
+                                        <option value="3">3rd Qtr</option>
+                                        <option value="4">4th Qtr</option>
+                                    </select>
+                                    <input type="number" name="effectivity_year" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" placeholder="Year" value="{{ date('Y') + 1 }}" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Approved By</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="text" name="approved_by" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" placeholder="Name">
+                                    <input type="date" name="date_approved" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" value="{{ date('Y-m-d') }}">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Revision Year *</label>
+                                <select name="rev_year" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal h-11 px-4" required>
+                                    <option value="">Select Year</option>
+                                    @for($year = date('Y'); $year >= 2020; $year--)
+                                        <option value="{{ $year }}" {{ old('rev_year', date('Y')) == $year ? 'selected' : '' }}>{{ $year }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Remarks -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4">Remarks</h3>
-                        <textarea name="remarks" rows="3" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal px-4 py-2" placeholder="Optional notes or remarks">{{ old('remarks') }}</textarea>
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Remarks & Memoranda</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Remarks</label>
+                                <textarea name="remarks" rows="2" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal px-4 py-2" placeholder="Optional notes or remarks">{{ old('remarks') }}</textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Memoranda</label>
+                                <textarea name="memoranda" rows="2" class="w-full bg-gray-50 border-gray-200 rounded-xl focus:ring-logo-teal focus:border-logo-teal px-4 py-2" placeholder="Enter Memoranda...">{{ old('memoranda') }}</textarea>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -238,74 +253,6 @@
                 selectedOwners.delete(id.toString());
                 updateOwnerDisplay();
             });
-
-            // Transaction Type Toggle Logic
-            $('input[name="transaction_type"]').change(function() {
-                const type = $(this).val();
-                if (type === 'NEW') {
-                    $('#td_no_req').addClass('hidden');
-                    $('#td_no_input').prop('required', false);
-                    $('#td_no_help').text('Optional for New - System will generate TMP-FAAS-...');
-                    $('#td_no_input').removeClass('ring-2 ring-indigo-500');
-                } else {
-                    $('#td_no_req').removeClass('hidden');
-                    $('#td_no_input').prop('required', true);
-                    $('#td_no_help').text('Enter existing TD No. to auto-fill property data');
-                    $('#td_no_input').addClass('ring-2 ring-indigo-500/20');
-                }
-            });
-
-            // Auto-Fill Logic
-            let searchTimeout;
-            $('#td_no_input').on('input', function() {
-                const type = $('input[name="transaction_type"]:checked').val();
-                if (type !== 'REVISION') return;
-
-                const tdNo = $(this).val();
-                if (tdNo.length < 5) {
-                    $('#found-badge-container').addClass('hidden');
-                    return;
-                }
-
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    performAutoFill(tdNo);
-                }, 800);
-            });
-
-            function performAutoFill(tdNo) {
-                $('#search-spinner').removeClass('hidden');
-                
-                $.get(`/rpt/td/api/search/${tdNo}`, function(data) {
-                    $('#search-spinner').addClass('hidden');
-                    $('#found-badge-container').removeClass('hidden');
-                    $('#found-context').text(`Total Assessed: ₱${new Intl.NumberFormat().format(data.total_assessed)} | ${data.brgy_name}`);
-                    
-                    // Auto-load Barangay
-                    $('#brgy_code').val(data.brgy_code);
-                    
-                    // Auto-load Owners
-                    selectedOwners.clear();
-                    data.owners.forEach(owner => {
-                        selectedOwners.add(owner.id.toString());
-                    });
-                    updateOwnerDisplay();
-                    
-                    // Toast or success nudge
-                    console.log('Record details auto-filled');
-                }).fail(function() {
-                    $('#search-spinner').addClass('hidden');
-                    $('#found-badge-container').addClass('hidden');
-                });
-            }
-
-            window.clearAutoFill = function() {
-                $('#td_no_input').val('');
-                $('#found-badge-container').addClass('hidden');
-                $('#brgy_code').val('');
-                selectedOwners.clear();
-                updateOwnerDisplay();
-            }
 
             // Form Validation
             $('#td-create-form').on('submit', function(e) {

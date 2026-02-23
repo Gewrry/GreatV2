@@ -29,6 +29,13 @@ class FaasGenRev extends Model
         'inspected_by',
         'inspection_remarks',
         'previous_td_id',
+        'revision_type',
+        'reason',
+        'memoranda',
+        'effectivity_quarter',
+        'effectivity_year',
+        'approved_by',
+        'date_approved',
         'total_market_value',
         'total_assessed_value',
         'statt',
@@ -48,14 +55,17 @@ class FaasGenRev extends Model
         return $this->belongsTo(Barangay::class, 'bcode', 'brgy_code');
     }
 
+    public function successors()
+    {
+        return $this->hasMany(FaasGenRev::class, 'previous_td_id');
+    }
+
+    /**
+     * The parent TD this record was created from.
+     */
     public function predecessor()
     {
         return $this->belongsTo(FaasGenRev::class, 'previous_td_id');
-    }
-
-    public function successor()
-    {
-        return $this->hasOne(FaasGenRev::class, 'previous_td_id');
     }
 
     public function owners()

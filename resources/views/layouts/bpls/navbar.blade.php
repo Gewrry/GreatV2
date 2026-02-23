@@ -7,8 +7,7 @@
         this.active = this.active === name ? null : name;
     },
     close() { this.active = null }
-}" @click.outside="close()" @scroll.window="close()" @keydown.escape.window="close()"
-    class="relative">
+}" @click.outside="close()" @scroll.window="close()" @keydown.escape.window="close()" class="relative">
     {{-- Top accent line --}}
     <div class="h-1 bg-gradient-to-r from-logo-blue via-logo-teal to-logo-green"></div>
 
@@ -70,6 +69,15 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6M9 16h4" />
                     </svg>
                     Business List
+                </a>
+                {{-- Online Application --}}
+                <a href="{{ route('bpls.online.application.index') }}"
+                    class="flex items-center gap-1 px-2.5 h-full text-white/75 hover:text-white hover:bg-white/5 text-xs font-medium whitespace-nowrap transition-colors shrink-0 {{ request()->routeIs('bpls.business-list.*') ? 'text-white border-b-2 border-logo-teal' : '' }}">
+                    <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Online Application
                 </a>
 
                 {{-- Reports Dropdown --}}

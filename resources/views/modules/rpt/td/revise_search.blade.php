@@ -83,9 +83,6 @@
                          <a href="{{ route('rpt.td.edit', $td->id) }}" class="bg-gray-50 text-gray-700 hover:bg-gray-100 font-black text-[10px] px-6 py-4 rounded-2xl uppercase tracking-widest transition-all">
                             View Components
                         </a>
-                        <a href="{{ route('rpt.td.select_revision_type', $td->id) }}" class="bg-indigo-600 text-white font-black text-[10px] px-8 py-4 rounded-2xl uppercase tracking-widest shadow-lg shadow-indigo-900/20 hover:shadow-indigo-900/40 hover:-translate-y-1 transition-all flex items-center gap-2">
-                            REVISE PROPERTY
-                        </a>
                     </div>
                 </div>
             </div>
