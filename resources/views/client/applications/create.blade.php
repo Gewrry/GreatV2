@@ -120,116 +120,146 @@
         </span>
     </div>
 
-    {{-- ══════════════════════════════════════════════════════════════════════
-         TOP PROGRESS TRACKER — all 6 stages
-         First 2 stages are clickable (user steps), last 4 are locked indicators
-    ══════════════════════════════════════════════════════════════════════════ --}}
-    <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-5 py-4 mb-6 overflow-x-auto">
-        <div class="flex items-center min-w-max">
+{{-- ══ TOP PROGRESS TRACKER ════════════════════════════════════════════ --}}
+@php
+    $createLockedSteps = [
+        ['label' => 'Verification', 'sub' => 'Document review'],
+        ['label' => 'Assessment',   'sub' => 'Fee computation'],
+        ['label' => 'Payment',      'sub' => 'Order of payment'],
+        ['label' => 'Approved ✓',  'sub' => 'Permit released'],
+    ];
+@endphp
 
-            {{-- ── User-input steps (steps 1–5, clickable) ── --}}
-            @php
-                $trackerSteps = [
-                    ['n' => 1, 'label' => 'Fill Form',       'sub' => 'Owner & business info'],
-                    ['n' => 2, 'label' => 'Upload Docs',     'sub' => 'Required documents'],
-                ];
-                $lockedSteps = [
-                    ['label' => 'Verification', 'sub' => 'Document review'],
-                    ['label' => 'Assessment',   'sub' => 'Fee computation'],
-                    ['label' => 'Payment',      'sub' => 'Order of payment'],
-                    ['label' => 'Approved ✓',  'sub' => 'Permit released'],
-                ];
-            @endphp
+<div class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-5 py-4 mb-6 overflow-x-auto">
+    <div class="flex items-center min-w-max">
 
-            @foreach($trackerSteps as $s)
-                {{-- Clickable tracker step --}}
-                <button type="button"
-                    @click="goTo({{ $s['n'] === 1 ? $s['n'] : 'maxReached >= ' . $s['n'] . ' ? ' . $s['n'] . ' : step' }})"
-                    class="flex items-center gap-2.5 group"
-                    :class="{ 'cursor-pointer': {{ $s['n'] }} <= maxReached, 'cursor-default': {{ $s['n'] }} > maxReached }">
+        {{-- ── Step 1: Fill Form (Alpine-driven) ────────────────────────── --}}
+        <button type="button" @click="goTo(1)"
+                class="group flex items-center gap-2.5 focus:outline-none"
+                :class="maxReached >= 1 ? 'cursor-pointer' : 'cursor-default'">
 
-                    {{-- Circle --}}
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-all duration-200"
-                         :class="{
-                            'bg-logo-teal text-white shadow-md shadow-logo-teal/30 scale-110': step === {{ $s['n'] }},
-                            'bg-logo-green text-white': step !== {{ $s['n'] }} && {{ $s['n'] }} < maxReached,
-                            'bg-lumot/30 text-gray/60': step !== {{ $s['n'] }} && {{ $s['n'] }} === maxReached,
-                            'bg-lumot/20 text-gray/30': {{ $s['n'] }} > maxReached
-                         }">
-                        <template x-if="step !== {{ $s['n'] }} && {{ $s['n'] }} < maxReached">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                            </svg>
-                        </template>
-                        <template x-if="step === {{ $s['n'] }} || {{ $s['n'] }} >= maxReached">
-                            <span>{{ $s['n'] }}</span>
-                        </template>
-                    </div>
+            <div class="flex items-center justify-center rounded-full shrink-0 transition-all duration-200
+                        w-8 h-8"
+                 :class="{
+                    'bg-logo-teal text-white shadow-md shadow-logo-teal/30 scale-110 ring-4 ring-logo-teal/15': step === 1,
+                    'bg-logo-teal text-white shadow-md shadow-logo-teal/30 ring-2 ring-logo-teal/20 group-hover:ring-logo-teal/40': step !== 1 && maxReached > 1,
+                    'bg-lumot/20 text-gray/40': step !== 1 && maxReached <= 1
+                 }">
+                <template x-if="step !== 1 && maxReached > 1">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </template>
+                <template x-if="step === 1 || maxReached <= 1">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                </template>
+            </div>
 
-                    {{-- Labels --}}
-                    <div class="text-left">
-                        <p class="text-xs font-bold leading-tight transition-colors"
-                           :class="{
-                              'text-logo-teal': step === {{ $s['n'] }},
-                              'text-logo-green': step !== {{ $s['n'] }} && {{ $s['n'] }} < maxReached,
-                              'text-green': step !== {{ $s['n'] }} && {{ $s['n'] }} >= maxReached && {{ $s['n'] }} <= maxReached,
-                              'text-gray/30': {{ $s['n'] }} > maxReached
-                           }">{{ $s['label'] }}</p>
-                        <p class="text-[10px] text-gray/40">{{ $s['sub'] }}</p>
-                    </div>
-                </button>
+            <div class="text-left">
+                <p class="text-xs font-bold leading-tight transition-colors group-hover:underline"
+                   :class="{
+                      'text-logo-teal': step === 1,
+                      'text-green': step !== 1 && maxReached > 1,
+                      'text-gray/35': step !== 1 && maxReached <= 1
+                   }">Fill Form</p>
+                <p class="text-[10px] leading-tight"
+                   :class="step === 1 ? 'text-logo-teal/60' : 'text-gray/30'">
+                    Owner &amp; business info
+                </p>
+            </div>
+        </button>
 
-                {{-- Connector between user steps --}}
-                @if(!$loop->last)
-                    <div class="w-10 h-px mx-3 transition-colors duration-300 shrink-0"
-                         :class="maxReached > {{ $s['n'] }} ? 'bg-logo-green' : 'bg-lumot/30'"></div>
-                @endif
-            @endforeach
+        {{-- Connector 1 → 2 --}}
+        <div class="mx-3 shrink-0 h-px w-10 transition-colors duration-300"
+             :class="maxReached > 1 ? 'bg-logo-teal/60' : 'bg-lumot/20'"></div>
 
-            {{-- Connector between user steps and locked steps --}}
-            <div class="w-10 h-px mx-3 bg-lumot/20 shrink-0"></div>
+        {{-- ── Step 2: Upload Docs (Alpine-driven) ───────────────────────── --}}
+        <button type="button" @click="goTo(2)"
+                class="group flex items-center gap-2.5 focus:outline-none"
+                :class="maxReached >= 2 ? 'cursor-pointer' : 'cursor-default'">
 
-            {{-- ── Locked admin-driven steps (steps 3–6) ── --}}
-            @foreach($lockedSteps as $i => $locked)
-                <div class="flex items-center gap-2.5 opacity-40">
-                    <div class="w-7 h-7 rounded-full bg-lumot/20 flex items-center justify-center shrink-0">
-                        @if($i === count($lockedSteps) - 1)
-                            {{-- Approved: checkmark icon --}}
-                            <svg class="w-3 h-3 text-gray/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                            </svg>
-                        @else
-                            {{-- Lock icon --}}
-                            <svg class="w-3 h-3 text-gray/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                            </svg>
-                        @endif
-                    </div>
-                    <div class="text-left">
-                        <p class="text-xs font-bold text-gray/40 leading-tight">{{ $locked['label'] }}</p>
-                        <p class="text-[10px] text-gray/30">{{ $locked['sub'] }}</p>
-                    </div>
+            <div class="flex items-center justify-center rounded-full shrink-0 transition-all duration-200"
+                 :class="{
+                    'w-8 h-8 bg-logo-teal text-white shadow-md shadow-logo-teal/30 scale-110 ring-4 ring-logo-teal/15': step === 2,
+                    'w-8 h-8 bg-logo-teal text-white shadow-md shadow-logo-teal/30 ring-2 ring-logo-teal/20 group-hover:ring-logo-teal/40': step !== 2 && maxReached > 2,
+                    'w-7 h-7 bg-lumot/15 text-gray/30': maxReached < 2
+                 }">
+                <template x-if="step !== 2 && maxReached > 2">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </template>
+                <template x-if="step === 2 || maxReached <= 2">
+                    <template x-if="maxReached >= 2">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                    </template>
+                    <template x-if="maxReached < 2">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </template>
+                </template>
+            </div>
+
+            <div class="text-left">
+                <p class="text-xs font-bold leading-tight transition-colors"
+                   :class="{
+                      'text-logo-teal': step === 2,
+                      'text-green group-hover:text-logo-teal group-hover:underline': step !== 2 && maxReached >= 2,
+                      'text-gray/35': maxReached < 2
+                   }">Upload Docs</p>
+                <p class="text-[10px] leading-tight"
+                   :class="step === 2 ? 'text-logo-teal/60' : 'text-gray/25'">
+                    Required documents
+                </p>
+            </div>
+        </button>
+
+        {{-- Connector 2 → locked --}}
+        <div class="mx-3 shrink-0 h-px w-10 bg-lumot/20"></div>
+
+        {{-- ── Locked admin-driven steps ──────────────────────────────────── --}}
+        @foreach($createLockedSteps as $i => $locked)
+            <div class="flex items-center gap-2.5 cursor-default">
+                <div class="w-7 h-7 rounded-full bg-lumot/15 flex items-center justify-center shrink-0">
+                    @if($i === count($createLockedSteps) - 1)
+                        {{-- Approved: checkmark --}}
+                        <svg class="w-3 h-3 text-gray/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    @else
+                        {{-- Admin steps: lock --}}
+                        <svg class="w-3 h-3 text-gray/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    @endif
                 </div>
-                @if(!$loop->last)
-                    <div class="w-6 h-px mx-3 bg-lumot/20 shrink-0"></div>
-                @endif
-            @endforeach
-        </div>
-    </div>
+                <div class="text-left">
+                    <p class="text-xs font-bold text-gray/30 leading-tight">{{ $locked['label'] }}</p>
+                    <p class="text-[10px] text-gray/20 leading-tight">{{ $locked['sub'] }}</p>
+                </div>
+            </div>
 
-    {{-- ══════════════════════════════════════════════════════════════════════
-         FORM STEPS
-         Step 1 = Owner Info + Business Details + Business Address + Emergency Contact
-         Step 2 = Upload Documents
-    ══════════════════════════════════════════════════════════════════════════ --}}
+            @if(!$loop->last)
+                <div class="mx-3 shrink-0 h-px w-6 bg-lumot/20"></div>
+            @endif
+        @endforeach
+
+    </div>
+</div>
+
+    {{-- ══ FORM ═══════════════════════════════════════════════════════════ --}}
     <form action="{{ route('client.apply.store') }}" method="POST" id="bpls-form" enctype="multipart/form-data">
         @csrf
-        <input type="hidden" name="owner_id" id="owner_id_field">
         <input type="hidden" name="application_type" value="new">
 
-        {{-- ════════════════════════════════════════════════════════════════════
-             STEP 1 — Fill Form (sub-sections via inner tabs)
-        ════════════════════════════════════════════════════════════════════════ --}}
+        {{-- ════════════════════════════════════════════════════════════════
+             STEP 1 — Fill Form
+        ════════════════════════════════════════════════════════════════════ --}}
         <div x-show="step === 1"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 translate-y-2"
@@ -240,7 +270,7 @@
                         subGoTo(n) { if(n <= this.subMax) this.sub = n; }
                       }">
 
-            {{-- Inner sub-step tab pills --}}
+            {{-- Sub-step tab pills --}}
             <div class="flex gap-1 mb-5 bg-white rounded-2xl p-1.5 shadow-sm border border-lumot/20">
                 @foreach([
                     ['n'=>1,'label'=>'Owner Info'],
@@ -270,7 +300,7 @@
                 @endforeach
             </div>
 
-            {{-- ── Sub-step 1: Owner Info ────────────────────────────────── --}}
+            {{-- ── Sub-step 1: Owner Info ───────────────────────────────── --}}
             <div x-show="sub === 1"
                  x-transition:enter="transition ease-out duration-150"
                  x-transition:enter-start="opacity-0 translate-x-2"
@@ -286,45 +316,20 @@
                         <h2 class="text-sm font-extrabold text-green uppercase tracking-wider">Owner Information</h2>
                     </div>
 
-                    {{-- Owner Search --}}
-                    <div class="mb-5 p-4 bg-bluebody/50 rounded-xl border border-logo-blue/10" x-data="ownerSearch()">
-                        <label class="block text-xs font-bold text-logo-blue mb-1.5">Find Existing Owner</label>
-                        <div class="flex gap-2 relative" @click.outside="results = []">
-                            <input type="text" x-model="query" @input.debounce.300ms="search()" @focus="if(query.length >= 2) search()"
-                                placeholder="Search by name or mobile number..."
-                                class="flex-1 text-sm border border-logo-blue/20 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white placeholder-gray/40">
-                            <button type="button" @click="clear()" x-show="selected"
-                                class="px-4 py-2 bg-gray/20 text-gray text-xs font-bold rounded-xl hover:bg-gray/30 transition-colors">Clear</button>
-                            <div x-show="results.length > 0" class="absolute top-full left-0 right-16 mt-1 bg-white border border-lumot/30 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
-                                <template x-for="owner in results" :key="owner.id">
-                                    <button type="button" @click="select(owner)" class="w-full text-left px-4 py-3 hover:bg-bluebody/50 transition-colors border-b border-lumot/10 last:border-0">
-                                        <p class="text-sm font-bold text-green" x-text="owner.last_name + ', ' + owner.first_name + (owner.middle_name ? ' ' + owner.middle_name : '')"></p>
-                                        <p class="text-xs text-gray" x-text="owner.mobile_no + (owner.email ? ' | ' + owner.email : '')"></p>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-gray mt-1.5">Or fill in the fields below to add a new owner.</p>
-                        <div x-show="selected" class="mt-2 flex items-center gap-2 p-2 bg-logo-teal/10 rounded-lg border border-logo-teal/20">
-                            <svg class="w-4 h-4 text-logo-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            <span class="text-xs font-semibold text-logo-teal" x-text="'Using existing owner: ' + query"></span>
-                        </div>
-                    </div>
-
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Last Name <span class="text-red-400">*</span></label>
-                            <input type="text" name="last_name" id="last_name" placeholder="e.g. Dela Cruz" value="{{ old('last_name') }}"
+                            <input type="text" name="last_name" placeholder="e.g. Dela Cruz" value="{{ old('last_name') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">First Name <span class="text-red-400">*</span></label>
-                            <input type="text" name="first_name" id="first_name" placeholder="e.g. Juan" value="{{ old('first_name') }}"
+                            <input type="text" name="first_name" placeholder="e.g. Juan" value="{{ old('first_name') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Middle Name</label>
-                            <input type="text" name="middle_name" id="middle_name" placeholder="e.g. Santos" value="{{ old('middle_name') }}"
+                            <input type="text" name="middle_name" placeholder="e.g. Santos" value="{{ old('middle_name') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -332,7 +337,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Citizenship</label>
-                            <select name="citizenship" id="citizenship" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
+                            <select name="citizenship" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select --</option>
                                 <option {{ old('citizenship')==='Filipino' ? 'selected':'' }}>Filipino</option>
                                 <option {{ old('citizenship')==='Foreign National' ? 'selected':'' }}>Foreign National</option>
@@ -340,7 +345,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Civil Status</label>
-                            <select name="civil_status" id="civil_status" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
+                            <select name="civil_status" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select --</option>
                                 @foreach(['Single','Married','Widowed','Separated'] as $cs)
                                     <option {{ old('civil_status')===$cs ? 'selected':'' }}>{{ $cs }}</option>
@@ -349,7 +354,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Gender</label>
-                            <select name="gender" id="gender" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
+                            <select name="gender" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select --</option>
                                 @foreach(['Male','Female','Prefer not to say'] as $g)
                                     <option {{ old('gender')===$g ? 'selected':'' }}>{{ $g }}</option>
@@ -358,7 +363,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Birthdate</label>
-                            <input type="date" name="birthdate" id="birthdate" value="{{ old('birthdate') }}"
+                            <input type="date" name="birthdate" value="{{ old('birthdate') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray">
                         </div>
                     </div>
@@ -366,12 +371,12 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Mobile No.</label>
-                            <input type="tel" name="mobile_no" id="mobile_no" placeholder="09XX XXX XXXX" value="{{ old('mobile_no') }}"
+                            <input type="tel" name="mobile_no" placeholder="09XX XXX XXXX" value="{{ old('mobile_no') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Email Address</label>
-                            <input type="email" name="email" id="email" placeholder="email@example.com" value="{{ old('email') }}"
+                            <input type="email" name="email" placeholder="email@example.com" value="{{ old('email') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -379,10 +384,19 @@
                     <div class="mb-5">
                         <label class="block text-xs font-bold text-gray mb-2">Legal Entity / Special Classification</label>
                         <div class="flex flex-wrap gap-2">
-                            @foreach([['name'=>'is_pwd','label'=>'PWD'],['name'=>'is_4ps','label'=>'4PS'],['name'=>'is_solo_parent','label'=>'Solo Parent'],['name'=>'is_senior','label'=>'Senior Citizen'],['name'=>'discount_10','label'=>'10% Fully Vaccinated'],['name'=>'discount_5','label'=>'5% 1st Dose']] as $badge)
+                            @foreach([
+                                ['name'=>'is_pwd',        'label'=>'PWD'],
+                                ['name'=>'is_4ps',        'label'=>'4PS'],
+                                ['name'=>'is_solo_parent','label'=>'Solo Parent'],
+                                ['name'=>'is_senior',     'label'=>'Senior Citizen'],
+                                ['name'=>'discount_10',   'label'=>'10% Fully Vaccinated'],
+                                ['name'=>'discount_5',    'label'=>'5% 1st Dose'],
+                            ] as $badge)
                                 <label class="cursor-pointer">
-                                    <input type="checkbox" name="{{ $badge['name'] }}" id="{{ $badge['name'] }}" class="peer hidden" {{ old($badge['name']) ? 'checked':'' }}>
-                                    <span class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal inline-flex items-center px-3 py-1.5 text-xs font-semibold border border-lumot/40 rounded-full text-gray hover:border-logo-teal transition-all duration-150">{{ $badge['label'] }}</span>
+                                    <input type="checkbox" name="{{ $badge['name'] }}" class="peer hidden" {{ old($badge['name']) ? 'checked':'' }}>
+                                    <span class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal inline-flex items-center px-3 py-1.5 text-xs font-semibold border border-lumot/40 rounded-full text-gray hover:border-logo-teal transition-all duration-150">
+                                        {{ $badge['label'] }}
+                                    </span>
                                 </label>
                             @endforeach
                         </div>
@@ -394,7 +408,7 @@
                             @foreach(['Region'=>'owner_region','Province'=>'owner_province','Municipality'=>'owner_municipality','Barangay'=>'owner_barangay','Street'=>'owner_street'] as $lbl=>$field)
                                 <div class="{{ $lbl==='Street' ? 'sm:col-span-2':'' }}">
                                     <label class="block text-xs font-bold text-gray mb-1">{{ $lbl }}</label>
-                                    <input type="text" name="{{ $field }}" id="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field) }}"
+                                    <input type="text" name="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field) }}"
                                         class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                                 </div>
                             @endforeach
@@ -403,14 +417,15 @@
                 </div>
 
                 <div class="flex justify-end">
-                    <button type="button" @click="subNext()" class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
+                    <button type="button" @click="subNext()"
+                        class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
                         Next: Business Details
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>
             </div>
 
-            {{-- ── Sub-step 2: Business Details ─────────────────────────────── --}}
+            {{-- ── Sub-step 2: Business Details ─────────────────────────── --}}
             <div x-show="sub === 2"
                  x-transition:enter="transition ease-out duration-150"
                  x-transition:enter-start="opacity-0 translate-x-2"
@@ -426,38 +441,15 @@
                         <h2 class="text-sm font-extrabold text-green uppercase tracking-wider">Business Details</h2>
                     </div>
 
-                    {{-- Business Search --}}
-                    <div class="mb-5 p-4 bg-bluebody/50 rounded-xl border border-logo-blue/10" x-data="businessSearch()">
-                        <label class="block text-xs font-bold text-logo-blue mb-1.5">Find Existing Business</label>
-                        <div class="flex gap-2 relative" @click.outside="results = []">
-                            <input type="text" x-model="query" @input.debounce.300ms="search()" placeholder="Search by business name or TIN..."
-                                class="flex-1 text-sm border border-logo-blue/20 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white placeholder-gray/40">
-                            <button type="button" @click="clear()" x-show="selected" class="px-4 py-2 bg-gray/20 text-gray text-xs font-bold rounded-xl hover:bg-gray/30 transition-colors">Clear</button>
-                            <div x-show="results.length > 0" class="absolute top-full left-0 right-16 mt-1 bg-white border border-lumot/30 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto">
-                                <template x-for="biz in results" :key="biz.id">
-                                    <button type="button" @click="select(biz)" class="w-full text-left px-4 py-3 hover:bg-bluebody/50 transition-colors border-b border-lumot/10 last:border-0">
-                                        <p class="text-sm font-bold text-green" x-text="biz.business_name"></p>
-                                        <p class="text-xs text-gray" x-text="(biz.trade_name ? biz.trade_name + ' | ' : '') + (biz.tin_no || '')"></p>
-                                    </button>
-                                </template>
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-gray mt-1.5">Or fill in the fields below for a new business.</p>
-                        <div x-show="selected" class="mt-2 flex items-center gap-2 p-2 bg-logo-teal/10 rounded-lg border border-logo-teal/20">
-                            <svg class="w-4 h-4 text-logo-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            <span class="text-xs font-semibold text-logo-teal" x-text="'Using existing business: ' + query"></span>
-                        </div>
-                    </div>
-
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Name <span class="text-red-400">*</span></label>
-                            <input type="text" name="business_name" id="business_name" placeholder="Official registered name" value="{{ old('business_name') }}"
+                            <input type="text" name="business_name" placeholder="Official registered name" value="{{ old('business_name') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Trade Name / Franchise</label>
-                            <input type="text" name="trade_name" id="trade_name" placeholder="DBA / Franchise name" value="{{ old('trade_name') }}"
+                            <input type="text" name="trade_name" placeholder="DBA / Franchise name" value="{{ old('trade_name') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -470,12 +462,12 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">TIN No.</label>
-                            <input type="text" name="tin_no" id="tin_no" placeholder="XXX-XXX-XXX" value="{{ old('tin_no') }}"
+                            <input type="text" name="tin_no" placeholder="XXX-XXX-XXX" value="{{ old('tin_no') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Mobile No.</label>
-                            <input type="tel" name="business_mobile" id="business_mobile" placeholder="09XX XXX XXXX" value="{{ old('business_mobile') }}"
+                            <input type="tel" name="business_mobile" placeholder="09XX XXX XXXX" value="{{ old('business_mobile') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -483,12 +475,12 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-bold text-gray mb-1">DTI/SEC/CDA Registration No.</label>
-                            <input type="text" name="dti_sec_cda_no" id="dti_sec_cda_no" placeholder="Registration number" value="{{ old('dti_sec_cda_no') }}"
+                            <input type="text" name="dti_sec_cda_no" placeholder="Registration number" value="{{ old('dti_sec_cda_no') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Registration Date</label>
-                            <input type="date" name="dti_sec_cda_date" id="dti_sec_cda_date" value="{{ old('dti_sec_cda_date') }}"
+                            <input type="date" name="dti_sec_cda_date" value="{{ old('dti_sec_cda_date') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray">
                         </div>
                     </div>
@@ -496,12 +488,12 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Email</label>
-                            <input type="email" name="business_email" id="business_email" placeholder="business@example.com" value="{{ old('business_email') }}"
+                            <input type="email" name="business_email" placeholder="business@example.com" value="{{ old('business_email') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Type of Business</label>
-                            <select name="type_of_business" id="type_of_business" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
+                            <select name="type_of_business" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select Type --</option>
                                 @foreach($options['type_of_business'] as $opt)
                                     <option value="{{ $opt }}" {{ old('type_of_business')===$opt ? 'selected':'' }}>{{ $opt }}</option>
@@ -549,10 +541,17 @@
                     </div>
 
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-                        @foreach([['name'=>'business_organization','label'=>'Business Organization'],['name'=>'business_area_type','label'=>'Business Area'],['name'=>'business_scale','label'=>'Business Scale'],['name'=>'business_sector','label'=>'Business Sector'],['name'=>'zone','label'=>'Zone'],['name'=>'occupancy','label'=>'Occupancy']] as $sel)
+                        @foreach([
+                            ['name'=>'business_organization','label'=>'Business Organization'],
+                            ['name'=>'business_area_type',   'label'=>'Business Area'],
+                            ['name'=>'business_scale',       'label'=>'Business Scale'],
+                            ['name'=>'business_sector',      'label'=>'Business Sector'],
+                            ['name'=>'zone',                 'label'=>'Zone'],
+                            ['name'=>'occupancy',            'label'=>'Occupancy'],
+                        ] as $sel)
                             <div>
                                 <label class="block text-xs font-bold text-gray mb-1">{{ $sel['label'] }}</label>
-                                <select name="{{ $sel['name'] }}" id="{{ $sel['name'] }}" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
+                                <select name="{{ $sel['name'] }}" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                     <option value="">-- Select --</option>
                                     @foreach($options[$sel['name']] as $opt)
                                         <option value="{{ $opt }}" {{ old($sel['name'])===$opt ? 'selected':'' }}>{{ $opt }}</option>
@@ -565,35 +564,37 @@
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Area (sqm)</label>
-                            <input type="number" name="business_area_sqm" id="business_area_sqm" placeholder="0.00" step="0.01" value="{{ old('business_area_sqm') }}"
+                            <input type="number" name="business_area_sqm" placeholder="0.00" step="0.01" value="{{ old('business_area_sqm') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Total Employees</label>
-                            <input type="number" name="total_employees" id="total_employees" placeholder="0" value="{{ old('total_employees') }}"
+                            <input type="number" name="total_employees" placeholder="0" value="{{ old('total_employees') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Employees Residing w/ LGU</label>
-                            <input type="number" name="employees_lgu" id="employees_lgu" placeholder="0" value="{{ old('employees_lgu') }}"
+                            <input type="number" name="employees_lgu" placeholder="0" value="{{ old('employees_lgu') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
                 </div>
 
                 <div class="flex justify-between">
-                    <button type="button" @click="subPrev()" class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
+                    <button type="button" @click="subPrev()"
+                        class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                         Back
                     </button>
-                    <button type="button" @click="subNext()" class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
+                    <button type="button" @click="subNext()"
+                        class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
                         Next: Business Address
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>
             </div>
 
-            {{-- ── Sub-step 3: Business Address ─────────────────────────────── --}}
+            {{-- ── Sub-step 3: Business Address ─────────────────────────── --}}
             <div x-show="sub === 3"
                  x-transition:enter="transition ease-out duration-150"
                  x-transition:enter-start="opacity-0 translate-x-2"
@@ -612,7 +613,7 @@
                         @foreach(['Region'=>'business_region','Province'=>'business_province','Municipality'=>'business_municipality','Barangay'=>'business_barangay','Street'=>'business_street'] as $lbl=>$field)
                             <div class="{{ $lbl==='Street' ? 'sm:col-span-2':'' }}">
                                 <label class="block text-xs font-bold text-gray mb-1">{{ $lbl }}</label>
-                                <input type="text" name="{{ $field }}" id="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field) }}"
+                                <input type="text" name="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field) }}"
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                             </div>
                         @endforeach
@@ -620,18 +621,20 @@
                 </div>
 
                 <div class="flex justify-between">
-                    <button type="button" @click="subPrev()" class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
+                    <button type="button" @click="subPrev()"
+                        class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                         Back
                     </button>
-                    <button type="button" @click="subNext()" class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
+                    <button type="button" @click="subNext()"
+                        class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
                         Next: Emergency Contact
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>
             </div>
 
-            {{-- ── Sub-step 4: Emergency Contact ────────────────────────────── --}}
+            {{-- ── Sub-step 4: Emergency Contact ────────────────────────── --}}
             <div x-show="sub === 4"
                  x-transition:enter="transition ease-out duration-150"
                  x-transition:enter-start="opacity-0 translate-x-2"
@@ -649,44 +652,45 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Contact Person</label>
-                            <input type="text" name="emergency_contact_person" id="emergency_contact_person" placeholder="Full name" value="{{ old('emergency_contact_person') }}"
+                            <input type="text" name="emergency_contact_person" placeholder="Full name" value="{{ old('emergency_contact_person') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Tel / Mobile No.</label>
-                            <input type="tel" name="emergency_mobile" id="emergency_mobile" placeholder="09XX XXX XXXX" value="{{ old('emergency_mobile') }}"
+                            <input type="tel" name="emergency_mobile" placeholder="09XX XXX XXXX" value="{{ old('emergency_mobile') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Email Address</label>
-                            <input type="email" name="emergency_email" id="emergency_email" placeholder="contact@example.com" value="{{ old('emergency_email') }}"
+                            <input type="email" name="emergency_email" placeholder="contact@example.com" value="{{ old('emergency_email') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
                 </div>
 
                 <div class="flex justify-between">
-                    <button type="button" @click="subPrev()" class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
+                    <button type="button" @click="subPrev()"
+                        class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                         Back
                     </button>
-                    {{-- Advance to Step 2 (Upload Docs) in the top tracker --}}
-                    <button type="button" @click="next()" class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
+                    <button type="button" @click="next()"
+                        class="px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2">
                         Next: Upload Documents
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                     </button>
                 </div>
             </div>
+
         </div>{{-- end step 1 --}}
 
-        {{-- ════════════════════════════════════════════════════════════════════
-             STEP 2 — Upload Documents (inline)
-        ════════════════════════════════════════════════════════════════════════ --}}
+        {{-- ════════════════════════════════════════════════════════════════
+             STEP 2 — Upload Documents
+        ════════════════════════════════════════════════════════════════════ --}}
         <div x-show="step === 2"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 translate-y-2"
-             x-transition:enter-end="opacity-100 translate-y-0"
-             >
+             x-transition:enter-end="opacity-100 translate-y-0">
 
             <div class="bg-white rounded-2xl shadow-sm border border-lumot/20 p-6 mb-4">
                 <div class="flex items-center gap-2 mb-2">
@@ -829,7 +833,8 @@
             </div>
 
             <div class="flex justify-between">
-                <button type="button" @click="prev()" class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
+                <button type="button" @click="prev()"
+                    class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                     Back to Fill Form
                 </button>
@@ -839,7 +844,6 @@
                     :disabled="requiredCount < 3 || loading"
                     class="px-8 py-2.5 text-white text-sm font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     :class="requiredCount >= 3 ? 'bg-logo-green hover:bg-green shadow-logo-green/20' : 'bg-lumot/50 shadow-none'">
-
                     <template x-if="!loading">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -854,113 +858,11 @@
                     <span x-text="loading ? 'Submitting...' : (requiredCount < 3 ? 'Attach All Required Docs First' : 'Submit Application')"></span>
                 </button>
             </div>
+
         </div>{{-- end step 2 --}}
 
     </form>
 </div>
-
-{{-- ── Alpine.js Functions ───────────────────────────────────────────────── --}}
-<script>
-function ownerSearch() {
-    return {
-        query: '', results: [], selected: false,
-        async search() {
-            if (this.query.length < 2) { this.results = []; return; }
-            try {
-                const res = await fetch(`{{ route('client.search-owner') }}?q=${encodeURIComponent(this.query)}`);
-                if (!res.ok) return;
-                this.results = await res.json();
-            } catch(e) { console.error(e); }
-        },
-        select(owner) {
-            this.selected = true;
-            this.query = owner.last_name + ', ' + owner.first_name + (owner.middle_name ? ' ' + owner.middle_name : '');
-            this.results = [];
-            document.getElementById('owner_id_field').value = owner.id;
-            const map = {
-                last_name: owner.last_name, first_name: owner.first_name, middle_name: owner.middle_name,
-                birthdate: owner.birthdate ? owner.birthdate.substring(0,10) : '',
-                mobile_no: owner.mobile_no, email: owner.email,
-                owner_region: owner.region, owner_province: owner.province,
-                owner_municipality: owner.municipality, owner_barangay: owner.barangay, owner_street: owner.street,
-                emergency_contact_person: owner.emergency_contact_person,
-                emergency_mobile: owner.emergency_mobile, emergency_email: owner.emergency_email,
-            };
-            Object.entries(map).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
-            ['citizenship','civil_status','gender'].forEach(id => { const el = document.getElementById(id); if (el) el.value = owner[id] || ''; });
-            ['is_pwd','is_4ps','is_solo_parent','is_senior','discount_10','discount_5'].forEach(cb => {
-                const el = document.getElementById(cb); if (el) el.checked = owner[cb] == true || owner[cb] == 1;
-            });
-        },
-        clear() { this.selected = false; this.query = ''; this.results = []; document.getElementById('owner_id_field').value = ''; }
-    }
-}
-
-function businessSearch() {
-    return {
-        query: '', results: [], selected: false,
-        async search() {
-            if (this.query.length < 2) { this.results = []; return; }
-            try {
-                const res = await fetch(`{{ route('client.search-business') }}?q=${encodeURIComponent(this.query)}`);
-                if (!res.ok) return;
-                this.results = await res.json();
-            } catch(e) { console.error(e); }
-        },
-        select(biz) {
-            this.selected = true; this.query = biz.business_name; this.results = [];
-            const map = {
-                business_name: biz.business_name, trade_name: biz.trade_name, tin_no: biz.tin_no,
-                dti_sec_cda_no: biz.dti_sec_cda_no,
-                dti_sec_cda_date: biz.dti_sec_cda_date ? biz.dti_sec_cda_date.substring(0,10) : '',
-                business_mobile: biz.business_mobile, business_email: biz.business_email,
-                business_area_sqm: biz.business_area_sqm, total_employees: biz.total_employees, employees_lgu: biz.employees_lgu,
-                business_region: biz.region, business_province: biz.province,
-                business_municipality: biz.municipality, business_barangay: biz.barangay, business_street: biz.street,
-            };
-            Object.entries(map).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
-            ['type_of_business','business_organization','business_area_type','business_scale','business_sector','zone','occupancy'].forEach(id => {
-                const el = document.getElementById(id); if (el) el.value = biz[id] || '';
-            });
-        },
-        clear() { this.selected = false; this.query = ''; this.results = []; }
-    }
-}
-
-function documentUploader() {
-    return {
-        files: {},
-        errors: {},
-        get requiredCount() {
-            return @json(\App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES).filter(t => !!this.docFiles[t]).length;
-        },
-        handleFile(type, event) {
-            const file = event.target.docFiles[0];
-            if (!file) return;
-            if (file.size > 5 * 1024 * 1024) {
-                this.docErrors[type] = 'File too large. Maximum size is 5MB.';
-                event.target.value = ''; return;
-            }
-            if (!['application/pdf','image/jpeg','image/png'].includes(file.type)) {
-                this.docErrors[type] = 'Invalid file type. Use PDF, JPG, or PNG.';
-                event.target.value = ''; return;
-            }
-            delete this.docErrors[type];
-            this.docFiles[type] = file;
-        },
-        removeFile(type) {
-            delete this.docFiles[type];
-            delete this.docErrors[type];
-            document.querySelectorAll(`input[name="documents[${type}]"]`).forEach(i => i.value = '');
-        },
-        formatSize(bytes) {
-            if (bytes >= 1048576) return (bytes/1048576).toFixed(2)+' MB';
-            if (bytes >= 1024)    return (bytes/1024).toFixed(2)+' KB';
-            return bytes+' B';
-        }
-    }
-}
-</script>
 
 </body>
 </html>

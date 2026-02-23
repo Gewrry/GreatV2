@@ -656,12 +656,36 @@ $pending = $application->documents->where('status', 'pending')->count();
     {{-- MODAL: Set Assessment --}}
     <div x-show="showAssess" x-transition
          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-        <div @click.outside="showAssess = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div @click.outside="showAssess = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+            x-data="{
+                assessmentAmount: {{ old('assessment_amount', $application->assessment_amount ?? 0) }},
+                modeOfPayment: '{{ old('mode_of_payment', $application->mode_of_payment ?? 'annual') }}',
+                get installmentAmount() {
+                    if (this.assessmentAmount <= 0) return 0;
+                    switch (this.modeOfPayment) {
+                        case 'quarterly':   return this.assessmentAmount / 4;
+                        case 'semi_annual': return this.assessmentAmount / 2;
+                        case 'annual':      return this.assessmentAmount;
+                        default: return 0;
+                    }
+                },
+                get installmentCount() {
+                    switch (this.modeOfPayment) {
+                        case 'quarterly':   return 4;
+                        case 'semi_annual': return 2;
+                        case 'annual':      return 1;
+                        default: return 1;
+                    }
+                },
+                formatCurrency(value) {
+                    return '₱' + parseFloat(value).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
+                }
+            }">
             <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-3">
                 <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
             </div>
             <h3 class="text-sm font-extrabold text-purple-700 mb-1">Set Assessment / Fee Computation</h3>
-            <p class="text-xs text-gray mb-4">Enter the total fee. The client must pay this amount before the permit is issued.</p>
+            <p class="text-xs text-gray mb-4">Enter the total fee and select payment frequency. The client must pay this before the permit is issued.</p>
             <form action="{{ route('bpls.online.application.assess', $application->id) }}" method="POST">
                 @csrf
                 <div class="mb-4">
@@ -669,13 +693,45 @@ $pending = $application->documents->where('status', 'pending')->count();
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray/40">₱</span>
                         <input type="number" name="assessment_amount" step="0.01" min="0" required placeholder="0.00"
+                            x-model="assessmentAmount"
                             class="w-full pl-8 text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-300">
                     </div>
                 </div>
+
+                {{-- Payment Frequency radio cards --}}
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray mb-2">Payment Frequency <span class="text-red-400">*</span></label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <template x-for="opt in [
+                            { value: 'quarterly',   label: 'Quarterly',   sub: '4×', count: 4 },
+                            { value: 'semi_annual', label: 'Semi-Annual', sub: '2×', count: 2 },
+                            { value: 'annual',      label: 'Annual',      sub: '1×', count: 1 },
+                        ]" :key="opt.value">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="mode_of_payment" :value="opt.value"
+                                    x-model="modeOfPayment" class="peer hidden" required>
+                                <div class="peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600
+                                            border-2 border-lumot/30 rounded-xl p-3 text-center transition-all
+                                            hover:border-purple-400 bg-white text-green select-none">
+                                    <p class="text-xl font-extrabold" x-text="opt.sub"></p>
+                                    <p class="text-[11px] font-bold leading-tight" x-text="opt.label"></p>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                    {{-- Installment preview --}}
+                    <div x-show="assessmentAmount > 0" x-transition
+                         class="mt-2 p-2.5 bg-purple-50 border border-purple-100 rounded-xl flex items-center gap-2">
+                        <span class="text-[10px] font-bold text-purple-500 uppercase tracking-wider">Per payment:</span>
+                        <span class="text-sm font-extrabold text-purple-800" x-text="formatCurrency(installmentAmount)"></span>
+                        <span class="text-[10px] text-purple-400" x-text="'× ' + installmentCount"></span>
+                    </div>
+                </div>
+
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-gray mb-1">Fee Breakdown / Notes</label>
                     <textarea name="assessment_notes" rows="4" placeholder="e.g. Mayor's Permit: ₱500, Garbage Fee: ₱200..."
-                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none placeholder-gray/30"></textarea>
+                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none placeholder-gray/30">{{ old('assessment_notes', $application->assessment_notes) }}</textarea>
                 </div>
                 <div class="flex justify-end gap-2">
                     <button type="button" @click="showAssess = false"

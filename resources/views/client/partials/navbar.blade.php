@@ -21,6 +21,10 @@
                     class="text-xs font-bold transition {{ request()->routeIs('client.applications.*') ? 'text-logo-teal' : 'text-gray hover:text-logo-teal' }}">
                     My Applications
                 </a>
+                <a href="{{ route('client.payments.index') }}"
+                    class="text-xs font-bold transition {{ request()->routeIs('client.payments.*') ? 'text-logo-teal' : 'text-gray hover:text-logo-teal' }}">
+                    Business Payment
+                </a>
             </div>
         </div>
         <div class="flex items-center gap-3">

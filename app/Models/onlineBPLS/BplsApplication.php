@@ -43,6 +43,7 @@ class BplsApplication extends Model
         // Assessment
         'assessment_amount',
         'assessment_notes',
+        'mode_of_payment',      // quarterly | semi_annual | annual
 
         // Payment
         'or_number',
@@ -133,4 +134,39 @@ class BplsApplication extends Model
             default => ucfirst($this->workflow_status),
         };
     }
+
+    // ── Payment frequency label ────────────────────────────────────────────
+
+    public function getModeOfPaymentLabelAttribute(): string
+    {
+        return match ($this->mode_of_payment) {
+            'quarterly'   => 'Quarterly (4×)',
+            'semi_annual' => 'Semi-Annual (2×)',
+            'annual'      => 'Annual (1×)',
+            default       => '—',
+        };
+    }
+
+    public function getInstallmentAmountAttribute(): float
+    {
+        $amount = (float) $this->assessment_amount;
+        return match ($this->mode_of_payment) {
+            'quarterly'   => $amount / 4,
+            'semi_annual' => $amount / 2,
+            default       => $amount, // annual or unset
+        };
+    }
+
+    public function getInstallmentCountAttribute(): int
+    {
+        return match ($this->mode_of_payment) {
+            'quarterly'   => 4,
+            'semi_annual' => 2,
+            default       => 1,
+        };
+    }
+    public function payment()
+{
+    return $this->hasOne(BplsOnlinePayment::class, 'bpls_application_id');
+}
 }

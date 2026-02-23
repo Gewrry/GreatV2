@@ -19,7 +19,6 @@ return [
         ],
     ],
 
-    // ← ONLY ONE 'providers' array — delete the second one
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
@@ -28,13 +27,21 @@ return [
 
         'clients' => [
             'driver' => 'eloquent',
-            'model' => App\Models\onlineBPLS\Client::class, // ← your subfolder
+            'model' => App\Models\onlineBPLS\Client::class,
         ],
     ],
 
     'passwords' => [
         'users' => [
             'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        
+        // Add password reset for clients if needed
+        'clients' => [
+            'provider' => 'clients',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 60,
             'throttle' => 60,

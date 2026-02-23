@@ -288,147 +288,202 @@ class ApplicationController extends Controller
         return view('client.applications.edit', compact('application', 'options'));
     }
 
-    public function update(Request $request, BplsApplication $application)
-    {
-        // Security
-        abort_unless($application->client_id === $this->client()->id, 403);
+public function update(Request $request, BplsApplication $application)
+{
+    abort_unless($application->client_id === $this->client()->id, 403);
 
-        if (!in_array($application->workflow_status, ['draft', 'returned'])) {
-            return redirect()
-                ->route('client.applications.show', $application->id)
-                ->with('error', 'This application can no longer be edited.');
-        }
-
-        // ── Validation ────────────────────────────────────────────────────────
-        $request->validate([
-            // Owner
-            'last_name' => 'required|string|max:100',
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'citizenship' => 'nullable|string|max:50',
-            'civil_status' => 'nullable|string|max:50',
-            'gender' => 'nullable|string|max:30',
-            'birthdate' => 'nullable|date',
-            'mobile_no' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:150',
-            'is_pwd' => 'nullable|boolean',
-            'is_4ps' => 'nullable|boolean',
-            'is_solo_parent' => 'nullable|boolean',
-            'is_senior' => 'nullable|boolean',
-            'discount_10' => 'nullable|boolean',
-            'discount_5' => 'nullable|boolean',
-            // Owner address
-            'owner_region' => 'nullable|string|max:100',
-            'owner_province' => 'nullable|string|max:100',
-            'owner_municipality' => 'nullable|string|max:100',
-            'owner_barangay' => 'nullable|string|max:100',
-            'owner_street' => 'nullable|string|max:255',
-            // Emergency contact
-            'emergency_contact_person' => 'nullable|string|max:150',
-            'emergency_mobile' => 'nullable|string|max:20',
-            'emergency_email' => 'nullable|email|max:150',
-            // Business
-            'business_name' => 'required|string|max:255',
-            'trade_name' => 'nullable|string|max:255',
-            'tin_no' => 'nullable|string|max:50',
-            'business_mobile' => 'nullable|string|max:20',
-            'business_email' => 'nullable|email|max:150',
-            'dti_sec_cda_no' => 'nullable|string|max:100',
-            'dti_sec_cda_date' => 'nullable|date',
-            'type_of_business' => 'nullable|string|max:100',
-            'business_organization' => 'nullable|string|max:100',
-            'business_area_type' => 'nullable|string|max:100',
-            'business_scale' => 'nullable|string|max:100',
-            'business_sector' => 'nullable|string|max:100',
-            'zone' => 'nullable|string|max:100',
-            'occupancy' => 'nullable|string|max:100',
-            'business_area_sqm' => 'nullable|numeric|min:0',
-            'total_employees' => 'nullable|integer|min:0',
-            'employees_lgu' => 'nullable|integer|min:0',
-            'tax_incentive' => 'nullable|boolean',
-            'amendment_from' => 'nullable|string|max:100',
-            'amendment_to' => 'nullable|string|max:100',
-            // Business address
-            'business_region' => 'nullable|string|max:100',
-            'business_province' => 'nullable|string|max:100',
-            'business_municipality' => 'nullable|string|max:100',
-            'business_barangay' => 'nullable|string|max:100',
-            'business_street' => 'nullable|string|max:255',
-        ]);
-
-        // ── Update Owner ──────────────────────────────────────────────────────
-        $application->owner->update([
-            'last_name' => $request->last_name,
-            'first_name' => $request->first_name,
-            'middle_name' => $request->middle_name,
-            'citizenship' => $request->citizenship,
-            'civil_status' => $request->civil_status,
-            'gender' => $request->gender,
-            'birthdate' => $request->birthdate,
-            'mobile_no' => $request->mobile_no,
-            'email' => $request->email,
-            'is_pwd' => $request->boolean('is_pwd'),
-            'is_4ps' => $request->boolean('is_4ps'),
-            'is_solo_parent' => $request->boolean('is_solo_parent'),
-            'is_senior' => $request->boolean('is_senior'),
-            'discount_10' => $request->boolean('discount_10'),
-            'discount_5' => $request->boolean('discount_5'),
-            'region' => $request->owner_region,
-            'province' => $request->owner_province,
-            'municipality' => $request->owner_municipality,
-            'barangay' => $request->owner_barangay,
-            'street' => $request->owner_street,
-            'emergency_contact_person' => $request->emergency_contact_person,
-            'emergency_mobile' => $request->emergency_mobile,
-            'emergency_email' => $request->emergency_email,
-        ]);
-
-        // ── Update Business ───────────────────────────────────────────────────
-        $application->business->update([
-            'business_name' => $request->business_name,
-            'trade_name' => $request->trade_name,
-            'tin_no' => $request->tin_no,
-            'business_mobile' => $request->business_mobile,
-            'business_email' => $request->business_email,
-            'dti_sec_cda_no' => $request->dti_sec_cda_no,
-            'dti_sec_cda_date' => $request->dti_sec_cda_date,
-            'type_of_business' => $request->type_of_business,
-            'business_organization' => $request->business_organization,
-            'business_area_type' => $request->business_area_type,
-            'business_scale' => $request->business_scale,
-            'business_sector' => $request->business_sector,
-            'zone' => $request->zone,
-            'occupancy' => $request->occupancy,
-            'business_area_sqm' => $request->business_area_sqm,
-            'total_employees' => $request->total_employees,
-            'employees_lgu' => $request->employees_lgu,
-            'tax_incentive' => $request->boolean('tax_incentive'),
-            'amendment_from' => $request->amendment_from,
-            'amendment_to' => $request->amendment_to,
-            'region' => $request->business_region,
-            'province' => $request->business_province,
-            'municipality' => $request->business_municipality,
-            'barangay' => $request->business_barangay,
-            'street' => $request->business_street,
-        ]);
-
-        // ── Log the update ────────────────────────────────────────────────────
-        if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
-            \App\Models\onlineBPLS\BplsActivityLog::create([
-                'bpls_application_id' => $application->id,
-                'actor_type' => 'client',
-                'actor_id' => $this->client()->id,
-                'action' => 'edited',
-                'from_status' => $application->workflow_status,
-                'to_status' => $application->workflow_status,
-                'remarks' => 'Application details updated by client.',
-            ]);
-        }
-
+    if (!in_array($application->workflow_status, ['draft', 'returned'])) {
         return redirect()
             ->route('client.applications.show', $application->id)
-            ->with('success', 'Application updated successfully.');
+            ->with('error', 'This application can no longer be edited.');
     }
+
+    $request->validate([
+        'last_name'                => 'required|string|max:100',
+        'first_name'               => 'required|string|max:100',
+        'middle_name'              => 'nullable|string|max:100',
+        'citizenship'              => 'nullable|string|max:50',
+        'civil_status'             => 'nullable|string|max:50',
+        'gender'                   => 'nullable|string|max:30',
+        'birthdate'                => 'nullable|date',
+        'mobile_no'                => 'nullable|string|max:20',
+        'email'                    => 'nullable|email|max:150',
+        'is_pwd'                   => 'nullable',
+        'is_4ps'                   => 'nullable',
+        'is_solo_parent'           => 'nullable',
+        'is_senior'                => 'nullable',
+        'discount_10'              => 'nullable',
+        'discount_5'               => 'nullable',
+        'owner_region'             => 'nullable|string|max:100',
+        'owner_province'           => 'nullable|string|max:100',
+        'owner_municipality'       => 'nullable|string|max:100',
+        'owner_barangay'           => 'nullable|string|max:100',
+        'owner_street'             => 'nullable|string|max:255',
+        'emergency_contact_person' => 'nullable|string|max:150',
+        'emergency_mobile'         => 'nullable|string|max:20',
+        'emergency_email'          => 'nullable|email|max:150',
+        'business_name'            => 'required|string|max:255',
+        'trade_name'               => 'nullable|string|max:255',
+        'tin_no'                   => 'nullable|string|max:50',
+        'business_mobile'          => 'nullable|string|max:20',
+        'business_email'           => 'nullable|email|max:150',
+        'dti_sec_cda_no'           => 'nullable|string|max:100',
+        'dti_sec_cda_date'         => 'nullable|date',
+        'type_of_business'         => 'nullable|string|max:100',
+        'business_organization'    => 'nullable|string|max:100',
+        'business_area_type'       => 'nullable|string|max:100',
+        'business_scale'           => 'nullable|string|max:100',
+        'business_sector'          => 'nullable|string|max:100',
+        'zone'                     => 'nullable|string|max:100',
+        'occupancy'                => 'nullable|string|max:100',
+        'business_area_sqm'        => 'nullable|numeric|min:0',
+        'total_employees'          => 'nullable|integer|min:0',
+        'employees_lgu'            => 'nullable|integer|min:0',
+        'tax_incentive'            => 'nullable|boolean',
+        'amendment_from'           => 'nullable|string|max:100',
+        'amendment_to'             => 'nullable|string|max:100',
+        'business_region'          => 'nullable|string|max:100',
+        'business_province'        => 'nullable|string|max:100',
+        'business_municipality'    => 'nullable|string|max:100',
+        'business_barangay'        => 'nullable|string|max:100',
+        'business_street'          => 'nullable|string|max:255',
+        'documents'                => 'nullable|array',
+        'documents.*'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+    ]);
+
+    // ── Update Owner ──────────────────────────────────────────────────────
+    $application->owner->update([
+        'last_name'                => $request->last_name,
+        'first_name'               => $request->first_name,
+        'middle_name'              => $request->middle_name,
+        'citizenship'              => $request->citizenship,
+        'civil_status'             => $request->civil_status,
+        'gender'                   => $request->gender,
+        'birthdate'                => $request->birthdate,
+        'mobile_no'                => $request->mobile_no,
+        'email'                    => $request->email,
+        'is_pwd'                   => $request->boolean('is_pwd'),
+        'is_4ps'                   => $request->boolean('is_4ps'),
+        'is_solo_parent'           => $request->boolean('is_solo_parent'),
+        'is_senior'                => $request->boolean('is_senior'),
+        'discount_10'              => $request->boolean('discount_10'),
+        'discount_5'               => $request->boolean('discount_5'),
+        'region'                   => $request->owner_region,
+        'province'                 => $request->owner_province,
+        'municipality'             => $request->owner_municipality,
+        'barangay'                 => $request->owner_barangay,
+        'street'                   => $request->owner_street,
+        'emergency_contact_person' => $request->emergency_contact_person,
+        'emergency_mobile'         => $request->emergency_mobile,
+        'emergency_email'          => $request->emergency_email,
+    ]);
+
+    // ── Update Business ───────────────────────────────────────────────────
+    $application->business->update([
+        'business_name'         => $request->business_name,
+        'trade_name'            => $request->trade_name,
+        'tin_no'                => $request->tin_no,
+        'business_mobile'       => $request->business_mobile,
+        'business_email'        => $request->business_email,
+        'dti_sec_cda_no'        => $request->dti_sec_cda_no,
+        'dti_sec_cda_date'      => $request->dti_sec_cda_date,
+        'type_of_business'      => $request->type_of_business,
+        'business_organization' => $request->business_organization,
+        'business_area_type'    => $request->business_area_type,
+        'business_scale'        => $request->business_scale,
+        'business_sector'       => $request->business_sector,
+        'zone'                  => $request->zone,
+        'occupancy'             => $request->occupancy,
+        'business_area_sqm'     => $request->business_area_sqm,
+        'total_employees'       => $request->total_employees,
+        'employees_lgu'         => $request->employees_lgu,
+        'tax_incentive'         => $request->boolean('tax_incentive'),
+        'amendment_from'        => $request->amendment_from,
+        'amendment_to'          => $request->amendment_to,
+        'region'                => $request->business_region,
+        'province'              => $request->business_province,
+        'municipality'          => $request->business_municipality,
+        'barangay'              => $request->business_barangay,
+        'street'                => $request->business_street,
+    ]);
+
+    // ── Upsert uploaded documents (mirrors DocumentUploadController::upload) ──
+    if ($request->hasFile('documents')) {
+        foreach ($request->file('documents') as $type => $file) {
+            if (!array_key_exists($type, BplsDocument::TYPES) || !$file || !$file->isValid()) {
+                continue;
+            }
+
+            $existing = BplsDocument::where('bpls_application_id', $application->id)
+                ->where('document_type', $type)
+                ->first();
+
+            if ($existing) {
+                Storage::disk('public')->delete($existing->file_path);
+                $existing->delete();
+            }
+
+            $path = $file->store(
+                "bpls/applications/{$application->id}/documents",
+                'public'
+            );
+
+            BplsDocument::create([
+                'bpls_application_id' => $application->id,
+                'document_type'       => $type,
+                'file_name'           => $file->getClientOriginalName(),
+                'file_path'           => $path,
+                'mime_type'           => $file->getMimeType(),
+                'file_size'           => $file->getSize(),
+                'status'              => 'pending',
+            ]);
+        }
+    }
+
+    // ── Transition workflow status based on required docs ─────────────────
+    // Capture BEFORE updating so activity log has accurate from_status
+    $previousStatus = $application->workflow_status;
+
+    $uploadedTypes = $application->documents()->pluck('document_type')->toArray();
+    $missing       = array_diff(BplsDocument::REQUIRED_TYPES, $uploadedTypes);
+
+    if (empty($missing)) {
+        // All required docs present — submit the application
+        $application->update([
+            'workflow_status' => 'submitted',
+            'submitted_at'    => $application->submitted_at ?? now(),
+        ]);
+        $newStatus  = 'submitted';
+        $action     = 'submitted';
+        $remarks    = 'Application updated and submitted by client.';
+        $successMsg = 'Application ' . $application->application_number . ' submitted! Our team will review your documents shortly.';
+    } else {
+        // Still missing required docs — keep as draft
+        $application->update(['workflow_status' => 'draft']);
+        $newStatus     = 'draft';
+        $action        = 'edited';
+        $missingLabels = array_map(fn($t) => BplsDocument::TYPES[$t], $missing);
+        $remarks       = 'Application updated by client (awaiting required documents).';
+        $successMsg    = 'Application saved. Still missing: ' . implode(', ', $missingLabels) . '.';
+    }
+
+    // ── Activity log ──────────────────────────────────────────────────────
+    if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
+        \App\Models\onlineBPLS\BplsActivityLog::create([
+            'bpls_application_id' => $application->id,
+            'actor_type'          => 'client',
+            'actor_id'            => $this->client()->id,
+            'action'              => $action,
+            'from_status'         => $previousStatus,
+            'to_status'           => $newStatus,
+            'remarks'             => $remarks,
+        ]);
+    }
+
+    return redirect()
+        ->route('client.applications.show', $application->id)
+        ->with('success', $successMsg);
+}
 
     // ─────────────────────────────────────────────────────────────────────────────
 // Also update your existing index() to eager-load owner for the edit button:

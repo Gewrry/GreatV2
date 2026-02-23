@@ -33,6 +33,13 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+        
     ],
+
+    'paymongo' => [
+    'public_key'     => env('PAYMONGO_PUBLIC_KEY'),
+    'secret_key'     => env('PAYMONGO_SECRET_KEY'),
+    'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
+],
 
 ];

@@ -96,42 +96,66 @@
     </div>
 
     {{-- ── Workflow Stage Banner ────────────────────────────────────────────── --}}
-    <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-4 mb-6 overflow-x-auto">
-        <div class="flex items-center min-w-max gap-0">
-            @foreach([
-                ['num'=>'1','label'=>'Fill Form',    'status'=>'done'],
-                ['num'=>'2','label'=>'Upload Docs',  'status'=>'active'],
-                ['num'=>'3','label'=>'Verification', 'status'=>'upcoming'],
-                ['num'=>'4','label'=>'Assessment',   'status'=>'upcoming'],
-                ['num'=>'5','label'=>'Payment',      'status'=>'upcoming'],
-                ['num'=>'6','label'=>'Approved ✓',  'status'=>'upcoming'],
-            ] as $s)
-                <div class="flex items-center">
-                    <div class="flex items-center gap-1.5 px-2">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0
-                            {{ $s['status'] === 'active' ? 'bg-logo-teal text-white shadow-sm shadow-logo-teal/30' :
-                               ($s['status'] === 'done'  ? 'bg-logo-green text-white' : 'bg-lumot/30 text-gray/50') }}">
-                            @if($s['status'] === 'done')
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            @else
-                                {{ $s['num'] }}
-                            @endif
-                        </div>
-                        <span class="text-[10px] font-bold
-                            {{ $s['status'] === 'active' ? 'text-logo-teal' :
-                               ($s['status'] === 'done'  ? 'text-logo-green' : 'text-gray/40') }}">
-                            {{ $s['label'] }}
-                        </span>
+{{-- ── Workflow Stage Banner ────────────────────────────────────────────── --}}
+@php
+    $trackerSteps = [
+        ['num'=>'1', 'label'=>'Fill Form',    'status'=>'done',
+         'route'=> in_array($application->workflow_status, ['draft','returned'])
+                   ? route('client.applications.edit', $application->id)
+                   : null],
+        ['num'=>'2', 'label'=>'Upload Docs',  'status'=>'active',   'route'=> null],
+        ['num'=>'3', 'label'=>'Verification', 'status'=>'upcoming', 'route'=> null],
+        ['num'=>'4', 'label'=>'Assessment',   'status'=>'upcoming', 'route'=> null],
+        ['num'=>'5', 'label'=>'Payment',      'status'=>'upcoming', 'route'=> null],
+        ['num'=>'6', 'label'=>'Approved ✓',  'status'=>'upcoming', 'route'=> null],
+    ];
+@endphp
+<div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-4 mb-6 overflow-x-auto">
+    <div class="flex items-center min-w-max gap-0">
+        @foreach($trackerSteps as $s)
+            <div class="flex items-center">
+
+                @if($s['route'])
+                    <a href="{{ $s['route'] }}" title="Go back to Fill Form"
+                       class="group flex items-center gap-1.5 px-2 hover:opacity-80 transition-opacity">
+                @else
+                    <div class="flex items-center gap-1.5 px-2 {{ $s['status'] === 'upcoming' ? 'cursor-not-allowed' : '' }}">
+                @endif
+
+                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0
+                        {{ $s['status'] === 'active'  ? 'bg-logo-teal text-white shadow-sm shadow-logo-teal/30' :
+                           ($s['status'] === 'done'   ? 'bg-logo-green text-white ring-2 ring-logo-green/20' :
+                                                        'bg-lumot/30 text-gray/50') }}
+                        {{ $s['route'] ? 'group-hover:ring-2 group-hover:ring-logo-green/40 transition-all' : '' }}">
+                        @if($s['status'] === 'done')
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        @else
+                            {{ $s['num'] }}
+                        @endif
                     </div>
-                    @if(!$loop->last)
-                        <div class="w-6 h-px bg-lumot/30 mx-1"></div>
-                    @endif
-                </div>
-            @endforeach
-        </div>
+
+                    <span class="text-[10px] font-bold
+                        {{ $s['status'] === 'active'  ? 'text-logo-teal' :
+                           ($s['status'] === 'done'   ? 'text-logo-green' : 'text-gray/40') }}
+                        {{ $s['route'] ? 'group-hover:underline' : '' }}">
+                        {{ $s['label'] }}
+                    </span>
+
+                @if($s['route'])
+                    </a>
+                @else
+                    </div>
+                @endif
+
+                @if(!$loop->last)
+                    <div class="w-6 h-px bg-lumot/30 mx-1"></div>
+                @endif
+            </div>
+        @endforeach
     </div>
+</div>
 
     {{-- ── Returned Notice ─────────────────────────────────────────────────── --}}
     @if($application->workflow_status === 'returned')
