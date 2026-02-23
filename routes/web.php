@@ -1,5 +1,5 @@
 <?php
-// routes/web.php — COMPLETE FILE
+// routes/web.php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
@@ -29,176 +29,248 @@ use App\Http\Controllers\BplsPaymentController;
 use App\Http\Controllers\BusinessEntriesController;
 use App\Http\Controllers\BusinessListController;
 use App\Http\Controllers\Bpls\FeeRuleController;
-
-
-use App\Http\Controllers\BPLS\SettingsController;
+use App\Http\Controllers\Bpls\BplsSettingsController;
 use App\Http\Controllers\Bpls\MasterlistController;
-
-Route::prefix('bpls/reports')->name('bpls.reports.')->middleware(['auth', 'verified'])->group(function () {
-
-    // Business Masterlist
-    Route::get('/masterlist', [MasterlistController::class, 'index'])->name('masterlist.index'); // GET  /bpls/reports/masterlist
-    Route::get('/masterlist/data', [MasterlistController::class, 'data'])->name('masterlist.data');  // GET  /bpls/reports/masterlist/data
-
-});
-
-Route::prefix('bpls/settings')->name('bpls.settings.')->middleware(['auth', 'verified'])->group(function () {
-
-    // Main settings page
-    Route::get('/', [SettingsController::class, 'index'])->name('index');
-
-    // OR Assignment API (JSON)
-    Route::get('/or-assignments', [SettingsController::class, 'listOrAssignments'])->name('or-assignments.index');
-    Route::post('/or-assignments', [SettingsController::class, 'storeOrAssignment'])->name('or-assignments.store');
-    Route::put('/or-assignments/{orAssignment}', [SettingsController::class, 'updateOrAssignment'])->name('or-assignments.update');
-    Route::delete('/or-assignments/{orAssignment}', [SettingsController::class, 'destroyOrAssignment'])->name('or-assignments.destroy');
-
-});
+use App\Http\Controllers\Settings\OrAssignmentController;
+use App\Http\Controllers\AuditLogController;
 
 
 
+
+
+Route::prefix('audit-logs')
+    ->middleware(['auth'])   // Add additional middleware here, e.g. 'can:view-audit-logs'
+    ->name('audit-logs.')
+    ->group(function () {
+
+        // ── Blade page ────────────────────────────────────────────────────────
+        // GET  /audit-logs
+        Route::get('/', [AuditLogController::class, 'index'])->name('index');
+
+        // ── JSON data (Alpine.js fetch) ───────────────────────────────────────
+        // GET  /audit-logs/data
+        Route::get('/data', [AuditLogController::class, 'data'])->name('data');
+
+        // ── Summary stats ─────────────────────────────────────────────────────
+        // GET  /audit-logs/stats
+        Route::get('/stats', [AuditLogController::class, 'stats'])->name('stats');
+
+        // ── CSV export ────────────────────────────────────────────────────────
+        // GET  /audit-logs/export
+        Route::get('/export', [AuditLogController::class, 'export'])->name('export');
+
+        // ── Purge old logs ────────────────────────────────────────────────────
+        // DELETE /audit-logs/purge   (admin only — add 'can:purge-audit-logs' if needed)
+        Route::delete('/purge', [AuditLogController::class, 'purge'])->name('purge');
+
+        // ── Single log detail (JSON) ──────────────────────────────────────────
+        // GET  /audit-logs/{auditLog}
+        Route::get('/{auditLog}', [AuditLogController::class, 'show'])->name('show');
+    });
+
+
+// ─────────────────────────────────────────────
+// Public
+// ─────────────────────────────────────────────
 Route::get('/', fn() => view('welcome'));
 Route::get('/dashboard', fn() => view('dashboard'))->middleware(['auth', 'verified'])->name('dashboard');
 
-// BPLS public search
+// BPLS public search (no auth needed)
 Route::prefix('bpls')->name('bpls.')->group(function () {
     Route::get('/search-owner', [BusinessEntriesController::class, 'searchOwner'])->name('search-owner');
     Route::get('/search-business', [BusinessEntriesController::class, 'searchBusiness'])->name('search-business');
-
-
 });
 
-// BPLS protected
-Route::middleware('auth')->prefix('bpls')->name('bpls.')->group(function () {
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-    Route::post('/settings/update-general', [SettingsController::class, 'updateGeneral'])->name('settings.update-general');
-    Route::post('/settings/update-discount', [SettingsController::class, 'updateDiscount'])->name('settings.update-discount');
-    Route::post('/settings/update-permit', [SettingsController::class, 'updatePermit'])->name('settings.update-permit');
-    Route::get('/', [BplsController::class, 'index'])->name('index');
-    Route::post('/payment/{entry}/compute-surcharge', [BplsPaymentController::class, 'computeSurcharge'])->name('payment.compute-surcharge');
-    Route::get('/payment/{entry}/permit/{payment}', [BplsPaymentController::class, 'permit'])->name('payment.permit');
-    // Permit before broad payment wildcard
-    Route::get('/payment/{entry}/permit/{payment}', [BplsPaymentController::class, 'permit'])->name('payment.permit');
+// ─────────────────────────────────────────────
+// Authenticated Routes
+// ─────────────────────────────────────────────
+Route::middleware(['auth', 'verified'])->group(function () {
 
-    // Business Entries
-    Route::get('/business-entries', [BusinessEntriesController::class, 'index'])->name('business-entries.index');
-    Route::post('/business-entries', [BusinessEntriesController::class, 'store'])->name('business-entries.store');
-
-    // Business List — static routes BEFORE /{entry} wildcard
-    Route::get('/business-list', [BusinessListController::class, 'index'])->name('business-list.index');
-    Route::get('/business-list/search', [BusinessListController::class, 'search'])->name('business-list.search');
-    Route::get('/business-list/{entry}', [BusinessListController::class, 'show'])->name('business-list.show');
-    Route::post('/business-list/{entry}/assess', [BusinessListController::class, 'assess'])->name('business-list.assess');
-    Route::post('/business-list/{entry}/approve-payment', [BplsPaymentController::class, 'approvePayment'])->name('business-list.approve-payment');
-    Route::post('/business-list/{entry}/approve-renewal', [BusinessListController::class, 'approveRenewal'])->name('business-list.approve-renewal');
-    Route::post('/business-list/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('business-list.change-status');
-    Route::post('/business-list/{entry}/retire', [BusinessListController::class, 'retire'])->name('business-list.retire');
-    Route::get('/business-list/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('business-list.retirement-certificate');
-
-    // Payment 51C
-    Route::get('/payment/{entry}', [BplsPaymentController::class, 'show'])->name('payment.show');
-    Route::post('/payment/{entry}/pay', [BplsPaymentController::class, 'pay'])->name('payment.pay');
-    Route::get('/payment/{entry}/receipt/{payment}', [BplsPaymentController::class, 'receipt'])->name('payment.receipt');
-    Route::post('/payment/{entry}/compute-surcharge', [BplsPaymentController::class, 'computeSurcharge'])->name('payment.compute-surcharge');
-
-    // Fee Rules — static before /{feeRule} wildcard
-    Route::get('/fee-rules/manage', fn() => view('modules.bpls.fee-rules.index'))->name('fee-rules.manage');
-    Route::post('/fee-rules/reorder', [FeeRuleController::class, 'reorder'])->name('fee-rules.reorder');
-    Route::post('/fee-rules/reset-defaults', [FeeRuleController::class, 'resetDefaults'])->name('fee-rules.reset-defaults');
-    Route::post('/fee-rules/compute', [FeeRuleController::class, 'compute'])->name('fee-rules.compute');
-    Route::get('/fee-rules', [FeeRuleController::class, 'index'])->name('fee-rules.index');
-    Route::post('/fee-rules', [FeeRuleController::class, 'store'])->name('fee-rules.store');
-    Route::get('/fee-rules/{feeRule}', [FeeRuleController::class, 'show'])->name('fee-rules.show');
-    Route::put('/fee-rules/{feeRule}', [FeeRuleController::class, 'update'])->name('fee-rules.update');
-    Route::delete('/fee-rules/{feeRule}', [FeeRuleController::class, 'destroy'])->name('fee-rules.destroy');
-    Route::post('/fee-rules/{feeRule}/toggle', [FeeRuleController::class, 'toggle'])->name('fee-rules.toggle');
-});
-
-// Profile
-Route::middleware('auth')->group(function () {
+    // ── Profile ──────────────────────────────
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
-// HR
-Route::middleware('auth')->group(function () {
+    // ── HR ───────────────────────────────────
     Route::get('/employee-info/create', [HumanResourcesController::class, 'create'])->name('employee-info.create');
     Route::post('/employee-info', [HumanResourcesController::class, 'store'])->name('employee-info.store');
-});
 
-// Admin
-Route::middleware('auth')->group(function () {
+    // ── Admin ────────────────────────────────
     Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard.index');
     Route::get('/accounts', AccountsManager::class)->name('accounts.index');
 
-    Route::get('/departments', [DepartmentController::class, 'index'])->name('admin.departments.index');
-    Route::post('/departments', [DepartmentController::class, 'store'])->name('admin.departments.store');
-    Route::put('/departments/{department}', [DepartmentController::class, 'update'])->name('admin.departments.update');
-    Route::delete('/departments/{department}', [DepartmentController::class, 'destroy'])->name('admin.departments.destroy');
+    Route::prefix('departments')->name('admin.departments.')->group(function () {
+        Route::get('/', [DepartmentController::class, 'index'])->name('index');
+        Route::post('/', [DepartmentController::class, 'store'])->name('store');
+        Route::put('/{department}', [DepartmentController::class, 'update'])->name('update');
+        Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
+    });
 
-    Route::get('/barangays', [BarangayController::class, 'index'])->name('admin.barangays.index');
-    Route::post('/barangays', [BarangayController::class, 'store'])->name('admin.barangays.store');
-    Route::put('/barangays/{barangay}', [BarangayController::class, 'update'])->name('admin.barangays.update');
-    Route::delete('/barangays/{barangay}', [BarangayController::class, 'destroy'])->name('admin.barangays.destroy');
+    Route::prefix('barangays')->name('admin.barangays.')->group(function () {
+        Route::get('/', [BarangayController::class, 'index'])->name('index');
+        Route::post('/', [BarangayController::class, 'store'])->name('store');
+        Route::put('/{barangay}', [BarangayController::class, 'update'])->name('update');
+        Route::delete('/{barangay}', [BarangayController::class, 'destroy'])->name('destroy');
+    });
 
     Route::get('/backup-database', [DatabaseBackupController::class, 'backup'])->name('database.backup');
-});
 
-// RPT
-Route::middleware('auth')->group(function () {
-    Route::get('/rpt', [RPTController::class, 'index'])->name('rpt.index');
-    Route::get('/rpt/faas_list', [RPTController::class, 'faas_list'])->name('rpt.faas_list');
-    Route::get('/rpt/faas-view/{id}', [RPTController::class, 'faas_view'])->name('rpt.faas_view');
-    Route::get('/rpt/land', [RPTController::class, 'land'])->name('rpt.faas_entry.land');
-    Route::get('/rpt/building', [RPTController::class, 'building'])->name('rpt.faas_entry.building');
-    Route::get('/rpt/machine', [RPTController::class, 'machine'])->name('rpt.faas_entry.machine');
-    Route::get('/rpt/taxdec_based', [RPTController::class, 'taxdec_based'])->name('rpt.faas_entry.taxdec_based');
-    Route::post('/rpt', [RPTController::class, 'store'])->name('rpt.store');
-    Route::get('/rpt/get-actual-uses', [RPTController::class, 'get_actual_uses'])->name('rpt.get_actual_uses');
-    Route::get('/rpt/get-unit-value', [RPTController::class, 'get_unit_value'])->name('rpt.get_unit_value');
-    Route::get('/rpt/get-assessment-level', [RPTController::class, 'get_assessment_level'])->name('rpt.get_assessment_level');
-    Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpt.rpta_settings.index');
-    Route::get('/rpta_settings/actual_use', [RPTA_SettingsController::class, 'actual_use'])->name('rpt.rpta_settings.actual_use');
+    // ── Treasury ─────────────────────────────
+    Route::get('/treasury', fn() => view('modules.treasury.index'))->name('treasury.index');
+    Route::get('/treasury/bpls-payment', [BplsPaymentController::class, 'index'])->name('bpls_payment');
 
-    Route::prefix('rpt/gis')->name('rpt.gis.')->group(function () {
-        Route::get('/', [GISController::class, 'index'])->name('index');
-        Route::get('/geometries', [GISController::class, 'getGeometries'])->name('get_geometries');
-        Route::post('/update-geometry', [GISController::class, 'updateGeometry'])->name('update_geometry');
+    // ── OR Assignments (General Settings) ────
+    Route::prefix('settings/or-assignments')->name('or-assignments.')->group(function () {
+        Route::get('/', [OrAssignmentController::class, 'index'])->name('index');
+        Route::post('/', [OrAssignmentController::class, 'store'])->name('store');
+        Route::get('/{orAssignment}/edit', [OrAssignmentController::class, 'edit'])->name('edit');
+        Route::put('/{orAssignment}', [OrAssignmentController::class, 'update'])->name('update');
+        Route::delete('/{orAssignment}', [OrAssignmentController::class, 'destroy'])->name('destroy');
     });
 
-    Route::prefix('rpt/td')->name('rpt.td.')->group(function () {
-        Route::get('/create', [TaxDeclarationController::class, 'create'])->name('create');
-        Route::post('/', [TaxDeclarationController::class, 'store'])->name('store');
-        Route::put('/{id}', [TaxDeclarationController::class, 'update'])->name('update');
-        Route::get('/{id}/edit', [TaxDeclarationController::class, 'edit'])->name('edit');
-        Route::delete('/{id}', [TaxDeclarationController::class, 'destroy'])->name('destroy');
-        Route::delete('/{id}/component', [TaxDeclarationController::class, 'deleteComponent'])->name('delete_component');
-        Route::get('/revision/search', [TaxDeclarationController::class, 'revisionSearch'])->name('revision_search');
-        Route::get('/{id}/revise/{type}/{component_id}', [TaxDeclarationController::class, 'reviseComponent'])->name('revise_component');
-        Route::post('/{id}/revise/{type}/{component_id}', [TaxDeclarationController::class, 'updateRevision'])->name('update_revision');
-        Route::get('/{id}/history', [TaxDeclarationController::class, 'revisionHistory'])->name('history');
-        Route::get('/{id}/revision-type', [TaxDeclarationController::class, 'selectRevisionType'])->name('select_revision_type');
-        Route::post('/{id}/process-revision', [TaxDeclarationController::class, 'processRevision'])->name('process_revision');
-        Route::get('/{id}/transfer', [TaxDeclarationController::class, 'showTransferForm'])->name('transfer');
-        Route::post('/{id}/transfer', [TaxDeclarationController::class, 'processTransfer'])->name('process_transfer');
-        Route::get('/{id}/add-land', [TaxDeclarationController::class, 'addLand'])->name('add_land');
-        Route::post('/{id}/land', [TaxDeclarationController::class, 'storeLand'])->name('store_land');
-        Route::get('/{id}/add-building', [TaxDeclarationController::class, 'addBuilding'])->name('add_building');
-        Route::post('/{id}/building', [TaxDeclarationController::class, 'storeBuilding'])->name('store_building');
-        Route::get('/{id}/add-machine', [TaxDeclarationController::class, 'addMachine'])->name('add_machine');
-        Route::post('/{id}/machine', [TaxDeclarationController::class, 'storeMachine'])->name('store_machine');
-        Route::get('/{id}/machine/{machine_id}/edit', [TaxDeclarationController::class, 'editMachine'])->name('edit_machine');
-        Route::put('/{id}/machine/{machine_id}', [TaxDeclarationController::class, 'updateMachine'])->name('update_machine');
-        Route::get('/api/search/{td_no}', [TaxDeclarationController::class, 'apiSearch'])->name('api_search');
-        Route::post('/{id}/submit-review', [TaxDeclarationController::class, 'submitReview'])->name('submit_review');
-        Route::post('/{id}/approve', [TaxDeclarationController::class, 'approve'])->name('approve');
-        Route::post('/{id}/cancel', [TaxDeclarationController::class, 'cancel'])->name('cancel');
-        Route::post('/{id}/upload-attachment', [TaxDeclarationController::class, 'uploadAttachment'])->name('upload_attachment');
-        Route::post('/{id}/update-inspection', [TaxDeclarationController::class, 'updateInspection'])->name('update_inspection');
-        Route::get('/{id}/print', [TaxDeclarationController::class, 'printTD'])->name('print');
+    // ── BPLS ─────────────────────────────────
+    Route::prefix('bpls')->name('bpls.')->group(function () {
+
+        Route::get('/', [BplsController::class, 'index'])->name('index');
+
+        // Settings — uses BplsSettingsController (no User/cashier queries)
+        Route::prefix('settings')->name('settings.')->group(function () {
+            Route::get('/', [BplsSettingsController::class, 'index'])->name('index');
+            Route::post('/update-general', [BplsSettingsController::class, 'updateGeneral'])->name('update-general');
+            Route::post('/update-discount', [BplsSettingsController::class, 'updateDiscount'])->name('update-discount');
+            Route::post('/update-permit', [BplsSettingsController::class, 'updatePermit'])->name('update-permit');
+            Route::post('/update-receipt', [BplsSettingsController::class, 'updateReceipt'])->name('update-receipt'); // ← add this
+        });
+        // Business Entries
+        Route::prefix('business-entries')->name('business-entries.')->group(function () {
+            Route::get('/', [BusinessEntriesController::class, 'index'])->name('index');
+            Route::post('/', [BusinessEntriesController::class, 'store'])->name('store');
+        });
+
+        // Business List — static routes BEFORE /{entry} wildcard
+        Route::prefix('business-list')->name('business-list.')->group(function () {
+            Route::get('/', [BusinessListController::class, 'index'])->name('index');
+            Route::get('/search', [BusinessListController::class, 'search'])->name('search');
+            Route::get('/{entry}', [BusinessListController::class, 'show'])->name('show');
+            Route::post('/{entry}/assess', [BusinessListController::class, 'assess'])->name('assess');
+            Route::post('/{entry}/approve-payment', [BplsPaymentController::class, 'approvePayment'])->name('approve-payment');
+            Route::post('/{entry}/approve-renewal', [BusinessListController::class, 'approveRenewal'])->name('approve-renewal');
+            Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
+            Route::post('/{entry}/retire', [BusinessListController::class, 'retire'])->name('retire');
+            Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
+        });
+
+        // Payment — permit/receipt BEFORE broad /{entry} wildcard
+        Route::prefix('payment')->name('payment.')->group(function () {
+            Route::get('/{entry}/permit/{payment}', [BplsPaymentController::class, 'permit'])->name('permit');
+            Route::get('/{entry}/receipt/{payment}', [BplsPaymentController::class, 'receipt'])->name('receipt');
+            Route::post('/{entry}/compute-surcharge', [BplsPaymentController::class, 'computeSurcharge'])->name('compute-surcharge');
+            Route::post('/{entry}/validate-or', [BplsPaymentController::class, 'validateOr'])->name('validate-or');
+            Route::post('/{entry}/pay', [BplsPaymentController::class, 'pay'])->name('pay');
+            Route::get('/{entry}', [BplsPaymentController::class, 'show'])->name('show');
+        });
+
+        // Fee Rules — static routes BEFORE /{feeRule} wildcard
+        Route::prefix('fee-rules')->name('fee-rules.')->group(function () {
+            Route::get('/manage', fn() => view('modules.bpls.fee-rules.index'))->name('manage');
+            Route::post('/reorder', [FeeRuleController::class, 'reorder'])->name('reorder');
+            Route::post('/reset-defaults', [FeeRuleController::class, 'resetDefaults'])->name('reset-defaults');
+            Route::post('/compute', [FeeRuleController::class, 'compute'])->name('compute');
+            Route::get('/', [FeeRuleController::class, 'index'])->name('index');
+            Route::post('/', [FeeRuleController::class, 'store'])->name('store');
+            Route::get('/{feeRule}', [FeeRuleController::class, 'show'])->name('show');
+            Route::put('/{feeRule}', [FeeRuleController::class, 'update'])->name('update');
+            Route::delete('/{feeRule}', [FeeRuleController::class, 'destroy'])->name('destroy');
+            Route::post('/{feeRule}/toggle', [FeeRuleController::class, 'toggle'])->name('toggle');
+        });
+
+        // Reports
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/masterlist', [MasterlistController::class, 'index'])->name('masterlist.index');
+            Route::get('/masterlist/data', [MasterlistController::class, 'data'])->name('masterlist.data');
+        });
+
     });
 
+    // ── RPT ──────────────────────────────────
+    Route::prefix('rpt')->name('rpt.')->group(function () {
+        Route::get('/', [RPTController::class, 'index'])->name('index');
+        Route::get('/faas_list', [RPTController::class, 'faas_list'])->name('faas_list');
+        Route::get('/faas-view/{id}', [RPTController::class, 'faas_view'])->name('faas_view');
+        Route::get('/land', [RPTController::class, 'land'])->name('faas_entry.land');
+        Route::get('/building', [RPTController::class, 'building'])->name('faas_entry.building');
+        Route::get('/machine', [RPTController::class, 'machine'])->name('faas_entry.machine');
+        Route::get('/taxdec_based', [RPTController::class, 'taxdec_based'])->name('faas_entry.taxdec_based');
+        Route::post('/', [RPTController::class, 'store'])->name('store');
+        Route::get('/get-actual-uses', [RPTController::class, 'get_actual_uses'])->name('get_actual_uses');
+        Route::get('/get-unit-value', [RPTController::class, 'get_unit_value'])->name('get_unit_value');
+        Route::get('/get-assessment-level', [RPTController::class, 'get_assessment_level'])->name('get_assessment_level');
+        Route::get('/rpta_settings', [RPTA_SettingsController::class, 'index'])->name('rpta_settings.index');
+        Route::get('/rpta_settings/actual_use', [RPTA_SettingsController::class, 'actual_use'])->name('rpta_settings.actual_use');
+
+        Route::prefix('gis')->name('gis.')->group(function () {
+            Route::get('/', [GISController::class, 'index'])->name('index');
+            Route::get('/geometries', [GISController::class, 'getGeometries'])->name('get_geometries');
+            Route::post('/update-geometry', [GISController::class, 'updateGeometry'])->name('update_geometry');
+        });
+
+        Route::prefix('td')->name('td.')->group(function () {
+            Route::get('/create', [TaxDeclarationController::class, 'create'])->name('create');
+            Route::get('/revision/search', [TaxDeclarationController::class, 'revisionSearch'])->name('revision_search');
+            Route::get('/api/search/{td_no}', [TaxDeclarationController::class, 'apiSearch'])->name('api_search');
+            Route::post('/', [TaxDeclarationController::class, 'store'])->name('store');
+            Route::get('/{id}/edit', [TaxDeclarationController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [TaxDeclarationController::class, 'update'])->name('update');
+            Route::delete('/{id}', [TaxDeclarationController::class, 'destroy'])->name('destroy');
+            Route::delete('/{id}/component', [TaxDeclarationController::class, 'deleteComponent'])->name('delete_component');
+            Route::get('/{id}/revise/{type}/{component_id}', [TaxDeclarationController::class, 'reviseComponent'])->name('revise_component');
+            Route::post('/{id}/revise/{type}/{component_id}', [TaxDeclarationController::class, 'updateRevision'])->name('update_revision');
+            Route::get('/{id}/history', [TaxDeclarationController::class, 'revisionHistory'])->name('history');
+            Route::get('/{id}/revision-type', [TaxDeclarationController::class, 'selectRevisionType'])->name('select_revision_type');
+            Route::post('/{id}/process-revision', [TaxDeclarationController::class, 'processRevision'])->name('process_revision');
+            Route::get('/{id}/transfer', [TaxDeclarationController::class, 'showTransferForm'])->name('transfer');
+            Route::post('/{id}/transfer', [TaxDeclarationController::class, 'processTransfer'])->name('process_transfer');
+            Route::get('/{id}/add-land', [TaxDeclarationController::class, 'addLand'])->name('add_land');
+            Route::post('/{id}/land', [TaxDeclarationController::class, 'storeLand'])->name('store_land');
+            Route::get('/{id}/add-building', [TaxDeclarationController::class, 'addBuilding'])->name('add_building');
+            Route::post('/{id}/building', [TaxDeclarationController::class, 'storeBuilding'])->name('store_building');
+            Route::get('/{id}/add-machine', [TaxDeclarationController::class, 'addMachine'])->name('add_machine');
+            Route::post('/{id}/machine', [TaxDeclarationController::class, 'storeMachine'])->name('store_machine');
+            Route::get('/{id}/machine/{machine_id}/edit', [TaxDeclarationController::class, 'editMachine'])->name('edit_machine');
+            Route::put('/{id}/machine/{machine_id}', [TaxDeclarationController::class, 'updateMachine'])->name('update_machine');
+            Route::post('/{id}/submit-review', [TaxDeclarationController::class, 'submitReview'])->name('submit_review');
+            Route::post('/{id}/approve', [TaxDeclarationController::class, 'approve'])->name('approve');
+            Route::post('/{id}/cancel', [TaxDeclarationController::class, 'cancel'])->name('cancel');
+            Route::post('/{id}/upload-attachment', [TaxDeclarationController::class, 'uploadAttachment'])->name('upload_attachment');
+            Route::post('/{id}/update-inspection', [TaxDeclarationController::class, 'updateInspection'])->name('update_inspection');
+            Route::get('/{id}/print', [TaxDeclarationController::class, 'printTD'])->name('print');
+        });
+
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/', [ReportController::class, 'index'])->name('index');
+            $reports = [
+                'parcel-list' => 'parcelList',
+                'rpu-list' => 'rpuList',
+                'cancelled-list' => 'cancelledList',
+                'faas-summary' => 'faasSummary',
+                'td-summary' => 'tdSummary',
+                'taxable-properties' => 'taxableProperties',
+                'ownership-history' => 'ownershipHistory',
+                'transfer-summary' => 'transferSummary',
+                'multiple-owners' => 'multipleOwners',
+                'td-audit-log' => 'tdAuditLog',
+                'global-transaction-log' => 'globalTransactionLog',
+                'user-activity-audit' => 'userActivityAudit',
+            ];
+            foreach ($reports as $slug => $method) {
+                $name = str_replace('-', '_', $slug);
+                Route::get("/{$slug}", [ReportController::class, $method])->name($name);
+                Route::get("/{$slug}/export/pdf", [ReportController::class, 'export' . ucfirst(lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $slug))))) . 'PDF'])->name("{$name}.export.pdf");
+            }
+        });
+    });
+
+    // ── RPT Settings ─────────────────────────
     Route::prefix('actual-use')->name('rpt.actual-use.')->group(function () {
         Route::get('/', [RptAuController::class, 'index'])->name('index');
         Route::post('/', [RptAuController::class, 'store'])->name('store');
@@ -281,32 +353,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}/cancel', [RptaGenRevController::class, 'cancelRevision'])->name('cancel');
     });
 
-    Route::prefix('rpt/reports')->name('rpt.reports.')->group(function () {
-        Route::get('/', [ReportController::class, 'index'])->name('index');
-        $reports = [
-            'parcel-list' => 'parcelList',
-            'rpu-list' => 'rpuList',
-            'cancelled-list' => 'cancelledList',
-            'faas-summary' => 'faasSummary',
-            'td-summary' => 'tdSummary',
-            'taxable-properties' => 'taxableProperties',
-            'ownership-history' => 'ownershipHistory',
-            'transfer-summary' => 'transferSummary',
-            'multiple-owners' => 'multipleOwners',
-            'td-audit-log' => 'tdAuditLog',
-            'global-transaction-log' => 'globalTransactionLog',
-            'user-activity-audit' => 'userActivityAudit',
-        ];
-        foreach ($reports as $slug => $method) {
-            $name = str_replace('-', '_', $slug);
-            Route::get("/{$slug}", [ReportController::class, $method])->name($name);
-            Route::get("/{$slug}/export/pdf", [ReportController::class, 'export' . ucfirst(lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $slug))))) . 'PDF'])->name("{$name}.export.pdf");
-        }
-    });
 });
-
-// Treasury
-Route::get('/treasury', fn() => view('modules.treasury.index'))->name('treasury.index');
-Route::get('/treasury/bpls-payment', [BplsPaymentController::class, 'index'])->name('bpls_payment');
 
 require __DIR__ . '/auth.php';

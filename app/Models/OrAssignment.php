@@ -26,7 +26,6 @@ class OrAssignment extends Model
         return $this->belongsTo(User::class);
     }
 
-    /** Human-readable receipt type label */
     public function getReceiptLabelAttribute(): string
     {
         return match ($this->receipt_type) {

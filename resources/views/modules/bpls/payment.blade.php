@@ -221,17 +221,102 @@
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
                     @csrf
 
-                    {{-- OR Number + Date ── --}}
-                    <div class="grid grid-cols-2 gap-4 p-5 border-b border-lumot/20">
+                    <div class="grid grid-cols-2 gap-4 p-5 border-b border-lumot/20" x-data="{
+                        orNumber: '{{ old('or_number', '') }}',
+                        orStatus: null,
+                        {{-- null | 'valid' | 'invalid' | 'checking' --}}
+                        orMessage: '',
+                        orReceiptType: '',
+                        checkTimeout: null,
+                    
+                        checkOr() {
+                            clearTimeout(this.checkTimeout);
+                            if (!this.orNumber.trim()) {
+                                this.orStatus = null;
+                                this.orMessage = '';
+                                return;
+                            }
+                            this.orStatus = 'checking';
+                            this.checkTimeout = setTimeout(async () => {
+                                try {
+                                    const res = await fetch('{{ route('bpls.payment.validate-or', $entry->id) }}', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                            'Accept': 'application/json',
+                                        },
+                                        body: JSON.stringify({ or_number: this.orNumber }),
+                                    });
+                                    const data = await res.json();
+                                    this.orStatus = data.valid ? 'valid' : 'invalid';
+                                    this.orMessage = data.message;
+                                    this.orReceiptType = data.receipt_label ?? '';
+                                } catch (e) {
+                                    this.orStatus = null;
+                                }
+                            }, 500);
+                        }
+                    }">
+
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1.5">
                                 O.R. / Control No. <span class="text-red-400">*</span>
                             </label>
-                            <input type="text" name="or_number" required
-                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5
-                                           focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-yellow-50/50"
-                                placeholder="Enter O.R. Number">
+
+                            {{-- Input with dynamic border color --}}
+                            <div class="relative">
+                                <input type="text" name="or_number" required x-model="orNumber" @input="checkOr()"
+                                    :class="{
+                                        'border-logo-teal ring-2 ring-logo-teal/20 bg-green-50/30': orStatus === 'valid',
+                                        'border-red-400 ring-2 ring-red-200 bg-red-50/30': orStatus === 'invalid',
+                                        'border-lumot/30 bg-yellow-50/50': orStatus === null || orStatus === 'checking',
+                                    }"
+                                    class="w-full text-sm border rounded-xl px-3 py-2.5 pr-9
+                       focus:outline-none transition-all duration-150"
+                                    placeholder="Enter O.R. Number">
+
+                                {{-- Status icon inside input --}}
+                                <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                    {{-- Spinner --}}
+                                    <svg x-show="orStatus === 'checking'" class="w-4 h-4 text-logo-teal animate-spin"
+                                        fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                    </svg>
+                                    {{-- Valid check --}}
+                                    <svg x-show="orStatus === 'valid'" class="w-4 h-4 text-logo-teal" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    {{-- Invalid X --}}
+                                    <svg x-show="orStatus === 'invalid'" class="w-4 h-4 text-red-500" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {{-- Validation message --}}
+                            <div x-show="orStatus === 'valid'" class="mt-1.5 flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold text-logo-teal" x-text="orMessage"></span>
+                                <span x-show="orReceiptType"
+                                    class="text-[9px] font-extrabold px-1.5 py-0.5 bg-logo-teal/10 text-logo-teal rounded-full"
+                                    x-text="orReceiptType">
+                                </span>
+                            </div>
+                            <p x-show="orStatus === 'invalid'" class="mt-1.5 text-[10px] font-bold text-red-500"
+                                x-text="orMessage">
+                            </p>
+
+                            {{-- Server-side error --}}
+                            @error('or_number')
+                                <p class="mt-1.5 text-[10px] font-bold text-red-500">{{ $message }}</p>
+                            @enderror
                         </div>
+
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1.5">
                                 Payment Date <span class="text-red-400">*</span>
@@ -239,7 +324,7 @@
                             <input type="date" name="payment_date" required x-model="paymentDate"
                                 @change="autoComputeSurcharge()"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5
-                                           focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                   focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
                         </div>
                     </div>
 

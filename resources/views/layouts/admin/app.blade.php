@@ -11,11 +11,9 @@
         <aside id="sidebar"
             class="fixed inset-y-0 left-0 z-30 w-64 bg-white border-r-4 border-logo-teal overflow-y-auto shadow-xl transform transition-transform duration-300">
 
-
             <!-- Logo Header -->
             <div class="sticky top-0 bg-white border-b-2 border-logo-teal p-4 z-10">
                 <div class="flex items-center space-x-2">
-                    <!-- Logo -->
                     <a href="{{ route('dashboard') }}" class="hover:opacity-80 transition-opacity">
                         <x-application-logo class="h-9 w-auto fill-current text-green" />
                     </a>
@@ -145,14 +143,14 @@
 
                         <!-- BPLS -->
                         <a href="{{ route('bpls.index') }}"
-                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('bpls.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
-                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('bpls.*') ? 'text-white' : 'text-logo-blue group-hover:text-logo-green' }}"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('bpls.*') && !request()->routeIs('bpls.settings.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('bpls.*') && !request()->routeIs('bpls.settings.*') ? 'text-white' : 'text-logo-blue group-hover:text-logo-green' }}"
                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                             <span>{{ __('BPLS') }}</span>
-                            @if (request()->routeIs('bpls.*'))
+                            @if (request()->routeIs('bpls.*') && !request()->routeIs('bpls.settings.*'))
                                 <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
                             @endif
                         </a>
@@ -184,13 +182,16 @@
 
                         <!-- RPT -->
                         <a href="{{ route('rpt.index') }}"
-                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
-                            <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('rpt.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('rpt.*') ? 'text-white' : 'text-logo-blue group-hover:text-logo-green' }}"
                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
                             <span>{{ __('RPT') }}</span>
+                            @if (request()->routeIs('rpt.*'))
+                                <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            @endif
                         </a>
 
                         <!-- Treasury -->
@@ -210,6 +211,48 @@
                     </div>
                 </div>
 
+                <!-- Settings Section -->
+                <div>
+                    <h3
+                        class="text-xs font-bold text-logo-blue uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+                        <span class="w-1 h-4 bg-gray/30 rounded-full"></span>
+                        System
+                    </h3>
+                    <div class="space-y-1">
+
+                        <!-- OR Assignment Settings -->
+                        <a href="{{ route('or-assignments.index') }}"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('or-assignments.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('or-assignments.*') ? 'text-white' : 'text-logo-blue group-hover:text-logo-green' }}"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span>{{ __('OR Assignment') }}</span>
+                            @if (request()->routeIs('or-assignments.*'))
+                                <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            @endif
+                        </a>
+
+                        <!-- =====================================================
+                             AUDIT LOGS  ← NEW ADDITION
+                             ===================================================== -->
+                        <a href="{{ route('audit-logs.index') }}"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('audit-logs.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('audit-logs.*') ? 'text-white' : 'text-logo-blue group-hover:text-logo-green' }}"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            <span>{{ __('Audit Logs') }}</span>
+                            @if (request()->routeIs('audit-logs.*'))
+                                <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            @endif
+                        </a>
+
+                    </div>
+                </div>
+
             </nav>
         </aside>
 
@@ -219,7 +262,6 @@
             <!-- Top Navigation -->
             <div class="bg-white border-b-2 border-lumot sticky top-0 z-10 shadow-md">
                 <div class="flex items-center justify-between px-4 py-3 w-full">
-                    <!-- Sidebar Toggle Button -->
                     <button id="mobile-menu-button" type="button"
                         class="inline-flex items-center justify-center p-2 rounded-xl text-green hover:text-logo-teal hover:bg-lumot/30 focus:outline-none focus:ring-2 focus:ring-logo-teal transition-all duration-200">
                         <span class="sr-only">Toggle sidebar</span>
@@ -229,8 +271,6 @@
                                 d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-
-                    <!-- Profile Dropdown -->
                     <div class="relative flex items-center">
                         @include('layouts.admin.profile')
                     </div>
@@ -248,7 +288,6 @@
 
             <!-- Page Content -->
             <main class="flex-1 p-4 sm:p-6">
-                <!-- Flash Messages -->
                 @if (session('success'))
                     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
                         class="mb-6 flex items-center p-4 text-green-800 rounded-2xl bg-green-50 border border-green-100 shadow-sm"
@@ -325,7 +364,6 @@
 
     </div>
 
-    <!-- Livewire Scripts -->
     @livewireScripts
 
     @stack('scripts')
@@ -337,7 +375,6 @@
         });
     </script>
 
-    <!-- Sidebar Toggle Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');
@@ -380,8 +417,6 @@
 
             toggleBtn.addEventListener('click', function() {
                 toggleSidebar();
-
-                // On desktop, shift main content accordingly
                 if (window.innerWidth >= 1024) {
                     const isNowHidden = sidebar.classList.contains('-translate-x-full');
                     mainContent.style.marginLeft = isNowHidden ? '0' : '16rem';

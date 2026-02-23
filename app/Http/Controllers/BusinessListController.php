@@ -190,4 +190,7 @@ class BusinessListController extends Controller
     {
         return app(BplsPaymentController::class)->approveRenewal($request, $entry);
     }
+
+
+
 }

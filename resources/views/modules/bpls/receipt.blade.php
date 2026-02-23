@@ -1,4 +1,8 @@
 {{-- resources/views/modules/bpls/receipt.blade.php --}}
+{{--
+    $payment, $entry, $fees, $discountRate
+    $receiptSettings  ← injected by controller: Collection keyed by setting key
+--}}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -6,6 +10,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Official Receipt — O.R. #{{ $payment->or_number }}</title>
+
+    @php
+        // ── Pull receipt settings with fallbacks ─────────────────────────────
+        $rs = $receiptSettings ?? collect();
+        $rGet = fn($key, $default) => $rs[$key]->value ?? $default;
+
+        // Header
+        $headerLine1 = $rGet('receipt_header_line1', 'Official Receipt of the Republic of the Philippines');
+        $officeName = $rGet('receipt_office_name', 'Office of the Treasurer');
+        $headerLine3 = $rGet('receipt_header_line3', 'Province of Laguna');
+        $agencyName = $rGet('receipt_agency_name', 'MTO-Majayjay');
+        $afLabel = $rGet('receipt_af_label', 'Accountable form No. 51');
+
+        // Body / Footer
+        $receivedText = $rGet('receipt_received_text', 'Received the amount stated above');
+        $footerNote = $rGet('receipt_footer_note', '');
+
+        // Signatories
+        $sig1Name = $rGet('receipt_signatory1_name', null);
+        $sig1Title = $rGet('receipt_signatory1_title', 'Cashier Officer');
+        if (empty($sig1Name)) {
+            $sig1Name = $payment->received_by ?? (auth()->user()->name ?? 'CASHIER OFFICER');
+        }
+
+        $sig2Enabled = $rGet('receipt_signatory2_enabled', '0') === '1';
+        $sig2Name = $rGet('receipt_signatory2_name', '');
+        $sig2Title = $rGet('receipt_signatory2_title', '');
+
+        $sig3Enabled = $rGet('receipt_signatory3_enabled', '0') === '1';
+        $sig3Name = $rGet('receipt_signatory3_name', '');
+        $sig3Title = $rGet('receipt_signatory3_title', '');
+
+        // Layout options
+        $receiptWidth = (int) $rGet('receipt_width_px', '360');
+        $minFeeRows = (int) $rGet('receipt_min_fee_rows', '8');
+        $showDiscountBadge = $rGet('receipt_show_discount_badge', '1') === '1';
+        $showAmountInWords = $rGet('receipt_show_amount_in_words', '1') === '1';
+        $showRemarks = $rGet('receipt_show_remarks', '1') === '1';
+
+        // Account / Fund codes
+        $surchargeCode = $rGet('receipt_surcharge_code', '631-008');
+        $backtaxCode = $rGet('receipt_backtax_code', '631-009');
+        $defaultFundCode = $rGet('receipt_default_fund_code', '101');
+
+        // ── Fee calculation ──────────────────────────────────────────────────
+        $quartersPaid = is_array($payment->quarters_paid)
+            ? $payment->quarters_paid
+            : json_decode($payment->quarters_paid, true) ?? [];
+        $qCount = count($quartersPaid);
+        $modeCount = match ($entry->mode_of_payment) {
+            'annual' => 1,
+            'semi_annual' => 2,
+            default => 4,
+        };
+        $ratio = $modeCount > 0 ? $qCount / $modeCount : 1;
+
+        $nonEmptyRows = collect($fees)->filter(fn($f) => round($f['amount'] * $ratio, 2) > 0)->count();
+        $extraRows = 0;
+        if (isset($payment->surcharges) && $payment->surcharges > 0) {
+            $extraRows++;
+        }
+        if (isset($payment->backtaxes) && $payment->backtaxes > 0) {
+            $extraRows++;
+        }
+        if (isset($payment->discount) && $payment->discount > 0) {
+            $extraRows++;
+        }
+        $fillerRows = max(0, $minFeeRows - $nonEmptyRows - $extraRows);
+    @endphp
+
     <style>
         * {
             margin: 0;
@@ -21,7 +95,7 @@
         }
 
         .receipt-wrap {
-            width: 360px;
+            width: {{ $receiptWidth }}px;
             margin: 20px auto;
             border: 2px solid #000;
             padding: 0;
@@ -165,7 +239,6 @@
             font-size: 9px;
         }
 
-        /* FIXED: Discount row styling */
         .fee-table tbody tr.discount-row td {
             background: #f0fdf4;
             color: #16a34a;
@@ -290,30 +363,46 @@
 
         .received-row {
             border-top: 1px solid #000;
-            padding: 8px 8px 12px;
+            padding: 8px 8px 4px;
             font-size: 9px;
             font-weight: bold;
         }
 
+        .signatories-row {
+            display: flex;
+            justify-content: space-around;
+            padding: 0 8px 10px;
+        }
+
         .signatory {
             text-align: center;
-            padding: 20px 0 8px;
+            flex: 1;
+            padding: 0 4px;
         }
 
         .signatory .name {
             font-weight: 900;
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             border-top: 1px solid #000;
-            margin: 0 40px;
+            margin: 16px 8px 0;
             padding-top: 3px;
         }
 
         .signatory .title {
-            font-size: 9px;
+            font-size: 8px;
+            margin-top: 2px;
         }
 
-        /* FIXED: Discount badge styling */
+        .footer-note {
+            padding: 6px 8px;
+            border-top: 1px dashed #aaa;
+            font-size: 8px;
+            color: #555;
+            font-style: italic;
+            text-align: center;
+        }
+
         .discount-badge {
             background: #dcfce7;
             border: 1px solid #86efac;
@@ -374,9 +463,7 @@
     <div class="no-print-btn">
         <button onclick="window.print()">🖨 Print Receipt</button>
         &nbsp;
-        <a href="{{ route('bpls.payment.show', $entry->id) }}">
-            ← Back to Payment
-        </a>
+        <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
     </div>
 
     <div class="receipt-wrap">
@@ -386,16 +473,16 @@
             <div class="logos">
                 <div class="logo-box">PH<br>Seal</div>
                 <div class="title-block">
-                    <p>Official Receipt of the Republic of the Philippines</p>
-                    <p class="main">Office of the Treasurer</p>
-                    <p>Province of Laguna</p>
+                    <p>{{ $headerLine1 }}</p>
+                    <p class="main">{{ $officeName }}</p>
+                    <p>{{ $headerLine3 }}</p>
                 </div>
                 <div class="logo-box">LGU<br>Seal</div>
             </div>
         </div>
 
-        {{-- FIXED: Advance Discount Badge --}}
-        @if (isset($payment->discount) && $payment->discount > 0)
+        {{-- Discount Badge (toggleable) --}}
+        @if ($showDiscountBadge && isset($payment->discount) && $payment->discount > 0)
             <div class="discount-badge">
                 ✓ ADVANCE PAYMENT DISCOUNT APPLIED ({{ $discountRate ?? 0 }}% OFF)
             </div>
@@ -403,7 +490,7 @@
 
         {{-- AF Row --}}
         <div class="af-row">
-            <div>Accountable form No. 51. Revised January 1992</div>
+            <div>{{ $afLabel }}</div>
             <div>Revised January 1992</div>
         </div>
 
@@ -415,8 +502,8 @@
 
         {{-- Agency / Fund Code --}}
         <div class="agency-row">
-            <div>MTO-Majayjay</div>
-            <div class="fund">{{ $payment->fund_code }}</div>
+            <div>{{ $agencyName }}</div>
+            <div class="fund">{{ $payment->fund_code ?? $defaultFundCode }}</div>
         </div>
 
         {{-- Payor --}}
@@ -425,35 +512,6 @@
         </div>
 
         {{-- Fee Table --}}
-        @php
-            // Get quarters paid as array
-            $quartersPaid = is_array($payment->quarters_paid)
-                ? $payment->quarters_paid
-                : json_decode($payment->quarters_paid, true) ?? [];
-            $qCount = count($quartersPaid);
-
-            $modeCount = match ($entry->mode_of_payment) {
-                'annual' => 1,
-                'semi_annual' => 2,
-                default => 4,
-            };
-            $ratio = $modeCount > 0 ? $qCount / $modeCount : 1;
-
-            // Calculate filler rows
-            $nonEmptyRows = collect($fees)->filter(fn($f) => round($f['amount'] * $ratio, 2) > 0)->count();
-            $extraRows = 0;
-            if (isset($payment->surcharges) && $payment->surcharges > 0) {
-                $extraRows++;
-            }
-            if (isset($payment->backtaxes) && $payment->backtaxes > 0) {
-                $extraRows++;
-            }
-            if (isset($payment->discount) && $payment->discount > 0) {
-                $extraRows++;
-            }
-            $fillerRows = max(0, 8 - $nonEmptyRows - $extraRows);
-        @endphp
-
         <table class="fee-table">
             <thead>
                 <tr>
@@ -463,8 +521,6 @@
                 </tr>
             </thead>
             <tbody>
-
-                {{-- Regular Fee Rows --}}
                 @foreach ($fees as $fee)
                     @php $feeAmt = round($fee['amount'] * $ratio, 2); @endphp
                     @if ($feeAmt > 0)
@@ -476,36 +532,30 @@
                     @endif
                 @endforeach
 
-                {{-- Surcharges Row --}}
                 @if (isset($payment->surcharges) && $payment->surcharges > 0)
                     <tr class="surcharge-row">
                         <td>SURCHARGES</td>
-                        <td class="code">631-008</td>
+                        <td class="code">{{ $surchargeCode }}</td>
                         <td>{{ number_format($payment->surcharges, 2) }}</td>
                     </tr>
                 @endif
 
-                {{-- Backtaxes Row --}}
                 @if (isset($payment->backtaxes) && $payment->backtaxes > 0)
                     <tr class="backtax-row">
                         <td>BACKTAXES</td>
-                        <td class="code">631-009</td>
+                        <td class="code">{{ $backtaxCode }}</td>
                         <td>{{ number_format($payment->backtaxes, 2) }}</td>
                     </tr>
                 @endif
 
-                {{-- FIXED: Advance Discount Row --}}
                 @if (isset($payment->discount) && $payment->discount > 0)
                     <tr class="discount-row">
-                        <td>
-                            ADVANCE DISCOUNT ({{ $discountRate ?? 0 }}%)
-                        </td>
+                        <td>ADVANCE DISCOUNT ({{ $discountRate ?? 0 }}%)</td>
                         <td class="code">—</td>
                         <td>({{ number_format($payment->discount, 2) }})</td>
                     </tr>
                 @endif
 
-                {{-- Filler Rows --}}
                 @for ($i = 0; $i < $fillerRows; $i++)
                     <tr>
                         <td>&nbsp;</td>
@@ -513,7 +563,6 @@
                         <td></td>
                     </tr>
                 @endfor
-
             </tbody>
             <tfoot>
                 <tr>
@@ -523,101 +572,110 @@
             </tfoot>
         </table>
 
-        {{-- Amount in Words --}}
-        <div class="words-row">
-            <div class="label">Amount in Words</div>
-            <div class="value">
-                @php
-                    function numToWordsReceipt(float $amount): string
-                    {
-                        $n = (int) round($amount * 100);
-                        $pesos = intdiv($n, 100);
-                        $centavos = $n % 100;
-
-                        $ones = [
-                            '',
-                            'One',
-                            'Two',
-                            'Three',
-                            'Four',
-                            'Five',
-                            'Six',
-                            'Seven',
-                            'Eight',
-                            'Nine',
-                            'Ten',
-                            'Eleven',
-                            'Twelve',
-                            'Thirteen',
-                            'Fourteen',
-                            'Fifteen',
-                            'Sixteen',
-                            'Seventeen',
-                            'Eighteen',
-                            'Nineteen',
-                        ];
-                        $tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-
-                        $hw = function (int $num) use (&$hw, $ones, $tens): string {
-                            if ($num < 20) {
-                                return $ones[$num];
+        {{-- Amount in Words (toggleable) --}}
+        @if ($showAmountInWords)
+            <div class="words-row">
+                <div class="label">Amount in Words</div>
+                <div class="value">
+                    @php
+                        function numToWordsReceipt(float $amount): string
+                        {
+                            $n = (int) round($amount * 100);
+                            $pesos = intdiv($n, 100);
+                            $centavos = $n % 100;
+                            $ones = [
+                                '',
+                                'One',
+                                'Two',
+                                'Three',
+                                'Four',
+                                'Five',
+                                'Six',
+                                'Seven',
+                                'Eight',
+                                'Nine',
+                                'Ten',
+                                'Eleven',
+                                'Twelve',
+                                'Thirteen',
+                                'Fourteen',
+                                'Fifteen',
+                                'Sixteen',
+                                'Seventeen',
+                                'Eighteen',
+                                'Nineteen',
+                            ];
+                            $tens = [
+                                '',
+                                '',
+                                'Twenty',
+                                'Thirty',
+                                'Forty',
+                                'Fifty',
+                                'Sixty',
+                                'Seventy',
+                                'Eighty',
+                                'Ninety',
+                            ];
+                            $hw = function (int $num) use (&$hw, $ones, $tens): string {
+                                if ($num < 20) {
+                                    return $ones[$num];
+                                }
+                                if ($num < 100) {
+                                    return $tens[intdiv($num, 10)] . ($num % 10 ? ' ' . $ones[$num % 10] : '');
+                                }
+                                if ($num < 1000) {
+                                    return $ones[intdiv($num, 100)] .
+                                        ' Hundred' .
+                                        ($num % 100 ? ' ' . $hw($num % 100) : '');
+                                }
+                                if ($num < 1000000) {
+                                    return $hw(intdiv($num, 1000)) .
+                                        ' Thousand' .
+                                        ($num % 1000 ? ' ' . $hw($num % 1000) : '');
+                                }
+                                return $hw(intdiv($num, 1000000)) .
+                                    ' Million' .
+                                    ($num % 1000000 ? ' ' . $hw($num % 1000000) : '');
+                            };
+                            $words = $pesos > 0 ? $hw($pesos) . ' Pesos' : 'Zero Pesos';
+                            if ($centavos > 0) {
+                                $words .= ' and ' . str_pad($centavos, 2, '0', STR_PAD_LEFT) . '/100';
                             }
-                            if ($num < 100) {
-                                return $tens[intdiv($num, 10)] . ($num % 10 ? ' ' . $ones[$num % 10] : '');
-                            }
-                            if ($num < 1000) {
-                                return $ones[intdiv($num, 100)] .
-                                    ' Hundred' .
-                                    ($num % 100 ? ' ' . $hw($num % 100) : '');
-                            }
-                            if ($num < 1000000) {
-                                return $hw(intdiv($num, 1000)) .
-                                    ' Thousand' .
-                                    ($num % 1000 ? ' ' . $hw($num % 1000) : '');
-                            }
-                            return $hw(intdiv($num, 1000000)) .
-                                ' Million' .
-                                ($num % 1000000 ? ' ' . $hw($num % 1000000) : '');
-                        };
-
-                        $words = $pesos > 0 ? $hw($pesos) . ' Pesos' : 'Zero Pesos';
-                        if ($centavos > 0) {
-                            $words .= ' and ' . str_pad($centavos, 2, '0', STR_PAD_LEFT) . '/100';
+                            return $words . ' Only';
                         }
-                        return $words . ' Only';
-                    }
-
-                    echo numToWordsReceipt((float) $payment->total_collected);
-                @endphp
+                        echo numToWordsReceipt((float) $payment->total_collected);
+                    @endphp
+                </div>
             </div>
-        </div>
+        @endif
 
-        {{-- Remarks --}}
-        <div class="remarks-row">
-            <span class="label">Remarks: </span>
-            {{ $payment->remarks ?? '' }}
-            @if (isset($payment->discount) && $payment->discount > 0)
-                @if ($payment->remarks)
-                    |
+        {{-- Remarks (toggleable) --}}
+        @if ($showRemarks)
+            <div class="remarks-row">
+                <span class="label">Remarks: </span>
+                {{ $payment->remarks ?? '' }}
+                @if (isset($payment->discount) && $payment->discount > 0)
+                    @if ($payment->remarks)
+                        |
+                    @endif
+                    Advance payment discount of ₱{{ number_format($payment->discount, 2) }} applied.
                 @endif
-                Advance payment discount of ₱{{ number_format($payment->discount, 2) }} applied.
-            @endif
-        </div>
+            </div>
+        @endif
 
         {{-- Payment Method --}}
         <div class="payment-method-row">
             <div class="methods">
                 <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'cash' ? 'checked' : '' }}"></span>
-                    Cash
+                    <span class="cb {{ $payment->payment_method === 'cash' ? 'checked' : '' }}"></span> Cash
                 </div>
                 <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'check' ? 'checked' : '' }}"></span>
-                    Check
+                    <span class="cb {{ $payment->payment_method === 'check' ? 'checked' : '' }}"></span> Check
                 </div>
                 <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'money_order' ? 'checked' : '' }}"></span>
-                    Money Order
+                    <span class="cb {{ $payment->payment_method === 'money_order' ? 'checked' : '' }}"></span> Money
+                    Order
                 </div>
             </div>
             <div class="drawee-table">
@@ -645,16 +703,35 @@
             </div>
         </div>
 
-        {{-- Received --}}
-        <div class="received-row">
-            Received the amount stated above
+        {{-- Received text --}}
+        <div class="received-row">{{ $receivedText }}</div>
+
+        {{-- Signatories --}}
+        <div class="signatories-row">
+            <div class="signatory">
+                <p class="name">{{ strtoupper($sig1Name) }}</p>
+                <p class="title">{{ $sig1Title }}</p>
+            </div>
+
+            @if ($sig2Enabled && !empty($sig2Name))
+                <div class="signatory">
+                    <p class="name">{{ strtoupper($sig2Name) }}</p>
+                    <p class="title">{{ $sig2Title }}</p>
+                </div>
+            @endif
+
+            @if ($sig3Enabled && !empty($sig3Name))
+                <div class="signatory">
+                    <p class="name">{{ strtoupper($sig3Name) }}</p>
+                    <p class="title">{{ $sig3Title }}</p>
+                </div>
+            @endif
         </div>
 
-        {{-- Signatory --}}
-        <div class="signatory">
-            <p class="name">{{ $payment->received_by ?? (auth()->user()->name ?? 'CASHIER OFFICER') }}</p>
-            <p class="title">Cashier Officer</p>
-        </div>
+        {{-- Footer note --}}
+        @if (!empty($footerNote))
+            <div class="footer-note">{{ $footerNote }}</div>
+        @endif
 
     </div>
 
