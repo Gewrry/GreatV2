@@ -143,6 +143,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/application/{application}/assess', [BplsApplicationReviewController::class, 'assess'])->name('application.assess');
             Route::post('/application/{application}/mark-paid', [BplsApplicationReviewController::class, 'markPaid'])->name('application.mark-paid');
             Route::post('/application/{application}/final-approve', [BplsApplicationReviewController::class, 'finalApprove'])->name('application.final-approve');
+            Route::post('/application/{application}/confirm-ors', [BplsApplicationReviewController::class, 'confirmOrs'])->name('application.confirm-ors'); // 👈 ADD THIS
         });
     });
 

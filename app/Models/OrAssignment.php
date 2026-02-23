@@ -1,11 +1,11 @@
 <?php
-// app/Models/OrAssignment.php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrAssignment extends Model
 {
@@ -26,13 +26,12 @@ class OrAssignment extends Model
         return $this->belongsTo(User::class);
     }
 
-    /** Human-readable receipt type label */
     public function getReceiptLabelAttribute(): string
     {
         return match ($this->receipt_type) {
-            '51C' => '51C (Miscellaneous)',
+            '51C'  => '51C (Miscellaneous)',
             'RPTA' => '56 (RPTA)',
-            'CTC' => 'CTC (Community Tax)',
+            'CTC'  => 'CTC (Community Tax)',
             default => $this->receipt_type,
         };
     }

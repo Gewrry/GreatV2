@@ -60,7 +60,7 @@
                             💳 Pay Now
                         </a>
                     @elseif($application->workflow_status === 'approved')
-                        <a href="{{ route('client.permit.download', $application->id) }}"
+                        <a href="{{ route('client.applications.permit.download', $application->id) }}"
                             class="px-4 py-2 bg-logo-green text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-green/20">
                             ⬇️ Download Permit
                         </a>

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\bpls\onlineBPLS\BplsApplicationOr;
 
 class BplsApplication extends Model
 {
@@ -27,7 +28,7 @@ class BplsApplication extends Model
         'application_type',     // new | renewal
         'permit_year',
         'workflow_status',      // submitted | returned | verified | assessed | paid | approved | rejected
-
+        'ors_confirmed',
         // Timestamps per stage
         'submitted_at',
         'verified_at',
@@ -169,4 +170,12 @@ class BplsApplication extends Model
 {
     return $this->hasOne(BplsOnlinePayment::class, 'bpls_application_id');
 }
+
+
+public function orAssignments(): HasMany
+{
+    return $this->hasMany(BplsApplicationOr::class, 'bpls_application_id')
+                ->orderBy('installment_number');
+}
+
 }
