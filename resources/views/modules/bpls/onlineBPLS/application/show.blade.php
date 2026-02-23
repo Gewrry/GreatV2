@@ -933,37 +933,153 @@
                 </div>
             </div>
 
-            {{-- MODAL: Issue Permit (Final Approve) --}}
-            <div x-show="showFinalApprove" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                <div @click.outside="showFinalApprove = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-                    <div class="w-12 h-12 bg-logo-green/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-6 h-6 text-logo-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-                    </div>
-                    <h3 class="text-sm font-extrabold text-green mb-1 text-center">Issue Business Permit</h3>
-                    <p class="text-xs text-gray mb-5 text-center">
-                        Issuing permit for <span class="font-bold text-green">{{ $b?->business_name }}</span>. This marks the application as fully approved.
-                    </p>
-                    <form action="{{ route('bpls.online.application.final-approve', $application->id) }}" method="POST">
-                        @csrf
-                        <div class="mb-3">
-                            <label class="block text-xs font-bold text-gray mb-1">OR Number</label>
-                            <input type="text" name="or_number" placeholder="e.g. 00001234" value="{{ $application->or_number }}"
-                                class="w-full text-sm font-mono border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
-                        </div>
-                        <div class="mb-5">
-                            <label class="block text-xs font-bold text-gray mb-1">Permit Notes</label>
-                            <textarea name="permit_notes" rows="2" placeholder="Optional notes on the permit..." class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 resize-none placeholder-gray/30"></textarea>
-                        </div>
-                        <div class="flex justify-end gap-2">
-                            <button type="button" @click="showFinalApprove = false" class="px-4 py-2 text-xs font-bold bg-lumot/20 text-gray rounded-xl hover:bg-lumot/40 transition-colors">Cancel</button>
-                            <button type="submit" class="px-5 py-2 text-xs font-bold bg-logo-green text-white rounded-xl hover:bg-green transition-colors shadow-sm shadow-logo-green/20 flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                Issue Permit
-                            </button>
-                        </div>
-                    </form>
+            {{-- MODAL: Issue Permit (Final Approve) - Redesigned --}}
+<div x-show="showFinalApprove" x-transition
+     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div @click.outside="showFinalApprove = false"
+         class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+        {{-- Header --}}
+        <div class="sticky top-0 bg-white px-6 pt-6 pb-4 border-b border-lumot/20 rounded-t-2xl z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-logo-green/10 rounded-xl flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5 text-logo-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-extrabold text-green">Issue Business Permit</h3>
+                    <p class="text-xs text-gray/60 mt-0.5">Review the details before issuing the permit.</p>
                 </div>
             </div>
+        </div>
+
+        <div class="px-6 py-4 space-y-4">
+
+            {{-- Application Summary (read-only) --}}
+            <div class="bg-lumot/5 border border-lumot/20 rounded-xl p-4 space-y-2">
+                <p class="text-[10px] font-extrabold text-gray/40 uppercase tracking-wider mb-2">Application Summary</p>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div>
+                        <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">App. No.</p>
+                        <p class="text-xs font-extrabold text-green">{{ $application->application_number }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">Permit Year</p>
+                        <p class="text-xs font-extrabold text-green">{{ $application->permit_year }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">Business Name</p>
+                        <p class="text-xs font-semibold text-green">{{ $b?->business_name }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">Owner</p>
+                        <p class="text-xs font-semibold text-green">{{ $o?->last_name }}, {{ $o?->first_name }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">Amount Paid</p>
+                        <p class="text-xs font-extrabold text-logo-green">₱{{ number_format($application->assessment_amount, 2) }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">Payment Mode</p>
+                        <p class="text-xs font-semibold text-green capitalize">{{ str_replace('_', '-', $application->mode_of_payment ?? '—') }}</p>
+                    </div>
+                </div>
+
+                {{-- OR Numbers summary --}}
+                @if($application->orAssignments->isNotEmpty())
+                    <div class="pt-2 border-t border-lumot/20">
+                        <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider mb-1.5">OR Numbers</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach($application->orAssignments as $orItem)
+                                <span class="text-[10px] font-mono font-bold px-2 py-1 bg-white border border-lumot/30 rounded-lg text-green">
+                                    {{ $orItem->period_label }}: {{ $orItem->or_number }}
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <form action="{{ route('bpls.online.application.final-approve', $application->id) }}" method="POST" id="finalApproveForm">
+                @csrf
+
+                {{-- Signatory --}}
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray mb-1">
+                        Approving Officer / Signatory <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" name="signatory_name" required
+                        placeholder="e.g. Juan Dela Cruz, Municipal Mayor"
+                        value="{{ old('signatory_name') }}"
+                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                </div>
+
+                {{-- Signatory Position --}}
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray mb-1">Position / Designation</label>
+                    <input type="text" name="signatory_position"
+                        placeholder="e.g. Municipal Mayor"
+                        value="{{ old('signatory_position') }}"
+                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                </div>
+
+                {{-- Permit Validity --}}
+                <div class="mb-3">
+                    <label class="block text-xs font-bold text-gray mb-1">
+                        Permit Validity Period <span class="text-red-400">*</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray/40 uppercase tracking-wider mb-1">From</label>
+                            <input type="date" name="permit_valid_from" required
+                                value="{{ now()->startOfYear()->format('Y-m-d') }}"
+                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray/40 uppercase tracking-wider mb-1">To</label>
+                            <input type="date" name="permit_valid_until" required
+                                value="{{ now()->endOfYear()->format('Y-m-d') }}"
+                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Special Conditions / Remarks --}}
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray mb-1">Special Conditions / Remarks</label>
+                    <textarea name="permit_notes" rows="2"
+                        placeholder="e.g. Valid only for stated business activity at declared address..."
+                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 resize-none placeholder-gray/30"></textarea>
+                </div>
+
+                {{-- Confirmation checkbox --}}
+                <div class="flex items-start gap-2.5 p-3 bg-logo-green/5 border border-logo-green/20 rounded-xl mb-4">
+                    <input type="checkbox" name="confirmed" id="permitConfirm" required
+                        class="mt-0.5 w-4 h-4 rounded accent-logo-green shrink-0">
+                    <label for="permitConfirm" class="text-xs font-semibold text-green leading-relaxed cursor-pointer">
+                        I confirm that all requirements have been satisfied and this business permit is ready to be officially issued.
+                    </label>
+                </div>
+
+                {{-- Footer buttons --}}
+                <div class="flex justify-end gap-2">
+                    <button type="button" @click="showFinalApprove = false"
+                        class="px-4 py-2 text-xs font-bold bg-lumot/20 text-gray rounded-xl hover:bg-lumot/40 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" form="finalApproveForm"
+                        class="px-5 py-2 text-xs font-bold bg-logo-green text-white rounded-xl hover:bg-green transition-colors shadow-sm shadow-logo-green/20 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Issue Permit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
         </div>{{-- end x-data --}}
     </div>
