@@ -10,13 +10,11 @@ return new class extends Migration {
     {
         Schema::create('or_assignments', function (Blueprint $table) {
             $table->id();
-            $table->string('start_or');              // e.g. 5234501
-            $table->string('end_or');                // e.g. 5234550
-            $table->enum('receipt_type', ['51C', 'RPTA', 'CTC']);
-            $table->foreignId('user_id')
-                ->constrained('users')
-                ->cascadeOnDelete();               // cashier (from users table)
-            $table->string('cashier_name');          // denormalized for display speed
+            $table->string('start_or', 20);
+            $table->string('end_or', 20);
+            $table->string('receipt_type', 10); // 51C, RPTA, CTC
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('cashier_name', 255); // denormalized for display
             $table->timestamps();
             $table->softDeletes();
         });

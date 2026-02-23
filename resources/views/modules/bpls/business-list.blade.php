@@ -46,14 +46,23 @@
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">1. Details</button>
                                 <span class="text-gray/30 text-xs">›</span>
-                                <button @click="modal.step = 2; computeFees()"
-                                    :disabled="!modal.form.capital_investment || !modal.form.mode_of_payment"
+                                {{-- FIX: disabled while computing, shows spinner --}}
+                                <button
+                                    @click="if(!modal.computingFees){ computeFees().then(() => { if(!modal.error) modal.step = 2; }); }"
+                                    :disabled="!modal.form.capital_investment || !modal.form.mode_of_payment || modal.computingFees"
                                     :class="modal.step === 2 ? 'bg-logo-teal text-white shadow' :
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
-                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">2.
-                                    Assessment</button>
+                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                                    <svg x-show="modal.computingFees" class="w-3 h-3 animate-spin" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                    2. Assessment
+                                </button>
                                 <span class="text-gray/30 text-xs">›</span>
-                                <button @click="computeFees(); modal.step = 3" :disabled="modal.totalDue === 0"
+                                <button @click="modal.step = 3" :disabled="modal.totalDue === 0 || modal.computingFees"
                                     :class="modal.step === 3 ? 'bg-logo-teal text-white shadow' :
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">3.
@@ -80,6 +89,7 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray mb-1.5">Business Scale</label>
                                     <select x-model="modal.form.business_scale"
+                                        @change="if(modal.form.capital_investment && modal.form.mode_of_payment) computeFees()"
                                         class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                         <option value="">-- Select Scale --</option>
                                         <option value="Micro (Assets up to P3M)">Micro (Assets up to P3M)</option>
@@ -95,7 +105,8 @@
                                         <span
                                             class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray/50 font-semibold">₱</span>
                                         <input type="number" x-model="modal.form.capital_investment"
-                                            @input="computeFees()" placeholder="0.00" step="0.01" min="0"
+                                            @input.debounce.500ms="if(modal.form.mode_of_payment) computeFees()"
+                                            placeholder="0.00" step="0.01" min="0"
                                             class="w-full pl-7 pr-3 text-sm border border-lumot/30 rounded-xl py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30">
                                     </div>
                                     <p class="text-[10px] text-gray/50 mt-1">Used as the basis for computing all taxes
@@ -109,7 +120,8 @@
                                             :key="opt.value">
                                             <label class="cursor-pointer">
                                                 <input type="radio" :value="opt.value"
-                                                    x-model="modal.form.mode_of_payment" @change="computeFees()"
+                                                    x-model="modal.form.mode_of_payment"
+                                                    @change="if(modal.form.capital_investment) computeFees()"
                                                     class="peer hidden">
                                                 <div
                                                     class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal border-2 border-lumot/30 rounded-xl p-3 text-center transition-all duration-150 hover:border-logo-teal/50 hover:bg-logo-teal/5 select-none">
@@ -121,7 +133,19 @@
                                         </template>
                                     </div>
                                 </div>
-                                <div x-show="modal.totalDue > 0"
+
+                                {{-- FIX: loading state while computing --}}
+                                <div x-show="modal.computingFees"
+                                    class="flex items-center justify-between p-3 bg-logo-teal/5 border border-logo-teal/20 rounded-xl animate-pulse">
+                                    <p class="text-xs font-bold text-gray">Computing fees…</p>
+                                    <svg class="w-4 h-4 animate-spin text-logo-teal" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                </div>
+                                <div x-show="!modal.computingFees && modal.totalDue > 0"
                                     class="flex items-center justify-between p-3 bg-logo-teal/5 border border-logo-teal/20 rounded-xl">
                                     <p class="text-xs font-bold text-gray">Estimated Total Tax Due</p>
                                     <p class="text-sm font-extrabold text-logo-teal"
@@ -132,67 +156,104 @@
 
                             {{-- ── STEP 2: Assessment / Fee Breakdown ── --}}
                             <div x-show="modal.step === 2" class="space-y-4">
-                                <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-extrabold text-green"
-                                            x-text="modal.entry?.business_name"></p>
-                                        <p class="text-[10px] text-gray"
-                                            x-text="'Nature: ' + (modal.form.business_nature || '—')"></p>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-[10px] text-gray/60">Gross Sales</p>
-                                        <p class="text-sm font-extrabold text-logo-teal"
-                                            x-text="'₱' + Number(modal.form.capital_investment || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})">
-                                        </p>
+
+                                {{-- FIX: Loading skeleton while fees are being fetched --}}
+                                <div x-show="modal.computingFees" class="space-y-2 animate-pulse">
+                                    <div class="h-12 bg-lumot/30 rounded-xl"></div>
+                                    <div class="border border-lumot/20 rounded-xl overflow-hidden">
+                                        <div class="h-8 bg-green/30"></div>
+                                        <div class="h-6 bg-logo-blue/20"></div>
+                                        <div class="h-7 bg-lumot/20 border-b border-lumot/20"></div>
+                                        <template x-for="i in 5" :key="i">
+                                            <div class="grid grid-cols-3 px-4 py-3 border-b border-lumot/10 gap-4">
+                                                <div class="h-3 bg-lumot/30 rounded"></div>
+                                                <div class="h-3 bg-lumot/20 rounded"></div>
+                                                <div class="h-3 bg-lumot/20 rounded"></div>
+                                            </div>
+                                        </template>
+                                        <div class="h-10 bg-logo-teal/10 border-t-2 border-logo-teal/20"></div>
                                     </div>
                                 </div>
-                                <div class="border border-lumot/20 rounded-xl overflow-hidden">
-                                    <div class="bg-green text-white text-center py-2.5">
-                                        <p class="text-xs font-extrabold tracking-wide uppercase">Business Permit and
-                                            Licensing System</p>
-                                    </div>
-                                    <div class="bg-logo-blue text-white text-center py-2">
-                                        <p class="text-xs font-bold uppercase"
-                                            x-text="modal.form.business_nature || 'Business Nature'"></p>
-                                    </div>
-                                    <div class="grid grid-cols-3 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
-                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase">Taxes / Fees</p>
-                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Base
-                                            Value</p>
-                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-right">Tax Due
-                                        </p>
-                                    </div>
-                                    <template x-for="fee in modal.fees" :key="fee.name">
-                                        <div
-                                            class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/30">
-                                            <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
-                                            <p class="text-xs text-gray/60 text-center font-mono"
-                                                x-text="'₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2})">
-                                            </p>
-                                            <p class="text-xs font-bold text-green text-right"
-                                                x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
-                                            </p>
+
+                                {{-- Actual content shown only when not loading --}}
+                                <template x-if="!modal.computingFees">
+                                    <div class="space-y-4">
+                                        <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
+                                            <div>
+                                                <p class="text-xs font-extrabold text-green"
+                                                    x-text="modal.entry?.business_name"></p>
+                                                <p class="text-[10px] text-gray"
+                                                    x-text="'Nature: ' + (modal.form.business_nature || '—')"></p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-[10px] text-gray/60">Gross Sales</p>
+                                                <p class="text-sm font-extrabold text-logo-teal"
+                                                    x-text="'₱' + Number(modal.form.capital_investment || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                </p>
+                                            </div>
                                         </div>
-                                    </template>
-                                    <div
-                                        class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
-                                        <p class="text-xs font-extrabold text-green col-span-2">TOTAL TAX DUE</p>
-                                        <p class="text-sm font-extrabold text-logo-teal text-right"
-                                            x-text="'₱' + Number(modal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
-                                        </p>
+                                        <div class="border border-lumot/20 rounded-xl overflow-hidden">
+                                            <div class="bg-green text-white text-center py-2.5">
+                                                <p class="text-xs font-extrabold tracking-wide uppercase">Business
+                                                    Permit and
+                                                    Licensing System</p>
+                                            </div>
+                                            <div class="bg-logo-blue text-white text-center py-2">
+                                                <p class="text-xs font-bold uppercase"
+                                                    x-text="modal.form.business_nature || 'Business Nature'"></p>
+                                            </div>
+                                            <div
+                                                class="grid grid-cols-3 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
+                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase">Taxes /
+                                                    Fees</p>
+                                                <p
+                                                    class="text-[10px] font-extrabold text-gray/70 uppercase text-center">
+                                                    Base
+                                                    Value</p>
+                                                <p
+                                                    class="text-[10px] font-extrabold text-gray/70 uppercase text-right">
+                                                    Tax Due
+                                                </p>
+                                            </div>
+                                            <template x-for="fee in modal.fees" :key="fee.name">
+                                                <div
+                                                    class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/30">
+                                                    <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
+                                                    <p class="text-xs text-gray/60 text-center font-mono"
+                                                        x-text="fee.base !== null && fee.base !== undefined
+                                                            ? (typeof fee.base === 'number'
+                                                                ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2})
+                                                                : fee.base)
+                                                            : '—'">
+                                                    </p>
+                                                    <p class="text-xs font-bold text-green text-right"
+                                                        x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                    </p>
+                                                </div>
+                                            </template>
+                                            <div
+                                                class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
+                                                <p class="text-xs font-extrabold text-green col-span-2">TOTAL TAX DUE
+                                                </p>
+                                                <p class="text-sm font-extrabold text-logo-teal text-right"
+                                                    x-text="'₱' + Number(modal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                </p>
+                                            </div>
+                                            <div class="px-4 py-2 bg-lumot/10 flex items-center justify-between">
+                                                <p class="text-[10px] text-gray/60">Mode: <span
+                                                        class="font-bold capitalize"
+                                                        x-text="modal.form.mode_of_payment ? modal.form.mode_of_payment.replace('_',' ') : '—'"></span>
+                                                </p>
+                                                <p class="text-[10px] text-gray/60">Per installment: <span
+                                                        class="font-bold text-logo-teal"
+                                                        x-text="modal.perInstallment > 0 ? '₱' + Number(modal.perInstallment).toLocaleString('en-PH', {minimumFractionDigits: 2}) : '—'"></span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <p class="text-[10px] text-gray/40 text-center">Computed using current LGU
+                                            revenue code rates from the Fee Rules database.</p>
                                     </div>
-                                    <div class="px-4 py-2 bg-lumot/10 flex items-center justify-between">
-                                        <p class="text-[10px] text-gray/60">Mode: <span class="font-bold capitalize"
-                                                x-text="modal.form.mode_of_payment ? modal.form.mode_of_payment.replace('_',' ') : '—'"></span>
-                                        </p>
-                                        <p class="text-[10px] text-gray/60">Per installment: <span
-                                                class="font-bold text-logo-teal"
-                                                x-text="modal.perInstallment > 0 ? '₱' + Number(modal.perInstallment).toLocaleString('en-PH', {minimumFractionDigits: 2}) : '—'"></span>
-                                        </p>
-                                    </div>
-                                </div>
-                                <p class="text-[10px] text-gray/40 text-center">Computed using standard Laguna LGU
-                                    revenue code rates.</p>
+                                </template>
                             </div>
 
                             {{-- ── STEP 3: Payment Schedule ── --}}
@@ -223,9 +284,12 @@
                                             Payment Amount</p>
                                     </div>
                                     <template x-for="(sched, i) in modal.schedule" :key="i">
-                                        <div
-                                            class="grid grid-cols-2 px-4 py-3.5 border-b border-lumot/10 hover:bg-bluebody/30">
-                                            <p class="text-sm text-gray text-center font-medium" x-text="sched.date">
+                                        <div class="grid grid-cols-2 px-4 py-3.5 border-b border-lumot/10 hover:bg-bluebody/30"
+                                            :class="sched.date && sched.date.includes('Overdue') ? 'bg-red-50' : ''">
+                                            <p class="text-sm text-center font-medium"
+                                                :class="sched.date && sched.date.includes('Overdue') ? 'text-red-500' :
+                                                    'text-gray'"
+                                                x-text="sched.date">
                                             </p>
                                             <p class="text-sm font-bold text-green text-center"
                                                 x-text="'₱' + Number(sched.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
@@ -273,14 +337,28 @@
                                     class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
                             </div>
                             <div class="flex gap-2">
+                                {{-- FIX: Next button waits for async computeFees() to resolve --}}
                                 <button x-show="modal.step < 3"
-                                    @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){ computeFees(); modal.step++; } else if(modal.step === 2){ modal.step++; }"
-                                    :disabled="modal.step === 1 && (!modal.form.capital_investment || !modal.form.mode_of_payment)"
-                                    class="px-5 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                                    Next →
+                                    @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){
+                                        computeFees().then(() => { if(!modal.error) modal.step++; });
+                                    } else if(modal.step === 2){
+                                        modal.step++;
+                                    }"
+                                    :disabled="(modal.step === 1 && (!modal.form.capital_investment || !modal.form
+                                        .mode_of_payment)) || modal.computingFees"
+                                    class="px-5 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                                    <svg x-show="modal.computingFees && modal.step === 1"
+                                        class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                    <span
+                                        x-text="modal.computingFees && modal.step === 1 ? 'Computing…' : 'Next →'"></span>
                                 </button>
+                                {{-- FIX: also guarded by computingFees --}}
                                 <button x-show="modal.step === 3" @click="approvePayment()"
-                                    :disabled="modal.saving || modal.totalDue === 0"
+                                    :disabled="modal.saving || modal.totalDue === 0 || modal.computingFees"
                                     class="px-5 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                                     <svg x-show="modal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
                                         viewBox="0 0 24 24">
@@ -452,7 +530,7 @@
                                     </div>
                                 </div>
                             </div>
-                            {{-- Retirement Info (shown only when retired) --}}
+                            {{-- Retirement Info --}}
                             <div x-show="viewModal.entry?.status === 'retired'"
                                 class="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2">
                                 <p class="text-[10px] font-extrabold text-orange-600 uppercase tracking-wider mb-2">
@@ -500,7 +578,6 @@
                             class="flex items-center justify-between gap-2 px-5 py-4 border-t border-lumot/20 shrink-0">
                             <button @click="viewModal.open = false"
                                 class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Close</button>
-                            {{-- Quick-action: Change Status --}}
                             <div class="flex gap-2">
                                 <button x-show="viewModal.entry?.status !== 'retired'"
                                     @click="viewModal.open = false; openRetireModal(viewModal.entry)"
@@ -625,7 +702,6 @@
                             </button>
                         </div>
                         <div class="p-5 space-y-4">
-                            {{-- Warning banner --}}
                             <div class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
                                 <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -655,7 +731,6 @@
                                     <option value="Revocation of Permit">Revocation of Permit</option>
                                     <option value="Other">Other</option>
                                 </select>
-                                {{-- Custom reason if "Other" --}}
                                 <textarea x-show="retireModal.form.retirement_reason === 'Other'" x-model="retireModal.form.retirement_reason_custom"
                                     rows="2" placeholder="Please specify reason..."
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none mt-2"></textarea>
@@ -736,8 +811,6 @@
                                 </button>
                             </div>
                         </div>
-
-                        {{-- Certificate Content --}}
                         <div class="overflow-y-auto flex-1 p-6" id="retirement-certificate-print">
                             <div class="text-center mb-6">
                                 <p class="text-[10px] font-bold text-gray/60 uppercase tracking-widest">Republic of the
@@ -752,7 +825,6 @@
                                 <p class="text-[11px] text-gray/60 mt-1">This certifies that the business described
                                     herein has been officially retired.</p>
                             </div>
-
                             <div class="border-2 border-logo-teal/30 rounded-xl p-5 space-y-3 bg-logo-teal/5 mb-5">
                                 <div class="grid grid-cols-2 gap-y-3 gap-x-4">
                                     <div>
@@ -810,13 +882,11 @@
                                     </div>
                                 </div>
                             </div>
-
                             <p class="text-[11px] text-gray/60 text-center leading-relaxed">
                                 This certificate is issued upon request of the above-named business owner and confirms
                                 that the business has been duly retired in the records of the Municipal Business Permit
                                 and Licensing Office.
                             </p>
-
                             <div class="mt-8 grid grid-cols-2 gap-6">
                                 <div class="text-center">
                                     <div class="border-b-2 border-gray/30 mb-1 pb-8"></div>
@@ -830,7 +900,6 @@
                                     <p class="text-[9px] text-gray/40">Signature over Printed Name</p>
                                 </div>
                             </div>
-
                             <div class="flex items-center justify-between mt-6 pt-4 border-t border-lumot/20">
                                 <p class="text-[10px] text-gray/40" x-text="'Issued: ' + (certModal.issuedAt || '—')">
                                 </p>
@@ -1067,7 +1136,8 @@
                                         'bg-orange-400': entry.status === 'retired',
                                         'bg-gray-300': entry.status === 'cancelled',
                                         'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled',
-                                            'retired'].includes(entry.status)
+                                            'retired'
+                                        ].includes(entry.status)
                                     }">
                                 </div>
                                 <div class="p-4">
@@ -1139,12 +1209,10 @@
                                                     x-text="entry.mode_of_payment.replace('_',' ')"></span></div>
                                         </template>
                                     </div>
-                                    {{-- Footer actions --}}
                                     <div class="flex items-center justify-between pt-3 border-t border-lumot/20">
                                         <span class="text-[10px] text-gray/50"
                                             x-text="entry.created_at ? entry.created_at.substring(0,10) : '—'"></span>
                                         <div class="flex gap-1.5">
-                                            {{-- Payment button --}}
                                             <a x-show="entry.status === 'for_payment' || entry.status === 'approved'"
                                                 :href="`{{ url('bpls/payment') }}/${entry.id}`"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-green hover:bg-green transition-colors">
@@ -1155,7 +1223,6 @@
                                                 </svg>
                                                 Payment
                                             </a>
-                                            {{-- Retirement Certificate button --}}
                                             <button type="button" x-show="entry.status === 'retired'"
                                                 @click="openCertModal(entry)"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors">
@@ -1166,7 +1233,6 @@
                                                 </svg>
                                                 Certificate
                                             </button>
-                                            {{-- Assess button --}}
                                             <button type="button"
                                                 x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired'"
                                                 @click="openModal(entry)" title="Assess"
@@ -1178,7 +1244,6 @@
                                                 </svg>
                                                 Assess
                                             </button>
-                                            {{-- View button (eye icon) --}}
                                             <button type="button" @click="openViewModal(entry)" title="View Details"
                                                 class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
@@ -1242,8 +1307,8 @@
                                             <td class="px-4 py-3 text-xs text-gray/50 font-medium"
                                                 x-text="((currentPage - 1) * 12) + i + 1"></td>
                                             <td class="px-4 py-3">
-                                                <p class="font-bold text-green text-xs" x-text="entry.business_name">
-                                                </p>
+                                                <p class="font-bold text-green text-xs"
+                                                    x-text="entry.business_name"></p>
                                                 <p class="text-[10px] text-gray" x-text="entry.trade_name || ''"
                                                     x-show="entry.trade_name"></p>
                                             </td>
@@ -1316,7 +1381,6 @@
                                                         </svg>
                                                         Assess
                                                     </button>
-                                                    {{-- View button --}}
                                                     <button type="button" @click="openViewModal(entry)"
                                                         title="View Details"
                                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
@@ -1444,7 +1508,6 @@
                                         </svg>
                                         Assess
                                     </button>
-                                    {{-- View button --}}
                                     <button type="button" @click="openViewModal(entry)" title="View Details"
                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
@@ -1515,6 +1578,7 @@
                         saving: false,
                         saved: false,
                         error: null,
+                        computingFees: false,
                         entry: null,
                         step: 1,
                         fees: [],
@@ -1569,13 +1633,14 @@
                         issuedAt: ''
                     },
 
-                    // ── ASSESS modal methods ──────────────────────────────────────────
+                    // ── ASSESS modal ──────────────────────────────────────────────────
                     openModal(entry) {
                         this.modal.entry = entry;
                         this.modal.open = true;
                         this.modal.saved = false;
                         this.modal.error = null;
                         this.modal.saving = false;
+                        this.modal.computingFees = false;
                         this.modal.step = 1;
                         this.modal.fees = [];
                         this.modal.schedule = [];
@@ -1587,18 +1652,107 @@
                             capital_investment: entry.capital_investment || '',
                             mode_of_payment: entry.mode_of_payment || '',
                         };
-                        if (this.modal.form.capital_investment) this.computeFees();
+                        // Pre-compute if entry already has saved values
+                        if (this.modal.form.capital_investment && this.modal.form.mode_of_payment) {
+                            this.computeFees();
+                        }
                     },
 
                     closeModal() {
                         this.modal.open = false;
                     },
 
+                    // ── FIX: computeFees() now calls the DB-backed API endpoint ──────
+                    async computeFees() {
+                        const gs = parseFloat(this.modal.form.capital_investment) || 0;
+                        const mode = this.modal.form.mode_of_payment;
+
+                        if (!gs || !mode) {
+                            this.modal.fees = [];
+                            this.modal.totalDue = 0;
+                            this.modal.perInstallment = 0;
+                            this.modal.schedule = [];
+                            return;
+                        }
+
+                        this.modal.computingFees = true;
+                        this.modal.error = null;
+
+                        try {
+                            const res = await window.fetch('{{ route('bpls.fee-rules.compute') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    capital_investment: gs,
+                                    business_scale: this.modal.form.business_scale || '',
+                                    mode_of_payment: mode,
+                                }),
+                            });
+
+                            const data = await res.json();
+
+                            if (!res.ok) {
+                                throw new Error(data.message || `Fee computation failed (${res.status})`);
+                            }
+
+                            this.modal.fees = data.fees;
+                            this.modal.totalDue = data.total_due;
+                            this.modal.perInstallment = data.per_installment;
+                            this.modal.schedule = data.schedule;
+
+                        } catch (err) {
+                            this.modal.error = err.message;
+                            this.modal.fees = [];
+                            this.modal.totalDue = 0;
+                            this.modal.schedule = [];
+                        } finally {
+                            this.modal.computingFees = false;
+                        }
+                    },
+
+                    // Kept as no-op — schedule is now returned by the server
+                    computeSchedule() {},
+
+                    async approvePayment() {
+                        this.modal.saving = true;
+                        this.modal.saved = false;
+                        this.modal.error = null;
+                        try {
+                            const url = `{{ url('bpls/business-list') }}/${this.modal.entry.id}/approve-payment`;
+                            const res = await window.fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    ...this.modal.form,
+                                    total_due: this.modal.totalDue,
+                                }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Failed to approve.');
+                            this.modal.saved = true;
+                            setTimeout(() => {
+                                window.location.href = data.redirect_url;
+                            }, 600);
+                        } catch (err) {
+                            this.modal.error = err.message;
+                        } finally {
+                            this.modal.saving = false;
+                        }
+                    },
+
                     // ── VIEW modal ────────────────────────────────────────────────────
                     async openViewModal(entry) {
                         this.viewModal.open = true;
                         this.viewModal.loading = true;
-                        this.viewModal.entry = entry; // show immediately with local data
+                        this.viewModal.entry = entry;
                         try {
                             const res = await window.fetch(`{{ url('bpls/business-list') }}/${entry.id}`, {
                                 headers: {
@@ -1608,7 +1762,7 @@
                             const data = await res.json();
                             this.viewModal.entry = data;
                         } catch (e) {
-                            // fallback: just use local entry data already set
+                            // fallback to local data already set
                         } finally {
                             this.viewModal.loading = false;
                         }
@@ -1640,7 +1794,6 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.message || 'Failed to update status.');
-                            // Update the entry in the list reactively
                             const idx = this.entries.findIndex(e => e.id === this.statusModal.entry.id);
                             if (idx !== -1) this.entries[idx] = data.entry;
                             this.statusModal.open = false;
@@ -1691,11 +1844,9 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.message || 'Failed to retire business.');
-                            // Update entry in list
                             const idx = this.entries.findIndex(e => e.id === this.retireModal.entry.id);
                             if (idx !== -1) this.entries[idx] = data.entry;
                             this.retireModal.open = false;
-                            // Automatically open certificate
                             setTimeout(() => this.openCertModal(data.entry), 400);
                         } catch (err) {
                             this.retireModal.error = err.message;
@@ -1748,7 +1899,6 @@
                             .pt-4 { padding-top: 16px; }
                             .my-3 { margin: 12px auto; }
                             .w-16 { width: 64px; }
-                            .h-0-5 { height: 2px; }
                             .border-b-2 { border-bottom: 2px solid #d1d5db; }
                             .border-t { border-top: 1px solid #e5e7eb; }
                             .border-2 { border: 2px solid #99f6e4; }
@@ -1776,158 +1926,6 @@
                             win.focus();
                             win.print();
                         }, 500);
-                    },
-
-                    // ── Fee Computation ───────────────────────────────────────────────
-                    computeFees() {
-                        const gs = parseFloat(this.modal.form.capital_investment) || 0;
-                        const scale = this.modal.form.business_scale || '';
-                        const S0 = (() => {
-                            if (scale.includes('Micro')) return 1;
-                            if (scale.includes('Small')) return 2;
-                            if (scale.includes('Medium')) return 3;
-                            if (scale.includes('Large')) return 4;
-                            return 1;
-                        })();
-                        const lbtRate = (() => {
-                            if (gs <= 300000) return 0.018;
-                            if (gs <= 1000000) return 0.0175;
-                            if (gs <= 2000000) return 0.016;
-                            if (gs <= 3000000) return 0.015;
-                            if (gs <= 4000000) return 0.0145;
-                            if (gs <= 5000000) return 0.014;
-                            if (gs <= 6500000) return 0.013;
-                            if (gs <= 8000000) return 0.012;
-                            if (gs <= 10000000) return 0.011;
-                            if (gs <= 15000000) return 0.010;
-                            if (gs <= 20000000) return 0.009;
-                            if (gs <= 30000000) return 0.008;
-                            if (gs <= 40000000) return 0.007;
-                            if (gs <= 50000000) return 0.006;
-                            return 0.005;
-                        })();
-                        const grossSalesTax = gs * lbtRate;
-                        const mayorPermit = S0 === 1 ? 500 : S0 === 2 ? 1000 : S0 === 3 ? 2000 : S0 === 4 ? 3000 : 5000;
-                        const garbageFee = S0 === 1 ? 350 : S0 === 2 ? 400 : S0 === 3 ? 450 : S0 === 4 ? 600 : 800;
-                        const annualInspectionFee = gs > 0 ? 200 : 0;
-                        const sanitaryFee = 100;
-                        const stickerFee = 200;
-                        const zoneFee = 500;
-                        this.modal.fees = [{
-                                name: 'Gross Sales Tax',
-                                base: gs,
-                                amount: grossSalesTax
-                            },
-                            {
-                                name: "Business Permit (Mayor's Permit)",
-                                base: gs,
-                                amount: mayorPermit
-                            },
-                            {
-                                name: 'Garbage Fees',
-                                base: gs,
-                                amount: garbageFee
-                            },
-                            {
-                                name: 'Annual Inspection Fee',
-                                base: gs > 0 ? 1 : 0,
-                                amount: annualInspectionFee
-                            },
-                            {
-                                name: 'Sanitary Permit Fee',
-                                base: 1,
-                                amount: sanitaryFee
-                            },
-                            {
-                                name: 'Sticker Fee',
-                                base: 1,
-                                amount: stickerFee
-                            },
-                            {
-                                name: 'Locational / Zoning Fee',
-                                base: 1,
-                                amount: zoneFee
-                            },
-                        ];
-                        this.modal.totalDue = this.modal.fees.reduce((s, f) => s + f.amount, 0);
-                        this.computeSchedule();
-                    },
-
-                    computeSchedule() {
-                        const total = this.modal.totalDue;
-                        const mode = this.modal.form.mode_of_payment;
-                        const year = new Date().getFullYear();
-                        let schedule = [];
-                        if (mode === 'annual') {
-                            schedule = [{
-                                date: `January 20, ${year}`,
-                                amount: total
-                            }];
-                            this.modal.perInstallment = total;
-                        } else if (mode === 'semi_annual') {
-                            const half = Math.round((total / 2) * 100) / 100;
-                            schedule = [{
-                                date: `February 16, ${year}`,
-                                amount: half
-                            }, {
-                                date: `July 20, ${year}`,
-                                amount: total - half
-                            }];
-                            this.modal.perInstallment = half;
-                        } else if (mode === 'quarterly') {
-                            const quarter = Math.round((total / 4) * 100) / 100;
-                            const rem = Math.round((total - quarter * 3) * 100) / 100;
-                            schedule = [{
-                                    date: `February 16, ${year}`,
-                                    amount: quarter
-                                },
-                                {
-                                    date: `April 20, ${year}`,
-                                    amount: quarter
-                                },
-                                {
-                                    date: `July 20, ${year}`,
-                                    amount: quarter
-                                },
-                                {
-                                    date: `October 20, ${year}`,
-                                    amount: rem
-                                },
-                            ];
-                            this.modal.perInstallment = quarter;
-                        }
-                        this.modal.schedule = schedule;
-                    },
-
-                    async approvePayment() {
-                        this.modal.saving = true;
-                        this.modal.saved = false;
-                        this.modal.error = null;
-                        try {
-                            const url = `{{ url('bpls/business-list') }}/${this.modal.entry.id}/approve-payment`;
-                            const res = await window.fetch(url, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                    'Accept': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    ...this.modal.form,
-                                    total_due: this.modal.totalDue
-                                }),
-                            });
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.message || 'Failed to approve.');
-                            this.modal.saved = true;
-                            setTimeout(() => {
-                                window.location.href = data.redirect_url;
-                            }, 600);
-                        } catch (err) {
-                            this.modal.error = err.message;
-                        } finally {
-                            this.modal.saving = false;
-                        }
                     },
 
                     // ── List / Pagination ─────────────────────────────────────────────
@@ -1966,7 +1964,7 @@
                                 q: this.filters.q,
                                 status: this.filters.status,
                                 type: this.filters.type,
-                                page: this.currentPage
+                                page: this.currentPage,
                             });
                             const res = await window.fetch(`{{ route('bpls.business-list.search') }}?${params}`);
                             const data = await res.json();
