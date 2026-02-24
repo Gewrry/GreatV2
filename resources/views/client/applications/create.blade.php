@@ -112,8 +112,8 @@
                 </svg>
                 Back to Dashboard
             </a>
-            <h1 class="text-2xl font-extrabold text-green tracking-tight">New Business Application</h1>
-            <p class="text-gray text-sm mt-0.5">Fill in all required details and upload your documents to register your business.</p>
+            <h1 class="text-2xl font-extrabold text-green tracking-tight">{{ $renewal ? 'Renew Business Permit' : 'New Business Application' }}</h1>
+            <p class="text-gray text-sm mt-0.5">{{ $renewal ? 'Check your details and submit for renewal.' : 'Fill in all required details and upload your documents to register your business.' }}</p>
         </div>
         <span class="text-xs font-semibold text-logo-teal bg-logo-teal/10 px-3 py-1 rounded-full border border-logo-teal/20">
             BPLS {{ date('Y') }}
@@ -255,7 +255,11 @@
     {{-- ══ FORM ═══════════════════════════════════════════════════════════ --}}
     <form action="{{ route('client.apply.store') }}" method="POST" id="bpls-form" enctype="multipart/form-data">
         @csrf
-        <input type="hidden" name="application_type" value="new">
+        <input type="hidden" name="application_type" value="{{ $renewal ? 'renewal' : 'new' }}">
+        @if($renewal)
+            <input type="hidden" name="owner_id" value="{{ $renewal?->owner?->id }}">
+            <input type="hidden" name="bpls_business_id" value="{{ $renewal?->business?->id }}">
+        @endif
 
         {{-- ════════════════════════════════════════════════════════════════
              STEP 1 — Fill Form
@@ -319,17 +323,17 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Last Name <span class="text-red-400">*</span></label>
-                            <input type="text" name="last_name" placeholder="e.g. Dela Cruz" value="{{ old('last_name') }}"
+                            <input type="text" name="last_name" placeholder="e.g. Dela Cruz" value="{{ old('last_name', $renewal?->owner?->last_name ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">First Name <span class="text-red-400">*</span></label>
-                            <input type="text" name="first_name" placeholder="e.g. Juan" value="{{ old('first_name') }}"
+                            <input type="text" name="first_name" placeholder="e.g. Juan" value="{{ old('first_name', $renewal?->owner?->first_name ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Middle Name</label>
-                            <input type="text" name="middle_name" placeholder="e.g. Santos" value="{{ old('middle_name') }}"
+                            <input type="text" name="middle_name" placeholder="e.g. Santos" value="{{ old('middle_name', $renewal?->owner?->middle_name ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -339,8 +343,8 @@
                             <label class="block text-xs font-bold text-gray mb-1">Citizenship</label>
                             <select name="citizenship" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select --</option>
-                                <option {{ old('citizenship')==='Filipino' ? 'selected':'' }}>Filipino</option>
-                                <option {{ old('citizenship')==='Foreign National' ? 'selected':'' }}>Foreign National</option>
+                                <option {{ old('citizenship', $renewal?->owner?->citizenship ?? '')==='Filipino' ? 'selected':'' }}>Filipino</option>
+                                <option {{ old('citizenship', $renewal?->owner?->citizenship ?? '')==='Foreign National' ? 'selected':'' }}>Foreign National</option>
                             </select>
                         </div>
                         <div>
@@ -348,7 +352,7 @@
                             <select name="civil_status" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select --</option>
                                 @foreach(['Single','Married','Widowed','Separated'] as $cs)
-                                    <option {{ old('civil_status')===$cs ? 'selected':'' }}>{{ $cs }}</option>
+                                    <option {{ old('civil_status', $renewal?->owner?->civil_status ?? '')===$cs ? 'selected':'' }}>{{ $cs }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -357,13 +361,13 @@
                             <select name="gender" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select --</option>
                                 @foreach(['Male','Female','Prefer not to say'] as $g)
-                                    <option {{ old('gender')===$g ? 'selected':'' }}>{{ $g }}</option>
+                                    <option {{ old('gender', $renewal?->owner?->gender ?? '')===$g ? 'selected':'' }}>{{ $g }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Birthdate</label>
-                            <input type="date" name="birthdate" value="{{ old('birthdate') }}"
+                            <input type="date" name="birthdate" value="{{ old('birthdate', $renewal?->owner?->birthdate ? date('Y-m-d', strtotime($renewal?->owner?->birthdate)) : '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray">
                         </div>
                     </div>
@@ -371,12 +375,12 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Mobile No.</label>
-                            <input type="tel" name="mobile_no" placeholder="09XX XXX XXXX" value="{{ old('mobile_no') }}"
+                            <input type="tel" name="mobile_no" placeholder="09XX XXX XXXX" value="{{ old('mobile_no', $renewal?->owner?->mobile_no ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Email Address</label>
-                            <input type="email" name="email" placeholder="email@example.com" value="{{ old('email') }}"
+                            <input type="email" name="email" placeholder="email@example.com" value="{{ old('email', $renewal?->owner?->email ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -408,7 +412,7 @@
                             @foreach(['Region'=>'owner_region','Province'=>'owner_province','Municipality'=>'owner_municipality','Barangay'=>'owner_barangay','Street'=>'owner_street'] as $lbl=>$field)
                                 <div class="{{ $lbl==='Street' ? 'sm:col-span-2':'' }}">
                                     <label class="block text-xs font-bold text-gray mb-1">{{ $lbl }}</label>
-                                    <input type="text" name="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field) }}"
+                                    <input type="text" name="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field, $renewal?->owner?->{$field === 'owner_region' ? 'region' : ($field === 'owner_province' ? 'province' : ($field === 'owner_municipality' ? 'municipality' : ($field === 'owner_barangay' ? 'barangay' : 'street')))} ?? '') }}"
                                         class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                                 </div>
                             @endforeach
@@ -444,12 +448,12 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Name <span class="text-red-400">*</span></label>
-                            <input type="text" name="business_name" placeholder="Official registered name" value="{{ old('business_name') }}"
+                            <input type="text" name="business_name" placeholder="Official registered name" value="{{ old('business_name', $renewal?->business?->business_name ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Trade Name / Franchise</label>
-                            <input type="text" name="trade_name" placeholder="DBA / Franchise name" value="{{ old('trade_name') }}"
+                            <input type="text" name="trade_name" placeholder="DBA / Franchise name" value="{{ old('trade_name', $renewal?->business?->trade_name ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -462,12 +466,12 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">TIN No.</label>
-                            <input type="text" name="tin_no" placeholder="XXX-XXX-XXX" value="{{ old('tin_no') }}"
+                            <input type="text" name="tin_no" placeholder="XXX-XXX-XXX" value="{{ old('tin_no', $renewal?->business?->tin_no ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Mobile No.</label>
-                            <input type="tel" name="business_mobile" placeholder="09XX XXX XXXX" value="{{ old('business_mobile') }}"
+                            <input type="tel" name="business_mobile" placeholder="09XX XXX XXXX" value="{{ old('business_mobile', $renewal?->business?->business_mobile ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -480,7 +484,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Registration Date</label>
-                            <input type="date" name="dti_sec_cda_date" value="{{ old('dti_sec_cda_date') }}"
+                            <input type="date" name="dti_sec_cda_date" value="{{ old('dti_sec_cda_date', $renewal?->business?->dti_sec_cda_date ? date('Y-m-d', strtotime($renewal?->business?->dti_sec_cda_date)) : '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray">
                         </div>
                     </div>
@@ -488,7 +492,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Email</label>
-                            <input type="email" name="business_email" placeholder="business@example.com" value="{{ old('business_email') }}"
+                            <input type="email" name="business_email" placeholder="business@example.com" value="{{ old('business_email', $renewal?->business?->business_email ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
@@ -496,7 +500,7 @@
                             <select name="type_of_business" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                 <option value="">-- Select Type --</option>
                                 @foreach($options['type_of_business'] as $opt)
-                                    <option value="{{ $opt }}" {{ old('type_of_business')===$opt ? 'selected':'' }}>{{ $opt }}</option>
+                                    <option value="{{ $opt }}" {{ old('type_of_business', $renewal?->business?->type_of_business ?? '')===$opt ? 'selected':'' }}>{{ $opt }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -530,11 +534,11 @@
                         <label class="block text-xs font-bold text-gray mb-2">Enjoying tax incentive from any Government Entity?</label>
                         <div class="flex gap-3">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="tax_incentive" value="1" {{ old('tax_incentive')=='1' ? 'checked':'' }} class="text-logo-teal focus:ring-logo-teal">
+                                <input type="radio" name="tax_incentive" value="1" {{ old('tax_incentive', $renewal?->business?->tax_incentive ?? '')=='1' ? 'checked':'' }} class="text-logo-teal focus:ring-logo-teal">
                                 <span class="text-sm font-semibold text-green">Yes</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="tax_incentive" value="0" {{ old('tax_incentive','0')=='0' ? 'checked':'' }} class="text-logo-teal focus:ring-logo-teal">
+                                <input type="radio" name="tax_incentive" value="0" {{ old('tax_incentive', $renewal?->business?->tax_incentive ?? '0')=='0' ? 'checked':'' }} class="text-logo-teal focus:ring-logo-teal">
                                 <span class="text-sm font-semibold text-gray">No</span>
                             </label>
                         </div>
@@ -554,7 +558,7 @@
                                 <select name="{{ $sel['name'] }}" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                     <option value="">-- Select --</option>
                                     @foreach($options[$sel['name']] as $opt)
-                                        <option value="{{ $opt }}" {{ old($sel['name'])===$opt ? 'selected':'' }}>{{ $opt }}</option>
+                                        <option value="{{ $opt }}" {{ old($sel['name'], $renewal?->business?->{$sel['name']} ?? '')===$opt ? 'selected':'' }}>{{ $opt }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -564,17 +568,17 @@
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Business Area (sqm)</label>
-                            <input type="number" name="business_area_sqm" placeholder="0.00" step="0.01" value="{{ old('business_area_sqm') }}"
+                            <input type="number" name="business_area_sqm" placeholder="0.00" step="0.01" value="{{ old('business_area_sqm', $renewal?->business?->business_area_sqm ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Total Employees</label>
-                            <input type="number" name="total_employees" placeholder="0" value="{{ old('total_employees') }}"
+                            <input type="number" name="total_employees" placeholder="0" value="{{ old('total_employees', $renewal?->business?->total_employees ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Employees Residing w/ LGU</label>
-                            <input type="number" name="employees_lgu" placeholder="0" value="{{ old('employees_lgu') }}"
+                            <input type="number" name="employees_lgu" placeholder="0" value="{{ old('employees_lgu', $renewal?->business?->employees_lgu ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>
@@ -613,7 +617,7 @@
                         @foreach(['Region'=>'business_region','Province'=>'business_province','Municipality'=>'business_municipality','Barangay'=>'business_barangay','Street'=>'business_street'] as $lbl=>$field)
                             <div class="{{ $lbl==='Street' ? 'sm:col-span-2':'' }}">
                                 <label class="block text-xs font-bold text-gray mb-1">{{ $lbl }}</label>
-                                <input type="text" name="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field) }}"
+                                <input type="text" name="{{ $field }}" placeholder="{{ $lbl }}" value="{{ old($field, $renewal?->business?->{$field === 'business_region' ? 'region' : ($field === 'business_province' ? 'province' : ($field === 'business_municipality' ? 'municipality' : ($field === 'business_barangay' ? 'barangay' : 'street')))} ?? '') }}"
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                             </div>
                         @endforeach
@@ -652,17 +656,17 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Contact Person</label>
-                            <input type="text" name="emergency_contact_person" placeholder="Full name" value="{{ old('emergency_contact_person') }}"
+                            <input type="text" name="emergency_contact_person" placeholder="Full name" value="{{ old('emergency_contact_person', $renewal?->business?->emergency_contact_person ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Tel / Mobile No.</label>
-                            <input type="tel" name="emergency_mobile" placeholder="09XX XXX XXXX" value="{{ old('emergency_mobile') }}"
+                            <input type="tel" name="emergency_mobile" placeholder="09XX XXX XXXX" value="{{ old('emergency_mobile', $renewal?->business?->emergency_mobile ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1">Email Address</label>
-                            <input type="email" name="emergency_email" placeholder="contact@example.com" value="{{ old('emergency_email') }}"
+                            <input type="email" name="emergency_email" placeholder="contact@example.com" value="{{ old('emergency_email', $renewal?->business?->emergency_email ?? '') }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition">
                         </div>
                     </div>

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Bpls;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\BplsSetting;
+use App\Models\BplsPermitSignatory;
 
 class BplsSettingsController extends Controller
 {
@@ -19,9 +20,10 @@ class BplsSettingsController extends Controller
      */
     public function index()
     {
-        $settings = BplsSetting::all()->keyBy('key');
+        $settings    = BplsSetting::all()->keyBy('key');
+        $signatories = BplsPermitSignatory::orderBy('sort_order')->orderBy('name')->get();
 
-        return view('modules.bpls.settings', compact('settings'));
+        return view('modules.bpls.settings', compact('settings', 'signatories'));
     }
 
     // ──────────────────────────────────────────────────────────────────────────

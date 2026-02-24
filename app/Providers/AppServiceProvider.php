@@ -12,6 +12,7 @@ use Illuminate\Support\ServiceProvider;
 use App\Models\BusinessEntry;
 use App\Models\BplsPayment;
 use App\Models\OrAssignment;
+use Illuminate\Pagination\Paginator;
 
 // Observer
 use App\Observers\AuditLogObserver;
@@ -32,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
         BusinessEntry::observe(AuditLogObserver::class);
         BplsPayment::observe(AuditLogObserver::class);
         OrAssignment::observe(AuditLogObserver::class);
+
+        Paginator::useTailwind();
 
         // Add any other models you want tracked, e.g.:
         // \App\Models\BplsSetting::observe(AuditLogObserver::class);

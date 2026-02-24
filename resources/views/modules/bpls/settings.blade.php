@@ -344,6 +344,151 @@
                     </div>
                 </div>
 
+                {{-- ── Permit Signatories Section ── --}}
+                <div id="permit-signatories"
+                    class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-6"
+                    x-data="{ addOpen: false }">
+                    <div class="bg-green text-white py-2.5 px-5 flex items-center justify-between">
+                        <p class="text-xs font-extrabold tracking-wide uppercase">Permit Signatories</p>
+                        <button type="button" @click="addOpen = !addOpen"
+                            class="flex items-center gap-1 text-xs font-bold bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Add Signatory
+                        </button>
+                    </div>
+                    <div class="p-5">
+
+                        {{-- Add Form --}}
+                        <div x-show="addOpen" x-transition x-cloak
+                             class="mb-5 p-4 bg-logo-teal/5 border border-logo-teal/20 rounded-xl">
+                            <p class="text-xs font-extrabold text-logo-teal uppercase tracking-wide mb-3">New Signatory</p>
+                            <form action="{{ route('bpls.permit-signatories.store') }}" method="POST">
+                                @csrf
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1">Name <span class="text-red-400">*</span></label>
+                                        <input type="text" name="name" required maxlength="150"
+                                            placeholder="e.g. Juan P. Dela Cruz"
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1">Position / Designation <span class="text-red-400">*</span></label>
+                                        <input type="text" name="position" required maxlength="150"
+                                            placeholder="e.g. Municipal Mayor"
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1">Department</label>
+                                        <input type="text" name="department" maxlength="150"
+                                            placeholder="e.g. Mayor's Office (optional)"
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1">Sort Order</label>
+                                        <input type="number" name="sort_order" value="0" min="0"
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                        <p class="text-[10px] text-gray/40 mt-1">Lower numbers appear first in dropdown</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end gap-2">
+                                    <button type="button" @click="addOpen = false"
+                                        class="px-4 py-2 text-xs font-bold bg-lumot/20 text-gray rounded-xl hover:bg-lumot/40 transition-colors">Cancel</button>
+                                    <button type="submit"
+                                        class="px-4 py-2 text-xs font-bold bg-logo-teal text-white rounded-xl hover:bg-green transition-colors">
+                                        Save Signatory
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        {{-- Signatories List --}}
+                        @if($signatories->isEmpty())
+                            <div class="py-8 text-center">
+                                <svg class="w-10 h-10 text-lumot/30 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <p class="text-sm font-bold text-gray/30">No signatories yet — add one above.</p>
+                            </div>
+                        @else
+                            <div class="space-y-2">
+                                @foreach($signatories as $sig)
+                                    <div class="border border-lumot/20 rounded-xl overflow-hidden"
+                                         x-data="{ editOpen: false }">
+                                        {{-- Row --}}
+                                        <div class="flex items-center justify-between px-4 py-3 {{ $sig->is_active ? 'bg-white' : 'bg-lumot/5' }}">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <span class="w-2 h-2 rounded-full shrink-0 {{ $sig->is_active ? 'bg-logo-green' : 'bg-lumot/40' }}"></span>
+                                                <div class="min-w-0">
+                                                    <p class="text-sm font-bold text-green truncate">{{ $sig->name }}</p>
+                                                    <p class="text-[11px] text-gray/50 truncate">{{ $sig->position }}{{ $sig->department ? ' — '.$sig->department : '' }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2 shrink-0 ml-3">
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border {{ $sig->is_active ? 'bg-logo-green/10 text-logo-green border-logo-green/30' : 'bg-lumot/20 text-gray/50 border-lumot/30' }}">
+                                                    {{ $sig->is_active ? 'Active' : 'Inactive' }}
+                                                </span>
+                                                <span class="text-[10px] text-gray/30">#{{ $sig->sort_order }}</span>
+                                                <button type="button" @click="editOpen = !editOpen"
+                                                    class="p-1.5 rounded-lg bg-logo-teal/10 text-logo-teal hover:bg-logo-teal/20 transition-colors" title="Edit">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                </button>
+                                                <form action="{{ route('bpls.permit-signatories.destroy', $sig->id) }}" method="POST"
+                                                      onsubmit="return confirm('Delete {{ addslashes($sig->name) }}?')">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="p-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors" title="Delete">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        {{-- Edit Form --}}
+                                        <div x-show="editOpen" x-transition x-cloak class="border-t border-lumot/20 bg-lumot/5 p-4">
+                                            <form action="{{ route('bpls.permit-signatories.update', $sig->id) }}" method="POST">
+                                                @csrf @method('PUT')
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                                    <div>
+                                                        <label class="block text-xs font-bold text-gray mb-1">Name <span class="text-red-400">*</span></label>
+                                                        <input type="text" name="name" required maxlength="150" value="{{ $sig->name }}"
+                                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-bold text-gray mb-1">Position <span class="text-red-400">*</span></label>
+                                                        <input type="text" name="position" required maxlength="150" value="{{ $sig->position }}"
+                                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-bold text-gray mb-1">Department</label>
+                                                        <input type="text" name="department" maxlength="150" value="{{ $sig->department }}"
+                                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                                    </div>
+                                                    <div class="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label class="block text-xs font-bold text-gray mb-1">Sort Order</label>
+                                                            <input type="number" name="sort_order" min="0" value="{{ $sig->sort_order }}"
+                                                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                                        </div>
+                                                        <div class="flex flex-col justify-end">
+                                                            <label class="flex items-center gap-2">
+                                                                <input type="checkbox" name="is_active" value="1" {{ $sig->is_active ? 'checked' : '' }}
+                                                                    class="rounded border-lumot/30 text-logo-teal focus:ring-logo-teal/20">
+                                                                <span class="text-xs font-bold text-gray">Active</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex justify-end gap-2">
+                                                    <button type="button" @click="editOpen = false"
+                                                        class="px-3 py-1.5 text-xs font-bold bg-lumot/20 text-gray rounded-xl hover:bg-lumot/40 transition-colors">Cancel</button>
+                                                    <button type="submit"
+                                                        class="px-3 py-1.5 text-xs font-bold bg-logo-teal text-white rounded-xl hover:bg-green transition-colors">Update</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
                 {{-- ══════════════════════════════════════════════════════════
                      ── Receipt Configuration Section (NEW) ──
                 ══════════════════════════════════════════════════════════ --}}

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\BPLS\Online;
 use App\Http\Controllers\Controller;
 use App\Models\onlineBPLS\BplsApplication;
 use App\Models\onlineBPLS\BplsDocument;
+use App\Models\BplsPermitSignatory;
 use App\Services\OrNumberAllocator;
 use App\Models\bpls\onlineBPLS\BplsApplicationOr;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,7 @@ class BplsApplicationReviewController extends Controller
     public function index(Request $request)
     {
         $status = $request->get('status', 'submitted');
-        $search = $request->get('search');
+        $search = trim($request->get('search'));
 
         $applications = BplsApplication::with(['business', 'owner', 'documents'])
             ->when($status !== 'all', fn($q) => $q->where('workflow_status', $status))
@@ -51,12 +52,16 @@ class BplsApplicationReviewController extends Controller
                 )
             )
             ->latest()
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         $counts = BplsApplication::selectRaw('workflow_status, count(*) as total')
             ->groupBy('workflow_status')
             ->pluck('total', 'workflow_status');
+
+        if ($request->ajax()) {
+            return view('modules.bpls.onlineBPLS.application._list', compact('applications', 'status', 'search', 'counts'))->render();
+        }
 
         return view('modules.bpls.onlineBPLS.application.index', compact(
             'applications', 'status', 'search', 'counts'
@@ -68,14 +73,16 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     public function show(BplsApplication $application)
     {
-        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments']);
+        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory']);
 
         $docs        = $application->documents->keyBy('document_type');
         $requiredMet = collect(BplsDocument::REQUIRED_TYPES)
             ->every(fn($t) => isset($docs[$t]) && $docs[$t]->isVerified());
 
+        $signatories = BplsPermitSignatory::activeOrdered();
+
         return view('modules.bpls.onlineBPLS.application.show', compact(
-            'application', 'docs', 'requiredMet'
+            'application', 'docs', 'requiredMet', 'signatories'
         ));
     }
 
@@ -330,26 +337,50 @@ class BplsApplicationReviewController extends Controller
     public function finalApprove(Request $request, BplsApplication $application)
     {
         $request->validate([
-            'or_number'    => 'nullable|string|max:100',
-            'permit_notes' => 'nullable|string|max:1000',
+            'or_number'          => 'nullable|string|max:100',
+            'permit_notes'       => 'nullable|string|max:1000',
+            'signatory_id'       => 'nullable', // Can be numeric ID or "custom"
+            'signatory_name'     => 'required_if:signatory_id,custom|required_without:signatory_id|nullable|string|max:150',
+            'signatory_position' => 'nullable|string|max:150',
+            'permit_valid_from'  => 'required|date',
+            'permit_valid_until' => 'required|date|after_or_equal:permit_valid_from',
         ]);
 
         if ($application->workflow_status !== 'paid') {
             return back()->with('error', 'Application must be in the For Approval stage before issuing a permit.');
         }
 
+        // Snapshot signatory details
+        $signatoryId       = is_numeric($request->signatory_id) ? $request->signatory_id : null;
+        $signatoryName     = $request->signatory_name;
+        $signatoryPosition = $request->signatory_position;
+
+        if ($signatoryId) {
+            $sig = BplsPermitSignatory::find($signatoryId);
+            if ($sig) {
+                $signatoryName     = $sig->name;
+                $signatoryPosition = $sig->position;
+            }
+        }
+
         $application->update([
-            'workflow_status' => 'approved',
-            'or_number'       => $request->or_number ?? $application->or_number,
-            'permit_notes'    => $request->permit_notes,
-            'approved_at'     => now(),
-            'approved_by'     => Auth::id(),
+            'workflow_status'    => 'approved',
+            'or_number'          => $request->or_number ?? $application->or_number,
+            'permit_notes'       => $request->permit_notes,
+            'signatory_id'       => $request->signatory_id,
+            'signatory_name'     => $signatoryName,
+            'signatory_position' => $signatoryPosition,
+            'permit_valid_from'  => $request->permit_valid_from,
+            'permit_valid_until' => $request->permit_valid_until,
+            'approved_at'        => now(),
+            'approved_by'        => Auth::id(),
         ]);
 
         $this->log($application, 'final_approved', 'paid', 'approved',
             'Business permit issued.' .
             ($request->or_number   ? ' OR#: ' . $request->or_number     : '') .
-            ($request->permit_notes ? ' | Notes: ' . $request->permit_notes : '')
+            ($request->permit_notes ? ' | Notes: ' . $request->permit_notes : '') .
+            " Signatory: {$signatoryName}"
         );
 
         return back()->with('success', 'Business permit issued! Application is fully approved.');

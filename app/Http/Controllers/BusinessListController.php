@@ -8,24 +8,63 @@ use App\Models\BusinessEntry;
 
 class BusinessListController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $totalCount = BusinessEntry::whereNull('deleted_at')->count();
-        $pendingCount = BusinessEntry::whereNull('deleted_at')->where('status', 'pending')->count();
-        $approvedCount = BusinessEntry::whereNull('deleted_at')->where('status', 'approved')->count();
-        $retiredCount = BusinessEntry::whereNull('deleted_at')->where('status', 'retired')->count();
-        $renewalCount = BusinessEntry::whereNull('deleted_at')
-            ->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
+        $status = $request->get('status', 'all');
+        $search = $request->get('q') ?? $request->get('search');
+        $type = $request->get('type', 'all');
+
+        $query = BusinessEntry::whereNull('deleted_at');
+
+        if ($search) {
+            $query->where(function ($b) use ($search) {
+                $b->where('business_name', 'like', "%{$search}%")
+                    ->orWhere('trade_name', 'like', "%{$search}%")
+                    ->orWhere('tin_no', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('mobile_no', 'like', "%{$search}%")
+                    ->orWhere('business_barangay', 'like', "%{$search}%")
+                    ->orWhere('business_municipality', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status !== 'all') {
+            if ($status === 'renewal') {
+                $query->whereIn('status', ['for_renewal', 'for_renewal_payment']);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($type !== 'all') {
+            $query->where('type_of_business', $type);
+        }
+
+        $businesses = $query->latest()->paginate(12);
+
+        $counts = [
+            'total' => BusinessEntry::whereNull('deleted_at')->count(),
+            'pending' => BusinessEntry::whereNull('deleted_at')->where('status', 'pending')->count(),
+            'approved' => BusinessEntry::whereNull('deleted_at')->where('status', 'approved')->count(),
+            'retired' => BusinessEntry::whereNull('deleted_at')->where('status', 'retired')->count(),
+            'renewal' => BusinessEntry::whereNull('deleted_at')->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count(),
+        ];
+
         $types = BusinessEntry::whereNull('deleted_at')
             ->distinct()->pluck('type_of_business')->filter()->sort()->values();
 
+        if ($request->ajax()) {
+            return view('modules.bpls.business-list-partial', compact('businesses', 'status', 'search'))->render();
+        }
+
         return view('modules.bpls.business-list', compact(
-            'totalCount',
-            'pendingCount',
-            'approvedCount',
-            'retiredCount',
-            'renewalCount',
+            'businesses',
+            'counts',
+            'status',
+            'search',
             'types',
+            'type'
         ));
     }
 

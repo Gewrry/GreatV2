@@ -932,7 +932,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span
-                            class="text-xs font-semibold text-logo-teal bg-logo-teal/10 px-3 py-1 rounded-full border border-logo-teal/20">{{ $totalCount }}
+                            class="text-xs font-semibold text-logo-teal bg-logo-teal/10 px-3 py-1 rounded-full border border-logo-teal/20">{{ number_format($counts['total'] ?? 0) }}
                             Total</span>
                         <a href="{{ route('bpls.business-entries.index') }}"
                             class="flex items-center gap-1.5 px-4 py-2 bg-logo-teal text-white text-xs font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20">
@@ -946,7 +946,7 @@
                 </div>
 
                 {{-- ── Stat Pills ── --}}
-                <div class="grid grid-cols-4 gap-3 mb-5">
+                <div class="grid grid-cols-5 gap-3 mb-5">
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-blue/10 flex items-center justify-center shrink-0">
@@ -958,7 +958,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray">Total</p>
-                            <p class="text-lg font-extrabold text-green">{{ $totalCount }}</p>
+                            <p class="text-lg font-extrabold text-green">{{ number_format($counts['total'] ?? 0) }}</p>
                         </div>
                     </div>
                     <div
@@ -972,7 +972,7 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray">Pending</p>
-                            <p class="text-lg font-extrabold text-green">{{ $pendingCount }}</p>
+                            <p class="text-lg font-extrabold text-green">{{ number_format($counts['pending'] ?? 0) }}</p>
                         </div>
                     </div>
                     <div
@@ -986,7 +986,17 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray">Approved</p>
-                            <p class="text-lg font-extrabold text-green">{{ $approvedCount }}</p>
+                            <p class="text-lg font-extrabold text-green">{{ number_format($counts['approved'] ?? 0) }}</p>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray">Renewal</p>
+                            <p class="text-lg font-extrabold text-green">{{ number_format($counts['renewal'] ?? 0) }}</p>
                         </div>
                     </div>
                     <div
@@ -1000,555 +1010,72 @@
                         </div>
                         <div>
                             <p class="text-xs text-gray">Retired</p>
-                            <p class="text-lg font-extrabold text-orange-500">{{ $retiredCount }}</p>
+                            <p class="text-lg font-extrabold text-orange-500">{{ number_format($counts['retired'] ?? 0) }}</p>
                         </div>
                     </div>
                 </div>
 
                 {{-- ── Filters + View Toggle ── --}}
+                {{-- ── Filters ── --}}
                 <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-4 mb-5">
-                    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                         <div class="relative flex-1 min-w-0">
-                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray/50"
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray/40"
                                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                             <input type="text" x-model="filters.q" @input.debounce.350ms="resetAndFetch()"
-                                placeholder="Search name, TIN, barangay..."
-                                class="w-full pl-9 pr-8 py-2 text-sm border border-lumot/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30">
+                                placeholder="Search by name, TIN, or location..."
+                                class="w-full pl-10 pr-10 py-2.5 text-sm border border-lumot/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 transition-all">
                             <button type="button" x-show="filters.q" @click="filters.q = ''; resetAndFetch()"
-                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray/40 hover:text-gray transition-colors">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray/40 hover:text-green transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                     stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <select x-model="filters.status" @change="resetAndFetch()"
-                            class="text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white shrink-0">
-                            <option value="all">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="for_renewal">For Renewal</option>
-                            <option value="for_payment">For Payment</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="retired">Retired</option>
-                        </select>
-                        <select x-model="filters.type" @change="resetAndFetch()"
-                            class="text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white shrink-0">
-                            <option value="all">All Types</option>
-                            @foreach ($types as $type)
-                                <option value="{{ $type }}">{{ $type }}</option>
-                            @endforeach
-                        </select>
-                        <span class="text-xs text-gray/60 shrink-0"
-                            x-text="total + ' result' + (total !== 1 ? 's' : '')"></span>
-                        <div class="flex-1 hidden sm:block"></div>
-                        {{-- View Toggle --}}
-                        <div class="flex items-center gap-1 bg-lumot/20 rounded-xl p-1 shrink-0">
-                            <button type="button" @click="setView('card')"
-                                :class="view === 'card' ? 'bg-white shadow text-logo-teal' : 'text-gray hover:text-green'"
-                                class="p-1.5 rounded-lg transition-all duration-150" title="Card View">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                    stroke-width="2">
-                                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                                </svg>
-                            </button>
-                            <button type="button" @click="setView('table')"
-                                :class="view === 'table' ? 'bg-white shadow text-logo-teal' : 'text-gray hover:text-green'"
-                                class="p-1.5 rounded-lg transition-all duration-150" title="Table View">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M3 10h18M3 6h18M3 14h18M3 18h18" />
-                                </svg>
-                            </button>
-                            <button type="button" @click="setView('list')"
-                                :class="view === 'list' ? 'bg-white shadow text-logo-teal' : 'text-gray hover:text-green'"
-                                class="p-1.5 rounded-lg transition-all duration-150" title="List View">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 6h16M4 12h16M4 18h16" />
-                                    <circle cx="2" cy="6" r="1" fill="currentColor" />
-                                    <circle cx="2" cy="12" r="1" fill="currentColor" />
-                                    <circle cx="2" cy="18" r="1" fill="currentColor" />
-                                </svg>
-                            </button>
+                        <div class="flex flex-wrap items-center gap-3 shrink-0">
+                            <select x-model="filters.status" @change="resetAndFetch()"
+                                class="text-sm border border-lumot/30 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white font-bold cursor-pointer transition-all">
+                                <option value="all">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="for_renewal">For Renewal</option>
+                                <option value="for_payment">For Payment</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="retired">Retired</option>
+                            </select>
+                            <select x-model="filters.type" @change="resetAndFetch()"
+                                class="text-sm border border-lumot/30 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white font-bold cursor-pointer transition-all">
+                                <option value="all">All Types</option>
+                                @foreach ($types as $type)
+                                    <option value="{{ $type }}">{{ $type }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                {{-- ── Loading Skeleton ── --}}
-                <div x-show="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5" x-cloak>
-                    <template x-for="i in 6" :key="i">
-                        <div
-                            class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden animate-pulse">
-                            <div class="h-1 bg-lumot/40"></div>
-                            <div class="p-4 space-y-3">
-                                <div class="h-4 bg-lumot/40 rounded-lg w-3/4"></div>
-                                <div class="h-3 bg-lumot/30 rounded-lg w-1/2"></div>
-                                <div class="h-8 bg-lumot/20 rounded-lg"></div>
-                                <div class="space-y-2">
-                                    <div class="h-2.5 bg-lumot/20 rounded w-full"></div>
-                                    <div class="h-2.5 bg-lumot/20 rounded w-5/6"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
 
-                {{-- ── Empty State ── --}}
-                <div x-show="!loading && entries.length === 0" x-cloak
-                    class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-12 text-center mb-5">
-                    <div class="w-16 h-16 bg-lumot/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-gray/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            stroke-width="1.5">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <p class="text-sm font-bold text-gray">No entries found</p>
-                    <p class="text-xs text-gray/60 mt-1">Try adjusting your search or filters.</p>
-                    <button @click="filters.q = ''; filters.status = 'all'; filters.type = 'all'; resetAndFetch()"
-                        class="mt-4 px-4 py-2 bg-logo-teal/10 text-logo-teal text-xs font-bold rounded-xl hover:bg-logo-teal/20 transition-colors">Clear
-                        Filters</button>
-                </div>
-
-                {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- CARD VIEW                                                   --}}
-                {{-- ══════════════════════════════════════════════════════════ --}}
-                <div x-show="!loading && view === 'card' && entries.length > 0" x-cloak>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
-                        <template x-for="entry in entries" :key="entry.id">
-                            <div
-                                class="bg-white rounded-2xl border border-lumot/20 shadow-sm hover:shadow-md hover:border-logo-teal/30 transition-all duration-200 overflow-hidden">
-                                <div class="h-1 w-full"
-                                    :class="{
-                                        'bg-logo-green': entry.status === 'approved',
-                                        'bg-red-400': entry.status === 'rejected',
-                                        'bg-logo-blue': entry.status === 'for_renewal',
-                                        'bg-orange-400': entry.status === 'retired',
-                                        'bg-gray-300': entry.status === 'cancelled',
-                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled',
-                                            'retired'
-                                        ].includes(entry.status)
-                                    }">
-                                </div>
-                                <div class="p-4">
-                                    <div class="flex items-start justify-between gap-2 mb-3">
-                                        <div class="min-w-0">
-                                            <h3 class="text-sm font-extrabold text-green truncate leading-tight"
-                                                x-text="entry.business_name"></h3>
-                                            <p class="text-[11px] text-gray truncate mt-0.5"
-                                                x-text="entry.trade_name || ''" x-show="entry.trade_name"></p>
-                                        </div>
-                                        <span
-                                            class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
-                                            :class="{
-                                                'bg-green-50 text-logo-green border-green-200': entry
-                                                    .status === 'approved',
-                                                'bg-red-50 text-red-500 border-red-200': entry.status === 'rejected',
-                                                'bg-blue-50 text-logo-blue border-blue-200': entry
-                                                    .status === 'for_renewal',
-                                                'bg-orange-50 text-orange-500 border-orange-200': entry
-                                                    .status === 'retired',
-                                                'bg-gray-50 text-gray border-gray-200': entry.status === 'cancelled',
-                                                'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved',
-                                                    'rejected', 'for_renewal', 'cancelled', 'retired'
-                                                ].includes(entry.status)
-                                            }"
-                                            @click="openStatusModal(entry)" title="Click to change status"
-                                            x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5 mb-3 p-2 bg-bluebody/50 rounded-lg">
-                                        <svg class="w-3.5 h-3.5 text-logo-teal shrink-0" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                        <span class="text-xs font-semibold text-green truncate"
-                                            x-text="entry.last_name + ', ' + entry.first_name + (entry.middle_name ? ' '+entry.middle_name : '')"></span>
-                                    </div>
-                                    <div class="space-y-1.5 mb-3">
-                                        <template x-if="entry.tin_no">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">TIN</span><span
-                                                    class="text-xs text-gray font-mono" x-text="entry.tin_no"></span>
-                                            </div>
-                                        </template>
-                                        <template x-if="entry.type_of_business">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Type</span><span
-                                                    class="text-xs text-gray truncate"
-                                                    x-text="entry.type_of_business"></span></div>
-                                        </template>
-                                        <template x-if="entry.business_nature">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Nature</span><span
-                                                    class="text-xs text-gray truncate"
-                                                    x-text="entry.business_nature"></span></div>
-                                        </template>
-                                        <template x-if="entry.capital_investment">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Capital</span><span
-                                                    class="text-xs text-gray"
-                                                    x-text="'₱' + Number(entry.capital_investment).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
-                                            </div>
-                                        </template>
-                                        <template x-if="entry.mode_of_payment">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Payment</span><span
-                                                    class="text-xs text-gray capitalize"
-                                                    x-text="entry.mode_of_payment.replace('_',' ')"></span></div>
-                                        </template>
-                                    </div>
-                                    <div class="flex items-center justify-between pt-3 border-t border-lumot/20">
-                                        <span class="text-[10px] text-gray/50"
-                                            x-text="entry.created_at ? entry.created_at.substring(0,10) : '—'"></span>
-                                        <div class="flex gap-1.5">
-                                            <a x-show="entry.status === 'for_payment' || entry.status === 'approved'"
-                                                :href="`{{ url('bpls/payment') }}/${entry.id}`"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-green hover:bg-green transition-colors">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                </svg>
-                                                Payment
-                                            </a>
-                                            <button type="button" x-show="entry.status === 'retired'"
-                                                @click="openCertModal(entry)"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                Certificate
-                                            </button>
-                                            <button type="button"
-                                                x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired'"
-                                                @click="openModal(entry)" title="Assess"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                Assess
-                                            </button>
-                                            <button type="button" @click="openViewModal(entry)" title="View Details"
-                                                class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- TABLE VIEW                                                  --}}
-                {{-- ══════════════════════════════════════════════════════════ --}}
-                <div x-show="!loading && view === 'table' && entries.length > 0" x-cloak>
-                    <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-5">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="bg-bluebody/60 border-b border-lumot/20">
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            #</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Business Name</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Owner</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            TIN</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Nature</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Scale</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Capital</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Payment</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Status</th>
-                                        <th class="px-4 py-3"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-lumot/10">
-                                    <template x-for="(entry, i) in entries" :key="entry.id">
-                                        <tr class="hover:bg-bluebody/30 transition-colors">
-                                            <td class="px-4 py-3 text-xs text-gray/50 font-medium"
-                                                x-text="((currentPage - 1) * 12) + i + 1"></td>
-                                            <td class="px-4 py-3">
-                                                <p class="font-bold text-green text-xs"
-                                                    x-text="entry.business_name"></p>
-                                                <p class="text-[10px] text-gray" x-text="entry.trade_name || ''"
-                                                    x-show="entry.trade_name"></p>
-                                            </td>
-                                            <td class="px-4 py-3 text-xs text-gray whitespace-nowrap"
-                                                x-text="entry.last_name + ', ' + entry.first_name"></td>
-                                            <td class="px-4 py-3 text-xs text-gray font-mono"
-                                                x-text="entry.tin_no || '—'"></td>
-                                            <td class="px-4 py-3 text-xs text-gray"
-                                                x-text="entry.business_nature || '—'"></td>
-                                            <td class="px-4 py-3 text-xs text-gray"
-                                                x-text="entry.business_scale || '—'"></td>
-                                            <td class="px-4 py-3 text-xs text-gray whitespace-nowrap"
-                                                x-text="entry.capital_investment ? '₱' + Number(entry.capital_investment).toLocaleString('en-PH',{minimumFractionDigits:2}) : '—'">
-                                            </td>
-                                            <td class="px-4 py-3 text-xs text-gray capitalize"
-                                                x-text="entry.mode_of_payment ? entry.mode_of_payment.replace('_',' ') : '—'">
-                                            </td>
-                                            <td class="px-4 py-3">
-                                                <span
-                                                    class="text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
-                                                    :class="{
-                                                        'bg-green-50 text-logo-green border-green-200': entry
-                                                            .status === 'approved',
-                                                        'bg-red-50 text-red-500 border-red-200': entry
-                                                            .status === 'rejected',
-                                                        'bg-blue-50 text-logo-blue border-blue-200': entry
-                                                            .status === 'for_renewal',
-                                                        'bg-orange-50 text-orange-500 border-orange-200': entry
-                                                            .status === 'retired',
-                                                        'bg-gray-50 text-gray border-gray-200': entry
-                                                            .status === 'cancelled',
-                                                        'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved',
-                                                            'rejected', 'for_renewal', 'cancelled', 'retired'
-                                                        ].includes(entry.status)
-                                                    }"
-                                                    @click="openStatusModal(entry)" title="Click to change status"
-                                                    x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-3">
-                                                <div class="flex items-center gap-1">
-                                                    <a x-show="entry.status === 'for_payment' || entry.status === 'approved'"
-                                                        :href="`{{ url('bpls/payment') }}/${entry.id}`"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-green hover:bg-green transition-colors whitespace-nowrap">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                        </svg>
-                                                        Payment
-                                                    </a>
-                                                    <button type="button" x-show="entry.status === 'retired'"
-                                                        @click="openCertModal(entry)"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        Cert
-                                                    </button>
-                                                    <button type="button"
-                                                        x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired'"
-                                                        @click="openModal(entry)"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        Assess
-                                                    </button>
-                                                    <button type="button" @click="openViewModal(entry)"
-                                                        title="View Details"
-                                                        class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
-                                                        <svg class="w-3.5 h-3.5" fill="none"
-                                                            viewBox="0 0 24 24" stroke="currentColor"
-                                                            stroke-width="2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
+                {{-- ── List Container (AJAX Target) ── --}}
+                <div id="business-list-container" class="relative min-h-[400px]">
+                    <div x-show="loading" class="absolute inset-0 z-10 bg-white/50 backdrop-blur-[1px] flex items-center justify-center rounded-2xl" x-cloak>
+                        <div class="flex flex-col items-center gap-3">
+                            <div class="w-10 h-10 border-4 border-logo-teal/20 border-t-logo-teal rounded-full animate-spin"></div>
+                            <span class="text-xs font-black text-logo-teal uppercase tracking-widest">Updating List...</span>
                         </div>
                     </div>
-                </div>
 
-                {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- LIST VIEW                                                   --}}
-                {{-- ══════════════════════════════════════════════════════════ --}}
-                <div x-show="!loading && view === 'list' && entries.length > 0" x-cloak>
-                    <div class="space-y-2 mb-5">
-                        <template x-for="entry in entries" :key="entry.id">
-                            <div
-                                class="bg-white rounded-2xl border border-lumot/20 shadow-sm hover:shadow-md hover:border-logo-teal/30 transition-all duration-200 px-4 py-3 flex items-center gap-4">
-                                <div class="w-2.5 h-2.5 rounded-full shrink-0"
-                                    :class="{
-                                        'bg-logo-green': entry.status === 'approved',
-                                        'bg-red-400': entry.status === 'rejected',
-                                        'bg-logo-blue': entry.status === 'for_renewal',
-                                        'bg-orange-400': entry.status === 'retired',
-                                        'bg-gray-300': entry.status === 'cancelled',
-                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled',
-                                            'retired'].includes(entry.status)
-                                    }">
-                                </div>
-                                <div class="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-5 gap-x-4">
-                                    <div>
-                                        <p class="text-xs font-extrabold text-green truncate"
-                                            x-text="entry.business_name"></p>
-                                        <p class="text-[10px] text-gray truncate" x-text="entry.trade_name || ''"
-                                            x-show="entry.trade_name"></p>
-                                    </div>
-                                    <div class="hidden sm:block">
-                                        <p class="text-[10px] text-gray/60 font-bold uppercase">Owner</p>
-                                        <p class="text-xs text-gray truncate"
-                                            x-text="entry.last_name + ', ' + entry.first_name"></p>
-                                    </div>
-                                    <div class="hidden sm:block">
-                                        <p class="text-[10px] text-gray/60 font-bold uppercase">Nature / Scale</p>
-                                        <p class="text-xs text-gray truncate" x-text="entry.business_nature || '—'">
-                                        </p>
-                                        <p class="text-[10px] text-gray/50 truncate"
-                                            x-text="entry.business_scale || ''"></p>
-                                    </div>
-                                    <div class="hidden sm:block">
-                                        <p class="text-[10px] text-gray/60 font-bold uppercase">Capital</p>
-                                        <p class="text-xs text-gray"
-                                            x-text="entry.capital_investment ? '₱' + Number(entry.capital_investment).toLocaleString('en-PH',{minimumFractionDigits:2}) : '—'">
-                                        </p>
-                                        <p class="text-[10px] text-gray/50 capitalize"
-                                            x-text="entry.mode_of_payment ? entry.mode_of_payment.replace('_',' ') : ''">
-                                        </p>
-                                    </div>
-                                    <div class="hidden sm:block">
-                                        <p class="text-[10px] text-gray/60 font-bold uppercase">Location</p>
-                                        <p class="text-xs text-gray truncate"
-                                            x-text="entry.business_barangay || '—'"></p>
-                                    </div>
-                                </div>
-                                <div class="shrink-0 flex items-center gap-2">
-                                    <span
-                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
-                                        :class="{
-                                            'bg-green-50 text-logo-green border-green-200': entry
-                                                .status === 'approved',
-                                            'bg-red-50 text-red-500 border-red-200': entry.status === 'rejected',
-                                            'bg-blue-50 text-logo-blue border-blue-200': entry
-                                                .status === 'for_renewal',
-                                            'bg-teal-50 text-logo-teal border-teal-200': entry
-                                                .status === 'for_payment',
-                                            'bg-orange-50 text-orange-500 border-orange-200': entry
-                                                .status === 'retired',
-                                            'bg-gray-50 text-gray border-gray-200': entry.status === 'cancelled',
-                                            'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved', 'rejected',
-                                                'for_renewal', 'for_payment', 'cancelled', 'retired'
-                                            ].includes(entry.status)
-                                        }"
-                                        @click="openStatusModal(entry)" title="Click to change status"
-                                        x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
-                                    </span>
-                                    <a x-show="entry.status === 'for_payment' || entry.status === 'approved'"
-                                        :href="`{{ url('bpls/payment') }}/${entry.id}`"
-                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-green hover:bg-green transition-colors whitespace-nowrap">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                        </svg>
-                                        Payment
-                                    </a>
-                                    <button type="button" x-show="entry.status === 'retired'"
-                                        @click="openCertModal(entry)"
-                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Cert
-                                    </button>
-                                    <button type="button"
-                                        x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired'"
-                                        @click="openModal(entry)"
-                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Assess
-                                    </button>
-                                    <button type="button" @click="openViewModal(entry)" title="View Details"
-                                        class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </template>
+                    <div id="business-list-partial-target">
+                        @include('modules.bpls.business-list-partial', ['businesses' => $businesses])
                     </div>
                 </div>
 
-                {{-- ── Pagination ── --}}
-                <div x-show="!loading && lastPage > 1" x-cloak class="flex items-center justify-between mt-2">
-                    <p class="text-xs text-gray">Showing <span class="font-bold text-green" x-text="from"></span>
-                        to <span class="font-bold text-green" x-text="to"></span> of <span
-                            class="font-bold text-green" x-text="total"></span> entries</p>
-                    <div class="flex items-center gap-1">
-                        <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
-                            :class="currentPage === 1 ? 'text-gray/30 cursor-not-allowed' :
-                                'text-gray hover:text-logo-teal hover:border-logo-teal/40'"
-                            class="px-3 py-1.5 text-xs bg-white border border-lumot/20 rounded-xl transition-colors">←
-                            Prev</button>
-                        <template x-for="page in pageRange" :key="page">
-                            <button @click="goToPage(page)"
-                                :class="page === currentPage ? 'bg-logo-teal text-white border-logo-teal shadow-sm' :
-                                    'bg-white text-gray border-lumot/20 hover:border-logo-teal/40 hover:text-logo-teal'"
-                                class="px-3 py-1.5 text-xs font-bold rounded-xl border transition-colors"
-                                x-text="page"></button>
-                        </template>
-                        <button @click="goToPage(currentPage + 1)" :disabled="currentPage === lastPage"
-                            :class="currentPage === lastPage ? 'text-gray/30 cursor-not-allowed' :
-                                'text-gray hover:text-logo-teal hover:border-logo-teal/40'"
-                            class="px-3 py-1.5 text-xs bg-white border border-lumot/20 rounded-xl transition-colors">Next
-                            →</button>
-                    </div>
-                </div>
+
+
 
             </div>
         </div>
@@ -1966,20 +1493,43 @@
                                 type: this.filters.type,
                                 page: this.currentPage,
                             });
-                            const res = await window.fetch(`{{ route('bpls.business-list.search') }}?${params}`);
-                            const data = await res.json();
-                            this.entries = data.data;
-                            this.total = data.total;
-                            this.from = data.from ?? 0;
-                            this.to = data.to ?? 0;
-                            this.currentPage = data.current_page;
-                            this.lastPage = data.last_page;
+                            
+                            const res = await window.fetch(`{{ route('bpls.business-list.index') }}?${params}`, {
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            
+                            if (!res.ok) throw new Error('Refresh failed');
+                            
+                            const html = await res.text();
+                            document.getElementById('business-list-partial-target').innerHTML = html;
+                            
+                            // Re-bind pagination clicks
+                            this.bindPagination();
+                            
                         } catch (err) {
                             console.error('Business list fetch error:', err);
                         } finally {
                             this.loading = false;
                         }
                     },
+
+                    bindPagination() {
+                        const target = document.getElementById('business-list-partial-target');
+                        if (!target) return;
+                        const links = target.querySelectorAll('nav a');
+                        links.forEach(link => {
+                            link.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const url = new URL(link.href);
+                                this.currentPage = url.searchParams.get('page') || 1;
+                                this.fetch();
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            });
+                        });
+                    },
+
                 }
             }
         </script>

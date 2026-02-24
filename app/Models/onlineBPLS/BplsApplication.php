@@ -5,6 +5,7 @@ namespace App\Models\onlineBPLS;
 
 use App\Models\BplsBusiness;
 use App\Models\BplsOwner;
+use App\Models\BplsPermitSignatory;
 use App\Models\BusinessEntry;
 use App\Models\onlineBPLS\BplsOnlinePayment;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +30,15 @@ class BplsApplication extends Model
         'permit_year',
         'workflow_status',      // submitted | returned | verified | assessed | paid | approved | rejected
         'ors_confirmed',
+        'signatory_id',
+        'signatory_name',
+        'signatory_position',
+        'permit_valid_from',
+        'permit_valid_until',
+
+        // $casts — add these
+        'permit_valid_from'  => 'date',
+        'permit_valid_until' => 'date',
         // Timestamps per stage
         'submitted_at',
         'verified_at',
@@ -176,6 +186,12 @@ public function orAssignments(): HasMany
 {
     return $this->hasMany(BplsApplicationOr::class, 'bpls_application_id')
                 ->orderBy('installment_number');
+}
+
+
+public function signatory(): BelongsTo
+{
+    return $this->belongsTo(BplsPermitSignatory::class, 'signatory_id');
 }
 
 }
