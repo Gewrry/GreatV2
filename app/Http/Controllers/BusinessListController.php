@@ -5,72 +5,56 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\BusinessEntry;
+use App\Models\onlineBPLS\BplsApplication;
 
 class BusinessListController extends Controller
 {
     public function index(Request $request)
     {
-        $status = $request->get('status', 'all');
-        $search = $request->get('q') ?? $request->get('search');
-        $type = $request->get('type', 'all');
+        $source = $request->get('source', 'all');
 
         $query = BusinessEntry::whereNull('deleted_at');
 
-        if ($search) {
-            $query->where(function ($b) use ($search) {
-                $b->where('business_name', 'like', "%{$search}%")
-                    ->orWhere('trade_name', 'like', "%{$search}%")
-                    ->orWhere('tin_no', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('first_name', 'like', "%{$search}%")
-                    ->orWhere('mobile_no', 'like', "%{$search}%")
-                    ->orWhere('business_barangay', 'like', "%{$search}%")
-                    ->orWhere('business_municipality', 'like', "%{$search}%");
-            });
+        // Filter by source (online/walkin)
+        if ($source === 'online') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereIn('id', $onlineIds);
+        } elseif ($source === 'walkin') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereNotIn('id', $onlineIds);
         }
 
-        if ($status !== 'all') {
-            if ($status === 'renewal') {
-                $query->whereIn('status', ['for_renewal', 'for_renewal_payment']);
-            } else {
-                $query->where('status', $status);
-            }
-        }
-
-        if ($type !== 'all') {
-            $query->where('type_of_business', $type);
-        }
-
-        $businesses = $query->latest()->paginate(12);
-
-        $counts = [
-            'total' => BusinessEntry::whereNull('deleted_at')->count(),
-            'pending' => BusinessEntry::whereNull('deleted_at')->where('status', 'pending')->count(),
-            'approved' => BusinessEntry::whereNull('deleted_at')->where('status', 'approved')->count(),
-            'retired' => BusinessEntry::whereNull('deleted_at')->where('status', 'retired')->count(),
-            'renewal' => BusinessEntry::whereNull('deleted_at')->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count(),
-        ];
-
-        $types = BusinessEntry::whereNull('deleted_at')
-            ->distinct()->pluck('type_of_business')->filter()->sort()->values();
-
-        if ($request->ajax()) {
-            return view('modules.bpls.business-list-partial', compact('businesses', 'status', 'search'))->render();
-        }
+        $totalCount = (clone $query)->count();
+        $pendingCount = (clone $query)->where('status', 'pending')->count();
+        $approvedCount = (clone $query)->where('status', 'approved')->count();
+        $retiredCount = (clone $query)->where('status', 'retired')->count();
+        $renewalCount = (clone $query)->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
+        $types = (clone $query)->distinct()->pluck('type_of_business')->filter()->sort()->values();
 
         return view('modules.bpls.business-list', compact(
-            'businesses',
-            'counts',
-            'status',
-            'search',
+            'totalCount',
+            'pendingCount',
+            'approvedCount',
+            'retiredCount',
+            'renewalCount',
             'types',
-            'type'
+            'source',
         ));
     }
 
     public function search(Request $request)
     {
-        $query = BusinessEntry::whereNull('deleted_at');
+        $query = BusinessEntry::whereNull('deleted_at')->with(['bplsApplication', 'bplsApplication.orAssignments', 'payments']);
+
+        // Filter by source (online/walkin)
+        $source = $request->get('source', 'all');
+        if ($source === 'online') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereIn('id', $onlineIds);
+        } elseif ($source === 'walkin') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereNotIn('id', $onlineIds);
+        }
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -231,5 +215,45 @@ class BusinessListController extends Controller
     }
 
 
+
+    // Mark as Paid - marks the BplsApplication as paid
+    // POST /bpls/business-list/{entry}/mark-paid
+    public function markPaid(Request $request, BusinessEntry $entry)
+    {
+        $application = $entry->bplsApplication;
+
+        if (!$application) {
+            return response()->json(['message' => 'No online application found.'], 422);
+        }
+
+        if ($application->workflow_status !== 'assessed') {
+            return response()->json(['message' => 'Application is not in Payment stage.'], 422);
+        }
+
+        // Generate OR number if not provided
+        $orNumber = $request->or_number ?? 'AUTO-' . date('Ymd') . '-' . str_pad($entry->id, 6, '0', STR_PAD_LEFT);
+
+        // Mark all OR assignments as paid
+        $application->orAssignments()->where('status', 'unpaid')->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        // Update application status
+        $application->update([
+            'workflow_status' => 'paid',
+            'or_number' => $orNumber,
+            'paid_at' => now(),
+        ]);
+
+        // Update business entry status
+        $entry->update(['status' => 'approved']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment confirmed.',
+            'entry' => $entry->fresh(),
+        ]);
+    }
 
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\BplsSetting;
 use App\Models\BplsPermitSignatory;
+use App\Models\OrAssignment;
 
 class BplsSettingsController extends Controller
 {
@@ -20,7 +21,7 @@ class BplsSettingsController extends Controller
      */
     public function index()
     {
-        $settings    = BplsSetting::all()->keyBy('key');
+        $settings = BplsSetting::all()->keyBy('key');
         $signatories = BplsPermitSignatory::orderBy('sort_order')->orderBy('name')->get();
 
         return view('modules.bpls.settings', compact('settings', 'signatories'));
@@ -224,5 +225,105 @@ class BplsSettingsController extends Controller
     public function getSettingsByGroup(string $group)
     {
         return BplsSetting::where('group', $group)->get()->keyBy('key');
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // OR ASSIGNMENT METHODS
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Display the OR Assignments list.
+     */
+    public function listOrAssignments()
+    {
+        $assignments = OrAssignment::orderBy('start_or', 'desc')
+            ->orderBy('end_or', 'desc')
+            ->paginate(20);
+
+        // Get cashiers from users with employee info
+        $cashiers = \DB::table('users')
+            ->join('employee_info', 'users.employee_id', '=', 'employee_info.id')
+            ->select('users.id', 'users.uname', \DB::raw("CONCAT(employee_info.first_name, ' ', employee_info.last_name) as full_name"))
+            ->orderBy('employee_info.last_name')
+            ->get();
+
+        return view('modules.settings.or-assignments', compact('assignments', 'cashiers'));
+    }
+
+    /**
+     * Store a new OR Assignment.
+     */
+    public function storeOrAssignment(Request $request)
+    {
+        $request->validate([
+            'start_or' => 'required|string',
+            'end_or' => 'required|string|gte:start_or',
+            'receipt_type' => 'required|string|in:51C,RPTA,CTC',
+            'cashier_name' => 'required|string',
+        ]);
+
+        OrAssignment::create([
+            'start_or' => $request->start_or,
+            'end_or' => $request->end_or,
+            'receipt_type' => $request->receipt_type,
+            'cashier_name' => $request->cashier_name,
+            'user_id' => auth()->id(),
+        ]);
+
+        return redirect()->back()->with('success', 'OR Assignment created successfully!');
+    }
+
+    /**
+     * Update an existing OR Assignment.
+     */
+    public function updateOrAssignment(Request $request, OrAssignment $orAssignment)
+    {
+        $request->validate([
+            'start_or' => 'required|string',
+            'end_or' => 'required|string|gte:start_or',
+            'receipt_type' => 'required|string|in:51C,RPTA,CTC',
+            'cashier_name' => 'required|string',
+        ]);
+
+        $orAssignment->update([
+            'start_or' => $request->start_or,
+            'end_or' => $request->end_or,
+            'receipt_type' => $request->receipt_type,
+            'cashier_name' => $request->cashier_name,
+        ]);
+
+        return redirect()->back()->with('success', 'OR Assignment updated successfully!');
+    }
+
+    /**
+     * Delete an OR Assignment.
+     */
+    public function destroyOrAssignment(OrAssignment $orAssignment)
+    {
+        $orAssignment->delete();
+
+        return redirect()->back()->with('success', 'OR Assignment deleted successfully!');
+    }
+
+    /**
+     * Show edit form for OR Assignment.
+     */
+    public function editOrAssignment(OrAssignment $orAssignment)
+    {
+        $assignments = OrAssignment::orderBy('start_or', 'desc')
+            ->orderBy('end_or', 'desc')
+            ->paginate(20);
+
+        $cashiers = \DB::table('users')
+            ->join('employee_info', 'users.employee_id', '=', 'employee_info.id')
+            ->select('users.id', 'users.uname', \DB::raw("CONCAT(employee_info.first_name, ' ', employee_info.last_name) as full_name"))
+            ->orderBy('employee_info.last_name')
+            ->get();
+
+        return view('modules.settings.or-assignments', [
+            'assignments' => $assignments,
+            'cashiers' => $cashiers,
+            'editing' => $orAssignment,
+        ]);
     }
 }

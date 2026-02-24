@@ -6,43 +6,15 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\OrAssignment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class OrAssignmentController extends Controller
 {
-    /**
-     * Join users → employee_info to get cashier list.
-     * users:         id, employee_id, uname
-     * employee_info: id, first_name, last_name
-     */
-    private function getCashiers()
-    {
-        return DB::table('users')
-            ->join('employee_info', 'users.employee_id', '=', 'employee_info.id')
-            ->select(
-                'users.id',
-                DB::raw("CONCAT(employee_info.first_name, ' ', employee_info.last_name) as full_name"),
-                'users.uname'
-            )
-            ->orderBy('employee_info.last_name')
-            ->get();
-    }
-
-    private function getCashierName(int $userId): string
-    {
-        return DB::table('users')
-            ->join('employee_info', 'users.employee_id', '=', 'employee_info.id')
-            ->where('users.id', $userId)
-            ->selectRaw("CONCAT(employee_info.first_name, ' ', employee_info.last_name) as full_name")
-            ->value('full_name') ?? '';
-    }
-
     public function index()
     {
         $assignments = OrAssignment::latest()->paginate(10);
-        $cashiers = $this->getCashiers();
 
-        return view('modules.settings.or-assignments', compact('assignments', 'cashiers'));
+        return view('modules.settings.or-assignments', compact('assignments'));
     }
 
     public function store(Request $request)
@@ -50,7 +22,6 @@ class OrAssignmentController extends Controller
         $request->validate([
             'start_or' => 'required|string|max:20',
             'end_or' => 'required|string|max:20',
-            'user_id' => 'required|exists:users,id',
             'receipt_type' => 'required|in:51C,RPTA,CTC',
         ]);
 
@@ -69,8 +40,8 @@ class OrAssignmentController extends Controller
         OrAssignment::create([
             'start_or' => $request->start_or,
             'end_or' => $request->end_or,
-            'user_id' => $request->user_id,
-            'cashier_name' => $this->getCashierName((int) $request->user_id),
+            'user_id' => Auth::id(),
+            'cashier_name' => Auth::user()->uname,
             'receipt_type' => $request->receipt_type,
         ]);
 
@@ -80,11 +51,9 @@ class OrAssignmentController extends Controller
     public function edit(OrAssignment $orAssignment)
     {
         $assignments = OrAssignment::latest()->paginate(10);
-        $cashiers = $this->getCashiers();
 
         return view('modules.settings.or-assignments', [
             'assignments' => $assignments,
-            'cashiers' => $cashiers,
             'editing' => $orAssignment,
         ]);
     }
@@ -94,19 +63,18 @@ class OrAssignmentController extends Controller
         $request->validate([
             'start_or' => 'required|string|max:20',
             'end_or' => 'required|string|max:20',
-            'user_id' => 'required|exists:users,id',
             'receipt_type' => 'required|in:51C,RPTA,CTC',
         ]);
 
         $orAssignment->update([
             'start_or' => $request->start_or,
             'end_or' => $request->end_or,
-            'user_id' => $request->user_id,
-            'cashier_name' => $this->getCashierName((int) $request->user_id),
+            'user_id' => Auth::id(),
+            'cashier_name' => Auth::user()->uname,
             'receipt_type' => $request->receipt_type,
         ]);
 
-        return redirect()->route('or-assignments.index')
+        return redirect()->route('bpls.settings.or-assignments.index')
             ->with('success', 'OR assignment updated successfully.');
     }
 
