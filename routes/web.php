@@ -231,6 +231,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/masterlist/data', [MasterlistController::class, 'data'])->name('masterlist.data');
         });
 
+
         // Online BPLS Application Review (Staff)
         Route::prefix('online')->name('online.')->group(function () {
             Route::get('/application', [BplsApplicationReviewController::class, 'index'])->name('application.index');

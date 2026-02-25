@@ -1,8 +1,8 @@
 {{-- resources/views/modules/bpls/business-list.blade.php --}}
 <x-admin.app>
     {{-- CRITICAL: x-cloak hides elements until Alpine.js initializes.
-         Without this CSS rule, x-cloak elements stay hidden FOREVER.
-         Keep this here even if your app.css already has it — belt and suspenders. --}}
+    Without this CSS rule, x-cloak elements stay hidden FOREVER.
+    Keep this here even if your app.css already has it — belt and suspenders. --}}
     <style>
         [x-cloak] {
             display: none !important;
@@ -15,8 +15,9 @@
             <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4" x-data="businessList()"
                 x-init="fetch()">
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- ASSESS MODAL — 3-step: Details → Assessment → Schedule    --}}
-                {{-- ═════════════════════════════════════If You Reading this, You are not human! or JR Programmer═════════════════════ --}}
+                {{-- ASSESS MODAL — 3-step: Details → Assessment → Schedule --}}
+                {{-- ═════════════════════════════════════If You Reading this, You are not human! or JR
+                Programmer═════════════════════ --}}
                 <div x-show="modal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
@@ -161,8 +162,8 @@
                                 {{-- Notice if all fees are disabled --}}
                                 <div x-show="!modal.computingFees && modal.form.capital_investment && modal.form.mode_of_payment && modal.totalDue === 0 && !modal.error"
                                     class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                                    <svg class="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg class="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
@@ -239,8 +240,7 @@
                                                 <p
                                                     class="text-[10px] font-extrabold text-gray/70 uppercase text-center">
                                                     Base Value</p>
-                                                <p
-                                                    class="text-[10px] font-extrabold text-gray/70 uppercase text-right">
+                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-right">
                                                     Tax Due</p>
                                             </div>
                                             <template x-for="fee in modal.fees" :key="fee.id ?? fee.name">
@@ -248,13 +248,12 @@
                                                     class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/30">
                                                     <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
                                                     {{--
-                                                        Dynamic base value display.
-                                                        - gross_sales rules → show ₱ amount
-                                                        - scale rules       → show tier label (e.g. "Micro")
-                                                        - flat rules        → base is null → "—"
+                                                    Dynamic base value display.
+                                                    - gross_sales rules → show ₱ amount
+                                                    - scale rules → show tier label (e.g. "Micro")
+                                                    - flat rules → base is null → "—"
                                                     --}}
-                                                    <p class="text-xs text-gray/60 text-center font-mono"
-                                                        x-text="fee.base !== null && fee.base !== undefined
+                                                    <p class="text-xs text-gray/60 text-center font-mono" x-text="fee.base !== null && fee.base !== undefined
                                                             ? (typeof fee.base === 'number'
                                                                 ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2})
                                                                 : fee.base)
@@ -311,8 +310,8 @@
 
                                 {{-- RA 7160 dates notice --}}
                                 <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                                    <svg class="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg class="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -399,8 +398,7 @@
                                     class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
                             </div>
                             <div class="flex gap-2">
-                                <button x-show="modal.step < 3"
-                                    @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){
+                                <button x-show="modal.step < 3" @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){
                                         computeFees().then(() => { if(!modal.error) modal.step++; });
                                     } else if(modal.step === 2){
                                         modal.step++;
@@ -690,8 +688,7 @@
                             {{-- Current status badge --}}
                             <div class="flex items-center gap-2">
                                 <span class="text-[10px] text-gray/60 font-bold uppercase">Current:</span>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                                    :class="{
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border" :class="{
                                         'bg-yellow-50 text-yellow-700 border-yellow-200': statusModal.entry
                                             ?.status === 'pending',
                                         'bg-teal-50 text-logo-teal border-teal-200': statusModal.entry
@@ -705,8 +702,7 @@
                                             ?.status === 'cancelled',
                                         'bg-orange-50 text-orange-500 border-orange-200': statusModal.entry
                                             ?.status === 'retired',
-                                    }"
-                                    x-text="statusModal.currentLabel()">
+                                    }" x-text="statusModal.currentLabel()">
                                 </span>
                             </div>
 
@@ -726,8 +722,8 @@
                             {{-- Late renewal warning --}}
                             <div x-show="statusModal.form.status === 'completed' && statusModal.isLateRenewal()"
                                 class="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                                <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
@@ -1100,8 +1096,8 @@
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
+                            <svg class="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
@@ -1114,8 +1110,8 @@
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-teal/10 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4 text-logo-teal" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
+                            <svg class="w-4 h-4 text-logo-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
@@ -1128,8 +1124,8 @@
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-green/10 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4 text-logo-green" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
+                            <svg class="w-4 h-4 text-logo-green" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -1293,8 +1289,7 @@
                                             <div class="flex items-center gap-1.5">
                                                 <span
                                                     class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">TIN</span>
-                                                <span class="text-xs text-gray font-mono"
-                                                    x-text="entry.tin_no"></span>
+                                                <span class="text-xs text-gray font-mono" x-text="entry.tin_no"></span>
                                             </div>
                                         </template>
                                         <template x-if="entry.type_of_business">
@@ -1406,8 +1401,7 @@
                                                 <span
                                                     x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
                                             </button>
-                                            <button type="button" @click="openViewModal(entry)"
-                                                title="View Details"
+                                            <button type="button" @click="openViewModal(entry)" title="View Details"
                                                 class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor" stroke-width="2">
@@ -1621,8 +1615,8 @@
                                     </span>
                                     <a x-show="canPay(entry.status)" :href="`{{ url('bpls/payment') }}/${entry.id}`"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-teal hover:bg-green transition-colors whitespace-nowrap">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2.5">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="2.5">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                                         </svg>
@@ -1638,8 +1632,7 @@
                                         </svg>
                                         Cert
                                     </button>
-                                    <button type="button" x-show="canAssess(entry.status)"
-                                        @click="openModal(entry)"
+                                    <button type="button" x-show="canAssess(entry.status)" @click="openModal(entry)"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                             stroke-width="2.5">
@@ -1850,7 +1843,7 @@
                                     business_scale: this.modal.form.business_scale || '',
                                     mode_of_payment: mode,
                                     entry_id: this.modal.entry?.id ??
-                                    null, // ← THE FIX: pass entry id so server can resolve correct year
+                                        null, // ← THE FIX: pass entry id so server can resolve correct year
                                 }),
                             });
 
@@ -2055,29 +2048,29 @@
                         const content = document.getElementById('retirement-certificate-print').innerHTML;
                         const win = window.open('', '_blank', 'width=800,height=900');
                         win.document.write(`<!DOCTYPE html><html><head>
-                            <title>Business Retirement Certificate</title>
-                            <meta charset="UTF-8">
-                            <style>
-                                *{box-sizing:border-box;margin:0;padding:0}
-                                body{font-family:Arial,sans-serif;padding:32px;color:#222}
-                                .text-center{text-align:center}.text-right{text-align:right}
-                                p,span{display:block;line-height:1.5}
-                                .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
-                                .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
-                                .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
-                                .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
-                                .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
-                                .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
-                                .my-3{margin:12px auto}.w-16{width:64px}
-                                .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
-                                .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
-                                .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
-                                .font-extrabold{font-weight:900}.font-bold{font-weight:700}
-                                .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
-                                .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
-                                @media print{body{padding:16px}}
-                            </style>
-                        </head><body>${content}</body></html>`);
+                                <title>Business Retirement Certificate</title>
+                                <meta charset="UTF-8">
+                                <style>
+                                    *{box-sizing:border-box;margin:0;padding:0}
+                                    body{font-family:Arial,sans-serif;padding:32px;color:#222}
+                                    .text-center{text-align:center}.text-right{text-align:right}
+                                    p,span{display:block;line-height:1.5}
+                                    .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
+                                    .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
+                                    .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
+                                    .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
+                                    .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
+                                    .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
+                                    .my-3{margin:12px auto}.w-16{width:64px}
+                                    .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
+                                    .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
+                                    .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
+                                    .font-extrabold{font-weight:900}.font-bold{font-weight:700}
+                                    .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
+                                    .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
+                                    @media print{body{padding:16px}}
+                                </style>
+                            </head><body>${content}</body></html>`);
                         win.document.close();
                         setTimeout(() => {
                             win.focus();

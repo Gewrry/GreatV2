@@ -12,14 +12,25 @@ class BusinessListController extends Controller
 {
     public function index(Request $request)
     {
-        $totalCount = BusinessEntry::whereNull('deleted_at')->count();
-        $pendingCount = BusinessEntry::whereNull('deleted_at')->where('status', 'pending')->count();
-        $approvedCount = BusinessEntry::whereNull('deleted_at')
-            ->whereIn('status', ['for_payment', 'for_renewal_payment'])->count();
-        $renewalCount = BusinessEntry::whereNull('deleted_at')->where('status', 'completed')->count();
-        $retiredCount = BusinessEntry::whereNull('deleted_at')->where('status', 'retired')->count();
-        $types = BusinessEntry::whereNull('deleted_at')
-            ->distinct()->pluck('type_of_business')->filter()->sort()->values();
+        $source = $request->get('source', 'all');
+
+        $query = BusinessEntry::whereNull('deleted_at');
+
+        // Filter by source (online/walkin)
+        if ($source === 'online') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereIn('id', $onlineIds);
+        } elseif ($source === 'walkin') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereNotIn('id', $onlineIds);
+        }
+
+        $totalCount = (clone $query)->count();
+        $pendingCount = (clone $query)->where('status', 'pending')->count();
+        $approvedCount = (clone $query)->where('status', 'approved')->count();
+        $retiredCount = (clone $query)->where('status', 'retired')->count();
+        $renewalCount = (clone $query)->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
+        $types = (clone $query)->distinct()->pluck('type_of_business')->filter()->sort()->values();
 
         return view('modules.bpls.business-list', compact(
             'totalCount',
@@ -31,7 +42,6 @@ class BusinessListController extends Controller
             'source',
         ));
     }
-
     public function search(Request $request)
     {
         $query = BusinessEntry::whereNull('deleted_at')->with(['bplsApplication', 'bplsApplication.orAssignments', 'payments']);
