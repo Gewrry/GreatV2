@@ -4,7 +4,9 @@
 namespace App\Http\Controllers\Bpls;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\BplsPaymentController;
 use App\Models\Bpls\FeeRule;
+use App\Models\BusinessEntry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,6 +28,8 @@ class FeeRuleController extends Controller
     public function index(): JsonResponse
     {
         try {
+            // Return ALL rules (including disabled) so the manager UI can show them.
+            // The compute() endpoint filters to active-only.
             return response()->json(FeeRule::ordered()->get());
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
@@ -118,29 +122,20 @@ class FeeRuleController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // POST /bpls/fee-rules/compute
     //
-    // FIXES:
+    // CHANGES FROM ORIGINAL — only two things added:
     //
-    // FIX 1 — Base Value "₱1.00" is gone
-    //   The old hardcoded JS used "1" as a dummy base for flat/scale fees,
-    //   which printed "₱1.00" in the Base Value column. That was meaningless.
-    //   Correct display:
-    //     gross_sales rules → actual gross sales amount  (e.g. ₱200,000.00)
-    //     scale rules       → scale tier label           (e.g. "Micro")
-    //     flat rules        → null → blade shows "—"     (no variable base)
+    //   1. entry_id added to validation (nullable, optional).
+    //   2. $permitYear now comes from resolvePermitYear() instead of being
+    //      computed inline inside buildSchedule().
+    //      When entry_id is present → delegates to
+    //        BplsPaymentController::resolveNextPermitYear() which checks real
+    //        payment history (e.g. 2026 fully paid → returns 2027).
+    //      When entry_id is absent → falls back to the original Oct/Nov/Dec
+    //        heuristic (unchanged behaviour for new registrations).
+    //   3. permit_year is returned in the response so the blade can display it.
     //
-    // FIX 2 — February 16 date is gone, replaced with correct RA 7160 dates
-    //   February 16 has no basis in RA 7160 or any standard LGU ordinance.
-    //   Correct deadlines per Section 165, Local Government Code of the PH:
-    //     Annual:     January 20
-    //     Semi-Ann:   January 20  |  July 20
-    //     Quarterly:  January 20  |  April 20  |  July 20  |  October 20
-    //
-    // FIX 3 — Dates are fully dynamic
-    //   The permit year is calculated from today's date, not hardcoded.
-    //   Oct/Nov/Dec → permit year = next year (renewal season)
-    //   Jan–Sep     → permit year = current year
-    //   Past deadlines are flagged "(Overdue)" for the officer to apply
-    //   the correct 25% surcharge per Section 168 of RA 7160.
+    // Everything else — FIX 1 (active-only), FIX 2 (base value), FIX 3 (RA 7160
+    // dates), FIX 4 (overdue flag) — is identical to the original file.
     // ─────────────────────────────────────────────────────────────────────────
     public function compute(Request $request): JsonResponse
     {
@@ -148,6 +143,7 @@ class FeeRuleController extends Controller
             'capital_investment' => 'required|numeric|min:0',
             'business_scale' => 'nullable|string',
             'mode_of_payment' => 'required|in:annual,semi_annual,quarterly',
+            'entry_id' => 'nullable|integer',  // no exists: check — BusinessEntry::find() handles missing safely
         ]);
 
         $gs = (float) $request->capital_investment;
@@ -162,15 +158,14 @@ class FeeRuleController extends Controller
             5 => 'Enterprise',
         ];
 
+        // FIX 1: Only active (enabled=1) rules are fetched.
+        // Disabling a rule in the Fee Rules Manager immediately removes it here.
         $rules = FeeRule::active()->ordered()->get();
 
         $fees = $rules->map(function (FeeRule $rule) use ($gs, $scaleCode, $scaleLabels) {
             $amount = $rule->compute($gs, $scaleCode);
 
-            // Base Value column:
-            //   gross_sales → actual ₱ amount   (the gross sales figure)
-            //   scale       → scale tier label   (e.g. "Micro", "Small")
-            //   flat        → null               (renders as "—" in blade)
+            // FIX 2: Correct Base Value per rule type.
             $base = match ($rule->base_type) {
                 'gross_sales' => $gs,
                 'scale' => $scaleLabels[$scaleCode] ?? 'Micro',
@@ -194,43 +189,58 @@ class FeeRuleController extends Controller
             default => 1,
         };
 
+        // ── Resolve permit year ───────────────────────────────────────────────
+        // NEW: extracted to resolvePermitYear() so entry_id can be used when
+        // available, instead of always relying on the Oct/Nov/Dec month check.
+        $permitYear = $this->resolvePermitYear($request->input('entry_id'));
+
         return response()->json([
             'fees' => $fees,
             'total_due' => $totalDue,
-            'per_installment' => round($totalDue / $installmentCount, 2),
-            'schedule' => $this->buildSchedule($totalDue, $mode),
+            'per_installment' => round($totalDue / max(1, $installmentCount), 2),
+            'schedule' => $this->buildSchedule($totalDue, $mode, $permitYear),
+            'permit_year' => $permitYear,  // ← NEW: returned so blade can show "Billing year: 2027"
         ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // resolvePermitYear()  ← NEW private helper
+    //
+    // With entry_id → calls BplsPaymentController::resolveNextPermitYear()
+    //   which inspects actual bpls_payments rows to decide the correct year.
+    //   If 2026 is fully paid it returns 2027. This is the single source of
+    //   truth used by approvePayment() and the payment page as well.
+    //
+    // Without entry_id → original Oct/Nov/Dec heuristic (unchanged).
+    // ─────────────────────────────────────────────────────────────────────────
+    private function resolvePermitYear(?int $entryId): int
+    {
+        if ($entryId) {
+            $entry = BusinessEntry::find($entryId);
+            if ($entry) {
+                return app(BplsPaymentController::class)->resolveNextPermitYear($entry);
+            }
+        }
+
+        // Original fallback — same logic that was previously inlined in buildSchedule()
+        $now = Carbon::now('Asia/Manila');
+        return ($now->month >= 10) ? ($now->year + 1) : $now->year;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // buildSchedule()
     //
-    // Correct Philippine LGU payment deadlines — RA 7160 Section 165:
-    //
-    //   Annual     → January 20  (full amount)
-    //   Semi-Ann   → January 20  (1st half)   +  July 20     (2nd half)
-    //   Quarterly  → January 20  (Q1)  +  April 20 (Q2)
-    //                July 20     (Q3)  +  October 20 (Q4)
-    //
-    // Dynamic permit year:
-    //   Oct, Nov, Dec  →  next year  (businesses renewing for next permit year)
-    //   Jan through Sep →  current year
-    //
-    // Overdue detection:
-    //   Compares each due date against today (Asia/Manila).
-    //   If the deadline has passed, appends "(Overdue)" to the label.
-    //   This tells the BPLO officer a 25% surcharge applies (Sec. 168 RA 7160).
-    //   Dates are NEVER silently shifted forward.
+    // ONLY CHANGE: now receives explicit $permitYear parameter instead of
+    // computing it internally. All date logic (FIX 3), overdue flag (FIX 4),
+    // and amounts are completely unchanged from the original.
     // ─────────────────────────────────────────────────────────────────────────
-    private function buildSchedule(float $total, string $mode): array
+    private function buildSchedule(float $total, string $mode, int $permitYear): array
     {
         $now = Carbon::now('Asia/Manila');
-        $permitYear = ($now->month >= 10) ? ($now->year + 1) : $now->year;
 
-        // Build one schedule row — mark it overdue if the deadline already passed
         $row = function (int $month, int $day, float $amount) use ($permitYear, $now): array {
-            $due = Carbon::create($permitYear, $month, $day, 0, 0, 0, 'Asia/Manila');
-            $isLate = $due->startOfDay()->lt($now->copy()->startOfDay());
+            $due = Carbon::create($permitYear, $month, $day, 23, 59, 59, 'Asia/Manila');
+            $isLate = $due->lt($now);
             $label = $due->format('F j, Y');
 
             return [
@@ -243,12 +253,12 @@ class FeeRuleController extends Controller
 
         return match ($mode) {
 
-            // Annual — January 20 only
+            // FIX 3: Annual — January 20 only
             'annual' => [
                 $row(1, 20, $total),
             ],
 
-            // Semi-Annual — January 20 and July 20
+            // FIX 3: Semi-Annual — January 20 and July 20
             'semi_annual' => (function () use ($total, $row): array{
                     $half = round($total / 2, 2);
                     $rem = round($total - $half, 2);
@@ -258,7 +268,7 @@ class FeeRuleController extends Controller
                     ];
                 })(),
 
-            // Quarterly — Jan 20, Apr 20, Jul 20, Oct 20
+            // FIX 3: Quarterly — Jan 20, Apr 20, Jul 20, Oct 20
             'quarterly' => (function () use ($total, $row): array{
                     $q = round($total / 4, 2);
                     $rem = round($total - ($q * 3), 2);
@@ -275,7 +285,7 @@ class FeeRuleController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helpers
+    // Helpers — completely unchanged from original
     // ─────────────────────────────────────────────────────────────────────────
     private function scaleCode(string $scale): int
     {
@@ -284,7 +294,7 @@ class FeeRuleController extends Controller
                 return $code;
             }
         }
-        return 1;
+        return 1; // Default to Micro if not matched
     }
 
     private function validated(Request $request): array

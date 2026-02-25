@@ -8,7 +8,7 @@
                 x-data="masterlists()" x-init="init()">
 
                 {{-- ── Page Header ── --}}
-                <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="mb-4 flex flex-col sm:flex-row sm:itemsp-center sm:justify-between gap-2">
                     <div>
                         <h1 class="text-xl sm:text-2xl font-extrabold text-green tracking-tight">Business Masterlist</h1>
                         <p class="text-gray text-xs sm:text-sm mt-0.5">Generate and filter the official BPLS business

@@ -25,10 +25,137 @@ class BplsPaymentController extends Controller
     ];
 
     // =========================================================================
-    // VALIDATE OR NUMBER (Ajax endpoint)
+    // HELPER: resolveNextPermitYear
+    // =========================================================================
+    public function resolveNextPermitYear(BusinessEntry $entry): int
+    {
+        $now = Carbon::now('Asia/Manila');
+        $currentYear = $now->year;
+
+        if ($now->month >= 10) {
+            return $currentYear + 1;
+        }
+
+        $mode = $entry->mode_of_payment ?? 'quarterly';
+        $requiredQuarters = match ($mode) {
+            'quarterly' => [1, 2, 3, 4],
+            'semi_annual' => [1, 2],
+            'annual' => [1],
+            default => [1, 2, 3, 4],
+        };
+
+        $latestFullyPaidYear = null;
+
+        $yearGroups = BplsPayment::where('business_entry_id', $entry->id)
+            ->selectRaw('payment_year, quarters_paid')
+            ->get()
+            ->groupBy('payment_year');
+
+        foreach ($yearGroups as $year => $payments) {
+            $paidQuarters = [];
+            foreach ($payments as $p) {
+                $paidQuarters = array_merge($paidQuarters, $this->decodeQuartersPaid($p->quarters_paid));
+            }
+            $paidQuarters = array_unique(array_map('intval', $paidQuarters));
+
+            if (empty(array_diff($requiredQuarters, $paidQuarters))) {
+                if ($latestFullyPaidYear === null || $year > $latestFullyPaidYear) {
+                    $latestFullyPaidYear = (int) $year;
+                }
+            }
+        }
+
+        if ($latestFullyPaidYear !== null && $latestFullyPaidYear >= $currentYear) {
+            return $latestFullyPaidYear + 1;
+        }
+
+        return $currentYear;
+    }
+
+    // =========================================================================
+    // HELPER: decodeQuartersPaid
+    // =========================================================================
+    private function decodeQuartersPaid(mixed $value): array
+    {
+        if (is_array($value))
+            return $value;
+        if (!is_string($value))
+            return [];
+        $decoded = json_decode($value, true);
+        if (is_string($decoded))
+            $decoded = json_decode($decoded, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    // =========================================================================
+    // GET AVAILABLE OR NUMBERS FOR CURRENT CASHIER
+    // GET /bpls/payment/{entry}/available-ors
+    //
+    // 1. Load all OR ranges assigned to the logged-in user (or_assignments).
+    // 2. Collect every OR already used across all bpls_payments (globally).
+    // 3. Walk each range; emit numbers not yet used.
+    // 4. Return JSON for the blade dropdown.
+    //
+    // OR numbers are stored as strings (may have leading zeros).
+    // We compare as integers but preserve original string format.
+    // =========================================================================
+    public function getAvailableOrNumbers(BusinessEntry $entry)
+    {
+        $userId = auth()->id();
+
+        $assignments = OrAssignment::where('user_id', $userId)
+            ->whereNull('deleted_at')
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return response()->json([
+                'available' => [],
+                'message' => 'No OR ranges are assigned to your account.',
+            ]);
+        }
+
+        // Build a fast-lookup hash of every OR number already used globally.
+        // We normalise by stripping leading zeros so "034564500" == "34564500".
+        $usedHash = BplsPayment::pluck('or_number')
+            ->map(fn($or) => ltrim(trim((string) $or), '0') ?: '0')
+            ->flip()
+            ->toArray();
+
+        $available = [];
+
+        foreach ($assignments as $assignment) {
+            $startRaw = trim((string) $assignment->start_or);
+            $endRaw = trim((string) $assignment->end_or);
+            $start = (int) $startRaw;
+            $end = (int) $endRaw;
+            $padLength = strlen($startRaw);   // preserve leading-zero format
+            $receipt = $assignment->receipt_type;
+
+            $count = 0;
+            for ($i = $start; $i <= $end && $count < 500; $i++) {
+                $orStr = str_pad((string) $i, $padLength, '0', STR_PAD_LEFT);
+                $orNormal = ltrim($orStr, '0') ?: '0';
+
+                if (!isset($usedHash[$orNormal])) {
+                    $available[] = [
+                        'or_number' => $orStr,
+                        'receipt_type' => $receipt,
+                    ];
+                    $count++;
+                }
+            }
+        }
+
+        return response()->json([
+            'available' => $available,
+            'total' => count($available),
+        ]);
+    }
+
+    // =========================================================================
+    // VALIDATE OR NUMBER  (kept for fallback server-side check on pay())
     // POST /bpls/payment/{entry}/validate-or
     // =========================================================================
-
     public function validateOr(Request $request, BusinessEntry $entry)
     {
         $orNumber = trim($request->or_number ?? '');
@@ -38,38 +165,30 @@ class BplsPaymentController extends Controller
         }
 
         $userId = auth()->id();
-
-        // 1. Check if already used
         $alreadyUsed = BplsPayment::where('or_number', $orNumber)->exists();
+
         if ($alreadyUsed) {
             return response()->json([
                 'valid' => false,
-                'message' => "OR #{$orNumber} has already been used in a previous payment.",
+                'message' => "OR #{$orNumber} has already been used.",
             ]);
         }
 
-        // 2. Find assignment that covers this OR number for the current user
         $assignment = OrAssignment::where('user_id', $userId)
             ->where('start_or', '<=', $orNumber)
             ->where('end_or', '>=', $orNumber)
             ->first();
 
         if (!$assignment) {
-            // Check if OR is in range but assigned to someone else
             $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)
                 ->where('end_or', '>=', $orNumber)
                 ->first();
 
-            if ($anyAssignment) {
-                return response()->json([
-                    'valid' => false,
-                    'message' => "OR #{$orNumber} is not assigned to you. It belongs to another cashier.",
-                ]);
-            }
-
             return response()->json([
                 'valid' => false,
-                'message' => "OR #{$orNumber} is not within any assigned OR range.",
+                'message' => $anyAssignment
+                    ? "OR #{$orNumber} belongs to another cashier."
+                    : "OR #{$orNumber} is not within any assigned range.",
             ]);
         }
 
@@ -77,28 +196,44 @@ class BplsPaymentController extends Controller
             'valid' => true,
             'message' => "OR #{$orNumber} is valid.",
             'receipt_type' => $assignment->receipt_type,
-            'receipt_label' => $assignment->receipt_label,
+            'receipt_label' => $assignment->receipt_type,
         ]);
     }
 
     // =========================================================================
-    // SHOW — Payment page
+    // SHOW
     // GET /bpls/payment/{entry}
     // =========================================================================
-
     public function show(BusinessEntry $entry)
     {
         $allowedStatuses = ['for_payment', 'for_renewal_payment', 'approved'];
         if (!in_array($entry->status, $allowedStatuses)) {
-            return redirect()
-                ->route('bpls.business-list.index')
+            return redirect()->route('bpls.business-list.index')
                 ->with('error', 'This business has not been assessed yet.');
         }
+
+        // ── Auto-correct stale permit_year ────────────────────────────────────
+        $currentCycle = (int) ($entry->renewal_cycle ?? 0);
+        $storedYear = (int) ($entry->permit_year ?? now()->year);
+
+        $cycleHasPayments = BplsPayment::where('business_entry_id', $entry->id)
+            ->where('payment_year', $storedYear)
+            ->where('renewal_cycle', $currentCycle)
+            ->exists();
+
+        if (!$cycleHasPayments) {
+            $resolvedYear = $this->resolveNextPermitYear($entry);
+            if ($resolvedYear !== $storedYear) {
+                $entry->update(['permit_year' => $resolvedYear]);
+                $entry = $entry->fresh();
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         $fees = $this->computeFees($entry);
         $activeTotalDue = $entry->active_total_due;
         $paidQuarters = $this->getPaidQuarters($entry);
-        $schedule = $this->buildSchedule($entry, $activeTotalDue);
+        $schedule = $this->buildSchedule($entry, $activeTotalDue, false);
         $quarterStatus = $this->getQuarterStatus($entry, $paidQuarters, $activeTotalDue);
         $modeCount = $this->modeInstallments($entry->mode_of_payment);
         $perInstallment = $modeCount > 0 ? round($activeTotalDue / $modeCount, 2) : 0;
@@ -142,10 +277,9 @@ class BplsPaymentController extends Controller
     }
 
     // =========================================================================
-    // PAY — Process Payment with OR Validation
+    // PAY
     // POST /bpls/payment/{entry}/pay
     // =========================================================================
-
     public function pay(Request $request, BusinessEntry $entry)
     {
         $request->validate([
@@ -168,15 +302,12 @@ class BplsPaymentController extends Controller
         $orNumber = trim($request->or_number);
         $userId = auth()->id();
 
-        // ── OR Restriction 1: Must not already be used ──────────────────────
         $alreadyUsed = BplsPayment::where('or_number', $orNumber)->exists();
         if ($alreadyUsed) {
-            return back()
-                ->withInput()
-                ->withErrors(['or_number' => "OR #{$orNumber} has already been used in a previous payment."]);
+            return back()->withInput()
+                ->withErrors(['or_number' => "OR #{$orNumber} has already been used."]);
         }
 
-        // ── OR Restriction 2 & 3: Must be in range AND assigned to this user ─
         $assignment = OrAssignment::where('user_id', $userId)
             ->where('start_or', '<=', $orNumber)
             ->where('end_or', '>=', $orNumber)
@@ -187,28 +318,21 @@ class BplsPaymentController extends Controller
                 ->where('end_or', '>=', $orNumber)
                 ->first();
 
-            if ($anyAssignment) {
-                return back()
-                    ->withInput()
-                    ->withErrors(['or_number' => "OR #{$orNumber} is not assigned to you. It belongs to another cashier."]);
-            }
-
-            return back()
-                ->withInput()
-                ->withErrors(['or_number' => "OR #{$orNumber} is not within any assigned OR range. Please check your assigned range."]);
+            return back()->withInput()->withErrors([
+                'or_number' => $anyAssignment
+                    ? "OR #{$orNumber} belongs to another cashier."
+                    : "OR #{$orNumber} is not within any assigned range.",
+            ]);
         }
 
-        // ── Quarters already paid check ──────────────────────────────────────
         $quarters = array_map('intval', $request->quarters);
         $alreadyPaid = $this->getPaidQuarters($entry);
         $duplicate = array_intersect($quarters, $alreadyPaid);
         if (!empty($duplicate)) {
-            return back()
-                ->withInput()
-                ->withErrors(['quarters' => 'Quarter(s) ' . implode(', ', $duplicate) . ' already paid for this cycle.']);
+            return back()->withInput()
+                ->withErrors(['quarters' => 'Quarter(s) ' . implode(', ', $duplicate) . ' already paid.']);
         }
 
-        // ── Compute amounts ──────────────────────────────────────────────────
         $modeCount = $this->modeInstallments($entry->mode_of_payment);
         $activeDue = $entry->active_total_due;
         $perQ = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
@@ -243,24 +367,23 @@ class BplsPaymentController extends Controller
             'check_date' => $request->check_date,
             'fund_code' => $request->fund_code ?? '100',
             'payor' => $request->payor,
-            'remarks' => $request->remarks . ($discountInfo && $discountInfo['qualifies'] ? ' (Advance discount applied)' : ''),
-            'received_by' => $assignment->cashier_name, // use assigned cashier name
+            'remarks' => trim(($request->remarks ?? '') . ($discountInfo && $discountInfo['qualifies'] ? ' (Advance discount applied)' : '')),
+            'received_by' => $assignment->cashier_name,
         ]);
 
         $allPaidNow = $this->getPaidQuarters($entry);
-        if (count(array_unique($allPaidNow)) >= $modeCount && $modeCount > 0) {
-            $entry->update(['status' => 'approved']);
-        } else {
-            $entry->update(['status' => ($entry->renewal_cycle ?? 0) > 0 ? 'for_renewal_payment' : 'for_payment']);
-        }
+        $entry->update([
+            'status' => count(array_unique($allPaidNow)) >= $modeCount && $modeCount > 0
+                ? 'approved'
+                : (($entry->renewal_cycle ?? 0) > 0 ? 'for_renewal_payment' : 'for_payment'),
+        ]);
 
         $successMessage = "Payment recorded. O.R. #{$payment->or_number}";
         if ($discount > 0) {
-            $successMessage .= ' with ₱' . number_format($discount, 2) . ' discount applied!';
+            $successMessage .= ' — ₱' . number_format($discount, 2) . ' discount applied!';
         }
 
-        return redirect()
-            ->route('bpls.payment.show', $entry->id)
+        return redirect()->route('bpls.payment.show', $entry->id)
             ->with('payment_success', true)
             ->with('payment_id', $payment->id)
             ->with('success', $successMessage);
@@ -269,7 +392,6 @@ class BplsPaymentController extends Controller
     // =========================================================================
     // APPROVE TO PAYMENT
     // =========================================================================
-
     public function approvePayment(Request $request, BusinessEntry $entry)
     {
         $request->validate([
@@ -295,14 +417,12 @@ class BplsPaymentController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'redirect_url' => route('bpls.payment.show', $entry->id)]);
         }
-
         return redirect()->route('bpls.payment.show', $entry->id);
     }
 
     // =========================================================================
     // APPROVE RENEWAL
     // =========================================================================
-
     public function approveRenewal(Request $request, BusinessEntry $entry)
     {
         $request->validate([
@@ -314,17 +434,44 @@ class BplsPaymentController extends Controller
         ]);
 
         $now = now();
-        $newPermitYear = ($now->month >= 10) ? $now->year + 1 : $now->year;
-        $newCycle = ($entry->renewal_cycle ?? 0) + 1;
+        $currentYear = $entry->permit_year ?? $now->year;
+        $currentCycle = $entry->renewal_cycle ?? 0;
+        $mode = $entry->mode_of_payment ?? 'quarterly';
 
-        $conflictExists = BplsPayment::where('business_entry_id', $entry->id)
-            ->where('payment_year', $newPermitYear)
-            ->where('renewal_cycle', $newCycle)
-            ->exists();
+        $requiredQuarters = match ($mode) {
+            'quarterly' => [1, 2, 3, 4],
+            'semi_annual' => [1, 2],
+            'annual' => [1],
+            default => [1, 2, 3, 4],
+        };
 
-        if ($conflictExists) {
-            $newCycle = $entry->renewal_cycle ?? 0;
-            $newPermitYear = $entry->permit_year ?? $now->year;
+        $cyclePayments = BplsPayment::where('business_entry_id', $entry->id)
+            ->where('payment_year', $currentYear)->where('renewal_cycle', $currentCycle)->get();
+
+        $paidQuarters = [];
+        foreach ($cyclePayments as $p) {
+            $paidQuarters = array_merge($paidQuarters, $this->decodeQuartersPaid($p->quarters_paid));
+        }
+        $paidQuarters = array_unique(array_map('intval', $paidQuarters));
+        $fullyPaid = empty(array_diff($requiredQuarters, $paidQuarters));
+
+        if ($fullyPaid) {
+            $newPermitYear = $this->resolveNextPermitYear($entry);
+            $newCycle = $currentCycle + 1;
+        } else {
+            $newPermitYear = $currentYear;
+            $maxCycle = BplsPayment::where('business_entry_id', $entry->id)
+                ->where('payment_year', $currentYear)->max('renewal_cycle') ?? $currentCycle;
+            $newCycle = $maxCycle + 1;
+        }
+
+        if (
+            BplsPayment::where('business_entry_id', $entry->id)
+                ->where('payment_year', $newPermitYear)->where('renewal_cycle', $newCycle)->exists()
+        ) {
+            $maxCycle = BplsPayment::where('business_entry_id', $entry->id)
+                ->where('payment_year', $newPermitYear)->max('renewal_cycle') ?? 0;
+            $newCycle = $maxCycle + 1;
         }
 
         $entry->update([
@@ -343,14 +490,12 @@ class BplsPaymentController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'redirect_url' => route('bpls.payment.show', $entry->id)]);
         }
-
         return redirect()->route('bpls.payment.show', $entry->id);
     }
 
     // =========================================================================
-    // RECEIPT
+    // RECEIPT / PERMIT
     // =========================================================================
-
     public function receipt(BusinessEntry $entry, BplsPayment $payment)
     {
         $fees = $this->computeFees($entry);
@@ -371,10 +516,6 @@ class BplsPaymentController extends Controller
         return view('modules.bpls.receipt', compact('entry', 'payment', 'fees', 'perInstallment', 'accountCodes', 'discountRate'));
     }
 
-    // =========================================================================
-    // PERMIT
-    // =========================================================================
-
     public function permit(BusinessEntry $entry, BplsPayment $payment)
     {
         $fees = $this->computeFees($entry);
@@ -388,7 +529,6 @@ class BplsPaymentController extends Controller
     // =========================================================================
     // COMPUTE SURCHARGE
     // =========================================================================
-
     public function computeSurcharge(Request $request, BusinessEntry $entry)
     {
         $request->validate([
@@ -402,11 +542,16 @@ class BplsPaymentController extends Controller
         $activeDue = $entry->active_total_due;
         $perQ = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
         $payDate = Carbon::parse($request->payment_date);
+        $approvedAt = $entry->approved_at ? Carbon::parse($entry->approved_at) : null;
         $totalSurcharge = 0;
 
         foreach ($request->quarters as $q) {
             $q = (int) $q;
             $dueDate = $dueDates[$q] ?? $dueDates[1];
+
+            if ($approvedAt && $dueDate->lt($approvedAt))
+                continue;
+
             if ($payDate->gt($dueDate)) {
                 $monthsLate = max(1, (int) $dueDate->diffInMonths($payDate));
                 $rate = min($monthsLate * 0.02, 0.72);
@@ -429,7 +574,6 @@ class BplsPaymentController extends Controller
     // =========================================================================
     // COMPUTE ADVANCE DISCOUNT
     // =========================================================================
-
     public function computeAdvanceDiscount(BusinessEntry $entry, array $quarters, string $paymentDate): array
     {
         $enabled = BplsSetting::get('advance_discount_enabled', '0');
@@ -440,16 +584,19 @@ class BplsPaymentController extends Controller
         $mode = $entry->mode_of_payment ?? 'quarterly';
         $year = $entry->permit_year ?? now()->year;
         $dueDates = $this->quarterDueDates($year);
+
         $discountRate = match ($mode) {
             'annual' => (float) BplsSetting::get('advance_discount_annual', '10'),
             'semi_annual' => (float) BplsSetting::get('advance_discount_semi_annual', '8'),
             default => (float) BplsSetting::get('advance_discount_quarterly', '5'),
         };
+
         $daysBefore = (int) BplsSetting::get('advance_discount_days_before', '30');
         $payDate = Carbon::parse($paymentDate);
         $modeCount = $this->modeInstallments($mode);
         $activeDue = $entry->active_total_due;
         $perQ = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
+        $approvedAt = $entry->approved_at ? Carbon::parse($entry->approved_at) : null;
         $totalDiscount = 0;
         $qualifies = false;
         $quartersQualified = [];
@@ -457,6 +604,10 @@ class BplsPaymentController extends Controller
         foreach ($quarters as $q) {
             $q = (int) $q;
             $dueDate = $dueDates[$q] ?? $dueDates[1];
+
+            if ($approvedAt && $dueDate->lt($approvedAt))
+                continue;
+
             if ($payDate->lte($dueDate->copy()->subDays($daysBefore))) {
                 $qualifies = true;
                 $quartersQualified[] = $q;
@@ -464,13 +615,17 @@ class BplsPaymentController extends Controller
             }
         }
 
-        return ['discount' => round($totalDiscount, 2), 'rate' => $discountRate, 'qualifies' => $qualifies, 'quarters_qualified' => $quartersQualified];
+        return [
+            'discount' => round($totalDiscount, 2),
+            'rate' => $discountRate,
+            'qualifies' => $qualifies,
+            'quarters_qualified' => $quartersQualified,
+        ];
     }
 
     // =========================================================================
     // HELPERS
     // =========================================================================
-
     public function getPaidQuarters(BusinessEntry $entry): array
     {
         $payments = BplsPayment::where('business_entry_id', $entry->id)
@@ -480,49 +635,50 @@ class BplsPaymentController extends Controller
 
         $paid = [];
         foreach ($payments as $p) {
-            $quarters = is_string($p->quarters_paid) ? json_decode($p->quarters_paid, true) ?? [] : $p->quarters_paid;
-            foreach (($quarters ?? []) as $q) {
+            foreach ($this->decodeQuartersPaid($p->quarters_paid) as $q) {
                 $paid[] = (int) $q;
             }
         }
-
         return array_values(array_unique($paid));
     }
 
-    public function buildSchedule(BusinessEntry $entry, ?float $totalDue = null): array
+    public function buildSchedule(BusinessEntry $entry, ?float $totalDue = null, bool $forAssessment = false): array
     {
         $total = $totalDue ?? $entry->active_total_due;
         $mode = $entry->mode_of_payment;
-        $year = $entry->permit_year ?? now()->year;
+        $now = Carbon::now('Asia/Manila');
+        $approvedAt = $entry->approved_at ? Carbon::parse($entry->approved_at) : $now;
+        $overdueRef = $now->gt($approvedAt) ? $now : $approvedAt;
+        $year = $forAssessment ? $this->resolveNextPermitYear($entry) : ($entry->permit_year ?? $now->year);
+        $dueDates = $this->quarterDueDates($year);
 
         if ($mode === 'annual') {
-            return [['quarter' => 1, 'date' => "January 20, {$year}", 'amount' => $total]];
+            $due = $dueDates[1];
+            return [['quarter' => 1, 'date' => $due->format('F j, Y'), 'amount' => $total, 'overdue' => $overdueRef->gt($due)]];
         }
 
         if ($mode === 'semi_annual') {
             $half = round($total / 2, 2);
             return [
-                ['quarter' => 1, 'date' => "February 16, {$year}", 'amount' => $half],
-                ['quarter' => 2, 'date' => "July 20, {$year}", 'amount' => round($total - $half, 2)],
+                ['quarter' => 1, 'date' => $dueDates[1]->format('F j, Y'), 'amount' => $half, 'overdue' => $overdueRef->gt($dueDates[1])],
+                ['quarter' => 2, 'date' => $dueDates[3]->format('F j, Y'), 'amount' => round($total - $half, 2), 'overdue' => $overdueRef->gt($dueDates[3])],
             ];
         }
 
         $q = round($total / 4, 2);
         return [
-            ['quarter' => 1, 'date' => "February 16, {$year}", 'amount' => $q],
-            ['quarter' => 2, 'date' => "April 20, {$year}", 'amount' => $q],
-            ['quarter' => 3, 'date' => "July 20, {$year}", 'amount' => $q],
-            ['quarter' => 4, 'date' => "October 20, {$year}", 'amount' => round($total - ($q * 3), 2)],
+            ['quarter' => 1, 'date' => $dueDates[1]->format('F j, Y'), 'amount' => $q, 'overdue' => $overdueRef->gt($dueDates[1])],
+            ['quarter' => 2, 'date' => $dueDates[2]->format('F j, Y'), 'amount' => $q, 'overdue' => $overdueRef->gt($dueDates[2])],
+            ['quarter' => 3, 'date' => $dueDates[3]->format('F j, Y'), 'amount' => $q, 'overdue' => $overdueRef->gt($dueDates[3])],
+            ['quarter' => 4, 'date' => $dueDates[4]->format('F j, Y'), 'amount' => round($total - $q * 3, 2), 'overdue' => $overdueRef->gt($dueDates[4])],
         ];
     }
 
     public function getQuarterStatus(BusinessEntry $entry, array $paidQuarters, ?float $totalDue = null): array
     {
-        $schedule = $this->buildSchedule($entry, $totalDue);
         $status = [];
-        foreach ($schedule as $s) {
-            $q = $s['quarter'];
-            $status[$q] = array_merge($s, ['paid' => in_array($q, $paidQuarters)]);
+        foreach ($this->buildSchedule($entry, $totalDue, false) as $s) {
+            $status[$s['quarter']] = array_merge($s, ['paid' => in_array($s['quarter'], $paidQuarters)]);
         }
         return $status;
     }
@@ -547,14 +703,10 @@ class BplsPaymentController extends Controller
                     : (str_contains($scale, 'Large') ? 4 : 1)));
 
         $lbtRate = match (true) {
-            $gs <= 300000 => 0.018,
-            $gs <= 1000000 => 0.0175,
-            $gs <= 2000000 => 0.016,
-            $gs <= 3000000 => 0.015,
-            $gs <= 5000000 => 0.014,
-            $gs <= 10000000 => 0.011,
-            $gs <= 20000000 => 0.009,
-            $gs <= 50000000 => 0.006,
+            $gs <= 300000 => 0.018, $gs <= 1000000 => 0.0175,
+            $gs <= 2000000 => 0.016, $gs <= 3000000 => 0.015,
+            $gs <= 5000000 => 0.014, $gs <= 10000000 => 0.011,
+            $gs <= 20000000 => 0.009, $gs <= 50000000 => 0.006,
             default => 0.005,
         };
 

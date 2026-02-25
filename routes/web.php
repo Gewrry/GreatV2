@@ -37,6 +37,8 @@ use App\Http\Controllers\AuditLogController;
 
 
 
+Route::get('/payment/{entry}/available-ors', [BplsPaymentController::class, 'getAvailableOrNumbers'])
+    ->name('bpls.payment.available-ors');
 
 Route::prefix('audit-logs')
     ->middleware(['auth'])   // Add additional middleware here, e.g. 'can:view-audit-logs'
