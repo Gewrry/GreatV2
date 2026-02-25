@@ -6,6 +6,7 @@ namespace App\Http\Controllers\BPLS\Online;
 use App\Http\Controllers\Controller;
 use App\Models\onlineBPLS\BplsApplication;
 use App\Models\onlineBPLS\BplsDocument;
+use App\Models\BplsPermitSignatory;
 use App\Services\OrNumberAllocator;
 use App\Models\bpls\onlineBPLS\BplsApplicationOr;
 use Illuminate\Support\Facades\DB;
@@ -16,18 +17,18 @@ class BplsApplicationReviewController extends Controller
 {
     const WORKFLOW = [
         'submitted' => 'Document Verification',
-        'returned'  => 'Returned to Client',
-        'verified'  => 'Assessment',
-        'assessed'  => 'Payment',
-        'paid'      => 'For Approval',
-        'approved'  => 'Approved',
-        'rejected'  => 'Rejected',
+        'returned' => 'Returned to Client',
+        'verified' => 'Assessment',
+        'assessed' => 'Payment',
+        'paid' => 'For Approval',
+        'approved' => 'Approved',
+        'rejected' => 'Rejected',
     ];
 
     const MODE_OF_PAYMENT = [
-        'annual'      => 'Annual',
+        'annual' => 'Annual',
         'semi_annual' => 'Semi-Annual',
-        'quarterly'   => 'Quarterly',
+        'quarterly' => 'Quarterly',
     ];
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -36,30 +37,42 @@ class BplsApplicationReviewController extends Controller
     public function index(Request $request)
     {
         $status = $request->get('status', 'submitted');
-        $search = $request->get('search');
+        $search = trim($request->get('search'));
 
         $applications = BplsApplication::with(['business', 'owner', 'documents'])
             ->when($status !== 'all', fn($q) => $q->where('workflow_status', $status))
-            ->when($search, fn($q) => $q
-                ->where(fn($sub) => $sub
-                    ->whereHas('business', fn($b) => $b->where('business_name', 'like', "%{$search}%"))
-                    ->orWhere('application_number', 'like', "%{$search}%")
-                    ->orWhereHas('owner', fn($o) => $o
-                        ->where('last_name', 'like', "%{$search}%")
-                        ->orWhere('first_name', 'like', "%{$search}%")
+            ->when(
+                $search,
+                fn($q) => $q
+                    ->where(
+                        fn($sub) => $sub
+                            ->whereHas('business', fn($b) => $b->where('business_name', 'like', "%{$search}%"))
+                            ->orWhere('application_number', 'like', "%{$search}%")
+                            ->orWhereHas(
+                                'owner',
+                                fn($o) => $o
+                                    ->where('last_name', 'like', "%{$search}%")
+                                    ->orWhere('first_name', 'like', "%{$search}%")
+                            )
                     )
-                )
             )
             ->latest()
-            ->paginate(15)
+            ->paginate(10)
             ->withQueryString();
 
         $counts = BplsApplication::selectRaw('workflow_status, count(*) as total')
             ->groupBy('workflow_status')
             ->pluck('total', 'workflow_status');
 
+        if ($request->ajax()) {
+            return view('modules.bpls.onlineBPLS.application._list', compact('applications', 'status', 'search', 'counts'))->render();
+        }
+
         return view('modules.bpls.onlineBPLS.application.index', compact(
-            'applications', 'status', 'search', 'counts'
+            'applications',
+            'status',
+            'search',
+            'counts'
         ));
     }
 
@@ -68,14 +81,19 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     public function show(BplsApplication $application)
     {
-        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments']);
+        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory']);
 
-        $docs        = $application->documents->keyBy('document_type');
+        $docs = $application->documents->keyBy('document_type');
         $requiredMet = collect(BplsDocument::REQUIRED_TYPES)
             ->every(fn($t) => isset($docs[$t]) && $docs[$t]->isVerified());
 
+        $signatories = BplsPermitSignatory::activeOrdered();
+
         return view('modules.bpls.onlineBPLS.application.show', compact(
-            'application', 'docs', 'requiredMet'
+            'application',
+            'docs',
+            'requiredMet',
+            'signatories'
         ));
     }
 
@@ -88,7 +106,8 @@ class BplsApplicationReviewController extends Controller
 
         abort_unless(
             in_array($document->application->workflow_status, ['submitted', 'returned']),
-            403, 'Documents can only be verified during the Verification stage.'
+            403,
+            'Documents can only be verified during the Verification stage.'
         );
 
         $document->update(['status' => 'verified', 'rejection_reason' => null]);
@@ -107,11 +126,12 @@ class BplsApplicationReviewController extends Controller
 
         abort_unless(
             in_array($document->application->workflow_status, ['submitted', 'returned']),
-            403, 'Documents can only be rejected during the Verification stage.'
+            403,
+            'Documents can only be rejected during the Verification stage.'
         );
 
         $document->update([
-            'status'           => 'rejected',
+            'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
         ]);
 
@@ -127,7 +147,7 @@ class BplsApplicationReviewController extends Controller
             return back()->with('error', 'Application cannot be approved at this stage.');
         }
 
-        $docs       = $application->documents->keyBy('document_type');
+        $docs = $application->documents->keyBy('document_type');
         $unverified = collect(BplsDocument::REQUIRED_TYPES)
             ->filter(fn($t) => !isset($docs[$t]) || !$docs[$t]->isVerified());
 
@@ -138,12 +158,17 @@ class BplsApplicationReviewController extends Controller
 
         $application->update([
             'workflow_status' => 'verified',
-            'verified_at'     => now(),
-            'verified_by'     => Auth::id(),
+            'verified_at' => now(),
+            'verified_by' => Auth::id(),
         ]);
 
-        $this->log($application, 'approved_documents', 'submitted', 'verified',
-            'All documents verified. Application forwarded for fee assessment.');
+        $this->log(
+            $application,
+            'approved_documents',
+            'submitted',
+            'verified',
+            'All documents verified. Application forwarded for fee assessment.'
+        );
 
         return back()->with('success', 'Documents approved. Application is now in the Assessment stage.');
     }
@@ -163,7 +188,7 @@ class BplsApplicationReviewController extends Controller
 
         $application->update([
             'workflow_status' => 'returned',
-            'remarks'         => $request->remarks,
+            'remarks' => $request->remarks,
         ]);
 
         // Reset rejected docs → pending so client can re-upload
@@ -185,27 +210,27 @@ class BplsApplicationReviewController extends Controller
     {
         $request->validate([
             'assessment_amount' => 'required|numeric|min:0.01',
-            'mode_of_payment'   => 'required|in:quarterly,semi_annual,annual',
-            'assessment_notes'  => 'nullable|string|max:1000',
+            'mode_of_payment' => 'required|in:quarterly,semi_annual,annual',
+            'assessment_notes' => 'nullable|string|max:1000',
         ]);
 
         if ($application->workflow_status !== 'verified') {
             return back()->with('error', 'Assessment can only be set during the Assessment stage.');
         }
 
-        $mode  = $request->mode_of_payment;
-        $year  = now()->year;
+        $mode = $request->mode_of_payment;
+        $year = now()->year;
 
         $count = match ($mode) {
-            'quarterly'   => 4,
+            'quarterly' => 4,
             'semi_annual' => 2,
-            'annual'      => 1,
+            'annual' => 1,
         };
 
         $periodLabels = match ($mode) {
-            'quarterly'   => ["Q1 {$year}", "Q2 {$year}", "Q3 {$year}", "Q4 {$year}"],
+            'quarterly' => ["Q1 {$year}", "Q2 {$year}", "Q3 {$year}", "Q4 {$year}"],
             'semi_annual' => ["1st Half {$year}", "2nd Half {$year}"],
-            'annual'      => ["{$year}"],
+            'annual' => ["{$year}"],
         };
 
         try {
@@ -218,25 +243,30 @@ class BplsApplicationReviewController extends Controller
                 foreach ($slots as $i => $slot) {
                     BplsApplicationOr::create([
                         'bpls_application_id' => $application->id,
-                        'or_assignment_id'    => $slot['or_assignment_id'],
-                        'or_number'           => $slot['or_number'],
-                        'installment_number'  => $i + 1,
-                        'period_label'        => $periodLabels[$i],
-                        'status'              => 'unpaid',
+                        'or_assignment_id' => $slot['or_assignment_id'],
+                        'or_number' => $slot['or_number'],
+                        'installment_number' => $i + 1,
+                        'period_label' => $periodLabels[$i],
+                        'status' => 'unpaid',
                     ]);
                 }
 
                 $application->update([
                     'assessment_amount' => $request->assessment_amount,
-                    'mode_of_payment'   => $request->mode_of_payment,
-                    'assessment_notes'  => $request->assessment_notes,
-                    'ors_confirmed'     => false,   // reset confirmation on re-assessment
-                    'workflow_status'   => 'assessed',
+                    'mode_of_payment' => $request->mode_of_payment,
+                    'assessment_notes' => $request->assessment_notes,
+                    'ors_confirmed' => false,   // reset confirmation on re-assessment
+                    'workflow_status' => 'assessed',
                 ]);
             });
 
-            $this->log($application, 'assessed', 'verified', 'assessed',
-                "Assessment set: ₱{$request->assessment_amount} ({$mode}). {$count} OR(s) auto-assigned.");
+            $this->log(
+                $application,
+                'assessed',
+                'verified',
+                'assessed',
+                "Assessment set: ₱{$request->assessment_amount} ({$mode}). {$count} OR(s) auto-assigned."
+            );
 
             return back()->with('success', "Assessment saved — {$count} OR number(s) auto-assigned. Please review and confirm them.");
 
@@ -253,7 +283,7 @@ class BplsApplicationReviewController extends Controller
     public function confirmOrs(Request $request, BplsApplication $application)
     {
         $request->validate([
-            'or_numbers'   => 'required|array',
+            'or_numbers' => 'required|array',
             'or_numbers.*' => 'required|string|max:50',
         ]);
 
@@ -282,7 +312,7 @@ class BplsApplicationReviewController extends Controller
 
                 $application->update([
                     'ors_confirmed' => true,
-                    'assessed_at'   => now(),
+                    'assessed_at' => now(),
                 ]);
             });
 
@@ -314,12 +344,17 @@ class BplsApplicationReviewController extends Controller
 
         $application->update([
             'workflow_status' => 'paid',
-            'or_number'       => $request->or_number,
-            'paid_at'         => now(),
+            'or_number' => $request->or_number,
+            'paid_at' => now(),
         ]);
 
-        $this->log($application, 'payment_received', 'assessed', 'paid',
-            'Payment confirmed. OR#: ' . $request->or_number);
+        $this->log(
+            $application,
+            'payment_received',
+            'assessed',
+            'paid',
+            'Payment confirmed. OR#: ' . $request->or_number
+        );
 
         return back()->with('success', 'Payment confirmed. Application is ready for final approval.');
     }
@@ -330,26 +365,59 @@ class BplsApplicationReviewController extends Controller
     public function finalApprove(Request $request, BplsApplication $application)
     {
         $request->validate([
-            'or_number'    => 'nullable|string|max:100',
+            'or_number' => 'nullable|string|max:100',
             'permit_notes' => 'nullable|string|max:1000',
+            'signatory_id' => 'nullable', // Can be numeric ID or "custom"
+            'signatory_name' => 'required_if:signatory_id,custom|required_without:signatory_id|nullable|string|max:150',
+            'signatory_position' => 'nullable|string|max:150',
+            'permit_valid_from' => 'required|date',
+            'permit_valid_until' => 'required|date|after_or_equal:permit_valid_from',
         ]);
 
         if ($application->workflow_status !== 'paid') {
             return back()->with('error', 'Application must be in the For Approval stage before issuing a permit.');
         }
 
+        // Snapshot signatory details
+        $signatoryId = is_numeric($request->signatory_id) ? $request->signatory_id : null;
+        $signatoryName = $request->signatory_name;
+        $signatoryPosition = $request->signatory_position;
+
+        if ($signatoryId) {
+            $sig = BplsPermitSignatory::find($signatoryId);
+            if ($sig) {
+                $signatoryName = $sig->name;
+                $signatoryPosition = $sig->position;
+            }
+        }
+
         $application->update([
             'workflow_status' => 'approved',
-            'or_number'       => $request->or_number ?? $application->or_number,
-            'permit_notes'    => $request->permit_notes,
-            'approved_at'     => now(),
-            'approved_by'     => Auth::id(),
+            'or_number' => $request->or_number ?? $application->or_number,
+            'permit_notes' => $request->permit_notes,
+            'signatory_id' => $request->signatory_id,
+            'signatory_name' => $signatoryName,
+            'signatory_position' => $signatoryPosition,
+            'permit_valid_from' => $request->permit_valid_from,
+            'permit_valid_until' => $request->permit_valid_until,
+            'approved_at' => now(),
+            'approved_by' => Auth::id(),
         ]);
 
-        $this->log($application, 'final_approved', 'paid', 'approved',
+        // Update the linked BusinessEntry status to approved
+        if ($application->business_entry_id) {
+            $application->businessEntry->update(['status' => 'approved']);
+        }
+
+        $this->log(
+            $application,
+            'final_approved',
+            'paid',
+            'approved',
             'Business permit issued.' .
-            ($request->or_number   ? ' OR#: ' . $request->or_number     : '') .
-            ($request->permit_notes ? ' | Notes: ' . $request->permit_notes : '')
+            ($request->or_number ? ' OR#: ' . $request->or_number : '') .
+            ($request->permit_notes ? ' | Notes: ' . $request->permit_notes : '') .
+            " Signatory: {$signatoryName}"
         );
 
         return back()->with('success', 'Business permit issued! Application is fully approved.');
@@ -370,7 +438,7 @@ class BplsApplicationReviewController extends Controller
 
         $application->update([
             'workflow_status' => 'rejected',
-            'remarks'         => $request->rejection_reason,
+            'remarks' => $request->rejection_reason,
         ]);
 
         $this->log($application, 'rejected', $prev, 'rejected', $request->rejection_reason);
@@ -386,12 +454,12 @@ class BplsApplicationReviewController extends Controller
         if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
             \App\Models\onlineBPLS\BplsActivityLog::create([
                 'bpls_application_id' => $app->id,
-                'actor_type'          => 'admin',
-                'actor_id'            => Auth::id(),
-                'action'              => $action,
-                'from_status'         => $from,
-                'to_status'           => $to,
-                'remarks'             => $remarks,
+                'actor_type' => 'admin',
+                'actor_id' => Auth::id(),
+                'action' => $action,
+                'from_status' => $from,
+                'to_status' => $to,
+                'remarks' => $remarks,
             ]);
         }
     }

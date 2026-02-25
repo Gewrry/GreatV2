@@ -2,34 +2,61 @@
 
 namespace App\Http\Livewire\Admin;
 
-use App\Http\Livewire\Livewire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
 use App\Models\EmployeeInfo;
 use App\Models\Department;
+use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-
 
 class AccountsManager extends Component
 {
     use WithPagination;
+
     protected $layout = 'layouts.admin.app';
-    // Form fields
+
+    /**
+     * Livewire automatically casts these properties to the specified types.
+     */
+    protected $casts = [
+        'selectedRoles' => 'array',
+        'editSelectedRoles' => 'array',
+        'is_super_admin' => 'boolean',
+        'editIsSuperAdmin' => 'boolean',
+    ];
+
+    // =========================================================================
+    // Create Account Form Fields
+    // =========================================================================
     public $employee_id = '';
     public $uname = '';
     public $password = '';
     public $password_confirmation = '';
+    public $selectedRoles = [];   // array of role IDs for new account
+    public $is_super_admin = false;
 
-    // Search and filter
+    // =========================================================================
+    // Edit Account Fields
+    // =========================================================================
+    public $editUserId = null;
+    public $editSelectedRoles = [];
+    public $editIsSuperAdmin = false;
+
+    // =========================================================================
+    // Search and Filter
+    // =========================================================================
     public $search = '';
     public $department = '';
 
-    // Selected employee info
+    // =========================================================================
+    // Selected employee info (for display)
+    // =========================================================================
     public $selectedEmployee = null;
 
+    // =========================================================================
     // Messages
+    // =========================================================================
     public $successMessage = '';
     public $errorMessage = '';
 
@@ -37,6 +64,9 @@ class AccountsManager extends Component
         'employee_id' => 'required|exists:employee_info,id|unique:users,employee_id',
         'uname' => 'required|string|max:255|unique:users,uname',
         'password' => 'required|string|min:8|confirmed',
+        'selectedRoles' => 'nullable|array',
+        'selectedRoles.*' => 'exists:roles,id',
+        'is_super_admin' => 'boolean',
     ];
 
     protected $messages = [
@@ -72,22 +102,33 @@ class AccountsManager extends Component
         $this->validate();
 
         try {
-            User::create([
+            $user = User::create([
                 'employee_id' => $this->employee_id,
                 'uname' => $this->uname,
                 'password' => Hash::make($this->password),
                 'encoded_date' => now(),
                 'encoded_by' => auth()->id(),
+                'is_super_admin' => $this->is_super_admin,
             ]);
 
-            // Clear form
-            $this->reset(['employee_id', 'uname', 'password', 'password_confirmation', 'selectedEmployee']);
+            // Assign roles
+            if (!empty($this->selectedRoles)) {
+                $user->roles()->sync($this->selectedRoles);
+            }
 
-            // Show success message
+            // Clear form
+            $this->reset([
+                'employee_id',
+                'uname',
+                'password',
+                'password_confirmation',
+                'selectedEmployee',
+                'selectedRoles',
+                'is_super_admin',
+            ]);
+
             $this->successMessage = 'Account created successfully!';
             $this->errorMessage = '';
-
-            // Reset pagination to show new account
             $this->resetPage();
 
         } catch (\Exception $e) {
@@ -99,11 +140,51 @@ class AccountsManager extends Component
     public function deleteAccount($id)
     {
         try {
-            User::findOrFail($id)->delete();
+            $user = User::findOrFail($id);
+            $user->roles()->detach();
+            $user->delete();
+
             $this->successMessage = 'Account deleted successfully!';
             $this->errorMessage = '';
         } catch (\Exception $e) {
             $this->errorMessage = 'Error deleting account: ' . $e->getMessage();
+            $this->successMessage = '';
+        }
+    }
+
+    /**
+     * Open the edit roles modal for a user.
+     */
+    public function openEditRoles($userId)
+    {
+        $user = User::with(['roles.modules'])->findOrFail($userId);
+        $this->editUserId = $userId;
+        $this->editSelectedRoles = $user->roles->pluck('id')->map(fn($id) => (string) $id)->toArray();
+        $this->editIsSuperAdmin = (bool) $user->is_super_admin;
+    }
+
+    /**
+     * Save the updated roles for a user.
+     */
+    public function saveRoles()
+    {
+        $this->validate([
+            'editSelectedRoles' => 'nullable|array',
+            'editSelectedRoles.*' => 'exists:roles,id',
+            'editIsSuperAdmin' => 'boolean',
+        ]);
+
+        try {
+            $user = User::findOrFail($this->editUserId);
+            $user->roles()->sync($this->editSelectedRoles ?? []);
+            $user->update(['is_super_admin' => $this->editIsSuperAdmin]);
+
+            $this->reset(['editUserId', 'editSelectedRoles', 'editIsSuperAdmin']);
+            $this->successMessage = 'Roles updated successfully!';
+            $this->errorMessage = '';
+
+        } catch (\Exception $e) {
+            $this->errorMessage = 'Error updating roles: ' . $e->getMessage();
             $this->successMessage = '';
         }
     }
@@ -116,7 +197,7 @@ class AccountsManager extends Component
             ->get();
 
         // Build accounts query
-        $query = User::with(['employee.department', 'encodedBy']);
+        $query = User::with(['employee.department', 'encodedBy', 'roles']);
 
         // Apply search filter
         if ($this->search) {
@@ -144,6 +225,9 @@ class AccountsManager extends Component
         // Get all departments for filter
         $departments = Department::orderBy('department_name')->get();
 
+        // Get all roles for assignment (with modules for display)
+        $roles = Role::with('modules')->orderBy('name')->get();
+
         // Statistics
         $totalAccounts = User::count();
         $accountsThisMonth = User::whereMonth('encoded_date', now()->month)
@@ -154,10 +238,11 @@ class AccountsManager extends Component
             ->distinct('departments.id')
             ->count('departments.id');
 
-return view('modules.admin.account_management.accounts-manager', compact(
+        return view('modules.admin.account_management.accounts-manager', compact(
             'employees',
             'accounts',
             'departments',
+            'roles',
             'totalAccounts',
             'accountsThisMonth',
             'uniqueDepartments'

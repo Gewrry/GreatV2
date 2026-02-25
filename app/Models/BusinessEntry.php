@@ -168,4 +168,21 @@ class BusinessEntry extends Model
     {
         return $this->status === 'for_renewal_payment';
     }
+
+    /**
+     * Check if this business entry came from online registration.
+     * Returns true if there's a related BplsApplication record.
+     */
+    public function isOnlineApplication(): bool
+    {
+        return \App\Models\onlineBPLS\BplsApplication::where('business_entry_id', $this->id)->exists();
+    }
+
+    /**
+     * Get the related BplsApplication if this is an online application.
+     */
+    public function bplsApplication()
+    {
+        return $this->hasOne(\App\Models\onlineBPLS\BplsApplication::class, 'business_entry_id');
+    }
 }

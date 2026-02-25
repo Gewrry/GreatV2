@@ -5,19 +5,31 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\BusinessEntry;
+use App\Models\onlineBPLS\BplsApplication;
 
 class BusinessListController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $totalCount = BusinessEntry::whereNull('deleted_at')->count();
-        $pendingCount = BusinessEntry::whereNull('deleted_at')->where('status', 'pending')->count();
-        $approvedCount = BusinessEntry::whereNull('deleted_at')->where('status', 'approved')->count();
-        $retiredCount = BusinessEntry::whereNull('deleted_at')->where('status', 'retired')->count();
-        $renewalCount = BusinessEntry::whereNull('deleted_at')
-            ->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
-        $types = BusinessEntry::whereNull('deleted_at')
-            ->distinct()->pluck('type_of_business')->filter()->sort()->values();
+        $source = $request->get('source', 'all');
+
+        $query = BusinessEntry::whereNull('deleted_at');
+
+        // Filter by source (online/walkin)
+        if ($source === 'online') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereIn('id', $onlineIds);
+        } elseif ($source === 'walkin') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereNotIn('id', $onlineIds);
+        }
+
+        $totalCount = (clone $query)->count();
+        $pendingCount = (clone $query)->where('status', 'pending')->count();
+        $approvedCount = (clone $query)->where('status', 'approved')->count();
+        $retiredCount = (clone $query)->where('status', 'retired')->count();
+        $renewalCount = (clone $query)->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
+        $types = (clone $query)->distinct()->pluck('type_of_business')->filter()->sort()->values();
 
         return view('modules.bpls.business-list', compact(
             'totalCount',
@@ -26,12 +38,23 @@ class BusinessListController extends Controller
             'retiredCount',
             'renewalCount',
             'types',
+            'source',
         ));
     }
 
     public function search(Request $request)
     {
-        $query = BusinessEntry::whereNull('deleted_at');
+        $query = BusinessEntry::whereNull('deleted_at')->with(['bplsApplication', 'bplsApplication.orAssignments', 'payments']);
+
+        // Filter by source (online/walkin)
+        $source = $request->get('source', 'all');
+        if ($source === 'online') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereIn('id', $onlineIds);
+        } elseif ($source === 'walkin') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereNotIn('id', $onlineIds);
+        }
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -190,4 +213,47 @@ class BusinessListController extends Controller
     {
         return app(BplsPaymentController::class)->approveRenewal($request, $entry);
     }
+
+
+
+    // Mark as Paid - marks the BplsApplication as paid
+    // POST /bpls/business-list/{entry}/mark-paid
+    public function markPaid(Request $request, BusinessEntry $entry)
+    {
+        $application = $entry->bplsApplication;
+
+        if (!$application) {
+            return response()->json(['message' => 'No online application found.'], 422);
+        }
+
+        if ($application->workflow_status !== 'assessed') {
+            return response()->json(['message' => 'Application is not in Payment stage.'], 422);
+        }
+
+        // Generate OR number if not provided
+        $orNumber = $request->or_number ?? 'AUTO-' . date('Ymd') . '-' . str_pad($entry->id, 6, '0', STR_PAD_LEFT);
+
+        // Mark all OR assignments as paid
+        $application->orAssignments()->where('status', 'unpaid')->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        // Update application status
+        $application->update([
+            'workflow_status' => 'paid',
+            'or_number' => $orNumber,
+            'paid_at' => now(),
+        ]);
+
+        // Update business entry status
+        $entry->update(['status' => 'approved']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment confirmed.',
+            'entry' => $entry->fresh(),
+        ]);
+    }
+
 }

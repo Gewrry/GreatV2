@@ -13,210 +13,182 @@ $counts = $counts ?? collect();
 
 
            
-        <div class="py-2">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        @include('layouts.bpls.navbar')
-        {{-- Flash --}}
-        @if(session('success'))
-            <div
-                class="mb-5 flex items-center gap-2.5 p-3.5 bg-logo-green/10 border border-logo-green/30 rounded-xl text-sm text-green font-semibold">
-                <svg class="w-4 h-4 text-logo-green shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                    stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                {{ session('success') }}
-            </div>
-        @endif
+    <div class="py-2">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @include('layouts.bpls.navbar')
 
-        {{-- Header --}}
-        <div class="mb-6 flex items-center justify-between">
-            <div>
-                <h1 class="text-2xl font-extrabold text-green tracking-tight">Application Queue</h1>
-                <p class="text-gray text-sm mt-0.5">Review, verify and process business permit applications.</p>
-            </div>
-            <span
-                class="text-xs font-semibold text-logo-teal bg-logo-teal/10 px-3 py-1 rounded-full border border-logo-teal/20">
-                BPLS {{ date('Y') }}
-            </span>
-        </div>
-
-        {{-- Status Filter Tabs --}}
-        @php
-$tabs = [
-    'submitted' => ['label' => 'For Verification', 'color' => 'blue'],
-    'returned' => ['label' => 'Returned', 'color' => 'red'],
-    'verified' => ['label' => 'For Assessment', 'color' => 'purple'],
-    'assessed' => ['label' => 'For Payment', 'color' => 'orange'],
-    'paid' => ['label' => 'For Final Approval', 'color' => 'teal'],
-    'approved' => ['label' => 'Approved', 'color' => 'green'],
-    'rejected' => ['label' => 'Rejected', 'color' => 'red'],
-    'all' => ['label' => 'All', 'color' => 'gray'],
-];
-$tabColors = [
-    'blue' => ['active' => 'bg-blue-100 text-blue-700 border-blue-300', 'badge' => 'bg-blue-200 text-blue-800'],
-    'red' => ['active' => 'bg-red-100 text-red-700 border-red-300', 'badge' => 'bg-red-200 text-red-800'],
-    'purple' => ['active' => 'bg-purple-100 text-purple-700 border-purple-300', 'badge' => 'bg-purple-200 text-purple-800'],
-    'orange' => ['active' => 'bg-orange-100 text-orange-700 border-orange-300', 'badge' => 'bg-orange-200 text-orange-800'],
-    'teal' => ['active' => 'bg-logo-teal/10 text-logo-teal border-logo-teal/30', 'badge' => 'bg-logo-teal/20 text-logo-teal'],
-    'green' => ['active' => 'bg-green-100 text-green-700 border-green-300', 'badge' => 'bg-green-200 text-green-800'],
-    'gray' => ['active' => 'bg-lumot/30 text-green border-lumot/60', 'badge' => 'bg-lumot/40 text-gray'],
-];
-        @endphp
-
-        <div class="flex gap-1.5 flex-wrap mb-5">
-            @foreach($tabs as $key => $tab)
-                @php $isActive = $status === $key;
-    $tc = $tabColors[$tab['color']]; @endphp
-                <a href="{{ request()->fullUrlWithQuery(['status' => $key]) }}"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
-                          {{ $isActive ? $tc['active'] . ' shadow-sm' : 'bg-white text-gray/60 border-lumot/20 hover:bg-lumot/10' }}">
-                    {{ $tab['label'] }}
-                    @if(isset($counts[$key]) && $counts[$key] > 0)
-                        <span
-                            class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold {{ $isActive ? $tc['badge'] : 'bg-lumot/30 text-gray/60' }}">
-                            {{ $counts[$key] }}
-                        </span>
-                    @endif
-                </a>
-            @endforeach
-        </div>
-
-        {{-- Search --}}
-        <form method="GET" class="mb-5">
-            <input type="hidden" name="status" value="{{ $status }}">
-            <div class="relative max-w-sm">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray/40" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input type="text" name="search" value="{{ $search }}" placeholder="Search by name, business, app no..."
-                    class="w-full pl-9 pr-4 py-2 text-sm border border-lumot/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white placeholder-gray/30">
-            </div>
-        </form>
-
-        {{-- Table --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-lumot/20 overflow-hidden">
-            @if($applications->isEmpty())
-                <div class="py-16 text-center">
-                    <svg class="w-12 h-12 text-lumot/40 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                        stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p class="text-sm font-bold text-gray/40">No applications found</p>
-                    <p class="text-xs text-gray/30 mt-1">Try a different status filter or search term</p>
-                </div>
-            @else
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-lumot/20 bg-lumot/5">
-                            <th
-                                class="text-left text-[10px] font-extrabold text-gray/50 uppercase tracking-wider px-5 py-3">
-                                Application</th>
-                            <th
-                                class="text-left text-[10px] font-extrabold text-gray/50 uppercase tracking-wider px-4 py-3">
-                                Business</th>
-                            <th
-                                class="text-left text-[10px] font-extrabold text-gray/50 uppercase tracking-wider px-4 py-3">
-                                Owner</th>
-                            <th
-                                class="text-left text-[10px] font-extrabold text-gray/50 uppercase tracking-wider px-4 py-3">
-                                Docs</th>
-                            <th
-                                class="text-left text-[10px] font-extrabold text-gray/50 uppercase tracking-wider px-4 py-3">
-                                Status</th>
-                            <th
-                                class="text-left text-[10px] font-extrabold text-gray/50 uppercase tracking-wider px-4 py-3">
-                                Submitted</th>
-                            <th class="px-4 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-lumot/10">
-                        @foreach($applications as $app)
-                            @php
-        $statusBadge = [
-            'submitted' => 'bg-blue-100 text-blue-700 border-blue-200',
-            'returned' => 'bg-red-100 text-red-700 border-red-200',
-            'verified' => 'bg-purple-100 text-purple-700 border-purple-200',
-            'assessed' => 'bg-orange-100 text-orange-700 border-orange-200',
-            'paid' => 'bg-logo-teal/10 text-logo-teal border-logo-teal/20',
-            'approved' => 'bg-green-100 text-green-700 border-green-200',
-            'rejected' => 'bg-red-100 text-red-700 border-red-200',
-        ][$app->workflow_status] ?? 'bg-lumot/20 text-gray border-lumot/30';
-
-        $docCount = $app->documents->count();
-        $verifiedCount = $app->documents->where('status', 'verified')->count();
-        $rejectedCount = $app->documents->where('status', 'rejected')->count();
-                            @endphp
-                            <tr class="hover:bg-lumot/5 transition-colors">
-                                <td class="px-5 py-3.5">
-                                    <p class="text-xs font-extrabold text-logo-teal">{{ $app->application_number }}</p>
-                                    <p class="text-[10px] text-gray/50 mt-0.5">{{ ucfirst($app->application_type) }} ·
-                                        {{ $app->permit_year }}</p>
-                                </td>
-                                <td class="px-4 py-3.5">
-                                    <p class="text-sm font-bold text-green truncate max-w-[180px]">
-                                        {{ $app->business?->business_name }}</p>
-                                    @if($app->business?->trade_name)
-                                        <p class="text-[10px] text-gray/50">{{ $app->business->trade_name }}</p>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3.5">
-                                    <p class="text-sm font-semibold text-green">
-                                        {{ $app->owner?->last_name }}, {{ $app->owner?->first_name }}
-                                    </p>
-                                    <p class="text-[10px] text-gray/50">{{ $app->owner?->mobile_no }}</p>
-                                </td>
-                                <td class="px-4 py-3.5">
-                                    @if($docCount > 0)
-                                        <div class="flex items-center gap-1">
-                                            <span class="text-xs font-bold text-green">{{ $verifiedCount }}/{{ $docCount }}</span>
-                                            @if($rejectedCount > 0)
-                                                <span class="text-[10px] font-bold text-red-500">({{ $rejectedCount }} rejected)</span>
-                                            @endif
-                                        </div>
-                                        <div class="w-16 h-1.5 bg-lumot/30 rounded-full mt-1 overflow-hidden">
-                                            <div class="h-full bg-logo-green rounded-full"
-                                                style="width: {{ $docCount > 0 ? ($verifiedCount / $docCount * 100) : 0 }}%"></div>
-                                        </div>
-                                    @else
-                                        <span class="text-[10px] text-gray/30">None</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3.5">
-                                    <span
-                                        class="text-[10px] font-bold px-2 py-1 rounded-full border {{ $statusBadge }} capitalize whitespace-nowrap">
-                                        {{ str_replace('_', ' ', $app->workflow_status) }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3.5">
-                                    <p class="text-xs text-gray/60">{{ $app->submitted_at?->format('M d, Y') ?? '—' }}</p>
-                                    <p class="text-[10px] text-gray/40">{{ $app->submitted_at?->diffForHumans() }}</p>
-                                </td>
-                                <td class="px-4 py-3.5 text-right">
-                                    <a href="{{ route('bpls.online.application.show', $app->id) }}"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-logo-teal text-white text-xs font-bold rounded-lg hover:bg-green transition-colors shadow-sm shadow-logo-teal/20">
-                                        Review
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                            stroke-width="2.5">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-
-                {{-- Pagination --}}
-                @if($applications->hasPages())
-                    <div class="px-5 py-3 border-t border-lumot/20">
-                        {{ $applications->links() }}
+            <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-6 rounded-3xl shadow-sm border border-lumot/20 mt-4">
+                
+                {{-- Flash --}}
+                @if(session('success'))
+                    <div class="mb-5 flex items-center gap-2.5 p-3.5 bg-logo-green/10 border border-logo-green/30 rounded-xl text-sm text-green font-semibold animate-in fade-in slide-in-from-top-4 duration-300">
+                        <svg class="w-4 h-4 text-logo-green shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        {{ session('success') }}
                     </div>
                 @endif
-            @endif
+
+                {{-- Header --}}
+                <div class="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-black text-green tracking-tight">Application Queue</h1>
+                        <p class="text-gray text-sm mt-1 font-medium italic opacity-80">Process and manage incoming business permit applications with ease.</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-logo-teal bg-logo-teal/10 px-3 py-1.5 rounded-full border border-logo-teal/20 shadow-sm">
+                            BPLS {{ date('Y') }}
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Status Filter Tabs --}}
+                @php
+                    $tabs = [
+                        'submitted' => ['label' => 'For Verification', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+                        'returned' => ['label' => 'Returned', 'icon' => 'M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3'],
+                        'verified' => ['label' => 'For Assessment', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'],
+                        'assessed' => ['label' => 'For Payment', 'icon' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+                        'paid' => ['label' => 'Final Approval', 'icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'],
+                        'approved' => ['label' => 'Approved', 'icon' => 'M5 13l4 4L19 7'],
+                        'rejected' => ['label' => 'Rejected', 'icon' => 'M6 18L18 6M6 6l12 12'],
+                        'all' => ['label' => 'All Applications', 'icon' => 'M4 6h16M4 10h16M4 14h16M4 18h16'],
+                    ];
+                @endphp
+
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-8">
+                    @foreach($tabs as $key => $tab)
+                        @php $isActive = $status === $key; @endphp
+                        <a href="{{ request()->fullUrlWithQuery(['status' => $key]) }}"
+                           class="group relative flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-300
+                                  {{ $isActive 
+                                     ? 'bg-logo-teal text-white border-logo-teal shadow-lg shadow-logo-teal/20 scale-105 z-10' 
+                                     : 'bg-white text-gray/60 border-lumot/20 hover:border-logo-teal/40 hover:bg-logo-teal/5 hover:text-logo-teal' }}">
+                            <svg class="w-5 h-5 mb-1.5 {{ $isActive ? 'text-white' : 'text-logo-teal/40 group-hover:text-logo-teal/70' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="{{ $tab['icon'] }}" />
+                            </svg>
+                            <span class="text-[10px] font-black uppercase text-center tracking-tight leading-none">{{ $tab['label'] }}</span>
+                            @if(isset($counts[$key]) && $counts[$key] > 0)
+                                <span class="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-lg text-[10px] font-black shadow-sm
+                                             {{ $isActive ? 'bg-white text-logo-teal' : 'bg-logo-teal text-white' }}">
+                                    {{ $counts[$key] }}
+                                </span>
+                            @endif
+                        </a>
+                    @endforeach
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-lumot/20 overflow-hidden">
+                    {{-- Search & Controls --}}
+                    <div class="p-4 border-b border-lumot/10 bg-bluebody/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <form action="{{ route('bpls.online.application.index') }}" method="GET" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 max-w-lg">
+                            <input type="hidden" name="status" value="{{ $status }}">
+                            <div class="relative flex-1 group">
+                                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray/40 group-focus-within:text-logo-teal transition-colors" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input type="text" name="search" value="{{ $search }}" placeholder="Search by name, business, app no..."
+                                    class="w-full pl-9 pr-4 py-2.5 text-sm border border-lumot/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white placeholder-gray/30 transition-all font-medium">
+                            </div>
+                        </form>
+
+                        @if(method_exists($applications, 'hasPages') && $applications->hasPages())
+                            <div class="flex-shrink-0 ajax-pagination-top">
+                                {{ $applications->links() }}
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Application Queue Table Container --}}
+                    <div id="queue-container">
+                        @include('modules.bpls.onlineBPLS.application._list')
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('queue-container');
+        const searchInput = document.querySelector('input[name="search"]');
+        const searchForm = searchInput.closest('form');
+        const tabLinks = document.querySelectorAll('a[href*="status="]');
+        let currentStatus = '{{ $status }}';
+        let debounceTimer;
+
+        // --- REAL-TIME SEARCH (Debounced) ---
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                updateQueue();
+            }, 300);
+        });
+
+        // Prevent form reload
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateQueue();
+        });
+
+        // --- STATUS TAB SWITCHING (AJAX) ---
+        tabLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const url = new URL(this.href);
+                currentStatus = url.searchParams.get('status');
+                
+                // Update active tab UI
+                tabLinks.forEach(t => {
+                    t.classList.remove('shadow-sm', 'bg-blue-100', 'text-blue-700', 'border-blue-300', 'bg-red-100', 'text-red-700', 'border-red-300', 'bg-purple-100', 'text-purple-700', 'border-purple-300', 'bg-orange-100', 'text-orange-700', 'border-orange-300', 'bg-logo-teal/10', 'text-logo-teal', 'border-logo-teal/30', 'bg-green-100', 'text-green-700', 'border-green-300', 'bg-lumot/30', 'border-lumot/60');
+                    t.classList.add('bg-white', 'text-gray/60', 'border-lumot/20', 'hover:bg-lumot/10');
+                });
+                
+                this.classList.remove('bg-white', 'text-gray/60', 'border-lumot/20', 'hover:bg-lumot/10');
+                // Note: Simplified logic here for UI feedback, full state update happens via HTML reload
+                
+                updateQueue(this.href);
+            });
+        });
+
+        // --- AJAX PAGINATION ---
+        container.addEventListener('click', function(e) {
+            const link = e.target.closest('.ajax-pagination a');
+            if (link) {
+                e.preventDefault();
+                updateQueue(link.href);
+            }
+        });
+
+        // --- CORE UPDATE LOGIC ---
+        function updateQueue(url = null) {
+            const search = searchInput.value;
+            const finalUrl = url || `{{ route('bpls.online.application.index') }}?status=${currentStatus}&search=${encodeURIComponent(search)}`;
+
+            container.style.opacity = '0.5';
+            container.style.pointerEvents = 'none';
+
+            fetch(finalUrl, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.text())
+            .then(html => {
+                container.innerHTML = html;
+                container.style.opacity = '1';
+                container.style.pointerEvents = 'auto';
+                
+                window.history.pushState({}, '', finalUrl);
+            })
+            .catch(error => {
+                console.error('Error updating queue:', error);
+                container.style.opacity = '1';
+                container.style.pointerEvents = 'auto';
+            });
+        }
+    });
+</script>
     </div>
 </div>
 </x-admin.app>

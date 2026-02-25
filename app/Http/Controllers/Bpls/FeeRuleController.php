@@ -8,26 +8,25 @@ use App\Models\Bpls\FeeRule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class FeeRuleController extends Controller
 {
-    // ── Scale code map ────────────────────────────────────────────────────────
     private const SCALE_MAP = [
         'Micro' => 1,
         'Small' => 2,
         'Medium' => 3,
         'Large' => 4,
+        'Enterprise' => 5,
     ];
 
     // ─────────────────────────────────────────────────────────────────────────
     // GET /bpls/fee-rules
-    // Returns all rules ordered for the manager page.
     // ─────────────────────────────────────────────────────────────────────────
     public function index(): JsonResponse
     {
         try {
-            $rules = FeeRule::ordered()->get();
-            return response()->json($rules);
+            return response()->json(FeeRule::ordered()->get());
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
@@ -61,9 +60,7 @@ class FeeRuleController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function update(Request $request, FeeRule $feeRule): JsonResponse
     {
-        $data = $this->validated($request);
-        $feeRule->update($data);
-
+        $feeRule->update($this->validated($request));
         return response()->json(['rule' => $feeRule->fresh()]);
     }
 
@@ -78,22 +75,18 @@ class FeeRuleController extends Controller
 
     // ─────────────────────────────────────────────────────────────────────────
     // POST /bpls/fee-rules/reorder
-    // Body: { ids: [3, 1, 5, 2, 4, 6, 7] }  — ordered array of rule IDs
     // ─────────────────────────────────────────────────────────────────────────
     public function reorder(Request $request): JsonResponse
     {
         $request->validate(['ids' => 'required|array', 'ids.*' => 'integer']);
-
         foreach ($request->ids as $order => $id) {
             FeeRule::where('id', $id)->update(['sort_order' => $order + 1]);
         }
-
         return response()->json(['reordered' => true]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // POST /bpls/fee-rules/toggle/{rule}
-    // Quickly flip enabled / disabled without a full update.
     // ─────────────────────────────────────────────────────────────────────────
     public function toggle(FeeRule $feeRule): JsonResponse
     {
@@ -103,39 +96,51 @@ class FeeRuleController extends Controller
 
     // ─────────────────────────────────────────────────────────────────────────
     // POST /bpls/fee-rules/reset-defaults
-    // Wipe all rules and re-seed LGU defaults.
     // ─────────────────────────────────────────────────────────────────────────
     public function resetDefaults(): JsonResponse
     {
         try {
             \DB::transaction(function () {
-                // Use delete() instead of truncate() to avoid FK/InnoDB issues
                 FeeRule::query()->delete();
-
                 foreach (FeeRule::defaultRules() as $data) {
                     FeeRule::create($data);
                 }
             });
-
             return response()->json([
                 'rules' => FeeRule::ordered()->get(),
                 'success' => true,
             ]);
         } catch (\Throwable $e) {
-            return response()->json([
-                'message' => 'Reset failed: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['message' => 'Reset failed: ' . $e->getMessage()], 500);
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // POST /bpls/fee-rules/compute
-    // Used by the Assess modal to compute the full fee breakdown from the DB.
     //
-    // Body:
-    //   capital_investment : float   (gross sales)
-    //   business_scale     : string  ("Micro (Assets up to P3M)", etc.)
-    //   mode_of_payment    : string  (annual | semi_annual | quarterly)
+    // FIXES:
+    //
+    // FIX 1 — Base Value "₱1.00" is gone
+    //   The old hardcoded JS used "1" as a dummy base for flat/scale fees,
+    //   which printed "₱1.00" in the Base Value column. That was meaningless.
+    //   Correct display:
+    //     gross_sales rules → actual gross sales amount  (e.g. ₱200,000.00)
+    //     scale rules       → scale tier label           (e.g. "Micro")
+    //     flat rules        → null → blade shows "—"     (no variable base)
+    //
+    // FIX 2 — February 16 date is gone, replaced with correct RA 7160 dates
+    //   February 16 has no basis in RA 7160 or any standard LGU ordinance.
+    //   Correct deadlines per Section 165, Local Government Code of the PH:
+    //     Annual:     January 20
+    //     Semi-Ann:   January 20  |  July 20
+    //     Quarterly:  January 20  |  April 20  |  July 20  |  October 20
+    //
+    // FIX 3 — Dates are fully dynamic
+    //   The permit year is calculated from today's date, not hardcoded.
+    //   Oct/Nov/Dec → permit year = next year (renewal season)
+    //   Jan–Sep     → permit year = current year
+    //   Past deadlines are flagged "(Overdue)" for the officer to apply
+    //   the correct 25% surcharge per Section 168 of RA 7160.
     // ─────────────────────────────────────────────────────────────────────────
     public function compute(Request $request): JsonResponse
     {
@@ -149,8 +154,6 @@ class FeeRuleController extends Controller
         $scaleCode = $this->scaleCode($request->business_scale ?? '');
         $mode = $request->mode_of_payment;
 
-        $rules = FeeRule::active()->get();
-
         $scaleLabels = [
             1 => 'Micro',
             2 => 'Small',
@@ -159,28 +162,33 @@ class FeeRuleController extends Controller
             5 => 'Enterprise',
         ];
 
+        $rules = FeeRule::active()->ordered()->get();
+
         $fees = $rules->map(function (FeeRule $rule) use ($gs, $scaleCode, $scaleLabels) {
             $amount = $rule->compute($gs, $scaleCode);
-            // base_display: what to show in the "Base Value" column of the assessment table
-            $baseDisplay = match ($rule->base_type) {
-                'gross_sales' => $gs,          // numeric → blade formats as ₱xxx
-                'scale' => null,         // null → blade shows scale label
-                default => null,         // flat → blade shows "—"
+
+            // Base Value column:
+            //   gross_sales → actual ₱ amount   (the gross sales figure)
+            //   scale       → scale tier label   (e.g. "Micro", "Small")
+            //   flat        → null               (renders as "—" in blade)
+            $base = match ($rule->base_type) {
+                'gross_sales' => $gs,
+                'scale' => $scaleLabels[$scaleCode] ?? 'Micro',
+                default => null,
             };
+
             return [
                 'id' => $rule->id,
                 'name' => $rule->name,
                 'base_type' => $rule->base_type,
-                'base' => $baseDisplay,
-                'scale_label' => $scaleLabels[$scaleCode] ?? 'Micro',
+                'base' => $base,
                 'amount' => round($amount, 2),
             ];
         });
 
-        $totalDue = $fees->sum('amount');
-        $schedule = $this->buildSchedule($totalDue, $mode);
+        $totalDue = round($fees->sum('amount'), 2);
 
-        $installments = match ($mode) {
+        $installmentCount = match ($mode) {
             'quarterly' => 4,
             'semi_annual' => 2,
             default => 1,
@@ -188,16 +196,87 @@ class FeeRuleController extends Controller
 
         return response()->json([
             'fees' => $fees,
-            'total_due' => round($totalDue, 2),
-            'per_installment' => round($totalDue / $installments, 2),
-            'schedule' => $schedule,
+            'total_due' => $totalDue,
+            'per_installment' => round($totalDue / $installmentCount, 2),
+            'schedule' => $this->buildSchedule($totalDue, $mode),
         ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Internal helpers
+    // buildSchedule()
+    //
+    // Correct Philippine LGU payment deadlines — RA 7160 Section 165:
+    //
+    //   Annual     → January 20  (full amount)
+    //   Semi-Ann   → January 20  (1st half)   +  July 20     (2nd half)
+    //   Quarterly  → January 20  (Q1)  +  April 20 (Q2)
+    //                July 20     (Q3)  +  October 20 (Q4)
+    //
+    // Dynamic permit year:
+    //   Oct, Nov, Dec  →  next year  (businesses renewing for next permit year)
+    //   Jan through Sep →  current year
+    //
+    // Overdue detection:
+    //   Compares each due date against today (Asia/Manila).
+    //   If the deadline has passed, appends "(Overdue)" to the label.
+    //   This tells the BPLO officer a 25% surcharge applies (Sec. 168 RA 7160).
+    //   Dates are NEVER silently shifted forward.
     // ─────────────────────────────────────────────────────────────────────────
+    private function buildSchedule(float $total, string $mode): array
+    {
+        $now = Carbon::now('Asia/Manila');
+        $permitYear = ($now->month >= 10) ? ($now->year + 1) : $now->year;
 
+        // Build one schedule row — mark it overdue if the deadline already passed
+        $row = function (int $month, int $day, float $amount) use ($permitYear, $now): array {
+            $due = Carbon::create($permitYear, $month, $day, 0, 0, 0, 'Asia/Manila');
+            $isLate = $due->startOfDay()->lt($now->copy()->startOfDay());
+            $label = $due->format('F j, Y');
+
+            return [
+                'date' => $isLate ? "{$label} (Overdue)" : $label,
+                'amount' => round($amount, 2),
+                'overdue' => $isLate,
+                'due_raw' => $due->toDateString(),
+            ];
+        };
+
+        return match ($mode) {
+
+            // Annual — January 20 only
+            'annual' => [
+                $row(1, 20, $total),
+            ],
+
+            // Semi-Annual — January 20 and July 20
+            'semi_annual' => (function () use ($total, $row): array{
+                    $half = round($total / 2, 2);
+                    $rem = round($total - $half, 2);
+                    return [
+                    $row(1, 20, $half),
+                    $row(7, 20, $rem),
+                    ];
+                })(),
+
+            // Quarterly — Jan 20, Apr 20, Jul 20, Oct 20
+            'quarterly' => (function () use ($total, $row): array{
+                    $q = round($total / 4, 2);
+                    $rem = round($total - ($q * 3), 2);
+                    return [
+                    $row(1, 20, $q),
+                    $row(4, 20, $q),
+                    $row(7, 20, $q),
+                    $row(10, 20, $rem),
+                    ];
+                })(),
+
+            default => [],
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
     private function scaleCode(string $scale): int
     {
         foreach (self::SCALE_MAP as $keyword => $code) {
@@ -205,33 +284,7 @@ class FeeRuleController extends Controller
                 return $code;
             }
         }
-        return 1; // default Micro
-    }
-
-    private function buildSchedule(float $total, string $mode): array
-    {
-        $year = now()->year;
-
-        return match ($mode) {
-            'annual' => [
-                ['date' => "January 20, {$year}", 'amount' => round($total, 2)],
-            ],
-            'semi_annual' => [
-                ['date' => "February 16, {$year}", 'amount' => round($total / 2, 2)],
-                ['date' => "July 20, {$year}", 'amount' => round($total - round($total / 2, 2), 2)],
-            ],
-            'quarterly' => (function () use ($total, $year) {
-                    $q = round($total / 4, 2);
-                    $rem = round($total - $q * 3, 2);
-                    return [
-                    ['date' => "February 16, {$year}", 'amount' => $q],
-                    ['date' => "April 20, {$year}", 'amount' => $q],
-                    ['date' => "July 20, {$year}", 'amount' => $q],
-                    ['date' => "October 20, {$year}", 'amount' => $rem],
-                    ];
-                })(),
-            default => [],
-        };
+        return 1;
     }
 
     private function validated(Request $request): array

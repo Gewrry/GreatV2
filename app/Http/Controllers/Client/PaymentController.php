@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 class PaymentController extends Controller
 {
     // -----------------------------------------------------------------------
-    // INDEX — assessed/paid/approved applications grouped by payment status
+    // INDEX
     // -----------------------------------------------------------------------
     public function index()
     {
@@ -28,40 +28,37 @@ class PaymentController extends Controller
             ->latest()
             ->get();
 
-        $applications->each(function ($app) {
-            $app->installments = $this->buildInstallments($app);
-        });
+        $applications->each(fn($app) => $app->installments = $this->buildInstallments($app));
 
         $grouped = [
             'pending' => $applications->filter(fn($a) => $a->workflow_status === 'assessed'),
             'partial' => $applications->filter(fn($a) => $a->workflow_status === 'paid'),
-            'paid'    => $applications->filter(fn($a) => $a->workflow_status === 'approved'),
+            'paid' => $applications->filter(fn($a) => $a->workflow_status === 'approved'),
         ];
 
         return view('client.payments.index', compact('grouped'));
     }
 
     // -----------------------------------------------------------------------
-    // SHOW — payment page
+    // SHOW
     // -----------------------------------------------------------------------
     public function show(BplsApplication $application)
     {
         $this->authorizeClient($application);
         $application->load(['business', 'payment']);
         $installments = $this->buildInstallments($application);
-
         return view('client.applications.payment', compact('application', 'installments'));
     }
 
     // -----------------------------------------------------------------------
-    // INITIATE — create PayMongo payment link, redirect to checkout
+    // INITIATE — modal submits here, creates PayMongo link, redirects client
     // -----------------------------------------------------------------------
     public function initiate(Request $request, BplsApplication $application)
     {
         $this->authorizeClient($application);
 
         $request->validate([
-            'payment_method'     => 'required|in:gcash,maya,card,landbank,over_the_counter',
+            'payment_method' => 'required|in:gcash,maya,card,landbank,over_the_counter',
             'installment_number' => 'nullable|integer|min:1',
         ]);
 
@@ -72,164 +69,202 @@ class PaymentController extends Controller
         $installmentNumber = (int) ($request->installment_number ?? 1);
         $installmentAmount = round($application->installment_amount, 2);
 
-        // ── Over the Counter: no gateway, just record and instruct ────────
+        // Over the Counter — no gateway
         if ($request->payment_method === 'over_the_counter') {
             $payment = $this->findOrCreatePayment($application, $installmentNumber, $installmentAmount, 'over_the_counter');
-
-            return redirect()
-                ->route('client.payment.show', $application->id)
-                ->with('success', 'Please proceed to the Municipal Treasury with your Application No. ' . $application->application_number . '. Reference: ' . $payment->reference_number);
+            return redirect()->route('client.payments.index')
+                ->with('success', 'Please proceed to the Municipal Treasury with Application No. ' . $application->application_number . '. Reference: ' . $payment->reference_number);
         }
 
-        // ── LandBank: similar manual flow ─────────────────────────────────
+        // LandBank — manual
         if ($request->payment_method === 'landbank') {
             $payment = $this->findOrCreatePayment($application, $installmentNumber, $installmentAmount, 'landbank');
-
-            return redirect()
-                ->route('client.payment.show', $application->id)
-                ->with('success', 'Please proceed to LandBank and use Reference No. ' . $payment->reference_number . ' when paying.');
+            return redirect()->route('client.payments.index')
+                ->with('success', 'Please proceed to LandBank. Reference No: ' . $payment->reference_number);
         }
 
-        // ── PayMongo: GCash, Maya, Card ───────────────────────────────────
+        // PayMongo — GCash, Maya, Card
         $payment = $this->findOrCreatePayment($application, $installmentNumber, $installmentAmount, $request->payment_method);
+        $secretKey = config('services.paymongo.secret_key');
 
-        // Map method to PayMongo source type
-        $sourceType = match($request->payment_method) {
-            'gcash' => 'gcash',
-            'maya'  => 'paymaya',
-            'card'  => 'card',
-            default => 'gcash',
-        };
+        if (empty($secretKey)) {
+            return back()->with('error', 'Payment gateway is not configured. Please contact the administrator.');
+        }
 
         try {
-            $response = Http::withBasicAuth(config('services.paymongo.secret_key'), '')
+            // Build the success URL — PayMongo will redirect client here after paying
+            $successUrl = route('client.payment.success', $application->id)
+                . '?link_id=' . $payment->reference_number; // will be overwritten after we get the real link ID
+
+            $response = Http::withBasicAuth($secretKey, '')
                 ->post('https://api.paymongo.com/v1/links', [
                     'data' => [
                         'attributes' => [
-                            'amount'      => (int) round($installmentAmount * 100), // centavos
-                            'description' => 'Business Permit Fee — ' . $application->application_number
-                                           . ($application->installment_count > 1 ? ' (Installment ' . $installmentNumber . ' of ' . $application->installment_count . ')' : ''),
-                            'remarks'     => $payment->reference_number,
+                            'amount' => (int) round($installmentAmount * 100),
+                            'description' => 'Business Permit — ' . $application->application_number
+                                . ($application->installment_count > 1
+                                    ? ' (Installment ' . $installmentNumber . ' of ' . $application->installment_count . ')'
+                                    : ''),
+                            'remarks' => $payment->reference_number,
                         ],
                     ],
                 ]);
 
             if ($response->successful()) {
                 $data = $response->json('data');
+                $linkId = $data['id'];
 
                 $payment->update([
-                    'gateway_transaction_id' => $data['id'],
-                    'gateway_response'       => $data,
-                    'status'                 => 'pending',
+                    'gateway_transaction_id' => $linkId,
+                    'paymongo_payment_intent_id' => $linkId,
+                    'paymongo_checkout_url' => $data['attributes']['checkout_url'],
+                    'gateway_response' => $data,
+                    'status' => 'pending',
                 ]);
 
-                // Redirect client to PayMongo hosted checkout
-                return redirect($data['attributes']['checkout_url']);
+                // Append the real link_id to the checkout URL so PayMongo passes it back on redirect
+                $checkoutUrl = $data['attributes']['checkout_url'];
+
+                // Redirect client to PayMongo — after paying, PayMongo sends them back to our success route
+                return redirect($checkoutUrl);
             }
 
             $errorMsg = $response->json('errors.0.detail') ?? 'Payment gateway error.';
-            return back()->with('error', $errorMsg . ' Please try again or choose another method.');
+            return redirect()->route('client.payments.index')->with('error', $errorMsg);
 
         } catch (\Exception $e) {
-            Log::error('PayMongo initiate error', ['error' => $e->getMessage(), 'application' => $application->id]);
-            return back()->with('error', 'Could not connect to payment gateway. Please try again later.');
+            Log::error('PayMongo initiate error', ['error' => $e->getMessage()]);
+            return redirect()->route('client.payments.index')
+                ->with('error', 'Could not connect to payment gateway. Please try again later.');
         }
     }
 
     // -----------------------------------------------------------------------
-    // SUCCESS — PayMongo redirects here after checkout
+    // SUCCESS — PayMongo redirects client here after paying
+    // This automatically verifies with PayMongo and marks as paid.
+    // NO back office action needed.
     // -----------------------------------------------------------------------
     public function success(Request $request, BplsApplication $application)
     {
-        // Guard: must belong to logged-in client
         if ($application->client_id !== Auth::guard('client')->id()) {
             abort(403);
         }
 
-        $linkId = $request->query('link_id');
+        // PayMongo passes the link ID as a query param when redirecting back
+        $linkId = $request->query('link_id')
+            ?? $request->query('id')
+            ?? null;
 
-        // Find the payment by gateway transaction ID
-        $payment = BplsOnlinePayment::where('bpls_application_id', $application->id)
-            ->where('gateway_transaction_id', $linkId)
-            ->first();
+        // Find the payment record
+        $payment = $linkId
+            ? BplsOnlinePayment::where('bpls_application_id', $application->id)
+                ->where('gateway_transaction_id', $linkId)
+                ->first()
+            : BplsOnlinePayment::where('bpls_application_id', $application->id)
+                ->where('status', 'pending')
+                ->whereNotNull('gateway_transaction_id')
+                ->latest()
+                ->first();
 
         if (!$payment) {
-            return redirect()
-                ->route('client.applications.show', $application->id)
-                ->with('error', 'Payment record not found.');
+            return redirect()->route('client.payments.index')
+                ->with('error', 'Payment record not found. If you were charged, please contact the office.');
         }
 
-        // Verify with PayMongo
+        // Already confirmed — don't re-verify
+        if ($payment->isPaid()) {
+            return redirect()->route('client.payments.index')
+                ->with('success', '✅ Payment already confirmed! Reference No: ' . $payment->reference_number);
+        }
+
+        $secretKey = config('services.paymongo.secret_key');
+
         try {
-            $response = Http::withBasicAuth(config('services.paymongo.secret_key'), '')
-                ->get('https://api.paymongo.com/v1/links/' . $linkId);
+            // Verify payment status with PayMongo API
+            $response = Http::withBasicAuth($secretKey, '')
+                ->get('https://api.paymongo.com/v1/links/' . $payment->gateway_transaction_id);
 
             if ($response->successful()) {
-                $data   = $response->json('data');
+                $data = $response->json('data');
                 $status = $data['attributes']['status'] ?? null;
 
                 if ($status === 'paid') {
+                    // AUTO-CONFIRM: mark paid, update application, no back office needed
                     $this->confirmPayment($payment, $application, $data);
 
-                    return redirect()
-                        ->route('client.applications.show', $application->id)
-                        ->with('success', '✅ Payment confirmed! Your application has been forwarded for final approval.');
+                    return redirect()->route('client.payments.index')
+                        ->with('success', '✅ Payment confirmed! Reference No: ' . $payment->reference_number . '. Your application is now being processed.');
+                }
+
+                // PayMongo shows pending — could be processing
+                if ($status === 'pending') {
+                    return redirect()->route('client.payments.index')
+                        ->with('success', '⏳ Payment is being processed. This page will update automatically once confirmed.');
                 }
             }
         } catch (\Exception $e) {
-            Log::error('PayMongo verify error', ['error' => $e->getMessage()]);
+            Log::error('PayMongo success verify error', ['error' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('client.applications.show', $application->id)
-            ->with('error', 'Payment could not be verified. If you were charged, the Treasury will reconcile it shortly.');
+        // Fallback — payment might still be processing
+        return redirect()->route('client.payments.index')
+            ->with('success', '⏳ Payment submitted. Your payment is being verified. Please refresh in a few minutes.');
     }
 
     // -----------------------------------------------------------------------
-    // WEBHOOK — PayMongo server-to-server event (reliable confirmation)
+    // WEBHOOK — PayMongo calls this server-to-server after payment
+    // This is the most RELIABLE confirmation — works even if client closes browser
     // -----------------------------------------------------------------------
     public function webhook(Request $request)
     {
-        // Verify PayMongo webhook signature
+        // Verify webhook signature
         $sigHeader = $request->header('Paymongo-Signature');
-        $secret    = config('services.paymongo.webhook_secret');
+        $secret = config('services.paymongo.webhook_secret');
 
         if ($secret && $sigHeader) {
-            [$tPart, $tePart] = array_pad(explode(',', $sigHeader), 2, '');
-            $timestamp  = ltrim($tPart, 't=');
-            $testSig    = ltrim($tePart, 'te=');
-            $payload    = $timestamp . '.' . $request->getContent();
-            $computed   = hash_hmac('sha256', $payload, $secret);
+            $parts = [];
+            foreach (explode(',', $sigHeader) as $part) {
+                [$k, $v] = array_pad(explode('=', $part, 2), 2, '');
+                $parts[$k] = $v;
+            }
+            $timestamp = $parts['t'] ?? '';
+            $testSig = $parts['te'] ?? '';
+            $payload = $timestamp . '.' . $request->getContent();
+            $computed = hash_hmac('sha256', $payload, $secret);
 
             if (!hash_equals($computed, $testSig)) {
+                Log::warning('PayMongo webhook: invalid signature');
                 return response()->json(['error' => 'Invalid signature'], 401);
             }
         }
 
-        $event = $request->json('data.attributes.type');
-        $data  = $request->json('data.attributes.data');
+        $type = $request->input('data.attributes.type');
+        $data = $request->input('data.attributes.data');
 
-        if ($event === 'link.payment.paid') {
-            $linkId  = $data['id'] ?? null;
-            $payment = BplsOnlinePayment::where('gateway_transaction_id', $linkId)->first();
+        Log::info('PayMongo webhook received', ['type' => $type]);
 
-            if ($payment && !$payment->isPaid()) {
+        if ($type === 'link.payment.paid') {
+            $linkId = $data['id'] ?? null;
+            $payment = BplsOnlinePayment::where('gateway_transaction_id', $linkId)
+                ->where('status', 'pending')
+                ->first();
+
+            if ($payment) {
                 $application = $payment->application;
                 $this->confirmPayment($payment, $application, $data);
                 Log::info('PayMongo webhook: payment confirmed', ['ref' => $payment->reference_number]);
             }
         }
 
-        return response()->json(['received' => true]);
+        return response()->json(['received' => true], 200);
     }
 
     // -----------------------------------------------------------------------
-    // CONFIRM — Manual OR entry (OTC/LandBank after treasurer records it)
+    // CONFIRM — manual OR entry (OTC/LandBank)
     // -----------------------------------------------------------------------
     public function confirm(Request $request, BplsApplication $application)
     {
         $this->authorizeClient($application);
-
         $request->validate(['or_number' => 'required|string|max:50']);
 
         $payment = $application->payment;
@@ -237,14 +272,10 @@ class PaymentController extends Controller
             return back()->with('error', 'No payment record found.');
         }
 
-        $payment->update([
-            'or_number' => $request->or_number,
-            'status'    => 'pending',
-        ]);
+        $payment->update(['or_number' => $request->or_number, 'status' => 'pending']);
 
-        return redirect()
-            ->route('client.applications.show', $application->id)
-            ->with('success', 'OR Number ' . $request->or_number . ' submitted. The Treasury will verify your payment shortly.');
+        return redirect()->route('client.payments.index')
+            ->with('success', 'OR Number ' . $request->or_number . ' submitted. Treasury will verify shortly.');
     }
 
     // -----------------------------------------------------------------------
@@ -252,14 +283,14 @@ class PaymentController extends Controller
     // -----------------------------------------------------------------------
     public function buildInstallments(BplsApplication $app): array
     {
-        $total   = (float) $app->assessment_amount;
-        $count   = $app->installment_count;
-        $perAmt  = round($total / $count, 2);
+        $total = (float) $app->assessment_amount;
+        $count = $app->installment_count;
+        $perAmt = round($total / $count, 2);
 
-        $labels = match($app->mode_of_payment) {
-            'quarterly'   => ['1st Quarter', '2nd Quarter', '3rd Quarter', '4th Quarter'],
+        $labels = match ($app->mode_of_payment) {
+            'quarterly' => ['1st Quarter', '2nd Quarter', '3rd Quarter', '4th Quarter'],
             'semi_annual' => ['1st Half', '2nd Half'],
-            default       => ['Annual Payment'],
+            default => ['Annual Payment'],
         };
 
         $payments = BplsOnlinePayment::where('bpls_application_id', $app->id)->get();
@@ -267,13 +298,21 @@ class PaymentController extends Controller
         $installments = [];
         for ($i = 1; $i <= $count; $i++) {
             $payment = $payments->firstWhere('installment_number', $i);
+
+            $status = 'unpaid';
+            if ($payment) {
+                $status = $payment->status;
+            } elseif (in_array($app->workflow_status, ['paid', 'approved']) && $count === 1) {
+                $status = 'paid';
+            }
+
             $installments[] = [
-                'number'    => $i,
-                'label'     => $labels[$i - 1] ?? "Installment #{$i}",
-                'amount'    => $perAmt,
-                'status'    => $payment?->status ?? 'unpaid',
-                'payment'   => $payment,
-                'paid_at'   => $payment?->paid_at,
+                'number' => $i,
+                'label' => $labels[$i - 1] ?? "Installment #{$i}",
+                'amount' => $perAmt,
+                'status' => $status,
+                'payment' => $payment,
+                'paid_at' => $payment?->paid_at ?? ($i === 1 ? $app->paid_at : null),
                 'or_number' => $payment?->or_number ?? ($i === 1 ? $app->or_number : null),
             ];
         }
@@ -282,7 +321,7 @@ class PaymentController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // Private: find or create a BplsOnlinePayment for an installment
+    // Private: find or create payment record
     // -----------------------------------------------------------------------
     private function findOrCreatePayment(
         BplsApplication $application,
@@ -292,7 +331,7 @@ class PaymentController extends Controller
     ): BplsOnlinePayment {
         $payment = BplsOnlinePayment::where('bpls_application_id', $application->id)
             ->where('installment_number', $installmentNumber)
-            ->whereIn('status', ['pending', 'unpaid'])
+            ->where('status', 'pending')
             ->first();
 
         if (!$payment) {
@@ -300,13 +339,13 @@ class PaymentController extends Controller
 
             $payment = BplsOnlinePayment::create([
                 'bpls_application_id' => $application->id,
-                'reference_number'    => $ref,
-                'amount_paid'         => $amount,
-                'payment_year'        => now()->year,
-                'payment_method'      => $method,
-                'installment_number'  => $installmentNumber,
-                'installment_total'   => $application->installment_count,
-                'status'              => 'pending',
+                'reference_number' => $ref,
+                'amount_paid' => $amount,
+                'payment_year' => now()->year,
+                'payment_method' => $method,
+                'installment_number' => $installmentNumber,
+                'installment_total' => $application->installment_count,
+                'status' => 'pending',
             ]);
         } else {
             $payment->update(['payment_method' => $method]);
@@ -316,42 +355,64 @@ class PaymentController extends Controller
     }
 
     // -----------------------------------------------------------------------
-    // Private: mark a payment as paid and transition application if needed
+    // Private: confirm payment — auto marks paid, no back office needed
     // -----------------------------------------------------------------------
     private function confirmPayment(BplsOnlinePayment $payment, BplsApplication $application, array $gatewayData): void
     {
+        // Mark this installment paid
         $payment->update([
-            'status'                 => 'paid',
-            'paid_at'                => now(),
-            'gateway_response'       => $gatewayData,
+            'status' => 'paid',
+            'paid_at' => now(),
+            'gateway_response' => $gatewayData,
         ]);
 
-        // Check if ALL installments are paid
-        $totalInstallments = $application->installment_count;
+        // Update matching OR assignment if exists
+        if ($application->orAssignments) {
+            $orAssignment = $application->orAssignments()
+                ->where('installment_number', $payment->installment_number)
+                ->first();
+            if ($orAssignment) {
+                $orAssignment->update(['status' => 'paid', 'paid_at' => now()]);
+            }
+        }
+
+        // Count how many installments are paid
         $paidCount = BplsOnlinePayment::where('bpls_application_id', $application->id)
             ->where('status', 'paid')
             ->count();
 
-        if ($paidCount >= $totalInstallments && $application->workflow_status === 'assessed') {
+        // If ALL installments paid → auto-advance workflow, no back office needed
+        if ($paidCount >= ($application->installment_count ?? 1) && $application->workflow_status === 'assessed') {
             $application->update([
                 'workflow_status' => 'paid',
-                'paid_at'         => now(),
+                'paid_at' => now(),
+                'or_number' => $payment->reference_number,
             ]);
+
+            // Mark all OR assignments paid
+            if ($application->orAssignments) {
+                $application->orAssignments()->update(['status' => 'paid', 'paid_at' => now()]);
+            }
+
+            // Update business entry status
+            if ($application->business_entry_id && $application->businessEntry) {
+                $application->businessEntry->update(['status' => 'approved']);
+            }
 
             BplsActivityLog::create([
                 'bpls_application_id' => $application->id,
-                'actor_type'          => 'client',
-                'actor_id'            => $application->client_id,
-                'action'              => 'payment_confirmed',
-                'from_status'         => 'assessed',
-                'to_status'           => 'paid',
-                'remarks'             => 'Payment confirmed via ' . $payment->payment_method_label . '. Ref: ' . $payment->reference_number,
+                'actor_type' => 'client',
+                'actor_id' => $application->client_id,
+                'action' => 'payment_confirmed',
+                'from_status' => 'assessed',
+                'to_status' => 'paid',
+                'remarks' => 'Payment automatically confirmed via PayMongo. Ref: ' . $payment->reference_number,
             ]);
         }
     }
 
     // -----------------------------------------------------------------------
-    // Private: authorize client owns this application and it's payable
+    // Private: authorize client
     // -----------------------------------------------------------------------
     private function authorizeClient(BplsApplication $application): void
     {
@@ -359,8 +420,8 @@ class PaymentController extends Controller
             abort(403, 'Unauthorized.');
         }
 
-if (!in_array($application->workflow_status, ['assessed', 'paid', 'approved'])) {
-    abort(403, 'Payment is not available at this stage.');
-}
+        if (!in_array($application->workflow_status, ['assessed', 'paid', 'approved'])) {
+            abort(403, 'Payment is not available at this stage.');
+        }
     }
 }

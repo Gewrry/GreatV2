@@ -23,6 +23,7 @@ class ApplicationController extends Controller
         'type_of_business' => ['Sole Proprietorship', 'Partnership', 'Corporation', 'Cooperative'],
         'amendment_from' => ['Single Proprietorship', 'Partnership', 'Corporation'],
         'amendment_to' => ['Single Proprietorship', 'Partnership', 'Corporation'],
+        'business_nature' => ['Retail', 'Wholesale', 'Manufacturing', 'Service', 'Mixed'],  // ← ADD THIS
         'business_organization' => ['Single Proprietorship', 'Partnership', 'Corporation', 'Cooperative'],
         'business_area_type' => ['Owned', 'Leased', 'Rent-Free'],
         'business_scale' => ['Micro', 'Small', 'Medium', 'Large'],
@@ -37,22 +38,68 @@ class ApplicationController extends Controller
     }
 
     // ── INDEX: list client's applications ─────────────────────────────────
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim($request->get('search'));
+
         $applications = BplsApplication::with(['business', 'owner'])
             ->where('client_id', $this->client()->id)
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('application_number', 'like', "%{$search}%")
+                        ->orWhereHas('business', function ($b) use ($search) {
+                            $b->where('business_name', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('client.applications.index', compact('applications'));
+        if ($request->ajax()) {
+            return view('client.applications._list', compact('applications', 'search'))->render();
+        }
+
+        return view('client.applications.index', compact('applications', 'search'));
     }
 
     // ── CREATE: show the application form ─────────────────────────────────
-    public function create()
+    public function create(Request $request)
     {
+        $renewal = null;
+        if ($request->has('from')) {
+            $renewal = BplsApplication::with(['business', 'owner'])
+                ->where('client_id', $this->client()->id)
+                ->findOrFail($request->from);
+        }
+
         return view('client.applications.create', [
             'options' => $this->options,
+            'renewal' => $renewal,
         ]);
+    }
+
+    public function renew(BplsApplication $application)
+    {
+        abort_unless($application->client_id === $this->client()->id, 403);
+
+        if ($application->workflow_status !== 'approved') {
+            return back()->with('error', 'Only approved applications can be renewed.');
+        }
+
+        // Check if a renewal is already in progress
+        $currentYear = now()->year;
+        $exists = BplsApplication::where('bpls_business_id', $application->bpls_business_id)
+            ->where('permit_year', '>=', $currentYear)
+            ->whereIn('workflow_status', ['submitted', 'verified', 'assessed', 'paid', 'approved'])
+            ->where('id', '!=', $application->id)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'A renewal application for this business is already in progress or approved for this year.');
+        }
+
+        return redirect()->route('client.applications.create', ['from' => $application->id]);
     }
 
     // ── STORE: save application + documents in one transaction ────────────
@@ -116,36 +163,51 @@ class ApplicationController extends Controller
             }
 
             // ── TABLE 2: bpls_businesses ──────────────────────────────────
-            $business = BplsBusiness::create([
-                'owner_id' => $owner->id,
-                'business_name' => $request->business_name,
-                'trade_name' => $request->trade_name,
-                'date_of_application' => $request->filled('date_of_application') ? $request->date_of_application : now()->toDateString(),
-                'tin_no' => $request->tin_no,
-                'dti_sec_cda_no' => $request->dti_sec_cda_no,
-                'dti_sec_cda_date' => $request->filled('dti_sec_cda_date') ? $request->dti_sec_cda_date : null,
-                'business_mobile' => $request->business_mobile,
-                'business_email' => $request->business_email,
-                'type_of_business' => $request->type_of_business,
-                'amendment_from' => $request->amendment_from,
-                'amendment_to' => $request->amendment_to,
-                'tax_incentive' => $request->boolean('tax_incentive'),
-                'business_organization' => $request->business_organization,
-                'business_area_type' => $request->business_area_type,
-                'business_scale' => $request->business_scale,
-                'business_sector' => $request->business_sector,
-                'zone' => $request->zone,
-                'occupancy' => $request->occupancy,
-                'business_area_sqm' => $request->business_area_sqm,
-                'total_employees' => $request->total_employees,
-                'employees_lgu' => $request->employees_lgu,
-                'region' => $request->business_region,
-                'province' => $request->business_province,
-                'municipality' => $request->business_municipality,
-                'barangay' => $request->business_barangay,
-                'street' => $request->business_street,
-                'status' => 'pending',
-            ]);
+            if ($request->filled('bpls_business_id')) {
+                $business = BplsBusiness::findOrFail($request->bpls_business_id);
+                // Update business info with renewal details
+                $business->update([
+                    'business_mobile' => $request->business_mobile,
+                    'business_email' => $request->business_email,
+                    'total_employees' => $request->total_employees,
+                    'employees_lgu' => $request->employees_lgu,
+                    'tax_incentive' => $request->boolean('tax_incentive'),
+                ]);
+            } else {
+                $business = BplsBusiness::create([
+                    'owner_id' => $owner->id,
+                    'business_name' => $request->business_name,
+                    'trade_name' => $request->trade_name,
+                    'date_of_application' => $request->filled('date_of_application') ? $request->date_of_application : now()->toDateString(),
+                    'tin_no' => $request->tin_no,
+                    'dti_sec_cda_no' => $request->dti_sec_cda_no,
+                    'dti_sec_cda_date' => $request->filled('dti_sec_cda_date') ? $request->dti_sec_cda_date : null,
+                    'business_mobile' => $request->business_mobile,
+                    'business_email' => $request->business_email,
+                    'type_of_business' => $request->type_of_business,
+                    'amendment_from' => $request->amendment_from,
+                    'amendment_to' => $request->amendment_to,
+                    'tax_incentive' => $request->boolean('tax_incentive'),
+                    'business_organization' => $request->business_organization,
+                    'business_area_type' => $request->business_area_type,
+                    'business_scale' => $request->business_scale,
+                    'business_sector' => $request->business_sector,
+                    'zone' => $request->zone,
+                    'occupancy' => $request->occupancy,
+                    'business_area_sqm' => $request->business_area_sqm,
+                    'total_employees' => $request->total_employees,
+                    'employees_lgu' => $request->employees_lgu,
+                    'region' => $request->business_region,
+                    'province' => $request->business_province,
+                    'municipality' => $request->business_municipality,
+                    'barangay' => $request->business_barangay,
+                    'street' => $request->business_street,
+                    'status' => 'pending',
+                ]);
+            }
+
+            $now = now();
+            $permitYear = ($now->month >= 10) ? $now->year + 1 : $now->year;
 
             // ── TABLE 3: bpls_business_entries (flat snapshot) ────────────
             $entry = BusinessEntry::create([
@@ -199,14 +261,13 @@ class ApplicationController extends Controller
                 'business_barangay' => $business->barangay,
                 'business_street' => $business->street,
                 'status' => 'pending',
-                'permit_year' => now()->year,
+                'permit_year' => $permitYear,
                 'renewal_cycle' => 0,
             ]);
 
             // ── TABLE 4: bpls_applications ────────────────────────────────
-            $year = now()->year;
-            $count = BplsApplication::whereYear('created_at', $year)->count() + 1;
-            $appNum = 'APP-' . $year . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+            $count = BplsApplication::whereYear('created_at', $now->year)->count() + 1;
+            $appNum = 'APP-' . $now->year . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
 
             $application = BplsApplication::create([
                 'application_number' => $appNum,
@@ -215,9 +276,9 @@ class ApplicationController extends Controller
                 'bpls_owner_id' => $owner->id,
                 'business_entry_id' => $entry->id,
                 'application_type' => $request->input('application_type', 'new'),
-                'permit_year' => $year,
+                'permit_year' => $permitYear,
                 'workflow_status' => 'submitted',   // goes straight to submitted since docs are attached
-                'submitted_at' => now(),
+                'submitted_at' => $now,
             ]);
 
             // ── TABLE 5: bpls_documents ───────────────────────────────────

@@ -10,7 +10,8 @@
                 {{-- ── Page Header ── --}}
                 <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                        <h1 class="text-xl sm:text-2xl font-extrabold text-green tracking-tight">Business Masterlist</h1>
+                        <h1 class="text-xl sm:text-2xl font-extrabold text-green tracking-tight">Business Masterlist
+                        </h1>
                         <p class="text-gray text-xs sm:text-sm mt-0.5">Generate and filter the official BPLS business
                             masterlist report</p>
                     </div>
@@ -48,7 +49,7 @@
                 <div class="flex flex-col lg:flex-row gap-4 items-start">
 
                     {{-- ════════════════════════════════════════════════════ --}}
-                    {{-- FILTER PANEL                                         --}}
+                    {{-- FILTER PANEL --}}
                     {{-- ════════════════════════════════════════════════════ --}}
                     <div class="w-full lg:w-72 xl:w-80 shrink-0" x-show="filtersOpen || isDesktop"
                         x-transition:enter="transition ease-out duration-200"
@@ -232,8 +233,8 @@
                                         <label
                                             class="block text-[10px] font-extrabold text-gray/60 uppercase mb-1.5">Permit
                                             Year</label>
-                                        <input type="number" x-model="filters.permit_year"
-                                            placeholder="{{ date('Y') }}" min="2020" max="2099"
+                                        <input type="number" x-model="filters.permit_year" placeholder="{{ date('Y') }}"
+                                            min="2020" max="2099"
                                             class="w-full text-xs border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30">
                                     </div>
 
@@ -245,8 +246,8 @@
                                         class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 disabled:opacity-60">
                                         <svg x-show="generating" class="w-4 h-4 animate-spin" fill="none"
                                             viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10"
-                                                stroke="currentColor" stroke-width="4"></circle>
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                stroke-width="4"></circle>
                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z">
                                             </path>
                                         </svg>
@@ -268,9 +269,9 @@
                     </div>{{-- end filter panel --}}
 
                     {{-- ════════════════════════════════════════════════════ --}}
-                    {{-- RESULTS PANEL                                        --}}
+                    {{-- RESULTS PANEL --}}
                     {{-- ════════════════════════════════════════════════════ --}}
-                    <div class="flex-1 min-w-0 w-full">
+                    <div class="flex-1 min-w-0 w-full ">
 
                         {{-- Error --}}
                         <div x-show="error" x-cloak
