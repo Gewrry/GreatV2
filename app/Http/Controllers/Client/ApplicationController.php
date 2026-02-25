@@ -23,6 +23,7 @@ class ApplicationController extends Controller
         'type_of_business' => ['Sole Proprietorship', 'Partnership', 'Corporation', 'Cooperative'],
         'amendment_from' => ['Single Proprietorship', 'Partnership', 'Corporation'],
         'amendment_to' => ['Single Proprietorship', 'Partnership', 'Corporation'],
+        'business_nature' => ['Retail', 'Wholesale', 'Manufacturing', 'Service', 'Mixed'],  // ← ADD THIS
         'business_organization' => ['Single Proprietorship', 'Partnership', 'Corporation', 'Cooperative'],
         'business_area_type' => ['Owned', 'Leased', 'Rent-Free'],
         'business_scale' => ['Micro', 'Small', 'Medium', 'Large'],

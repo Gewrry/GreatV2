@@ -404,6 +404,11 @@ class BplsApplicationReviewController extends Controller
             'approved_by' => Auth::id(),
         ]);
 
+        // Update the linked BusinessEntry status to approved
+        if ($application->business_entry_id) {
+            $application->businessEntry->update(['status' => 'approved']);
+        }
+
         $this->log(
             $application,
             'final_approved',
