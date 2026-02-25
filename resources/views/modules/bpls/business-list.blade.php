@@ -48,8 +48,7 @@
                             </div>
                             {{-- Step tabs --}}
                             <div class="flex items-center gap-1.5">
-                                <button @click="modal.step = 1"
-                                    :class="modal.step === 1 ? 'bg-logo-teal text-white shadow' :
+                                <button @click="modal.step = 1" :class="modal.step === 1 ? 'bg-logo-teal text-white shadow' :
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">1. Details</button>
                                 <span class="text-gray/30 text-xs">›</span>
@@ -61,8 +60,8 @@
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
                                     <svg x-show="modal.computingFees" class="w-3 h-3 animate-spin" fill="none"
                                         viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
                                     2. Assessment
@@ -145,10 +144,9 @@
                                 <div x-show="modal.computingFees"
                                     class="flex items-center justify-between p-3 bg-logo-teal/5 border border-logo-teal/20 rounded-xl animate-pulse">
                                     <p class="text-xs font-bold text-gray">Computing fees…</p>
-                                    <svg class="w-4 h-4 animate-spin text-logo-teal" fill="none"
-                                        viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
+                                    <svg class="w-4 h-4 animate-spin text-logo-teal" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
                                 </div>
@@ -406,14 +404,13 @@
                                         computeFees().then(() => { if(!modal.error) modal.step++; });
                                     } else if(modal.step === 2){
                                         modal.step++;
-                                    }"
-                                    :disabled="(modal.step === 1 && (!modal.form.capital_investment || !modal.form
+                                    }" :disabled="(modal.step === 1 && (!modal.form.capital_investment || !modal.form
                                         .mode_of_payment)) || modal.computingFees"
                                     class="px-5 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
                                     <svg x-show="modal.computingFees && modal.step === 1"
                                         class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
                                     <span
@@ -424,12 +421,12 @@
                                     class="px-5 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
                                     <svg x-show="modal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
                                         viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                            stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
-                                    <svg x-show="!modal.saving" class="w-3.5 h-3.5" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <svg x-show="!modal.saving" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -441,7 +438,7 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- VIEW MODAL                                                  --}}
+                {{-- VIEW MODAL --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="viewModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
@@ -504,13 +501,13 @@
                                     </div>
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">TIN No.</p>
-                                        <p class="text-xs text-gray font-mono"
-                                            x-text="viewModal.entry?.tin_no || '—'"></p>
+                                        <p class="text-xs text-gray font-mono" x-text="viewModal.entry?.tin_no || '—'">
+                                        </p>
                                     </div>
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Type</p>
-                                        <p class="text-xs text-gray"
-                                            x-text="viewModal.entry?.type_of_business || '—'"></p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.type_of_business || '—'">
+                                        </p>
                                     </div>
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Nature</p>
@@ -581,8 +578,8 @@
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Barangay</p>
-                                        <p class="text-xs text-gray"
-                                            x-text="viewModal.entry?.business_barangay || '—'"></p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.business_barangay || '—'">
+                                        </p>
                                     </div>
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Municipality</p>
@@ -610,8 +607,8 @@
                                     </div>
                                     <div class="col-span-2">
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Reason</p>
-                                        <p class="text-xs text-gray"
-                                            x-text="viewModal.entry?.retirement_reason || '—'"></p>
+                                        <p class="text-xs text-gray" x-text="viewModal.entry?.retirement_reason || '—'">
+                                        </p>
                                     </div>
                                     <div class="col-span-2">
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Remarks</p>
@@ -629,8 +626,8 @@
                         </div>
                         <div x-show="viewModal.loading" class="flex-1 flex items-center justify-center p-10">
                             <svg class="w-8 h-8 animate-spin text-logo-teal" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10"
-                                    stroke="currentColor" stroke-width="4"></circle>
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                             </svg>
                         </div>
@@ -643,8 +640,8 @@
                                 <button x-show="viewModal.entry?.status !== 'retired'"
                                     @click="viewModal.open = false; openRetireModal(viewModal.entry)"
                                     class="px-4 py-2 bg-orange-500 text-white text-xs font-bold rounded-xl hover:bg-orange-600 transition-colors flex items-center gap-1.5">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="2">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                     </svg>
@@ -653,8 +650,8 @@
                                 <button x-show="viewModal.entry?.status === 'retired'"
                                     @click="viewModal.open = false; openCertModal(viewModal.entry)"
                                     class="px-4 py-2 bg-logo-teal text-white text-xs font-bold rounded-xl hover:bg-green transition-colors flex items-center gap-1.5">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="2">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
@@ -666,7 +663,7 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- STATUS CHANGE MODAL                                         --}}
+                {{-- STATUS CHANGE MODAL --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="statusModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
@@ -759,7 +756,8 @@
                             <div>
                                 <label class="block text-xs font-bold text-gray mb-1.5">Remarks <span
                                         class="font-normal text-gray/50">(optional)</span></label>
-                                <textarea x-model="statusModal.form.remarks" rows="3" placeholder="Add remarks or notes..."
+                                <textarea x-model="statusModal.form.remarks" rows="3"
+                                    placeholder="Add remarks or notes..."
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
                             </div>
                             <div x-show="statusModal.error"
@@ -779,8 +777,8 @@
                                 class="flex-1 px-4 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
                                 <svg x-show="statusModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
                                     viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                 </svg>
                                 <span x-text="statusModal.saving ? 'Saving...' : 'Save Status'"></span>
@@ -790,7 +788,7 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- RETIRE MODAL                                                --}}
+                {{-- RETIRE MODAL --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="retireModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
@@ -802,8 +800,7 @@
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                         <div class="flex items-center justify-between px-5 py-4 border-b border-orange-100">
                             <div class="flex items-center gap-3">
-                                <div
-                                    class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                                <div class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
                                     <svg class="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24"
                                         stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -826,8 +823,8 @@
                         </div>
                         <div class="p-5 space-y-4">
                             <div class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                                <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
@@ -854,14 +851,16 @@
                                     <option value="Revocation of Permit">Revocation of Permit</option>
                                     <option value="Other">Other</option>
                                 </select>
-                                <textarea x-show="retireModal.form.retirement_reason === 'Other'" x-model="retireModal.form.retirement_reason_custom"
-                                    rows="2" placeholder="Please specify reason..."
+                                <textarea x-show="retireModal.form.retirement_reason === 'Other'"
+                                    x-model="retireModal.form.retirement_reason_custom" rows="2"
+                                    placeholder="Please specify reason..."
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none mt-2"></textarea>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray mb-1.5">Additional Remarks <span
                                         class="font-normal text-gray/50">(optional)</span></label>
-                                <textarea x-model="retireModal.form.retirement_remarks" rows="2" placeholder="Any additional notes..."
+                                <textarea x-model="retireModal.form.retirement_remarks" rows="2"
+                                    placeholder="Any additional notes..."
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none"></textarea>
                             </div>
                             <div x-show="retireModal.error" class="text-xs text-red-500 font-semibold"
@@ -870,18 +869,17 @@
                         <div class="flex gap-2 px-5 py-4 border-t border-orange-100">
                             <button @click="retireModal.open = false"
                                 class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
-                            <button @click="submitRetire()"
-                                :disabled="retireModal.saving || !retireModal.form.retirement_date || !retireModal.form
+                            <button @click="submitRetire()" :disabled="retireModal.saving || !retireModal.form.retirement_date || !retireModal.form
                                     .retirement_reason"
                                 class="flex-1 px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
                                 <svg x-show="retireModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
                                     viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4"></circle>
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                 </svg>
-                                <svg x-show="!retireModal.saving" class="w-3.5 h-3.5" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <svg x-show="!retireModal.saving" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                 </svg>
@@ -892,7 +890,7 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- RETIREMENT CERTIFICATE MODAL                               --}}
+                {{-- RETIREMENT CERTIFICATE MODAL --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="certModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
@@ -917,8 +915,8 @@
                             <div class="flex items-center gap-2">
                                 <button @click="printCert()"
                                     class="px-3 py-1.5 bg-logo-teal text-white text-xs font-bold rounded-xl hover:bg-green transition-colors flex items-center gap-1.5">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="2">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                     </svg>
@@ -928,8 +926,7 @@
                                     class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                         stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M6 18L18 6M6 6l12 12" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
@@ -968,13 +965,13 @@
                                     </div>
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">TIN No.</p>
-                                        <p class="text-sm text-gray font-mono"
-                                            x-text="certModal.entry?.tin_no || '—'"></p>
+                                        <p class="text-sm text-gray font-mono" x-text="certModal.entry?.tin_no || '—'">
+                                        </p>
                                     </div>
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Business Type</p>
-                                        <p class="text-sm text-gray"
-                                            x-text="certModal.entry?.type_of_business || '—'"></p>
+                                        <p class="text-sm text-gray" x-text="certModal.entry?.type_of_business || '—'">
+                                        </p>
                                     </div>
                                     <div>
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Business Nature</p>
@@ -995,13 +992,13 @@
                                     <div class="col-span-2">
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Reason for Retirement
                                         </p>
-                                        <p class="text-sm text-gray"
-                                            x-text="certModal.entry?.retirement_reason || '—'"></p>
+                                        <p class="text-sm text-gray" x-text="certModal.entry?.retirement_reason || '—'">
+                                        </p>
                                     </div>
                                     <div x-show="certModal.entry?.retirement_remarks" class="col-span-2">
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Remarks</p>
-                                        <p class="text-sm text-gray"
-                                            x-text="certModal.entry?.retirement_remarks || ''"></p>
+                                        <p class="text-sm text-gray" x-text="certModal.entry?.retirement_remarks || ''">
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -1068,13 +1065,29 @@
                     </div>
                 </div>
 
+                {{-- ── Source Filter Tabs ── --}}
+                <div class="mb-4 flex gap-2">
+                    <a href="{{ route('bpls.business-list.index', ['source' => 'all']) }}"
+                        class="px-4 py-2 text-xs font-bold rounded-lg transition-colors {{ $source === 'all' ? 'bg-logo-teal text-white shadow-md' : 'bg-white text-gray border border-lumot/30 hover:bg-lumot/10' }}">
+                        All
+                    </a>
+                    <a href="{{ route('bpls.business-list.index', ['source' => 'online']) }}"
+                        class="px-4 py-2 text-xs font-bold rounded-lg transition-colors {{ $source === 'online' ? 'bg-logo-teal text-white shadow-md' : 'bg-white text-gray border border-lumot/30 hover:bg-lumot/10' }}">
+                        Online Registration
+                    </a>
+                    <a href="{{ route('bpls.business-list.index', ['source' => 'walkin']) }}"
+                        class="px-4 py-2 text-xs font-bold rounded-lg transition-colors {{ $source === 'walkin' ? 'bg-logo-teal text-white shadow-md' : 'bg-white text-gray border border-lumot/30 hover:bg-lumot/10' }}">
+                        Walk-in Registration
+                    </a>
+                </div>
+
                 {{-- ── Stat Pills ── --}}
                 <div class="grid grid-cols-4 gap-3 mb-5">
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-blue/10 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4 text-logo-blue" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
+                            <svg class="w-4 h-4 text-logo-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
                             </svg>
@@ -1132,8 +1145,8 @@
                 <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-4 mb-5">
                     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                         <div class="relative flex-1 min-w-0">
-                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray/50"
-                                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray/50" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
                             </svg>
@@ -1196,8 +1209,7 @@
                                 class="p-1.5 rounded-lg transition-all duration-150" title="List View">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                     stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 6h16M4 12h16M4 18h16" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                                     <circle cx="2" cy="6" r="1" fill="currentColor" />
                                     <circle cx="2" cy="12" r="1" fill="currentColor" />
                                     <circle cx="2" cy="18" r="1" fill="currentColor" />
@@ -1238,13 +1250,14 @@
                     </div>
                     <p class="text-sm font-bold text-gray">No entries found</p>
                     <p class="text-xs text-gray/60 mt-1">Try adjusting your search or filters.</p>
-                    <button @click="filters.q = ''; filters.status = 'all'; filters.type = 'all'; resetAndFetch()"
+                    <button
+                        @click="filters.q = ''; filters.status = 'all'; filters.type = 'all'; filters.source = 'all'; resetAndFetch()"
                         class="mt-4 px-4 py-2 bg-logo-teal/10 text-logo-teal text-xs font-bold rounded-xl hover:bg-logo-teal/20 transition-colors">Clear
                         Filters</button>
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- CARD VIEW                                                   --}}
+                {{-- CARD VIEW --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="!loading && view === 'card' && entries.length > 0">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
@@ -1267,8 +1280,8 @@
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-1.5 mb-3 p-2 bg-bluebody/50 rounded-lg">
-                                        <svg class="w-3.5 h-3.5 text-logo-teal shrink-0" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <svg class="w-3.5 h-3.5 text-logo-teal shrink-0" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                         </svg>
@@ -1314,6 +1327,47 @@
                                                     class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Payment</span>
                                                 <span class="text-xs text-gray capitalize"
                                                     x-text="entry.mode_of_payment.replace('_',' ')"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="entry.bpls_application">
+                                            <div class="mt-2 pt-2 border-t border-lumot/20">
+                                                <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
+                                                    class="text-[10px] font-bold text-logo-teal uppercase mb-1 hover:underline block">
+                                                    Online Info →
+                                                </a>
+                                                <template x-if="entry.bpls_application.workflow_status">
+                                                    <div class="flex items-center gap-1.5"><span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Status</span><span
+                                                            class="text-xs font-semibold" :class="{
+                                                                'text-green': entry.bpls_application.workflow_status === 'approved',
+                                                                'text-blue': ['verified','assessed'].includes(entry.bpls_application.workflow_status),
+                                                                'text-yellow-600': entry.bpls_application.workflow_status === 'paid',
+                                                                'text-gray': ['submitted','returned'].includes(entry.bpls_application.workflow_status),
+                                                                'text-red': entry.bpls_application.workflow_status === 'rejected'
+                                                            }" x-text="entry.bpls_application.workflow_status"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="entry.bpls_application.assessment_amount">
+                                                    <div class="flex items-center gap-1.5"><span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Amount</span><span
+                                                            class="text-xs text-gray"
+                                                            x-text="'₱' + Number(entry.bpls_application.assessment_amount).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="entry.bpls_application.or_number">
+                                                    <div class="flex items-center gap-1.5"><span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">OR#</span><span
+                                                            class="text-xs text-gray font-mono"
+                                                            x-text="entry.bpls_application.or_number"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="entry.bpls_application.paid_at">
+                                                    <div class="flex items-center gap-1.5"><span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Paid</span><span
+                                                            class="text-xs text-gray"
+                                                            x-text="entry.bpls_application.paid_at ? entry.bpls_application.paid_at.substring(0,10) : '—'"></span>
+                                                    </div>
+                                                </template>
                                             </div>
                                         </template>
                                     </div>
@@ -1372,7 +1426,7 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- TABLE VIEW                                                  --}}
+                {{-- TABLE VIEW --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="!loading && view === 'table' && entries.length > 0">
                     <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-5">
@@ -1394,47 +1448,58 @@
                                             TIN</th>
                                         <th
                                             class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Nature</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Scale</th>
+                                            Nature / Scale</th>
                                         <th
                                             class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
                                             Capital</th>
                                         <th
                                             class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Payment</th>
+                                            Status</th>
                                         <th
                                             class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Status</th>
-                                        <th class="px-4 py-3"></th>
+                                            Online Application</th>
+                                        <th
+                                            class="px-4 py-3 text-[10px] font-extrabold text-gray/70 uppercase tracking-wider text-right">
+                                            Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-lumot/10">
                                     <template x-for="(entry, i) in entries" :key="entry.id">
                                         <tr class="hover:bg-bluebody/30 transition-colors">
+
+                                            {{-- # --}}
                                             <td class="px-4 py-3 text-xs text-gray/50 font-medium"
                                                 x-text="((currentPage - 1) * 12) + i + 1"></td>
+
+                                            {{-- Business Name --}}
                                             <td class="px-4 py-3">
-                                                <p class="font-bold text-green text-xs"
-                                                    x-text="entry.business_name"></p>
+                                                <p class="font-bold text-green text-xs" x-text="entry.business_name">
+                                                </p>
                                                 <p class="text-[10px] text-gray" x-text="entry.trade_name || ''"
                                                     x-show="entry.trade_name"></p>
                                             </td>
+
+                                            {{-- Owner --}}
                                             <td class="px-4 py-3 text-xs text-gray whitespace-nowrap"
                                                 x-text="entry.last_name + ', ' + entry.first_name"></td>
+
+                                            {{-- TIN --}}
                                             <td class="px-4 py-3 text-xs text-gray font-mono"
                                                 x-text="entry.tin_no || '—'"></td>
-                                            <td class="px-4 py-3 text-xs text-gray"
-                                                x-text="entry.business_nature || '—'"></td>
-                                            <td class="px-4 py-3 text-xs text-gray"
-                                                x-text="entry.business_scale || '—'"></td>
+
+                                            {{-- Nature / Scale --}}
+                                            <td class="px-4 py-3">
+                                                <p class="text-xs text-gray" x-text="entry.business_nature || '—'"></p>
+                                                <p class="text-[10px] text-gray/50" x-text="entry.business_scale || ''">
+                                                </p>
+                                            </td>
+
+                                            {{-- Capital --}}
                                             <td class="px-4 py-3 text-xs text-gray whitespace-nowrap"
                                                 x-text="entry.capital_investment ? '₱' + Number(entry.capital_investment).toLocaleString('en-PH',{minimumFractionDigits:2}) : '—'">
                                             </td>
-                                            <td class="px-4 py-3 text-xs text-gray capitalize"
-                                                x-text="entry.mode_of_payment ? entry.mode_of_payment.replace('_',' ') : '—'">
-                                            </td>
+
+                                            {{-- Business Status --}}
                                             <td class="px-4 py-3">
                                                 <span
                                                     class="text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
@@ -1443,6 +1508,8 @@
                                                     x-text="statusLabel(entry.status)">
                                                 </span>
                                             </td>
+
+                                            {{-- Online Application column --}}
                                             <td class="px-4 py-3">
                                                 <div class="flex items-center gap-1">
                                                     <a x-show="canPay(entry.status)"
@@ -1476,20 +1543,23 @@
                                                         <span
                                                             x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
                                                     </button>
+
+                                                    {{-- View details --}}
                                                     <button type="button" @click="openViewModal(entry)"
                                                         title="View Details"
                                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
-                                                        <svg class="w-3.5 h-3.5" fill="none"
-                                                            viewBox="0 0 24 24" stroke="currentColor"
-                                                            stroke-width="2">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                         </svg>
                                                     </button>
+
                                                 </div>
                                             </td>
+
                                         </tr>
                                     </template>
                                 </tbody>
@@ -1498,8 +1568,9 @@
                     </div>
                 </div>
 
+
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- LIST VIEW                                                   --}}
+                {{-- LIST VIEW --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="!loading && view === 'list' && entries.length > 0">
                     <div class="space-y-2 mb-5">
@@ -1538,8 +1609,8 @@
                                     </div>
                                     <div class="hidden sm:block">
                                         <p class="text-[10px] text-gray/60 font-bold uppercase">Location</p>
-                                        <p class="text-xs text-gray truncate"
-                                            x-text="entry.business_barangay || '—'"></p>
+                                        <p class="text-xs text-gray truncate" x-text="entry.business_barangay || '—'">
+                                        </p>
                                     </div>
                                 </div>
                                 <div class="shrink-0 flex items-center gap-2">
@@ -1560,8 +1631,8 @@
                                     <button type="button" x-show="entry.status === 'retired'"
                                         @click="openCertModal(entry)"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2.5">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="2.5">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
@@ -1570,8 +1641,8 @@
                                     <button type="button" x-show="canAssess(entry.status)"
                                         @click="openModal(entry)"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2.5">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="2.5">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
@@ -1579,8 +1650,8 @@
                                     </button>
                                     <button type="button" @click="openViewModal(entry)" title="View Details"
                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                            stroke="currentColor" stroke-width="2">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                            stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -1596,11 +1667,10 @@
                 {{-- ── Pagination ── --}}
                 <div x-show="!loading && lastPage > 1" class="flex items-center justify-between mt-2">
                     <p class="text-xs text-gray">Showing <span class="font-bold text-green" x-text="from"></span>
-                        to <span class="font-bold text-green" x-text="to"></span> of <span
-                            class="font-bold text-green" x-text="total"></span> entries</p>
+                        to <span class="font-bold text-green" x-text="to"></span> of <span class="font-bold text-green"
+                            x-text="total"></span> entries</p>
                     <div class="flex items-center gap-1">
-                        <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
-                            :class="currentPage === 1 ? 'text-gray/30 cursor-not-allowed' :
+                        <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1" :class="currentPage === 1 ? 'text-gray/30 cursor-not-allowed' :
                                 'text-gray hover:text-logo-teal hover:border-logo-teal/40'"
                             class="px-3 py-1.5 text-xs bg-white border border-lumot/20 rounded-xl transition-colors">←
                             Prev</button>
@@ -1611,8 +1681,7 @@
                                 class="px-3 py-1.5 text-xs font-bold rounded-xl border transition-colors"
                                 x-text="page"></button>
                         </template>
-                        <button @click="goToPage(currentPage + 1)" :disabled="currentPage === lastPage"
-                            :class="currentPage === lastPage ? 'text-gray/30 cursor-not-allowed' :
+                        <button @click="goToPage(currentPage + 1)" :disabled="currentPage === lastPage" :class="currentPage === lastPage ? 'text-gray/30 cursor-not-allowed' :
                                 'text-gray hover:text-logo-teal hover:border-logo-teal/40'"
                             class="px-3 py-1.5 text-xs bg-white border border-lumot/20 rounded-xl transition-colors">Next
                             →</button>
@@ -1638,7 +1707,8 @@
                     filters: {
                         q: '',
                         status: 'all',
-                        type: 'all'
+                        type: 'all',
+                        source: '{{ $source ?? "all" }}'
                     },
 
                     // ── Assess Modal ──────────────────────────────────────────────────
@@ -1836,6 +1906,30 @@
                             this.modal.error = err.message;
                         } finally {
                             this.modal.saving = false;
+                        }
+                    },
+
+                    // ── MARK AS PAID ─────────────────────────────────────────────────────
+                    async markAsPaid(entry) {
+                        if (!confirm('Are you sure you want to mark this application as paid?')) return;
+
+                        try {
+                            const url = `{{ url('bpls/business-list') }}/${entry.id}/mark-paid`;
+                            const res = await window.fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Failed to mark as paid.');
+
+                            alert('Application marked as paid successfully!');
+                            window.location.reload();
+                        } catch (err) {
+                            alert(err.message);
                         }
                     },
 
@@ -2068,6 +2162,7 @@
                                 q: this.filters.q,
                                 status: this.filters.status,
                                 type: this.filters.type,
+                                source: this.filters.source,
                                 page: this.currentPage,
                             });
                             const res = await window.fetch(`{{ route('bpls.business-list.search') }}?${params}`);

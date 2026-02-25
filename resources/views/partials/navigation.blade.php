@@ -11,10 +11,16 @@
             id="navSubtitle">Government Revenue, Accounting and Taxation System</span>
     </div>
 
-    <div class="ml-auto h-full flex items-center justify-center">
+    <div class="ml-auto h-full flex items-center justify-center space-x-6">
         <a href="{{ route('login') }}"
-            class="hover:-translate-y-1 text-blue ease-out transition delay-75  font-semibold hover:text-lumot">User
-            Login</a>
+            class="hover:-translate-y-1 text-blue ease-out transition delay-75 font-semibold hover:text-lumot">
+            Lgu Login
+        </a>
+
+        <a href="{{ route('client.login') }}"
+            class="hover:-translate-y-1 text-blue ease-out transition delay-75 font-semibold hover:text-lumot">
+            Customer Login
+        </a>
     </div>
 </nav>
 

@@ -12,6 +12,45 @@ use Carbon\Carbon;
 
 class BplsPaymentController extends Controller
 {
+    // =========================================================================
+    // INDEX — List businesses awaiting payment
+    // GET /treasury/bpls-payment
+    // =========================================================================
+    public function index(Request $request)
+    {
+        $search = $request->query('q', '');
+        $status = $request->query('status', 'all');
+
+        $query = BusinessEntry::query();
+
+        // Filter for businesses that need payment or are approved (which usually means permit ready)
+        // Adjusting based on standard flow: 'for_payment' and 'for_renewal_payment' are common.
+        // 'approved' might also be included if we want to see fully paid ones? 
+        // Let's stick to those needing collection for the "Payment Zone".
+        $query->whereIn('status', ['for_payment', 'for_renewal_payment', 'approved']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('business_name', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('tin_no', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $businesses = $query->orderBy('updated_at', 'desc')->paginate(10);
+
+        if ($request->ajax()) {
+            return view('modules.treasury.bpls-payment-list-partial', compact('businesses', 'search', 'status'))->render();
+        }
+
+        return view('modules.treasury.bpls-payment-index', compact('businesses', 'search', 'status'));
+    }
+
     const ACCOUNT_CODES = [
         'GROSS SALES TAX' => '631-001',
         'BUSINESS PERMIT (MAYORS PERMIT)' => '631-002',

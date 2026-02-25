@@ -10,7 +10,7 @@ use Carbon\Carbon;
 
 class BusinessListController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $totalCount = BusinessEntry::whereNull('deleted_at')->count();
         $pendingCount = BusinessEntry::whereNull('deleted_at')->where('status', 'pending')->count();
@@ -28,12 +28,23 @@ class BusinessListController extends Controller
             'retiredCount',
             'renewalCount',
             'types',
+            'source',
         ));
     }
 
     public function search(Request $request)
     {
-        $query = BusinessEntry::whereNull('deleted_at');
+        $query = BusinessEntry::whereNull('deleted_at')->with(['bplsApplication', 'bplsApplication.orAssignments', 'payments']);
+
+        // Filter by source (online/walkin)
+        $source = $request->get('source', 'all');
+        if ($source === 'online') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereIn('id', $onlineIds);
+        } elseif ($source === 'walkin') {
+            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
+            $query->whereNotIn('id', $onlineIds);
+        }
 
         if ($request->filled('q')) {
             $q = $request->q;
