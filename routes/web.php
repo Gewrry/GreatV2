@@ -35,6 +35,13 @@ use App\Http\Controllers\Bpls\BplsSettingsController;
 use App\Http\Controllers\Bpls\MasterlistController;
 use App\Http\Controllers\Settings\OrAssignmentController;
 use App\Http\Controllers\AuditLogController;
+
+
+
+
+Route::get('/payment/{entry}/available-ors', [BplsPaymentController::class, 'getAvailableOrNumbers'])
+    ->name('bpls.payment.available-ors');
+
 use App\Http\Controllers\Bpls\BplsPermitSignatoryController;
 use App\Http\Controllers\Bpls\Online\BplsApplicationReviewController;
 use App\Http\Controllers\Client\AuthController;

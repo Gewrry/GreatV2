@@ -1,15 +1,22 @@
 {{-- resources/views/modules/bpls/business-list.blade.php --}}
 <x-admin.app>
+    {{-- CRITICAL: x-cloak hides elements until Alpine.js initializes.
+         Without this CSS rule, x-cloak elements stay hidden FOREVER.
+         Keep this here even if your app.css already has it — belt and suspenders. --}}
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
     <div class="py-2">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('layouts.bpls.navbar')
 
             <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4" x-data="businessList()"
                 x-init="fetch()">
-
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                {{-- ASSESS MODAL — 3-step: Details → Assessment → Schedule --}}
-                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- ASSESS MODAL — 3-step: Details → Assessment → Schedule    --}}
+                {{-- ═════════════════════════════════════If You Reading this, You are not human! or JR Programmer═════════════════════ --}}
                 <div x-show="modal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
@@ -45,7 +52,6 @@
                                         'bg-lumot/20 text-gray hover:bg-lumot/40'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">1. Details</button>
                                 <span class="text-gray/30 text-xs">›</span>
-                                {{-- FIX: disabled while computing, shows spinner --}}
                                 <button
                                     @click="if(!modal.computingFees){ computeFees().then(() => { if(!modal.error) modal.step = 2; }); }"
                                     :disabled="!modal.form.capital_investment || !modal.form.mode_of_payment || modal.computingFees"
@@ -77,6 +83,7 @@
                         </div>
                         {{-- Scrollable body --}}
                         <div class="overflow-y-auto flex-1 p-5">
+
                             {{-- ── STEP 1: Details ── --}}
                             <div x-show="modal.step === 1" class="space-y-4">
                                 <div>
@@ -115,7 +122,7 @@
                                     <label class="block text-xs font-bold text-gray mb-2">Mode of Payment</label>
                                     <div class="grid grid-cols-3 gap-2">
                                         <template
-                                            x-for="opt in [{ value: 'quarterly', label: 'Quarterly', sub: '4 payments', icon: '4×' },{ value: 'semi_annual', label: 'Semi-Annual', sub: '2 payments', icon: '2×' },{ value: 'annual', label: 'Annual', sub: '1 payment', icon: '1×' }]"
+                                            x-for="opt in [{value:'quarterly',label:'Quarterly',sub:'4 payments',icon:'4×'},{value:'semi_annual',label:'Semi-Annual',sub:'2 payments',icon:'2×'},{value:'annual',label:'Annual',sub:'1 payment',icon:'1×'}]"
                                             :key="opt.value">
                                             <label class="cursor-pointer">
                                                 <input type="radio" :value="opt.value"
@@ -133,7 +140,7 @@
                                     </div>
                                 </div>
 
-                                {{-- FIX: loading state while computing --}}
+                                {{-- Loading state --}}
                                 <div x-show="modal.computingFees"
                                     class="flex items-center justify-between p-3 bg-logo-teal/5 border border-logo-teal/20 rounded-xl animate-pulse">
                                     <p class="text-xs font-bold text-gray">Computing fees…</p>
@@ -150,12 +157,38 @@
                                         x-text="'₱' + Number(modal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
                                     </p>
                                 </div>
+
+                                {{-- Notice if all fees are disabled --}}
+                                <div x-show="!modal.computingFees && modal.form.capital_investment && modal.form.mode_of_payment && modal.totalDue === 0 && !modal.error"
+                                    class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                    <svg class="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <p class="text-[11px] text-yellow-700 font-semibold">No active fee rules found.
+                                        Enable fee rules in the Fee Rules Manager first.</p>
+                                </div>
+
+                                {{-- Permit year indicator — shown once fees are computed --}}
+                                <div x-show="!modal.computingFees && modal.permitYear && modal.totalDue > 0"
+                                    class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <p class="text-[11px] text-blue-700 font-semibold">
+                                        Billing year: <span class="font-extrabold text-blue-800"
+                                            x-text="modal.permitYear"></span>
+                                    </p>
+                                </div>
                             </div>
 
                             {{-- ── STEP 2: Assessment / Fee Breakdown ── --}}
                             <div x-show="modal.step === 2" class="space-y-4">
 
-                                {{-- FIX: Loading skeleton while fees are being fetched --}}
+                                {{-- Loading skeleton --}}
                                 <div x-show="modal.computingFees" class="space-y-2 animate-pulse">
                                     <div class="h-12 bg-lumot/30 rounded-xl"></div>
                                     <div class="border border-lumot/20 rounded-xl overflow-hidden">
@@ -193,8 +226,7 @@
                                         <div class="border border-lumot/20 rounded-xl overflow-hidden">
                                             <div class="bg-green text-white text-center py-2.5">
                                                 <p class="text-xs font-extrabold tracking-wide uppercase">Business
-                                                    Permit and
-                                                    Licensing System</p>
+                                                    Permit and Licensing System</p>
                                             </div>
                                             <div class="bg-logo-blue text-white text-center py-2">
                                                 <p class="text-xs font-bold uppercase"
@@ -206,17 +238,23 @@
                                                     Fees</p>
                                                 <p
                                                     class="text-[10px] font-extrabold text-gray/70 uppercase text-center">
-                                                    Base
-                                                    Value</p>
-                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-right">
-                                                    Tax Due
-                                                </p>
+                                                    Base Value</p>
+                                                <p
+                                                    class="text-[10px] font-extrabold text-gray/70 uppercase text-right">
+                                                    Tax Due</p>
                                             </div>
-                                            <template x-for="fee in modal.fees" :key="fee.name">
+                                            <template x-for="fee in modal.fees" :key="fee.id ?? fee.name">
                                                 <div
                                                     class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/30">
                                                     <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
-                                                    <p class="text-xs text-gray/60 text-center font-mono" x-text="fee.base !== null && fee.base !== undefined
+                                                    {{--
+                                                        Dynamic base value display.
+                                                        - gross_sales rules → show ₱ amount
+                                                        - scale rules       → show tier label (e.g. "Micro")
+                                                        - flat rules        → base is null → "—"
+                                                    --}}
+                                                    <p class="text-xs text-gray/60 text-center font-mono"
+                                                        x-text="fee.base !== null && fee.base !== undefined
                                                             ? (typeof fee.base === 'number'
                                                                 ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2})
                                                                 : fee.base)
@@ -247,7 +285,8 @@
                                             </div>
                                         </div>
                                         <p class="text-[10px] text-gray/40 text-center">Computed using current LGU
-                                            revenue code rates from the Fee Rules database.</p>
+                                            revenue code rates from the Fee Rules database. Only enabled fee rules are
+                                            included.</p>
                                     </div>
                                 </template>
                             </div>
@@ -269,25 +308,54 @@
                                         </p>
                                     </div>
                                 </div>
+
+                                {{-- RA 7160 dates notice --}}
+                                <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <svg class="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p class="text-[10px] text-blue-700">
+                                        Deadlines per <strong>RA 7160 Sec. 165</strong>: Jan 20 / Apr 20 / Jul 20 / Oct
+                                        20.
+                                        <span class="text-red-500 font-bold">Overdue</span> installments are subject to
+                                        a 25% surcharge (Sec. 168) applied at payment time.
+                                        <template x-if="modal.permitYear">
+                                            <span class="font-bold text-blue-800">Billing year: <span
+                                                    x-text="modal.permitYear"></span>.</span>
+                                        </template>
+                                    </p>
+                                </div>
+
                                 <div class="border border-lumot/20 rounded-xl overflow-hidden">
                                     <div class="bg-green text-white text-center py-2.5">
-                                        <p class="text-xs font-extrabold tracking-wide uppercase">Payment Schedule</p>
+                                        <p class="text-xs font-extrabold tracking-wide uppercase">Payment Schedule
+                                            <template x-if="modal.permitYear">
+                                                <span x-text="'— ' + modal.permitYear"></span>
+                                            </template>
+                                        </p>
                                     </div>
                                     <div class="grid grid-cols-2 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
                                         <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">
-                                            Payment Date</p>
+                                            Payment Deadline</p>
                                         <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">
-                                            Payment Amount</p>
+                                            Base Amount</p>
                                     </div>
                                     <template x-for="(sched, i) in modal.schedule" :key="i">
                                         <div class="grid grid-cols-2 px-4 py-3.5 border-b border-lumot/10 hover:bg-bluebody/30"
-                                            :class="sched.date && sched.date.includes('Overdue') ? 'bg-red-50' : ''">
-                                            <p class="text-sm text-center font-medium" :class="sched.date && sched.date.includes('Overdue') ? 'text-red-500' :
-                                                    'text-gray'" x-text="sched.date">
+                                            :class="sched.overdue ? 'bg-red-50' : ''">
+                                            <p class="text-sm text-center font-medium"
+                                                :class="sched.overdue ? 'text-red-500' : 'text-gray'"
+                                                x-text="sched.date">
                                             </p>
-                                            <p class="text-sm font-bold text-green text-center"
-                                                x-text="'₱' + Number(sched.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
-                                            </p>
+                                            <div class="text-center">
+                                                <p class="text-sm font-bold text-green"
+                                                    x-text="'₱' + Number(sched.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                </p>
+                                                <p x-show="sched.overdue" class="text-[9px] text-red-400 font-bold">
+                                                    +25% surcharge at payment</p>
+                                            </div>
                                         </div>
                                     </template>
                                     <div
@@ -331,8 +399,8 @@
                                     class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
                             </div>
                             <div class="flex gap-2">
-                                {{-- FIX: Next button waits for async computeFees() to resolve --}}
-                                <button x-show="modal.step < 3" @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){
+                                <button x-show="modal.step < 3"
+                                    @click="if(modal.step === 1 && modal.form.capital_investment && modal.form.mode_of_payment){
                                         computeFees().then(() => { if(!modal.error) modal.step++; });
                                     } else if(modal.step === 2){
                                         modal.step++;
@@ -348,7 +416,6 @@
                                     <span
                                         x-text="modal.computingFees && modal.step === 1 ? 'Computing…' : 'Next →'"></span>
                                 </button>
-                                {{-- FIX: also guarded by computingFees --}}
                                 <button x-show="modal.step === 3" @click="approvePayment()"
                                     :disabled="modal.saving || modal.totalDue === 0 || modal.computingFees"
                                     class="px-5 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
@@ -413,22 +480,9 @@
                         <div class="overflow-y-auto flex-1 p-5 space-y-4" x-show="!viewModal.loading">
                             {{-- Status badge --}}
                             <div class="flex items-center gap-2">
-                                <span class="text-[10px] font-bold px-3 py-1 rounded-full border" :class="{
-                                        'bg-green-50 text-logo-green border-green-200': viewModal.entry
-                                            ?.status === 'approved',
-                                        'bg-red-50 text-red-500 border-red-200': viewModal.entry
-                                            ?.status === 'rejected',
-                                        'bg-blue-50 text-logo-blue border-blue-200': viewModal.entry
-                                            ?.status === 'for_renewal',
-                                        'bg-orange-50 text-orange-500 border-orange-200': viewModal.entry
-                                            ?.status === 'retired',
-                                        'bg-gray-50 text-gray border-gray-200': viewModal.entry
-                                            ?.status === 'cancelled',
-                                        'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved', 'rejected',
-                                            'for_renewal', 'cancelled', 'retired'
-                                        ].includes(viewModal.entry?.status)
-                                    }"
-                                    x-text="viewModal.entry?.status ? viewModal.entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                <span class="text-[10px] font-bold px-3 py-1 rounded-full border"
+                                    :class="statusBadgeClass(viewModal.entry?.status)"
+                                    x-text="statusLabel(viewModal.entry?.status)">
                                 </span>
                             </div>
                             {{-- Business Info --}}
@@ -476,6 +530,19 @@
                                         <p class="text-[10px] text-gray/50 font-bold uppercase">Mode of Payment</p>
                                         <p class="text-xs text-gray capitalize"
                                             x-text="viewModal.entry?.mode_of_payment ? viewModal.entry.mode_of_payment.replace('_',' ') : '—'">
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Total Due (Original)
+                                        </p>
+                                        <p class="text-xs text-logo-teal font-bold"
+                                            x-text="viewModal.entry?.total_due ? '₱' + Number(viewModal.entry.total_due).toLocaleString('en-PH',{minimumFractionDigits:2}) : '—'">
+                                        </p>
+                                    </div>
+                                    <div x-show="(viewModal.entry?.renewal_cycle ?? 0) > 0">
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Renewal Total Due</p>
+                                        <p class="text-xs text-logo-teal font-bold"
+                                            x-text="viewModal.entry?.renewal_total_due ? '₱' + Number(viewModal.entry.renewal_total_due).toLocaleString('en-PH',{minimumFractionDigits:2}) : '—'">
                                         </p>
                                     </div>
                                 </div>
@@ -619,18 +686,73 @@
                         <div class="p-5 space-y-4">
                             <p class="text-xs text-gray">Changing status for: <span class="font-bold text-green"
                                     x-text="statusModal.entry?.business_name"></span></p>
+
+                            {{-- Current status badge --}}
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-gray/60 font-bold uppercase">Current:</span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                    :class="{
+                                        'bg-yellow-50 text-yellow-700 border-yellow-200': statusModal.entry
+                                            ?.status === 'pending',
+                                        'bg-teal-50 text-logo-teal border-teal-200': statusModal.entry
+                                            ?.status === 'for_payment' || statusModal.entry
+                                            ?.status === 'for_renewal_payment',
+                                        'bg-green-50 text-logo-green border-green-200': statusModal.entry
+                                            ?.status === 'completed',
+                                        'bg-red-50 text-red-500 border-red-200': statusModal.entry
+                                            ?.status === 'rejected',
+                                        'bg-gray-50 text-gray border-gray-200': statusModal.entry
+                                            ?.status === 'cancelled',
+                                        'bg-orange-50 text-orange-500 border-orange-200': statusModal.entry
+                                            ?.status === 'retired',
+                                    }"
+                                    x-text="statusModal.currentLabel()">
+                                </span>
+                            </div>
+
                             <div>
                                 <label class="block text-xs font-bold text-gray mb-1.5">New Status</label>
                                 <select x-model="statusModal.form.status"
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white text-gray">
-                                    <option value="pending">Pending</option>
-                                    <option value="approved">Approved</option>
+                                    <option value="pending">For Approval / Assessment</option>
+                                    <option value="for_payment">Approved — Payment Stage (New)</option>
+                                    <option value="for_renewal_payment">Approved — Renewal Payment</option>
+                                    <option value="completed">✅ Completed — Ready to Renew</option>
                                     <option value="rejected">Rejected</option>
-                                    <option value="for_renewal">For Renewal</option>
-                                    <option value="for_payment">For Payment</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
                             </div>
+
+                            {{-- Late renewal warning --}}
+                            <div x-show="statusModal.form.status === 'completed' && statusModal.isLateRenewal()"
+                                class="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <div>
+                                    <p class="text-[11px] font-bold text-amber-700">Late Renewal — 25% Surcharge
+                                        Applies</p>
+                                    <p class="text-[10px] text-amber-600 mt-0.5">Today is past January 20. Under RA
+                                        7160 Sec. 168, the first installment of the renewal cycle will carry a 25%
+                                        surcharge penalty. This will be applied automatically on the payment page.</p>
+                                </div>
+                            </div>
+
+                            {{-- Block warning --}}
+                            <div x-show="statusModal.form.status === 'completed'"
+                                class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                <svg class="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p class="text-[11px] text-blue-700">The system will verify that all installments for
+                                    the current cycle have been paid before completing. If any quarters have an
+                                    outstanding balance, the change will be blocked.</p>
+                            </div>
+
                             <div>
                                 <label class="block text-xs font-bold text-gray mb-1.5">Remarks <span
                                         class="font-normal text-gray/50">(optional)</span></label>
@@ -638,8 +760,15 @@
                                     placeholder="Add remarks or notes..."
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
                             </div>
-                            <div x-show="statusModal.error" class="text-xs text-red-500 font-semibold"
-                                x-text="statusModal.error"></div>
+                            <div x-show="statusModal.error"
+                                class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                                <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <p class="text-[11px] text-red-700 font-semibold" x-text="statusModal.error"></p>
+                            </div>
                         </div>
                         <div class="flex gap-2 px-5 py-4 border-t border-lumot/20">
                             <button @click="statusModal.open = false"
@@ -970,44 +1099,44 @@
                     </div>
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-xl bg-yellow/20 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
+                        <div class="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4 text-yellow-600" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray">Pending</p>
-                            <p class="text-lg font-extrabold text-green">{{ $pendingCount }}</p>
+                            <p class="text-xs text-gray">For Approval</p>
+                            <p class="text-lg font-extrabold text-yellow-600">{{ $pendingCount }}</p>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-logo-teal/10 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4 text-logo-teal" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray">In Payment</p>
+                            <p class="text-lg font-extrabold text-logo-teal">{{ $approvedCount }}</p>
                         </div>
                     </div>
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-green/10 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4 text-logo-green" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
+                            <svg class="w-4 h-4 text-logo-green" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray">Approved</p>
-                            <p class="text-lg font-extrabold text-green">{{ $approvedCount }}</p>
-                        </div>
-                    </div>
-                    <div
-                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                            <svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray">Retired</p>
-                            <p class="text-lg font-extrabold text-orange-500">{{ $retiredCount }}</p>
+                            <p class="text-xs text-gray">Completed</p>
+                            <p class="text-lg font-extrabold text-logo-green">{{ $renewalCount }}</p>
                         </div>
                     </div>
                 </div>
@@ -1035,11 +1164,11 @@
                         <select x-model="filters.status" @change="resetAndFetch()"
                             class="text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white shrink-0">
                             <option value="all">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
+                            <option value="pending">For Approval / Assessment</option>
+                            <option value="for_payment">Approved — Payment Stage</option>
+                            <option value="for_renewal_payment">Approved — Renewal Payment</option>
+                            <option value="completed">Completed — Ready to Renew</option>
                             <option value="rejected">Rejected</option>
-                            <option value="for_renewal">For Renewal</option>
-                            <option value="for_payment">For Payment</option>
                             <option value="cancelled">Cancelled</option>
                             <option value="retired">Retired</option>
                         </select>
@@ -1091,7 +1220,7 @@
                 </div>
 
                 {{-- ── Loading Skeleton ── --}}
-                <div x-show="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5" x-cloak>
+                <div x-show="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
                     <template x-for="i in 6" :key="i">
                         <div
                             class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden animate-pulse">
@@ -1110,7 +1239,7 @@
                 </div>
 
                 {{-- ── Empty State ── --}}
-                <div x-show="!loading && entries.length === 0" x-cloak
+                <div x-show="!loading && entries.length === 0"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-12 text-center mb-5">
                     <div class="w-16 h-16 bg-lumot/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <svg class="w-8 h-8 text-gray/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -1130,22 +1259,12 @@
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 {{-- CARD VIEW --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                <div x-show="!loading && view === 'card' && entries.length > 0" x-cloak>
+                <div x-show="!loading && view === 'card' && entries.length > 0">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
                         <template x-for="entry in entries" :key="entry.id">
                             <div
                                 class="bg-white rounded-2xl border border-lumot/20 shadow-sm hover:shadow-md hover:border-logo-teal/30 transition-all duration-200 overflow-hidden">
-                                <div class="h-1 w-full" :class="{
-                                        'bg-logo-green': entry.status === 'approved',
-                                        'bg-red-400': entry.status === 'rejected',
-                                        'bg-logo-blue': entry.status === 'for_renewal',
-                                        'bg-orange-400': entry.status === 'retired',
-                                        'bg-gray-300': entry.status === 'cancelled',
-                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled',
-                                            'retired'
-                                        ].includes(entry.status)
-                                    }">
-                                </div>
+                                <div class="h-1 w-full" :class="statusBarClass(entry.status)"></div>
                                 <div class="p-4">
                                     <div class="flex items-start justify-between gap-2 mb-3">
                                         <div class="min-w-0">
@@ -1156,20 +1275,8 @@
                                         </div>
                                         <span
                                             class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
-                                            :class="{
-                                                'bg-green-50 text-logo-green border-green-200': entry
-                                                    .status === 'approved',
-                                                'bg-red-50 text-red-500 border-red-200': entry.status === 'rejected',
-                                                'bg-blue-50 text-logo-blue border-blue-200': entry
-                                                    .status === 'for_renewal',
-                                                'bg-orange-50 text-orange-500 border-orange-200': entry
-                                                    .status === 'retired',
-                                                'bg-gray-50 text-gray border-gray-200': entry.status === 'cancelled',
-                                                'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved',
-                                                    'rejected', 'for_renewal', 'cancelled', 'retired'
-                                                ].includes(entry.status)
-                                            }" @click="openStatusModal(entry)" title="Click to change status"
-                                            x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                            :class="statusBadgeClass(entry.status)" @click="openStatusModal(entry)"
+                                            title="Click to change status" x-text="statusLabel(entry.status)">
                                         </span>
                                     </div>
                                     <div class="flex items-center gap-1.5 mb-3 p-2 bg-bluebody/50 rounded-lg">
@@ -1183,35 +1290,44 @@
                                     </div>
                                     <div class="space-y-1.5 mb-3">
                                         <template x-if="entry.tin_no">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">TIN</span><span
-                                                    class="text-xs text-gray font-mono" x-text="entry.tin_no"></span>
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">TIN</span>
+                                                <span class="text-xs text-gray font-mono"
+                                                    x-text="entry.tin_no"></span>
                                             </div>
                                         </template>
                                         <template x-if="entry.type_of_business">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Type</span><span
-                                                    class="text-xs text-gray truncate"
-                                                    x-text="entry.type_of_business"></span></div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Type</span>
+                                                <span class="text-xs text-gray truncate"
+                                                    x-text="entry.type_of_business"></span>
+                                            </div>
                                         </template>
                                         <template x-if="entry.business_nature">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Nature</span><span
-                                                    class="text-xs text-gray truncate"
-                                                    x-text="entry.business_nature"></span></div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Nature</span>
+                                                <span class="text-xs text-gray truncate"
+                                                    x-text="entry.business_nature"></span>
+                                            </div>
                                         </template>
                                         <template x-if="entry.capital_investment">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Capital</span><span
-                                                    class="text-xs text-gray"
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Capital</span>
+                                                <span class="text-xs text-gray"
                                                     x-text="'₱' + Number(entry.capital_investment).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
                                             </div>
                                         </template>
                                         <template x-if="entry.mode_of_payment">
-                                            <div class="flex items-center gap-1.5"><span
-                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Payment</span><span
-                                                    class="text-xs text-gray capitalize"
-                                                    x-text="entry.mode_of_payment.replace('_',' ')"></span></div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span
+                                                    class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Payment</span>
+                                                <span class="text-xs text-gray capitalize"
+                                                    x-text="entry.mode_of_payment.replace('_',' ')"></span>
+                                            </div>
                                         </template>
                                         <template x-if="entry.bpls_application">
                                             <div class="mt-2 pt-2 border-t border-lumot/20">
@@ -1258,56 +1374,17 @@
                                     <div class="flex items-center justify-between pt-3 border-t border-lumot/20">
                                         <span class="text-[10px] text-gray/50"
                                             x-text="entry.created_at ? entry.created_at.substring(0,10) : '—'"></span>
-                                        <div class="flex gap-1.5 flex-wrap justify-end">
-                                            {{-- Payment Status & Button based on frequency --}}
-                                            <template
-                                                x-if="entry.bpls_application && entry.bpls_application.orAssignments && entry.bpls_application.orAssignments.length > 0">
-                                                <div class="flex items-center gap-1 flex-wrap justify-end">
-                                                    <template x-for="orItem in entry.bpls_application.orAssignments"
-                                                        :key="orItem.id">
-                                                        <span
-                                                            class="text-[8px] px-1.5 py-0.5 rounded border font-semibold"
-                                                            :class="orItem.status === 'paid' ? 'bg-logo-green/10 text-logo-green border-logo-green/20' : 'bg-yellow-50 text-yellow-600 border-yellow-200'"
-                                                            x-text="orItem.period_label || 'Inst ' + orItem.installment_number">
-                                                        </span>
-                                                    </template>
-                                                    <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold"
-                                                        :class="entry.bpls_application.orAssignments.every(o => o.status === 'paid') ? 'text-logo-green bg-logo-green/10 hover:bg-logo-green/20' : 'text-white bg-logo-green hover:bg-green'">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span
-                                                            x-text="entry.bpls_application.orAssignments.every(o => o.status === 'paid') ? 'Paid' : 'Payment"></span>
-                                                    </a>
-                                                </div>
-                                            </template>
-                                            <template
-                                                x-if="entry.bpls_application && (!entry.bpls_application.orAssignments || entry.bpls_application.orAssignments.length === 0)">
-                                                <div class="flex items-center gap-1">
-                                                    <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-yellow-500 hover:bg-yellow-600 transition-colors">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Pay Now
-                                                    </a>
-                                                    <button type="button" @click="markAsPaid(entry)"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-green hover:bg-green transition-colors"
-                                                        title="Mark as Paid">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        Mark Paid
-                                                    </button>
-                                                </div>
-                                            </template>
+                                        <div class="flex gap-1.5">
+                                            <a x-show="canPay(entry.status)"
+                                                :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-teal hover:bg-green transition-colors">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                </svg>
+                                                Payment
+                                            </a>
                                             <button type="button" x-show="entry.status === 'retired'"
                                                 @click="openCertModal(entry)"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors">
@@ -1318,8 +1395,7 @@
                                                 </svg>
                                                 Certificate
                                             </button>
-                                            <button type="button"
-                                                x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired' && (!entry.bpls_application || entry.bpls_application.orAssignments === undefined || entry.bpls_application.orAssignments.length === 0)"
+                                            <button type="button" x-show="canAssess(entry.status)"
                                                 @click="openModal(entry)" title="Assess"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
@@ -1327,9 +1403,11 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
-                                                Assess
+                                                <span
+                                                    x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
                                             </button>
-                                            <button type="button" @click="openViewModal(entry)" title="View Details"
+                                            <button type="button" @click="openViewModal(entry)"
+                                                title="View Details"
                                                 class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor" stroke-width="2">
@@ -1350,7 +1428,7 @@
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 {{-- TABLE VIEW --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                <div x-show="!loading && view === 'table' && entries.length > 0" x-cloak>
+                <div x-show="!loading && view === 'table' && entries.length > 0">
                     <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-5">
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
@@ -1425,132 +1503,25 @@
                                             <td class="px-4 py-3">
                                                 <span
                                                     class="text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
-                                                    :class="{
-                                        'bg-green-50 text-logo-green border-green-200': entry.status === 'approved',
-                                        'bg-red-50 text-red-500 border-red-200': entry.status === 'rejected',
-                                        'bg-blue-50 text-logo-blue border-blue-200': entry.status === 'for_renewal',
-                                        'bg-orange-50 text-orange-500 border-orange-200': entry.status === 'retired',
-                                        'bg-gray-50 text-gray border-gray-200': entry.status === 'cancelled',
-                                        'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved','rejected','for_renewal','cancelled','retired'].includes(entry.status)
-                                    }" @click="openStatusModal(entry)" title="Click to change status"
-                                                    x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                                    :class="statusBadgeClass(entry.status)"
+                                                    @click="openStatusModal(entry)" title="Click to change status"
+                                                    x-text="statusLabel(entry.status)">
                                                 </span>
                                             </td>
 
                                             {{-- Online Application column --}}
                                             <td class="px-4 py-3">
-                                                <template x-if="entry.bpls_application">
-                                                    <div class="flex flex-col gap-1">
-
-                                                        {{-- Workflow status as a clickable link --}}
-                                                        <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                            class="text-[10px] font-bold hover:underline" :class="{
-                                                'text-logo-green': entry.bpls_application.workflow_status === 'approved',
-                                                'text-logo-blue': ['verified','assessed'].includes(entry.bpls_application.workflow_status),
-                                                'text-yellow-600': entry.bpls_application.workflow_status === 'paid',
-                                                'text-gray': ['submitted','returned'].includes(entry.bpls_application.workflow_status),
-                                                'text-red-500': entry.bpls_application.workflow_status === 'rejected'
-                                            }" x-text="entry.bpls_application.workflow_status
-                                                ? entry.bpls_application.workflow_status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())
-                                                : '—'">
-                                                        </a>
-
-                                                        {{-- Assessment amount --}}
-                                                        <template x-if="entry.bpls_application.assessment_amount">
-                                                            <span class="text-[10px] text-logo-teal font-semibold"
-                                                                x-text="'₱' + Number(entry.bpls_application.assessment_amount).toLocaleString('en-PH',{minimumFractionDigits:2})">
-                                                            </span>
-                                                        </template>
-
-                                                        {{-- Mode of payment badge --}}
-                                                        <template x-if="entry.bpls_application.mode_of_payment">
-                                                            <span
-                                                                class="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200 w-fit capitalize"
-                                                                x-text="entry.bpls_application.mode_of_payment.replace('_',' ')">
-                                                            </span>
-                                                        </template>
-
-                                                        {{-- Installment badges (OR assignments) --}}
-                                                        <template
-                                                            x-if="entry.bpls_application.orAssignments && entry.bpls_application.orAssignments.length > 0">
-                                                            <div class="flex flex-wrap gap-0.5 mt-0.5">
-                                                                <template
-                                                                    x-for="orItem in entry.bpls_application.orAssignments"
-                                                                    :key="orItem.id">
-                                                                    <span
-                                                                        class="text-[8px] px-1 py-0.5 rounded border font-semibold"
-                                                                        :class="orItem.status === 'paid'
-                                                            ? 'bg-logo-green/10 text-logo-green border-logo-green/20'
-                                                            : 'bg-gray-50 text-gray-400 border-gray-200'"
-                                                                        x-text="orItem.period_label || 'Inst ' + orItem.installment_number">
-                                                                    </span>
-                                                                </template>
-                                                            </div>
-                                                        </template>
-
-                                                        {{-- OR number if paid --}}
-                                                        <template x-if="entry.bpls_application.or_number">
-                                                            <span class="text-[9px] text-gray/60 font-mono"
-                                                                x-text="'OR# ' + entry.bpls_application.or_number">
-                                                            </span>
-                                                        </template>
-
-                                                    </div>
-                                                </template>
-                                                <template x-if="!entry.bpls_application">
-                                                    <span class="text-xs text-gray/30">—</span>
-                                                </template>
-                                            </td>
-
-                                            {{-- Actions column --}}
-                                            <td class="px-4 py-3">
-                                                <div class="flex items-center gap-1.5 justify-end flex-wrap">
-
-                                                    {{-- Online app: has OR assignments → show payment link --}}
-                                                    <template
-                                                        x-if="entry.bpls_application && entry.bpls_application.orAssignments && entry.bpls_application.orAssignments.length > 0">
-                                                        <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                            class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-colors"
-                                                            :class="entry.bpls_application.orAssignments.every(o => o.status === 'paid')
-                                                ? 'text-logo-green bg-logo-green/10 hover:bg-logo-green/20'
-                                                : 'text-white bg-logo-green hover:bg-green'">
-                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                                stroke="currentColor" stroke-width="2.5">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            <span
-                                                                x-text="entry.bpls_application.orAssignments.every(o => o.status === 'paid') ? 'Paid' : 'Pay'"></span>
-                                                        </a>
-                                                    </template>
-
-                                                    {{-- Online app: no OR assignments yet → Pay Now + Mark Paid --}}
-                                                    <template
-                                                        x-if="entry.bpls_application && (!entry.bpls_application.orAssignments || entry.bpls_application.orAssignments.length === 0)">
-                                                        <div class="flex items-center gap-1">
-                                                            <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-yellow-500 hover:bg-yellow-600 transition-colors whitespace-nowrap">
-                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                                    stroke="currentColor" stroke-width="2.5">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
-                                                                Pay Now
-                                                            </a>
-                                                            <button type="button" @click="markAsPaid(entry)"
-                                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-green hover:bg-green transition-colors whitespace-nowrap"
-                                                                title="Mark as Paid (walk-in)">
-                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                                    stroke="currentColor" stroke-width="2.5">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
-                                                                Mark Paid
-                                                            </button>
-                                                        </div>
-                                                    </template>
-
-                                                    {{-- Retired → certificate button --}}
+                                                <div class="flex items-center gap-1">
+                                                    <a x-show="canPay(entry.status)"
+                                                        :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-teal hover:bg-green transition-colors whitespace-nowrap">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        </svg>
+                                                        Payment
+                                                    </a>
                                                     <button type="button" x-show="entry.status === 'retired'"
                                                         @click="openCertModal(entry)"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
@@ -1561,10 +1532,7 @@
                                                         </svg>
                                                         Cert
                                                     </button>
-
-                                                    {{-- No assessment yet → Assess button --}}
-                                                    <button type="button"
-                                                        x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired' && (!entry.bpls_application || !entry.bpls_application.orAssignments || entry.bpls_application.orAssignments.length === 0)"
+                                                    <button type="button" x-show="canAssess(entry.status)"
                                                         @click="openModal(entry)"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
@@ -1572,7 +1540,8 @@
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                         </svg>
-                                                        Assess
+                                                        <span
+                                                            x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
                                                     </button>
 
                                                     {{-- View details --}}
@@ -1603,20 +1572,12 @@
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 {{-- LIST VIEW --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
-                <div x-show="!loading && view === 'list' && entries.length > 0" x-cloak>
+                <div x-show="!loading && view === 'list' && entries.length > 0">
                     <div class="space-y-2 mb-5">
                         <template x-for="entry in entries" :key="entry.id">
                             <div
                                 class="bg-white rounded-2xl border border-lumot/20 shadow-sm hover:shadow-md hover:border-logo-teal/30 transition-all duration-200 px-4 py-3 flex items-center gap-4">
-                                <div class="w-2.5 h-2.5 rounded-full shrink-0" :class="{
-                                        'bg-logo-green': entry.status === 'approved',
-                                        'bg-red-400': entry.status === 'rejected',
-                                        'bg-logo-blue': entry.status === 'for_renewal',
-                                        'bg-orange-400': entry.status === 'retired',
-                                        'bg-gray-300': entry.status === 'cancelled',
-                                        'bg-yellow-400': !['approved', 'rejected', 'for_renewal', 'cancelled',
-                                            'retired'].includes(entry.status)
-                                    }">
+                                <div class="w-2.5 h-2.5 rounded-full shrink-0" :class="statusBarClass(entry.status)">
                                 </div>
                                 <div class="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-5 gap-x-4">
                                     <div>
@@ -1655,71 +1616,18 @@
                                 <div class="shrink-0 flex items-center gap-2">
                                     <span
                                         class="text-[10px] font-bold px-2 py-0.5 rounded-full border cursor-pointer hover:opacity-80"
-                                        :class="{
-                                            'bg-green-50 text-logo-green border-green-200': entry
-                                                .status === 'approved',
-                                            'bg-red-50 text-red-500 border-red-200': entry.status === 'rejected',
-                                            'bg-blue-50 text-logo-blue border-blue-200': entry
-                                                .status === 'for_renewal',
-                                            'bg-teal-50 text-logo-teal border-teal-200': entry
-                                                .status === 'for_payment',
-                                            'bg-orange-50 text-orange-500 border-orange-200': entry
-                                                .status === 'retired',
-                                            'bg-gray-50 text-gray border-gray-200': entry.status === 'cancelled',
-                                            'bg-yellow-50 text-yellow-600 border-yellow-200': !['approved', 'rejected',
-                                                'for_renewal', 'for_payment', 'cancelled', 'retired'
-                                            ].includes(entry.status)
-                                        }" @click="openStatusModal(entry)" title="Click to change status"
-                                        x-text="entry.status ? entry.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Pending'">
+                                        :class="statusBadgeClass(entry.status)" @click="openStatusModal(entry)"
+                                        title="Click to change status" x-text="statusLabel(entry.status)">
                                     </span>
-                                    {{-- Payment Status & Button based on frequency --}}
-                                    <template
-                                        x-if="entry.bpls_application && entry.bpls_application.orAssignments && entry.bpls_application.orAssignments.length > 0">
-                                        <div class="flex items-center gap-1">
-                                            <template x-for="orItem in entry.bpls_application.orAssignments"
-                                                :key="orItem.id">
-                                                <span class="text-[8px] px-1.5 py-0.5 rounded border font-semibold"
-                                                    :class="orItem.status === 'paid' ? 'bg-logo-green/10 text-logo-green border-logo-green/20' : 'bg-yellow-50 text-yellow-600 border-yellow-200'"
-                                                    x-text="orItem.period_label || 'Inst ' + orItem.installment_number">
-                                                </span>
-                                            </template>
-                                            <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
-                                                :class="entry.bpls_application.orAssignments.every(o => o.status === 'paid') ? 'text-logo-green bg-logo-green/10 hover:bg-logo-green/20' : 'text-white bg-logo-green hover:bg-green' whitespace-nowrap">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <span
-                                                    x-text="entry.bpls_application.orAssignments.every(o => o.status === 'paid') ? 'Paid' : 'Pay'"></span>
-                                            </a>
-                                        </div>
-                                    </template>
-                                    <template
-                                        x-if="entry.bpls_application && (!entry.bpls_application.orAssignments || entry.bpls_application.orAssignments.length === 0)">
-                                        <div class="flex items-center gap-1">
-                                            <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-yellow-500 hover:bg-yellow-600 transition-colors whitespace-nowrap">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                Pay Now
-                                            </a>
-                                            <button type="button" @click="markAsPaid(entry)"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-green hover:bg-green transition-colors whitespace-nowrap"
-                                                title="Mark as Paid">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                Mark Paid
-                                            </button>
-                                        </div>
-                                    </template>
+                                    <a x-show="canPay(entry.status)" :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-teal hover:bg-green transition-colors whitespace-nowrap">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Payment
+                                    </a>
                                     <button type="button" x-show="entry.status === 'retired'"
                                         @click="openCertModal(entry)"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
@@ -1730,8 +1638,7 @@
                                         </svg>
                                         Cert
                                     </button>
-                                    <button type="button"
-                                        x-show="entry.status !== 'for_payment' && entry.status !== 'approved' && entry.status !== 'retired' && (!entry.bpls_application || entry.bpls_application.orAssignments === undefined || entry.bpls_application.orAssignments.length === 0)"
+                                    <button type="button" x-show="canAssess(entry.status)"
                                         @click="openModal(entry)"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -1739,7 +1646,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        Assess
+                                        <span x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
                                     </button>
                                     <button type="button" @click="openViewModal(entry)" title="View Details"
                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
@@ -1758,7 +1665,7 @@
                 </div>
 
                 {{-- ── Pagination ── --}}
-                <div x-show="!loading && lastPage > 1" x-cloak class="flex items-center justify-between mt-2">
+                <div x-show="!loading && lastPage > 1" class="flex items-center justify-between mt-2">
                     <p class="text-xs text-gray">Showing <span class="font-bold text-green" x-text="from"></span>
                         to <span class="font-bold text-green" x-text="to"></span> of <span class="font-bold text-green"
                             x-text="total"></span> entries</p>
@@ -1817,6 +1724,7 @@
                         schedule: [],
                         totalDue: 0,
                         perInstallment: 0,
+                        permitYear: null, // ← NEW: stores the resolved billing year from server
                         form: {
                             business_nature: '',
                             business_scale: '',
@@ -1825,14 +1733,11 @@
                         },
                     },
 
-                    // ── View Modal ────────────────────────────────────────────────────
                     viewModal: {
                         open: false,
                         loading: false,
                         entry: null
                     },
-
-                    // ── Status Change Modal ───────────────────────────────────────────
                     statusModal: {
                         open: false,
                         saving: false,
@@ -1842,9 +1747,27 @@
                             status: '',
                             remarks: ''
                         },
+                        labelFor(s) {
+                            const map = {
+                                'pending': 'For Approval / Assessment',
+                                'for_payment': 'Approved — Payment Stage',
+                                'for_renewal_payment': 'Approved — Renewal Payment',
+                                'completed': 'Completed — Ready to Renew',
+                                'rejected': 'Rejected',
+                                'cancelled': 'Cancelled',
+                                'retired': 'Retired',
+                            };
+                            return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Unknown');
+                        },
+                        currentLabel() {
+                            return this.labelFor(this.entry?.status);
+                        },
+                        isLateRenewal() {
+                            const now = new Date();
+                            const jan20 = new Date(now.getFullYear(), 0, 20);
+                            return now > jan20;
+                        },
                     },
-
-                    // ── Retire Modal ──────────────────────────────────────────────────
                     retireModal: {
                         open: false,
                         saving: false,
@@ -1855,10 +1778,8 @@
                             retirement_reason: '',
                             retirement_reason_custom: '',
                             retirement_remarks: ''
-                        },
+                        }
                     },
-
-                    // ── Retirement Certificate Modal ──────────────────────────────────
                     certModal: {
                         open: false,
                         entry: null,
@@ -1878,13 +1799,14 @@
                         this.modal.schedule = [];
                         this.modal.totalDue = 0;
                         this.modal.perInstallment = 0;
+                        this.modal.permitYear = null; // ← reset billing year
                         this.modal.form = {
                             business_nature: entry.business_nature || '',
                             business_scale: entry.business_scale || '',
                             capital_investment: entry.capital_investment || '',
                             mode_of_payment: entry.mode_of_payment || '',
                         };
-                        // Pre-compute if entry already has saved values
+                        // Pre-compute if entry already has saved assessment values
                         if (this.modal.form.capital_investment && this.modal.form.mode_of_payment) {
                             this.computeFees();
                         }
@@ -1894,7 +1816,11 @@
                         this.modal.open = false;
                     },
 
-                    // ── FIX: computeFees() now calls the DB-backed API endpoint ──────
+                    // ── computeFees() ─────────────────────────────────────────────────
+                    // THE KEY FIX: passes entry_id to the server so it can call
+                    // resolveNextPermitYear() and return the correct billing year
+                    // (e.g. 2027 if 2026 is already fully paid) instead of
+                    // blindly using now()->year which showed overdue 2026 dates.
                     async computeFees() {
                         const gs = parseFloat(this.modal.form.capital_investment) || 0;
                         const mode = this.modal.form.mode_of_payment;
@@ -1904,6 +1830,7 @@
                             this.modal.totalDue = 0;
                             this.modal.perInstallment = 0;
                             this.modal.schedule = [];
+                            this.modal.permitYear = null;
                             return;
                         }
 
@@ -1922,6 +1849,8 @@
                                     capital_investment: gs,
                                     business_scale: this.modal.form.business_scale || '',
                                     mode_of_payment: mode,
+                                    entry_id: this.modal.entry?.id ??
+                                    null, // ← THE FIX: pass entry id so server can resolve correct year
                                 }),
                             });
 
@@ -1935,20 +1864,20 @@
                             this.modal.totalDue = data.total_due;
                             this.modal.perInstallment = data.per_installment;
                             this.modal.schedule = data.schedule;
+                            this.modal.permitYear = data.permit_year ?? null; // ← store resolved year for display
 
                         } catch (err) {
                             this.modal.error = err.message;
                             this.modal.fees = [];
                             this.modal.totalDue = 0;
                             this.modal.schedule = [];
+                            this.modal.permitYear = null;
                         } finally {
                             this.modal.computingFees = false;
                         }
                     },
 
-                    // Kept as no-op — schedule is now returned by the server
-                    computeSchedule() { },
-
+                    // ── approvePayment() ──────────────────────────────────────────────
                     async approvePayment() {
                         this.modal.saving = true;
                         this.modal.saved = false;
@@ -2018,7 +1947,7 @@
                             const data = await res.json();
                             this.viewModal.entry = data;
                         } catch (e) {
-                            // fallback to local data already set
+                            // fallback to local data
                         } finally {
                             this.viewModal.loading = false;
                         }
@@ -2125,58 +2054,30 @@
                     printCert() {
                         const content = document.getElementById('retirement-certificate-print').innerHTML;
                         const win = window.open('', '_blank', 'width=800,height=900');
-                        win.document.write(`
-                                                                                                                    <!DOCTYPE html>
-                                                                                                                    <html>
-                                                                                                                    <head>
-                                                                                                                        <title>Business Retirement Certificate</title>
-                                                                                                                        <meta charset="UTF-8">
-                                                                                                                        <style>
-                                                                                                                            * { box-sizing: border-box; margin: 0; padding: 0; }
-                                                                                                                            body { font-family: Arial, sans-serif; padding: 32px; color: #222; }
-                                                                                                                            .text-center { text-align: center; }
-                                                                                                                            .text-right { text-align: right; }
-                                                                                                                            p, span { display: block; line-height: 1.5; }
-                                                                                                                            .grid { display: grid; }
-                                                                                                                            .grid-cols-2 { grid-template-columns: 1fr 1fr; }
-                                                                                                                            .col-span-2 { grid-column: span 2; }
-                                                                                                                            .gap-3 { gap: 12px; }
-                                                                                                                            .gap-6 { gap: 24px; }
-                                                                                                                            .gap-y-3 { row-gap: 12px; }
-                                                                                                                            .gap-x-4 { column-gap: 16px; }
-                                                                                                                            .mb-1 { margin-bottom: 4px; }
-                                                                                                                            .mb-5 { margin-bottom: 20px; }
-                                                                                                                            .mb-6 { margin-bottom: 24px; }
-                                                                                                                            .mt-1 { margin-top: 4px; }
-                                                                                                                            .mt-6 { margin-top: 24px; }
-                                                                                                                            .mt-8 { margin-top: 32px; }
-                                                                                                                            .p-5 { padding: 20px; }
-                                                                                                                            .pb-8 { padding-bottom: 32px; }
-                                                                                                                            .pt-4 { padding-top: 16px; }
-                                                                                                                            .my-3 { margin: 12px auto; }
-                                                                                                                            .w-16 { width: 64px; }
-                                                                                                                            .border-b-2 { border-bottom: 2px solid #d1d5db; }
-                                                                                                                            .border-t { border-top: 1px solid #e5e7eb; }
-                                                                                                                            .border-2 { border: 2px solid #99f6e4; }
-                                                                                                                            .rounded-xl { border-radius: 12px; }
-                                                                                                                            .uppercase { text-transform: uppercase; }
-                                                                                                                            .tracking-widest { letter-spacing: 0.15em; }
-                                                                                                                            .tracking-wider { letter-spacing: 0.08em; }
-                                                                                                                            .font-extrabold { font-weight: 900; }
-                                                                                                                            .font-bold { font-weight: 700; }
-                                                                                                                            .font-mono { font-family: monospace; }
-                                                                                                                            .leading-relaxed { line-height: 1.6; }
-                                                                                                                            .text-lg { font-size: 1.125rem; }
-                                                                                                                            .text-sm { font-size: 0.875rem; }
-                                                                                                                            .text-xs { font-size: 0.75rem; }
-                                                                                                                            .bg-teal { background: #f0fdfb; }
-                                                                                                                            .divider { height: 2px; background: #14b8a6; width: 64px; margin: 12px auto; }
-                                                                                                                            @media print { body { padding: 16px; } }
-                                                                                                                        </style>
-                                                                                                                    </head>
-                                                                                                                    <body>${content}</body>
-                                                                                                                    </html>
-                                                                                                                `);
+                        win.document.write(`<!DOCTYPE html><html><head>
+                            <title>Business Retirement Certificate</title>
+                            <meta charset="UTF-8">
+                            <style>
+                                *{box-sizing:border-box;margin:0;padding:0}
+                                body{font-family:Arial,sans-serif;padding:32px;color:#222}
+                                .text-center{text-align:center}.text-right{text-align:right}
+                                p,span{display:block;line-height:1.5}
+                                .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
+                                .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
+                                .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
+                                .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
+                                .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
+                                .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
+                                .my-3{margin:12px auto}.w-16{width:64px}
+                                .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
+                                .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
+                                .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
+                                .font-extrabold{font-weight:900}.font-bold{font-weight:700}
+                                .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
+                                .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
+                                @media print{body{padding:16px}}
+                            </style>
+                        </head><body>${content}</body></html>`);
                         win.document.close();
                         setTimeout(() => {
                             win.focus();
@@ -2184,7 +2085,48 @@
                         }, 500);
                     },
 
-                    // ── List / Pagination ─────────────────────────────────────────────
+                    // ── STATUS HELPERS ────────────────────────────────────────────────
+                    statusLabel(s) {
+                        const map = {
+                            'pending': 'For Approval',
+                            'for_payment': 'Approved — Payment',
+                            'for_renewal_payment': 'Renewal — Payment',
+                            'completed': 'Completed',
+                            'rejected': 'Rejected',
+                            'cancelled': 'Cancelled',
+                            'retired': 'Retired',
+                        };
+                        return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Pending');
+                    },
+                    statusBadgeClass(s) {
+                        if (s === 'for_payment' || s === 'for_renewal_payment')
+                            return 'bg-teal-50 text-logo-teal border-teal-200';
+                        if (s === 'completed')
+                            return 'bg-green-50 text-logo-green border-green-200';
+                        if (s === 'rejected')
+                            return 'bg-red-50 text-red-500 border-red-200';
+                        if (s === 'retired')
+                            return 'bg-orange-50 text-orange-500 border-orange-200';
+                        if (s === 'cancelled')
+                            return 'bg-gray-50 text-gray border-gray-200';
+                        return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                    },
+                    statusBarClass(s) {
+                        if (s === 'for_payment' || s === 'for_renewal_payment') return 'bg-logo-teal';
+                        if (s === 'completed') return 'bg-logo-green';
+                        if (s === 'rejected') return 'bg-red-400';
+                        if (s === 'retired') return 'bg-orange-400';
+                        if (s === 'cancelled') return 'bg-gray-300';
+                        return 'bg-yellow-400';
+                    },
+                    canPay(s) {
+                        return s === 'for_payment' || s === 'for_renewal_payment';
+                    },
+                    canAssess(s) {
+                        return s === 'pending' || s === 'completed';
+                    },
+
+                    // ── Pagination ────────────────────────────────────────────────────
                     get pageRange() {
                         const start = Math.max(1, this.currentPage - 2);
                         const end = Math.min(this.lastPage, this.currentPage + 2);
