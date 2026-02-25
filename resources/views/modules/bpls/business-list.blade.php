@@ -1325,44 +1325,136 @@
                                             </div>
                                         </template>
                                         <template x-if="entry.bpls_application">
-                                            <div class="mt-2 pt-2 border-t border-lumot/20">
-                                                <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
-                                                    class="text-[10px] font-bold text-logo-teal uppercase mb-1 hover:underline block">
-                                                    Online Info →
-                                                </a>
-                                                <template x-if="entry.bpls_application.workflow_status">
-                                                    <div class="flex items-center gap-1.5"><span
-                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Status</span><span
-                                                            class="text-xs font-semibold" :class="{
-                                                                'text-green': entry.bpls_application.workflow_status === 'approved',
-                                                                'text-blue': ['verified','assessed'].includes(entry.bpls_application.workflow_status),
-                                                                'text-yellow-600': entry.bpls_application.workflow_status === 'paid',
-                                                                'text-gray': ['submitted','returned'].includes(entry.bpls_application.workflow_status),
-                                                                'text-red': entry.bpls_application.workflow_status === 'rejected'
-                                                            }" x-text="entry.bpls_application.workflow_status"></span>
-                                                    </div>
-                                                </template>
+                                            <div class="mt-2 pt-2 border-t border-lumot/20 space-y-1.5">
+
+                                                {{-- Header --}}
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <span
+                                                        class="text-[10px] font-extrabold text-logo-teal uppercase tracking-wider">Online
+                                                        Application</span>
+                                                    <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
+                                                        class="text-[10px] font-bold text-logo-blue hover:underline">
+                                                        View Full →
+                                                    </a>
+                                                </div>
+
+                                                {{-- App Number --}}
+                                                <div class="flex items-center gap-1.5">
+                                                    <span
+                                                        class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">App
+                                                        No.</span>
+                                                    <span class="text-xs text-gray font-mono"
+                                                        x-text="entry.bpls_application.application_number || '—'"></span>
+                                                </div>
+
+                                                {{-- Workflow Status --}}
+                                                <div class="flex items-center gap-1.5">
+                                                    <span
+                                                        class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Status</span>
+                                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                                        :class="{
+                    'bg-yellow-50 text-yellow-700 border-yellow-200': entry.bpls_application.workflow_status === 'submitted',
+                    'bg-blue-50 text-blue-600 border-blue-200': entry.bpls_application.workflow_status === 'verified',
+                    'bg-purple-50 text-purple-600 border-purple-200': entry.bpls_application.workflow_status === 'assessed',
+                    'bg-orange-50 text-orange-500 border-orange-200': entry.bpls_application.workflow_status === 'paid',
+                    'bg-green-50 text-logo-green border-green-200': entry.bpls_application.workflow_status === 'approved',
+                    'bg-red-50 text-red-500 border-red-200': entry.bpls_application.workflow_status === 'rejected',
+                    'bg-gray-50 text-gray border-gray-200': entry.bpls_application.workflow_status === 'returned',
+                }" x-text="{
+                    submitted: 'For Verification',
+                    returned: 'Returned',
+                    verified: 'For Assessment',
+                    assessed: 'For Payment',
+                    paid: 'For Approval',
+                    approved: 'Approved',
+                    rejected: 'Rejected',
+                }[entry.bpls_application.workflow_status] || entry.bpls_application.workflow_status">
+                                                    </span>
+                                                </div>
+
+                                                {{-- Assessment Amount --}}
                                                 <template x-if="entry.bpls_application.assessment_amount">
-                                                    <div class="flex items-center gap-1.5"><span
-                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Amount</span><span
-                                                            class="text-xs text-gray"
+                                                    <div class="flex items-center gap-1.5">
+                                                        <span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Assessed</span>
+                                                        <span class="text-xs font-bold text-logo-teal"
                                                             x-text="'₱' + Number(entry.bpls_application.assessment_amount).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
+                                                        <span class="text-[10px] text-gray/50 capitalize"
+                                                            x-text="entry.bpls_application.mode_of_payment ? '(' + entry.bpls_application.mode_of_payment.replace('_',' ') + ')' : ''"></span>
                                                     </div>
                                                 </template>
-                                                <template x-if="entry.bpls_application.or_number">
-                                                    <div class="flex items-center gap-1.5"><span
-                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">OR#</span><span
-                                                            class="text-xs text-gray font-mono"
-                                                            x-text="entry.bpls_application.or_number"></span>
+
+                                                {{-- OR Assignments --}}
+                                                <template
+                                                    x-if="entry.bpls_application.or_assignments && entry.bpls_application.or_assignments.length > 0">
+                                                    <div>
+                                                        <p class="text-[10px] font-bold text-gray/60 uppercase mb-1">OR
+                                                            Numbers</p>
+                                                        <div class="space-y-0.5">
+                                                            <template
+                                                                x-for="or in entry.bpls_application.or_assignments"
+                                                                :key="or.id">
+                                                                <div class="flex items-center justify-between px-2 py-1 rounded-lg"
+                                                                    :class="or.status === 'paid' ? 'bg-green-50' : 'bg-lumot/10'">
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <span class="text-[10px] text-gray/50"
+                                                                            x-text="or.period_label || ('Installment ' + or.installment_number)"></span>
+                                                                        <span
+                                                                            class="text-[10px] font-mono font-bold text-green"
+                                                                            x-text="or.or_number || '—'"></span>
+                                                                    </div>
+                                                                    <span
+                                                                        class="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                                                        :class="or.status === 'paid' ? 'bg-green-100 text-logo-green' : 'bg-yellow-100 text-yellow-600'"
+                                                                        x-text="or.status === 'paid' ? '✓ Paid' : 'Pending'">
+                                                                    </span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
                                                     </div>
                                                 </template>
-                                                <template x-if="entry.bpls_application.paid_at">
-                                                    <div class="flex items-center gap-1.5"><span
-                                                            class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Paid</span><span
-                                                            class="text-xs text-gray"
-                                                            x-text="entry.bpls_application.paid_at ? entry.bpls_application.paid_at.substring(0,10) : '—'"></span>
+
+                                                {{-- Online Payment --}}
+                                                <template x-if="entry.bpls_application.payment">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Payment</span>
+                                                        <span
+                                                            class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                                            :class="{
+                        'bg-green-50 text-logo-green border-green-200': entry.bpls_application.payment.status === 'paid',
+                        'bg-red-50 text-red-500 border-red-200': entry.bpls_application.payment.status === 'failed',
+                        'bg-yellow-50 text-yellow-600 border-yellow-200': entry.bpls_application.payment.status === 'pending',
+                    }" x-text="entry.bpls_application.payment.status === 'paid' ? 'Paid' : entry.bpls_application.payment.status === 'failed' ? 'Failed' : 'Pending'">
+                                                        </span>
+                                                        <span class="text-xs text-gray/60 font-mono"
+                                                            x-text="entry.bpls_application.payment.or_number ? ('OR# ' + entry.bpls_application.payment.or_number) : ''">
+                                                        </span>
                                                     </div>
                                                 </template>
+
+                                                {{-- Permit year --}}
+                                                <template x-if="entry.bpls_application.permit_year">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Year</span>
+                                                        <span class="text-xs text-gray"
+                                                            x-text="entry.bpls_application.permit_year"></span>
+                                                        <span class="text-[10px] text-gray/50 capitalize"
+                                                            x-text="entry.bpls_application.application_type ? '(' + entry.bpls_application.application_type + ')' : ''"></span>
+                                                    </div>
+                                                </template>
+
+                                                {{-- Submitted at --}}
+                                                <template x-if="entry.bpls_application.submitted_at">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Submitted</span>
+                                                        <span class="text-xs text-gray"
+                                                            x-text="entry.bpls_application.submitted_at.substring(0,10)"></span>
+                                                    </div>
+                                                </template>
+
                                             </div>
                                         </template>
                                     </div>
@@ -1370,16 +1462,50 @@
                                         <span class="text-[10px] text-gray/50"
                                             x-text="entry.created_at ? entry.created_at.substring(0,10) : '—'"></span>
                                         <div class="flex gap-1.5">
-                                            <a x-show="canPay(entry.status)"
-                                                :href="`{{ url('bpls/payment') }}/${entry.id}`"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-teal hover:bg-green transition-colors">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                </svg>
-                                                Payment
-                                            </a>
+
+                                            {{-- Walk-in buttons — hide when online application exists --}}
+                                            <template x-if="!entry.bpls_application">
+                                                <div class="flex gap-1.5">
+                                                    <a x-show="canPay(entry.status)"
+                                                        :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-teal hover:bg-green transition-colors">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        </svg>
+                                                        Payment
+                                                    </a>
+                                                    <button type="button" x-show="canAssess(entry.status)"
+                                                        @click="openModal(entry)"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                        <span
+                                                            x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
+                                                    </button>
+                                                </div>
+                                            </template>
+
+                                            {{-- Online — just the View Full link --}}
+                                            <template x-if="entry.bpls_application">
+                                                <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
+                                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-blue hover:bg-green transition-colors">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                        stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    Review
+                                                </a>
+                                            </template>
+
+                                            {{-- Retire cert (always) --}}
                                             <button type="button" x-show="entry.status === 'retired'"
                                                 @click="openCertModal(entry)"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors">
@@ -1390,17 +1516,8 @@
                                                 </svg>
                                                 Certificate
                                             </button>
-                                            <button type="button" x-show="canAssess(entry.status)"
-                                                @click="openModal(entry)" title="Assess"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors">
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                    stroke="currentColor" stroke-width="2.5">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                <span
-                                                    x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
-                                            </button>
+
+                                            {{-- View details (always) --}}
                                             <button type="button" @click="openViewModal(entry)" title="View Details"
                                                 class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
@@ -1411,6 +1528,7 @@
                                                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                             </button>
+
                                         </div>
                                     </div>
                                 </div>
@@ -1504,18 +1622,117 @@
                                             </td>
 
                                             {{-- Online Application column --}}
+                                            {{-- Online Application column --}}
+                                            <td class="px-4 py-3 max-w-[200px]">
+                                                <template x-if="!entry.bpls_application">
+                                                    <span class="text-[10px] text-gray/40 italic">Walk-in</span>
+                                                </template>
+                                                <template x-if="entry.bpls_application">
+                                                    <div class="space-y-1">
+                                                        {{-- App Number --}}
+                                                        <p class="text-[10px] font-mono text-gray font-bold"
+                                                            x-text="entry.bpls_application.application_number || '—'">
+                                                        </p>
+
+                                                        {{-- Workflow Status Badge --}}
+                                                        <span
+                                                            class="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border"
+                                                            :class="{
+                    'bg-yellow-50 text-yellow-700 border-yellow-200': entry.bpls_application.workflow_status === 'submitted',
+                    'bg-blue-50 text-blue-600 border-blue-200': entry.bpls_application.workflow_status === 'verified',
+                    'bg-purple-50 text-purple-600 border-purple-200': entry.bpls_application.workflow_status === 'assessed',
+                    'bg-orange-50 text-orange-500 border-orange-200': entry.bpls_application.workflow_status === 'paid',
+                    'bg-green-50 text-green-600 border-green-200': entry.bpls_application.workflow_status === 'approved',
+                    'bg-red-50 text-red-500 border-red-200': entry.bpls_application.workflow_status === 'rejected',
+                    'bg-gray-50 text-gray border-gray-200': entry.bpls_application.workflow_status === 'returned',
+                }" x-text="{
+                    submitted: 'For Verification',
+                    verified: 'For Assessment',
+                    assessed: 'For Payment',
+                    paid: 'For Approval',
+                    approved: 'Approved',
+                    rejected: 'Rejected',
+                    returned: 'Returned',
+                }[entry.bpls_application.workflow_status] || entry.bpls_application.workflow_status">
+                                                        </span>
+
+                                                        {{-- Assessment Amount --}}
+                                                        <template x-if="entry.bpls_application.assessment_amount">
+                                                            <p class="text-[10px] text-logo-teal font-bold"
+                                                                x-text="'₱' + Number(entry.bpls_application.assessment_amount).toLocaleString('en-PH',{minimumFractionDigits:2})">
+                                                            </p>
+                                                        </template>
+
+                                                        {{-- OR Assignments --}}
+                                                        <template
+                                                            x-if="entry.bpls_application.or_assignments && entry.bpls_application.or_assignments.length > 0">
+                                                            <div class="space-y-0.5 mt-0.5">
+                                                                <template
+                                                                    x-for="or in entry.bpls_application.or_assignments"
+                                                                    :key="or.id">
+                                                                    <div class="flex items-center gap-1">
+                                                                        <span
+                                                                            class="text-[9px] font-mono font-bold text-green"
+                                                                            x-text="or.or_number || '—'"></span>
+                                                                        <span
+                                                                            class="text-[8px] font-bold px-1 py-0.5 rounded-full"
+                                                                            :class="or.status === 'paid' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'"
+                                                                            x-text="or.status === 'paid' ? '✓' : '…'">
+                                                                        </span>
+                                                                    </div>
+                                                                </template>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </td>
+
+                                            {{-- Actions column --}}
                                             <td class="px-4 py-3">
                                                 <div class="flex items-center gap-1">
-                                                    <a x-show="canPay(entry.status)"
-                                                        :href="`{{ url('bpls/payment') }}/${entry.id}`"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-teal hover:bg-green transition-colors whitespace-nowrap">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                        </svg>
-                                                        Payment
-                                                    </a>
+                                                    {{-- Walk-in buttons --}}
+                                                    <template x-if="!entry.bpls_application">
+                                                        <div class="flex items-center gap-1">
+                                                            <a x-show="canPay(entry.status)"
+                                                                :href="`{{ url('bpls/payment') }}/${entry.id}`"
+                                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-teal hover:bg-green transition-colors whitespace-nowrap">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor" stroke-width="2.5">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                                </svg>
+                                                                Payment
+                                                            </a>
+                                                            <button type="button" x-show="canAssess(entry.status)"
+                                                                @click="openModal(entry)"
+                                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor" stroke-width="2.5">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                </svg>
+                                                                <span
+                                                                    x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
+                                                            </button>
+                                                        </div>
+                                                    </template>
+
+                                                    {{-- Online — Review button --}}
+                                                    <template x-if="entry.bpls_application">
+                                                        <a :href="`/bpls/online/application/${entry.bpls_application.id}`"
+                                                            class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-blue hover:bg-green transition-colors whitespace-nowrap">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                                stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            </svg>
+                                                            Review
+                                                        </a>
+                                                    </template>
+
+                                                    {{-- Always shown --}}
                                                     <button type="button" x-show="entry.status === 'retired'"
                                                         @click="openCertModal(entry)"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
@@ -1526,19 +1743,6 @@
                                                         </svg>
                                                         Cert
                                                     </button>
-                                                    <button type="button" x-show="canAssess(entry.status)"
-                                                        @click="openModal(entry)"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
-                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor" stroke-width="2.5">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        <span
-                                                            x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
-                                                    </button>
-
-                                                    {{-- View details --}}
                                                     <button type="button" @click="openViewModal(entry)"
                                                         title="View Details"
                                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
@@ -1550,7 +1754,6 @@
                                                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                         </svg>
                                                     </button>
-
                                                 </div>
                                             </td>
 
@@ -2048,29 +2251,29 @@
                         const content = document.getElementById('retirement-certificate-print').innerHTML;
                         const win = window.open('', '_blank', 'width=800,height=900');
                         win.document.write(`<!DOCTYPE html><html><head>
-                                <title>Business Retirement Certificate</title>
-                                <meta charset="UTF-8">
-                                <style>
-                                    *{box-sizing:border-box;margin:0;padding:0}
-                                    body{font-family:Arial,sans-serif;padding:32px;color:#222}
-                                    .text-center{text-align:center}.text-right{text-align:right}
-                                    p,span{display:block;line-height:1.5}
-                                    .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
-                                    .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
-                                    .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
-                                    .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
-                                    .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
-                                    .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
-                                    .my-3{margin:12px auto}.w-16{width:64px}
-                                    .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
-                                    .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
-                                    .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
-                                    .font-extrabold{font-weight:900}.font-bold{font-weight:700}
-                                    .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
-                                    .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
-                                    @media print{body{padding:16px}}
-                                </style>
-                            </head><body>${content}</body></html>`);
+                                                    <title>Business Retirement Certificate</title>
+                                                    <meta charset="UTF-8">
+                                                    <style>
+                                                        *{box-sizing:border-box;margin:0;padding:0}
+                                                        body{font-family:Arial,sans-serif;padding:32px;color:#222}
+                                                        .text-center{text-align:center}.text-right{text-align:right}
+                                                        p,span{display:block;line-height:1.5}
+                                                        .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
+                                                        .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
+                                                        .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
+                                                        .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
+                                                        .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
+                                                        .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
+                                                        .my-3{margin:12px auto}.w-16{width:64px}
+                                                        .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
+                                                        .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
+                                                        .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
+                                                        .font-extrabold{font-weight:900}.font-bold{font-weight:700}
+                                                        .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
+                                                        .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
+                                                        @media print{body{padding:16px}}
+                                                    </style>
+                                                </head><body>${content}</body></html>`);
                         win.document.close();
                         setTimeout(() => {
                             win.focus();

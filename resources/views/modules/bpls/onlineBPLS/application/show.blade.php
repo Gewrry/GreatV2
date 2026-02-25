@@ -14,18 +14,18 @@
         $o = $application->owner;
         $badgeClass = [
             'submitted' => 'bg-blue-500/10 text-blue-600 border-blue-500/20 backdrop-blur-md ring-1 ring-blue-500/10',
-            'returned'  => 'bg-yellow-500/10 text-green border-yellow-500/20 backdrop-blur-md ring-1 ring-yellow-500/10',
-            'verified'  => 'bg-purple-500/10 text-purple-600 border-purple-500/20 backdrop-blur-md ring-1 ring-purple-500/10',
-            'assessed'  => 'bg-orange-500/10 text-orange-600 border-orange-500/20 backdrop-blur-md ring-1 ring-orange-500/10',
-            'paid'      => 'bg-logo-teal/10 text-logo-teal border-logo-teal/20 backdrop-blur-md ring-1 ring-logo-teal/10',
-            'approved'  => 'bg-logo-green/10 text-logo-green border-logo-green/20 backdrop-blur-md ring-1 ring-logo-green/10',
-            'rejected'  => 'bg-red-500/10 text-red-600 border-red-500/20 backdrop-blur-md ring-1 ring-red-500/10',
+            'returned' => 'bg-yellow-500/10 text-green border-yellow-500/20 backdrop-blur-md ring-1 ring-yellow-500/10',
+            'verified' => 'bg-purple-500/10 text-purple-600 border-purple-500/20 backdrop-blur-md ring-1 ring-purple-500/10',
+            'assessed' => 'bg-orange-500/10 text-orange-600 border-orange-500/20 backdrop-blur-md ring-1 ring-orange-500/10',
+            'paid' => 'bg-logo-teal/10 text-logo-teal border-logo-teal/20 backdrop-blur-md ring-1 ring-logo-teal/10',
+            'approved' => 'bg-logo-green/10 text-logo-green border-logo-green/20 backdrop-blur-md ring-1 ring-logo-green/10',
+            'rejected' => 'bg-red-500/10 text-red-600 border-red-500/20 backdrop-blur-md ring-1 ring-red-500/10',
         ][$status] ?? 'bg-gray-500/10 text-gray-600 border-gray-500/20 backdrop-blur-md ring-1 ring-gray-500/10';
     @endphp
 
     @php
         // Payment sub-step flags
-        $inPayment    = in_array($status, ['assessed', 'paid', 'approved']);
+        $inPayment = in_array($status, ['assessed', 'paid', 'approved']);
         $subStep1Done = $application->assessment_amount > 0;
         $subStep2Done = (bool) $application->ors_confirmed;
         $subStep3Done = in_array($status, ['paid', 'approved']);
@@ -152,19 +152,19 @@
 
             {{-- ══ WORKFLOW PROGRESS TRACKER ══════════════════════════════════════ --}}
             @php
-                $stages    = ['submitted' => 'Verification', 'verified' => 'Assessment', 'assessed' => 'Payment', 'paid' => 'For Approval', 'approved' => 'Approved'];
+                $stages = ['submitted' => 'Verification', 'verified' => 'Assessment', 'assessed' => 'Payment', 'paid' => 'For Approval', 'approved' => 'Approved'];
                 $stageKeys = array_keys($stages);
-                $curIdx    = array_search($status, $stageKeys);
-                $rejected  = $status === 'rejected';
-                $returned  = $status === 'returned';
+                $curIdx = array_search($status, $stageKeys);
+                $rejected = $status === 'rejected';
+                $returned = $status === 'returned';
             @endphp
 
             <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-5 py-4 mb-6 overflow-x-auto">
                 <div class="flex items-start min-w-max">
                     @foreach ($stages as $key => $label)
                         @php
-                            $idx    = array_search($key, $stageKeys);
-                            $done   = $curIdx !== false && $idx < $curIdx && !$rejected;
+                            $idx = array_search($key, $stageKeys);
+                            $done = $curIdx !== false && $idx < $curIdx && !$rejected;
                             $active = $status === $key && !$rejected;
                         @endphp
                         <div class="flex items-center">
@@ -172,7 +172,7 @@
 
                                 {{-- Stage bubble --}}
                                 <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black transition-all duration-300
-                                    {{ $done   ? 'bg-logo-green text-white shadow-lg shadow-logo-green/20' : '' }}
+                                    {{ $done ? 'bg-logo-green text-white shadow-lg shadow-logo-green/20' : '' }}
                                     {{ $active ? 'bg-logo-teal text-white shadow-xl shadow-logo-teal/40 scale-110' : '' }}
                                     {{ !$done && !$active ? 'bg-bluebody/30 text-gray/40 border border-lumot/10' : '' }}">
                                     @if ($done)
@@ -184,8 +184,8 @@
 
                                 {{-- Stage label --}}
                                 <p class="text-[10px] font-bold mt-1.5 whitespace-nowrap
-                                    {{ $done   ? 'text-logo-green' : '' }}
-                                    {{ $active ? 'text-logo-teal'  : '' }}
+                                    {{ $done ? 'text-logo-green' : '' }}
+                                    {{ $active ? 'text-logo-teal' : '' }}
                                     {{ !$done && !$active ? 'text-gray/30' : '' }}">
                                     {{ $label }}
                                 </p>
@@ -283,31 +283,31 @@
                         </h3>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
                             @foreach ([
-                                'Last Name'    => $o?->last_name,
-                                'First Name'   => $o?->first_name,
-                                'Middle Name'  => $o?->middle_name ?: '—',
-                                'Citizenship'  => $o?->citizenship ?: '—',
-                                'Civil Status' => $o?->civil_status ?: '—',
-                                'Gender'       => $o?->gender ?: '—',
-                                'Birthdate'    => $o?->birthdate ? \Carbon\Carbon::parse($o->birthdate)->format('M d, Y') : '—',
-                                'Mobile'       => $o?->mobile_no ?: '—',
-                                'Email'        => $o?->email ?: '—',
-                            ] as $lbl => $val)
-                                <div>
-                                    <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
-                                    <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
-                                </div>
+                                    'Last Name' => $o?->last_name,
+                                    'First Name' => $o?->first_name,
+                                    'Middle Name' => $o?->middle_name ?: '—',
+                                    'Citizenship' => $o?->citizenship ?: '—',
+                                    'Civil Status' => $o?->civil_status ?: '—',
+                                    'Gender' => $o?->gender ?: '—',
+                                    'Birthdate' => $o?->birthdate ? \Carbon\Carbon::parse($o->birthdate)->format('M d, Y') : '—',
+                                    'Mobile' => $o?->mobile_no ?: '—',
+                                    'Email' => $o?->email ?: '—',
+                                ] as $lbl => $val)
+                                            <div>
+                                                <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
+                                                <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
+                                            </div>
                             @endforeach
                         </div>
 
                         @php
                             $classifications = collect([
-                                'PWD'            => $o?->is_pwd,
-                                '4PS'            => $o?->is_4ps,
-                                'Solo Parent'    => $o?->is_solo_parent,
+                                'PWD' => $o?->is_pwd,
+                                '4PS' => $o?->is_4ps,
+                                'Solo Parent' => $o?->is_solo_parent,
                                 'Senior Citizen' => $o?->is_senior,
                                 '10% Vaccinated' => $o?->discount_10,
-                                '5% 1st Dose'    => $o?->discount_5,
+                                '5% 1st Dose' => $o?->discount_5,
                             ])->filter()->keys();
                         @endphp
                         @if ($classifications->isNotEmpty())
@@ -356,28 +356,28 @@
                         </h3>
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 mb-4">
                             @foreach ([
-                                'Business Name'  => $b?->business_name,
-                                'Trade Name'     => $b?->trade_name ?: '—',
-                                'TIN No.'        => $b?->tin_no ?: '—',
-                                'Type'           => $b?->type_of_business ?: '—',
-                                'Organization'   => $b?->business_organization ?: '—',
-                                'Scale'          => $b?->business_scale ?: '—',
-                                'Sector'         => $b?->business_sector ?: '—',
-                                'Zone'           => $b?->zone ?: '—',
-                                'Occupancy'      => $b?->occupancy ?: '—',
-                                'Area (sqm)'     => $b?->business_area_sqm ? number_format($b->business_area_sqm, 2) : '—',
-                                'Total Employees'=> $b?->total_employees ?? '—',
-                                'LGU Employees'  => $b?->employees_lgu ?? '—',
-                                'DTI/SEC/CDA No.'=> $b?->dti_sec_cda_no ?: '—',
-                                'Reg. Date'      => $b?->dti_sec_cda_date ? \Carbon\Carbon::parse($b->dti_sec_cda_date)->format('M d, Y') : '—',
-                                'Tax Incentive'  => $b?->tax_incentive ? 'Yes' : 'No',
-                                'Business Mobile'=> $b?->business_mobile ?: '—',
-                                'Business Email' => $b?->business_email ?: '—',
-                            ] as $lbl => $val)
-                                <div>
-                                    <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
-                                    <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
-                                </div>
+                                    'Business Name' => $b?->business_name,
+                                    'Trade Name' => $b?->trade_name ?: '—',
+                                    'TIN No.' => $b?->tin_no ?: '—',
+                                    'Type' => $b?->type_of_business ?: '—',
+                                    'Organization' => $b?->business_organization ?: '—',
+                                    'Scale' => $b?->business_scale ?: '—',
+                                    'Sector' => $b?->business_sector ?: '—',
+                                    'Zone' => $b?->zone ?: '—',
+                                    'Occupancy' => $b?->occupancy ?: '—',
+                                    'Area (sqm)' => $b?->business_area_sqm ? number_format($b->business_area_sqm, 2) : '—',
+                                    'Total Employees' => $b?->total_employees ?? '—',
+                                    'LGU Employees' => $b?->employees_lgu ?? '—',
+                                    'DTI/SEC/CDA No.' => $b?->dti_sec_cda_no ?: '—',
+                                    'Reg. Date' => $b?->dti_sec_cda_date ? \Carbon\Carbon::parse($b->dti_sec_cda_date)->format('M d, Y') : '—',
+                                    'Tax Incentive' => $b?->tax_incentive ? 'Yes' : 'No',
+                                    'Business Mobile' => $b?->business_mobile ?: '—',
+                                    'Business Email' => $b?->business_email ?: '—',
+                                ] as $lbl => $val)
+                                            <div>
+                                                <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
+                                                <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
+                                            </div>
                             @endforeach
                         </div>
 
@@ -567,10 +567,10 @@
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-xs font-extrabold text-green uppercase tracking-wider">Documents</h3>
                             @php
-                                $total    = $application->documents->count();
+                                $total = $application->documents->count();
                                 $verified = $application->documents->where('status', 'verified')->count();
                                 $rejected = $application->documents->where('status', 'rejected')->count();
-                                $pending  = $application->documents->where('status', 'pending')->count();
+                                $pending = $application->documents->where('status', 'pending')->count();
                             @endphp
                             <div class="flex items-center gap-1.5">
                                 <span class="text-xs font-extrabold text-logo-green">{{ $verified }}</span>
@@ -602,12 +602,12 @@
                     {{-- Document cards --}}
                     @forelse ($application->documents as $doc)
                         @php
-                            $isPDF  = str_contains($doc->mime_type, 'pdf');
-                            $isReq  = in_array($doc->document_type, \App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES);
+                            $isPDF = str_contains($doc->mime_type, 'pdf');
+                            $isReq = in_array($doc->document_type, \App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES);
                             $docBadge = match ($doc->status) {
                                 'verified' => 'bg-logo-green/10 text-logo-green border-logo-green/30',
                                 'rejected' => 'bg-red-100 text-red-600 border-red-200',
-                                default    => 'bg-yellow/20 text-green border-yellow/40',
+                                default => 'bg-yellow/20 text-green border-yellow/40',
                             };
                         @endphp
                         <div class="bg-white rounded-2xl shadow-sm border border-lumot/20 overflow-hidden
@@ -787,105 +787,244 @@
             </div>
 
             {{-- MODAL: Set Assessment --}}
-            <div x-show="showAssess" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-                <div @click.outside="showAssess = false" class="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-7 border border-lumot/20"
-                    x-data="{
-                        assessmentAmount: {{ old('assessment_amount', $application->assessment_amount ?? 0) }},
-                        modeOfPayment: '{{ old('mode_of_payment', $application->mode_of_payment ?? 'annual') }}',
-                        get installmentAmount() {
-                            if (this.assessmentAmount <= 0) return 0;
-                            switch (this.modeOfPayment) {
-                                case 'quarterly':   return this.assessmentAmount / 4;
-                                case 'semi_annual': return this.assessmentAmount / 2;
-                                case 'annual':      return this.assessmentAmount;
-                                default: return 0;
-                            }
+<div x-show="showAssess" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+    <div @click.outside="showAssess = false" class="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-7 border border-lumot/20"
+        x-data="{
+            assessmentAmount: {{ old('assessment_amount', $application->assessment_amount ?? 0) }},
+            modeOfPayment: '{{ old('mode_of_payment', $application->mode_of_payment ?? 'annual') }}',
+            computing: false,
+            computeError: null,
+            permitYear: null,
+            entryId: {{ $application->business_entry_id ?? 'null' }},
+
+            get installmentAmount() {
+                if (this.assessmentAmount <= 0) return 0;
+                switch (this.modeOfPayment) {
+                    case 'quarterly':   return this.assessmentAmount / 4;
+                    case 'semi_annual': return this.assessmentAmount / 2;
+                    case 'annual':      return this.assessmentAmount;
+                    default: return 0;
+                }
+            },
+            get periodLabels() {
+                const year = this.permitYear ?? new Date().getFullYear();
+                switch (this.modeOfPayment) {
+                    case 'quarterly':   return [`Q1 ${year}`, `Q2 ${year}`, `Q3 ${year}`, `Q4 ${year}`];
+                    case 'semi_annual': return [`1st Half ${year}`, `2nd Half ${year}`];
+                    case 'annual':      return [`${year}`];
+                    default: return [];
+                }
+            },
+            formatCurrency(value) {
+                return '₱' + parseFloat(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            },
+            async computeFees() {
+                if (!this.entryId || !this.modeOfPayment) return;
+                this.computing = true;
+                this.computeError = null;
+                try {
+                    const res = await fetch('{{ route('bpls.fee-rules.compute') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                            'Accept': 'application/json',
                         },
-                        get periodLabels() {
-                            const year = new Date().getFullYear();
-                            switch (this.modeOfPayment) {
-                                case 'quarterly':   return [`Q1 ${year}`, `Q2 ${year}`, `Q3 ${year}`, `Q4 ${year}`];
-                                case 'semi_annual': return [`1st Half ${year}`, `2nd Half ${year}`];
-                                case 'annual':      return [`${year}`];
-                                default: return [];
-                            }
-                        },
-                        formatCurrency(value) {
-                            return '₱' + parseFloat(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                        }
-                    }">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center shadow-inner">
-                            <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                        </div>
-                        <h3 class="text-sm font-black text-green uppercase tracking-widest">Finalize Assessment</h3>
+                        body: JSON.stringify({
+                            capital_investment: {{ $application->businessEntry?->capital_investment ?? 0 }},
+                            business_scale: '{{ $application->businessEntry?->business_scale ?? '' }}',
+                            mode_of_payment: this.modeOfPayment,
+                            entry_id: this.entryId,
+                        }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Computation failed');
+                    this.assessmentAmount = data.total_due;
+                    this.permitYear = data.permit_year ?? null;
+                } catch (err) {
+                    this.computeError = err.message;
+                } finally {
+                    this.computing = false;
+                }
+            },
+            init() {
+                this.$watch('showAssess', val => {
+                    if (val && this.entryId && !this.assessmentAmount) {
+                        this.computeFees();
+                    }
+                });
+                {{-- Auto-compute on open if no amount yet --}}
+                if (this.entryId && !this.assessmentAmount) {
+                    this.computeFees();
+                }
+            }
+        }">
+
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center shadow-inner">
+                <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <h3 class="text-sm font-black text-green uppercase tracking-widest">Finalize Assessment</h3>
+        </div>
+
+        {{-- Capital Investment info row --}}
+        @if($application->businessEntry?->capital_investment)
+            <div class="mb-5 flex items-center justify-between px-4 py-3 bg-bluebody/40 border border-lumot/10 rounded-2xl">
+                <div>
+                    <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Capital / Gross Sales</p>
+                    <p class="text-sm font-black text-green mt-0.5">₱{{ number_format($application->businessEntry->capital_investment, 2) }}</p>
+                </div>
+                @if($application->businessEntry?->business_scale)
+                    <div class="text-right">
+                        <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Scale</p>
+                        <p class="text-xs font-black text-green mt-0.5">{{ $application->businessEntry->business_scale }}</p>
                     </div>
+                @endif
+            </div>
+        @endif
 
-                    <form action="{{ route('bpls.online.application.assess', $application->id) }}" method="POST">
-                        @csrf
-                        <div class="mb-6">
-                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Total Assessment Amount (₱) <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-gray/30">₱</span>
-                                <input type="number" name="assessment_amount" step="0.01" min="0.01" required placeholder="0.00"
-                                    x-model="assessmentAmount"
-                                    class="w-full pl-9 text-sm font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/40 transition-all bg-purple-500/5">
+        <form action="{{ route('bpls.online.application.assess', $application->id) }}" method="POST">
+            @csrf
+
+            {{-- Assessment Amount --}}
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2 ml-1">
+                    <label class="text-[10px] font-black text-gray/40 uppercase tracking-widest">
+                        Total Assessment Amount (₱) <span class="text-red-500">*</span>
+                    </label>
+                    {{-- Re-compute button --}}
+                    <button type="button" @click="computeFees()"
+                        :disabled="computing || !entryId"
+                        class="flex items-center gap-1 text-[10px] font-black text-purple-600 hover:text-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <svg x-show="computing" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        <svg x-show="!computing" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span x-text="computing ? 'Computing…' : 'Re-compute'"></span>
+                    </button>
+                </div>
+
+                {{-- Computing skeleton --}}
+                <div x-show="computing" class="w-full h-[46px] bg-purple-500/5 border border-purple-500/20 rounded-2xl animate-pulse flex items-center px-4 gap-2">
+                    <svg class="w-4 h-4 animate-spin text-purple-400" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    <span class="text-xs font-bold text-purple-400">Computing fees from fee rules…</span>
+                </div>
+
+                <div x-show="!computing" class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-gray/30">₱</span>
+                    <input type="number" name="assessment_amount" step="0.01" min="0.01" required
+                        x-model="assessmentAmount"
+                        placeholder="0.00"
+                        class="w-full pl-9 text-sm font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/40 transition-all bg-purple-500/5">
+                </div>
+
+                {{-- Permit year indicator --}}
+                <div x-show="permitYear && !computing" class="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Billing year: <span class="font-extrabold" x-text="permitYear"></span>
+                </div>
+
+                {{-- Error --}}
+                <div x-show="computeError" class="mt-2 flex items-center gap-1.5 p-2.5 bg-red-50 border border-red-200 rounded-xl">
+                    <svg class="w-3.5 h-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-[10px] font-bold text-red-600" x-text="computeError"></span>
+                </div>
+
+                {{-- No linked entry warning --}}
+                @unless($application->business_entry_id)
+                    <div class="mt-2 flex items-center gap-1.5 p-2.5 bg-yellow-50 border border-yellow-200 rounded-xl">
+                        <svg class="w-3.5 h-3.5 text-yellow-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                        <span class="text-[10px] font-bold text-yellow-700">No linked business entry — enter amount manually.</span>
+                    </div>
+                @endunless
+            </div>
+
+            {{-- Payment Frequency --}}
+            <div class="mb-6">
+                <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3 ml-1">
+                    Payment Frequency <span class="text-red-500">*</span>
+                </label>
+                <div class="grid grid-cols-3 gap-3">
+                    <template x-for="opt in [
+                        { value: 'quarterly',   label: 'Quarterly',   sub: '4×' },
+                        { value: 'semi_annual', label: 'Semi-Annual', sub: '2×' },
+                        { value: 'annual',      label: 'Annual',      sub: '1×' },
+                    ]" :key="opt.value">
+                        <label class="cursor-pointer group">
+                            <input type="radio" name="mode_of_payment" :value="opt.value"
+                                x-model="modeOfPayment"
+                                @change="computeFees()"
+                                class="peer hidden" required>
+                            <div class="peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 border border-lumot/30 rounded-2xl p-4 text-center transition-all group-hover:border-purple-400 bg-white text-green shadow-sm">
+                                <p class="text-xl font-black mb-0.5" x-text="opt.sub"></p>
+                                <p class="text-[9px] font-black uppercase tracking-tighter opacity-70" x-text="opt.label"></p>
                             </div>
-                        </div>
+                        </label>
+                    </template>
+                </div>
 
-                        <div class="mb-6">
-                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3 ml-1">Payment Frequency <span class="text-red-500">*</span></label>
-                            <div class="grid grid-cols-3 gap-3">
-                                <template x-for="opt in [
-                                    { value: 'quarterly',   label: 'Quarterly',   sub: '4x' },
-                                    { value: 'semi_annual', label: 'Semi-Annual', sub: '2x' },
-                                    { value: 'annual',      label: 'Annual',      sub: '1x' },
-                                ]" :key="opt.value">
-                                    <label class="cursor-pointer group">
-                                        <input type="radio" name="mode_of_payment" :value="opt.value" x-model="modeOfPayment" class="peer hidden" required>
-                                        <div class="peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 border border-lumot/30 rounded-2xl p-4 text-center transition-all group-hover:border-purple-400 bg-white text-green shadow-sm shadow-black/5 ring-1 ring-black/5">
-                                            <p class="text-xl font-black mb-0.5" x-text="opt.sub"></p>
-                                            <p class="text-[9px] font-black uppercase tracking-tighter opacity-70" x-text="opt.label"></p>
-                                        </div>
-                                    </label>
-                                </template>
-                            </div>
-
-                            <div x-show="assessmentAmount > 0" x-transition class="mt-4 p-4 bg-bluebody/30 rounded-2xl border border-lumot/10 space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Installment Amount</span>
-                                    <span class="text-sm font-black text-purple-600" x-text="formatCurrency(installmentAmount)"></span>
-                                </div>
-                                <div class="border-t border-lumot/10 pt-3">
-                                    <p class="text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3">Estimated Schedule</p>
-                                    <div class="space-y-1.5">
-                                        <template x-for="(label, i) in periodLabels" :key="i">
-                                            <div class="flex items-center justify-between px-3 py-2 bg-white/50 backdrop-blur-sm border border-lumot/10 rounded-xl">
-                                                <div class="flex items-center gap-2.5">
-                                                    <span class="w-5 h-5 rounded-lg bg-purple-500/10 text-purple-600 text-[9px] font-black flex items-center justify-center border border-purple-500/20" x-text="i + 1"></span>
-                                                    <span class="text-[11px] font-black text-green tracking-tight" x-text="label"></span>
-                                                </div>
-                                                <span class="text-[9px] font-black text-gray/30 uppercase tracking-tighter">Auto-Assigned</span>
-                                            </div>
-                                        </template>
+                {{-- Installment preview --}}
+                <div x-show="assessmentAmount > 0 && !computing" x-transition class="mt-4 p-4 bg-bluebody/30 rounded-2xl border border-lumot/10 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Per Installment</span>
+                        <span class="text-sm font-black text-purple-600" x-text="formatCurrency(installmentAmount)"></span>
+                    </div>
+                    <div class="border-t border-lumot/10 pt-3">
+                        <p class="text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3">Payment Schedule</p>
+                        <div class="space-y-1.5">
+                            <template x-for="(label, i) in periodLabels" :key="i">
+                                <div class="flex items-center justify-between px-3 py-2 bg-white/50 border border-lumot/10 rounded-xl">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="w-5 h-5 rounded-lg bg-purple-500/10 text-purple-600 text-[9px] font-black flex items-center justify-center border border-purple-500/20" x-text="i + 1"></span>
+                                        <span class="text-[11px] font-black text-green tracking-tight" x-text="label"></span>
                                     </div>
+                                    <span class="text-[10px] font-black text-gray/50" x-text="formatCurrency(installmentAmount)"></span>
                                 </div>
-                            </div>
+                            </template>
                         </div>
-
-                        <div class="mb-7">
-                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Fee Breakdown / Notes</label>
-                            <textarea name="assessment_notes" rows="3" placeholder="e.g. Mayor's Permit: ₱500, Garbage Fee: ₱200..."
-                                class="w-full text-sm border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-logo-teal/10 focus:border-logo-teal/40 resize-none placeholder-gray/30 transition-all">{{ old('assessment_notes', $application->assessment_notes) }}</textarea>
-                        </div>
-
-                        <div class="flex justify-end gap-3">
-                            <button type="button" @click="showAssess = false" class="px-5 py-2.5 text-xs font-black bg-bluebody/30 text-gray uppercase tracking-widest rounded-2xl hover:bg-bluebody/50 transition-all border border-lumot/10">Cancel</button>
-                            <button type="submit" class="px-5 py-2.5 text-xs font-black bg-purple-600 text-white uppercase tracking-widest rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 hover:shadow-xl">Submit Assessment</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
+
+            {{-- Notes --}}
+            <div class="mb-7">
+                <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Fee Breakdown / Notes</label>
+                <textarea name="assessment_notes" rows="3"
+                    placeholder="e.g. Mayor's Permit: ₱500, Garbage Fee: ₱200…"
+                    class="w-full text-sm border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-logo-teal/10 focus:border-logo-teal/40 resize-none placeholder-gray/30 transition-all">{{ old('assessment_notes', $application->assessment_notes) }}</textarea>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" @click="showAssess = false"
+                    class="px-5 py-2.5 text-xs font-black bg-bluebody/30 text-gray uppercase tracking-widest rounded-2xl hover:bg-bluebody/50 transition-all border border-lumot/10">
+                    Cancel
+                </button>
+                <button type="submit" :disabled="computing || assessmentAmount <= 0"
+                    class="px-5 py-2.5 text-xs font-black bg-purple-600 text-white uppercase tracking-widest rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <svg x-show="computing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    Submit Assessment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
             {{-- MODAL: Edit OR Numbers --}}
             <div x-show="showEditOrs" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
@@ -991,9 +1130,9 @@
             <div x-show="showFinalApprove" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
                 <div @click.outside="showFinalApprove = false" class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-lumot/20"
                     x-data='{
-                        signatoryId: @js(old("signatory_id", (string)$application->signatory_id)),
-                        signatoryName: @js(old("signatory_name", (string)$application->signatory_name)),
-                        signatoryPosition: @js(old("signatory_position", (string)$application->signatory_position)),
+                        signatoryId: @js(old("signatory_id", (string) $application->signatory_id)),
+                        signatoryName: @js(old("signatory_name", (string) $application->signatory_name)),
+                        signatoryPosition: @js(old("signatory_position", (string) $application->signatory_position)),
                         isCustom: @js(old("signatory_id", $application->signatory_id) === "custom"),
                         signatories: @js($signatories->map(fn($s) => ["id" => $s->id, "name" => $s->name, "position" => $s->position])),
                         selectSignatory: function(id) {

@@ -81,7 +81,7 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     public function show(BplsApplication $application)
     {
-        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory']);
+        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory', 'businessEntry']);
 
         $docs = $application->documents->keyBy('document_type');
         $requiredMet = collect(BplsDocument::REQUIRED_TYPES)

@@ -46,8 +46,12 @@ class BusinessListController extends Controller
     }
     public function search(Request $request)
     {
-        $query = BusinessEntry::whereNull('deleted_at')->with(['bplsApplication', 'bplsApplication.orAssignments', 'payments']);
-
+        $query = BusinessEntry::whereNull('deleted_at')->with([
+            'bplsApplication',
+            'bplsApplication.orAssignments',
+            'bplsApplication.payment',
+            'payments',
+        ]);
         // Filter by source (online/walkin)
         $source = $request->get('source', 'all');
         if ($source === 'online') {
