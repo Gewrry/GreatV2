@@ -459,6 +459,7 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::put('/{application}', [ApplicationController::class, 'update'])->name('update');
             Route::get('/{application}/renew', [ApplicationController::class, 'renew'])->name('renew');
             Route::get('/{application}/permit/download', [ApplicationController::class, 'downloadPermit'])->name('permit.download');
+            Route::delete('/{application}', [ApplicationController::class, 'destroy'])->name('destroy');
         });
 
         // Alternative route names for backward compatibility

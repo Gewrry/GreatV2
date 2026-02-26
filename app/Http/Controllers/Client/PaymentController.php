@@ -293,32 +293,62 @@ class PaymentController extends Controller
             default => ['Annual Payment'],
         };
 
-        $payments = BplsOnlinePayment::where('bpls_application_id', $app->id)->get();
+        $onlinePayments = BplsOnlinePayment::where('bpls_application_id', $app->id)->get();
+        $orAssignments = $app->orAssignments()->orderBy('installment_number')->get();
+        
+        // Load master payments to link receipts
+        $masterPayments = \App\Models\BplsPayment::where('business_entry_id', $app->business_entry_id)
+            ->where('payment_year', $app->permit_year)
+            ->get();
 
         $installments = [];
         for ($i = 1; $i <= $count; $i++) {
-            $payment = $payments->firstWhere('installment_number', $i);
-
-            $status = 'unpaid';
-            if ($payment) {
-                $status = $payment->status;
-            } elseif (in_array($app->workflow_status, ['paid', 'approved']) && $i === 1) {
-                // Only the first installment is guaranteed paid when workflow advances
+            $online = $onlinePayments->firstWhere('installment_number', $i);
+            $orItem = $orAssignments->firstWhere('installment_number', $i);
+            
+            $status = $orItem?->status ?? 'unpaid';
+            
+            if ($status === 'unpaid' && $online && $online->isPaid()) {
                 $status = 'paid';
             }
+
+            // Find matching master payment by OR number
+            $orToMatch = $orItem?->or_number ?? $online?->or_number;
+            $masterPay = $masterPayments->firstWhere('or_number', $orToMatch);
 
             $installments[] = [
                 'number' => $i,
                 'label' => $labels[$i - 1] ?? "Installment #{$i}",
                 'amount' => $perAmt,
                 'status' => $status,
-                'payment' => $payment,
-                'paid_at' => $payment?->paid_at ?? ($i === 1 ? $app->paid_at : null),
-                'or_number' => $payment?->or_number ?? ($i === 1 ? $app->or_number : null),
+                'paid_at' => $orItem?->paid_at ?? $online?->paid_at,
+                'or_number' => $orToMatch,
+                'bpls_payment_id' => $masterPay?->id,
+                'due_date' => $this->getDueDate($app, $i),
             ];
         }
 
         return $installments;
+    }
+
+    private function getDueDate(BplsApplication $app, int $installment): ?string
+    {
+        $year = $app->permit_year ?? now()->year;
+        return match($app->mode_of_payment) {
+            'quarterly' => match($installment) {
+                1 => "Jan 20, $year",
+                2 => "Apr 20, $year",
+                3 => "Jul 20, $year",
+                4 => "Oct 20, $year",
+                default => null
+            },
+            'semi_annual' => match($installment) {
+                1 => "Jan 20, $year",
+                2 => "Jul 20, $year",
+                default => null
+            },
+            default => "Jan 20, $year"
+        };
     }
 
     // -----------------------------------------------------------------------
@@ -367,20 +397,53 @@ class PaymentController extends Controller
             'gateway_response' => $gatewayData,
         ]);
 
+        // Get matching OR assignment
+        /** @var \App\Models\bpls\onlineBPLS\BplsApplicationOr|null $orAssignment */
+        $orAssignment = $application->orAssignments()
+            ->where('installment_number', $payment->installment_number)
+            ->first();
+
         // Update matching OR assignment if exists
-        if ($application->orAssignments) {
-            $orAssignment = $application->orAssignments()
-                ->where('installment_number', $payment->installment_number)
-                ->first();
-            if ($orAssignment) {
-                $orAssignment->update(['status' => 'paid', 'paid_at' => now()]);
-            }
+        if ($orAssignment) {
+            $orAssignment->update([
+                'status' => 'paid',
+                'paid_at' => now(),
+                'or_number' => $payment->reference_number, // Automate: use reference as evidence
+            ]);
+        }
+
+        // --- BRIDGE TO MASTER BPLS PAYMENT TABLE ---
+        // Create record in bpls_payments so standard receipt system can see it
+        if ($application->business_entry_id) {
+            $installmentAmount = (float)($application->assessment_amount / ($application->orAssignments->count() ?: 1));
+            
+            // Map installment to quarters
+            $quarters = match($application->mode_of_payment) {
+                'annual' => [1, 2, 3, 4],
+                'semi_annual' => ($payment->installment_number == 1) ? [1, 2] : [3, 4],
+                'quarterly' => [(int)$payment->installment_number],
+                default => [1]
+            };
+
+            \App\Models\BplsPayment::create([
+                'business_entry_id' => $application->business_entry_id,
+                'payment_year'      => $application->permit_year ?? now()->year,
+                'renewal_cycle'     => $application->businessEntry->renewal_cycle ?? 0,
+                'or_number'         => $payment->reference_number,
+                'payment_date'      => now(),
+                'quarters_paid'     => $quarters,
+                'amount_paid'       => $installmentAmount,
+                'total_collected'   => $installmentAmount,
+                'payment_method'    => 'online',
+                'payor'             => collect([$application->owner->first_name, $application->owner->last_name])->filter()->join(' '),
+                'received_by'       => 'System (Online)',
+            ]);
         }
 
         // Advance workflow after first payment regardless of mode.
         // Client only needs to pay the first installment for the permit to be processed.
         // Remaining installments (Q2/Q3/Q4 or 2nd Half) are paid later after permit is approved.
-        if ($application->workflow_status === 'assessed') {
+        if ($application->workflow_status === 'assessed' && $application->isPaymentSatisfiedForApproval()) {
             $application->update([
                 'workflow_status' => 'paid',
                 'paid_at' => now(),

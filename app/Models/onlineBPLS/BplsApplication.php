@@ -194,4 +194,12 @@ class BplsApplication extends Model
         return $this->belongsTo(BplsPermitSignatory::class, 'signatory_id');
     }
 
+    public function isPaymentSatisfiedForApproval(): bool
+    {
+        // For annual, we need the 1st (and only) OR to be paid
+        // For semi-annual and quarterly, we only need the 1st OR to be paid for approval
+        /** @var \App\Models\bpls\onlineBPLS\BplsApplicationOr|null $firstOr */
+        $firstOr = $this->orAssignments()->where('installment_number', 1)->first();
+        return $firstOr && $firstOr->isPaid();
+    }
 }

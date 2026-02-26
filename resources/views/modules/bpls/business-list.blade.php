@@ -1569,7 +1569,7 @@
                                             Status</th>
                                         <th
                                             class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Online Application</th>
+                                            Application Type</th>
                                         <th
                                             class="px-4 py-3 text-[10px] font-extrabold text-gray/70 uppercase tracking-wider text-right">
                                             Actions</th>

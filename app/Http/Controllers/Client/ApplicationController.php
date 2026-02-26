@@ -268,7 +268,7 @@ class ApplicationController extends Controller
             ]);
 
             // ── TABLE 4: bpls_applications ────────────────────────────────
-            $count = BplsApplication::whereYear('created_at', $now->year)->count() + 1;
+            $count = BplsApplication::withTrashed()->whereYear('created_at', $now->year)->count() + 1;
             $appNum = 'APP-' . $now->year . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
 
             $application = BplsApplication::create([
@@ -592,7 +592,11 @@ class ApplicationController extends Controller
             abort(403);
         }
 
-        $application->load(['business', 'owner', 'documents']);
+        $application->load(['business', 'owner', 'documents', 'payment']);
+        
+        // Load installments using the common logic if possible, or build them
+        $paymentController = new PaymentController();
+        $application->installments = $paymentController->buildInstallments($application);
 
         return view('client.applications.show', compact('application'));
     }
@@ -605,7 +609,7 @@ class ApplicationController extends Controller
         }
 
         if ($application->workflow_status !== 'approved') {
-            return back()->with('error', 'Permit is not yet available. Application must be fully approved.');
+            return back()->with('error', 'Permit is not yet available. Application must be approved.');
         }
 
         $application->load(['business', 'owner', 'documents']);
@@ -622,5 +626,42 @@ class ApplicationController extends Controller
         $filename = 'BusinessPermit-' . $application->application_number . '-' . $application->permit_year . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    // ── DESTROY ─────────────────────────────────────────────────────────────
+    public function destroy(BplsApplication $application)
+    {
+        if ($application->client_id !== $this->client()->id) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($application) {
+            // Delete associated documents and files
+            $documents = $application->documents;
+            foreach ($documents as $doc) {
+                if ($doc->file_path && Storage::disk('public')->exists($doc->file_path)) {
+                    Storage::disk('public')->delete($doc->file_path);
+                }
+                $doc->delete();
+            }
+
+            // Sync with master records:
+            // If this was a 'new' application, we should also delete the created business entry
+            if ($application->application_type === 'new' && $application->business_entry_id) {
+                $entry = \App\Models\BusinessEntry::find($application->business_entry_id);
+                if ($entry) {
+                    $entry->delete(); // Soft delete master record
+                }
+            }
+
+            // Hard-delete SNAPSHOT records as they are bound ONLY to this application
+            // and don't need to persist in bpls_businesses/bpls_owners if the app is deleted.
+            $application->business()?->forceDelete();
+            $application->owner()?->forceDelete();
+
+            $application->delete();
+        });
+
+        return redirect()->route('client.applications.index')->with('success', 'Application and linked business record deleted successfully.');
     }
 }

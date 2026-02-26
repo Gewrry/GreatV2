@@ -41,6 +41,8 @@
             showPaid: false,
             showFinalApprove: false,
             showEditOrs: false,
+            selectedInstallment: 1,
+            orNumbers: @js($application->orAssignments->pluck('or_number', 'installment_number')),
             openRejectDoc(id, name) { this.rejectDocId = id; this.rejectDocName = name; }
         }">
             @include('layouts.bpls.navbar')
@@ -114,12 +116,20 @@
                         </button>
                     @endif
 
-                    @if ($status === 'assessed')
-                        <div class="flex items-center gap-2 mr-2 px-3.5 py-2 bg-orange-500/10 border border-orange-200 rounded-2xl backdrop-blur-sm shadow-sm ring-1 ring-orange-500/10">
-                            <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Amount Due</span>
-                            <span class="text-sm font-black text-orange-600">₱{{ number_format($application->assessment_amount, 2) }}</span>
-                        </div>
-                        {{-- Edit ORs button (always available when assessed) --}}
+                    @if (in_array($status, ['assessed', 'paid']))
+                        @if ($status === 'assessed')
+                            <div class="flex items-center gap-2 mr-2 px-3.5 py-2 bg-orange-500/10 border border-orange-200 rounded-2xl backdrop-blur-sm shadow-sm ring-1 ring-orange-500/10">
+                                <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Amount Due</span>
+                                <span class="text-sm font-black text-orange-600">₱{{ number_format((float)$application->assessment_amount, 2) }}</span>
+                            </div>
+                        @else
+                            <div class="flex items-center gap-2 mr-2 px-3.5 py-2 bg-logo-teal/10 border border-logo-teal/20 rounded-2xl backdrop-blur-sm">
+                                <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">OR#</span>
+                                <span class="text-sm font-black text-logo-teal">{{ $application->or_number ?? '—' }}</span>
+                            </div>
+                        @endif
+
+                        {{-- Edit ORs button --}}
                         <button @click="showEditOrs = true" class="px-5 py-2.5 bg-purple-500/10 text-purple-700 text-xs font-black rounded-2xl hover:bg-purple-500/20 border border-purple-500/30 transition-all flex items-center gap-2 uppercase tracking-wide">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             Edit ORs
@@ -131,10 +141,6 @@
                     @endif
 
                     @if ($status === 'paid')
-                        <div class="flex items-center gap-2 mr-2 px-3.5 py-2 bg-logo-teal/10 border border-logo-teal/20 rounded-2xl backdrop-blur-sm">
-                            <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">OR#</span>
-                            <span class="text-sm font-black text-logo-teal">{{ $application->or_number ?? '—' }}</span>
-                        </div>
                         <button @click="showFinalApprove = true" class="px-5 py-2.5 bg-logo-green text-white text-xs font-black rounded-2xl hover:bg-green transition-all shadow-md shadow-logo-green/20 hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2 uppercase tracking-wide">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                             Issue Permit
@@ -423,7 +429,7 @@
                             <div class="grid grid-cols-3 gap-6 mb-4">
                                 <div>
                                     <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">Total Amount</p>
-                                    <p class="text-xl font-extrabold text-green mt-1">₱{{ number_format($application->assessment_amount, 2) }}</p>
+                                    <p class="text-xl font-extrabold text-green mt-1">₱{{ number_format((float)$application->assessment_amount, 2) }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">Payment Mode</p>
@@ -436,6 +442,19 @@
                                     </p>
                                 </div>
                             </div>
+
+                            {{-- Pending Installments Flag --}}
+                            @if (($status === 'paid' || $status === 'approved') && $application->orAssignments->where('status', '!=', 'paid')->count() > 0)
+                                <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 shadow-sm">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-black text-blue-700 uppercase tracking-tight">Additional Installments Pending</p>
+                                        <p class="text-[10px] font-bold text-blue-600/70">Permit can be issued/used, but remaining {{ $application->orAssignments->where('status', '!=', 'paid')->count() }} installments must be paid on schedule.</p>
+                                    </div>
+                                </div>
+                            @endif
 
                             {{-- OR Schedule table --}}
                             @if ($application->orAssignments && $application->orAssignments->isNotEmpty())
@@ -467,8 +486,24 @@
                                                     </div>
                                                 </div>
                                                 <div class="flex items-center gap-3 shrink-0">
+                                                    @if($orItem->isPaid())
+                                                        @php
+                                                            $masterPayment = $application->businessEntry?->activePayments()
+                                                                ->where('or_number', $orItem->or_number)
+                                                                ->first();
+                                                        @endphp
+                                                        @if($masterPayment)
+                                                            <a href="{{ route('bpls.payment.receipt', [$application->business_entry_id, $masterPayment->id]) }}" 
+                                                               target="_blank"
+                                                               class="p-2 bg-blue-500/10 text-blue-600 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/20 flex items-center gap-1.5 shadow-sm group/btn"
+                                                               title="Print Official Receipt">
+                                                                <svg class="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                                                <span class="text-[9px] font-black uppercase">Receipt</span>
+                                                            </a>
+                                                        @endif
+                                                    @endif
                                                     <span class="text-sm font-extrabold text-green">
-                                                        ₱{{ number_format($application->assessment_amount / $application->orAssignments->count(), 2) }}
+                                                        ₱{{ number_format((float)($application->assessment_amount / ($application->orAssignments->count() ?: 1)), 2) }}
                                                     </span>
                                                     <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border capitalize
                                                         {{ $orItem->isPaid() ? 'bg-logo-green/10 text-logo-green border-logo-green/30' : 'bg-yellow/20 text-green border-yellow/40' }}">
@@ -553,6 +588,13 @@
                                 <div class="mt-3 pt-3 border-t border-green-200">
                                     <p class="text-[10px] font-bold text-green-600/60 uppercase tracking-wider mb-1">Permit Notes</p>
                                     <p class="text-sm text-green-700">{{ $application->permit_notes }}</p>
+                                </div>
+                            @endif
+
+                            @if ($application->orAssignments->where('status', '!=', 'paid')->count() > 0)
+                                <div class="mt-4 p-3 bg-white/50 border border-green-200 rounded-xl flex items-center gap-2.5">
+                                    <svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <span class="text-[10px] font-black text-green-700 tracking-tight">NOTICE: This permit has {{ $application->orAssignments->where('status', '!=', 'paid')->count() }} pending installments.</span>
                                 </div>
                             @endif
                         </div>
@@ -1281,28 +1323,40 @@
                         @csrf
                         <div class="mb-6 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/10 shadow-inner">
                             <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Amount Paid</span>
-                                <span class="text-lg font-black text-orange-600 tracking-tight">₱{{ number_format($application->assessment_amount, 2) }}</span>
+                                <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Assessment Total</span>
+                                <span class="text-lg font-black text-orange-600 tracking-tight">₱{{ number_format((float)$application->assessment_amount, 2) }}</span>
                             </div>
                         </div>
 
-                        {{-- Show assigned ORs as reference --}}
-                        @if ($application->orAssignments->isNotEmpty())
-                            <div class="mb-6 p-4 bg-bluebody/30 border border-lumot/10 rounded-2xl space-y-2">
-                                <p class="text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3">Verified Assignments</p>
+                        {{-- Installment Selection --}}
+                        <div class="mb-6">
+                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3 ml-1">Installment to Pay <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-1 custom-scrollbar">
                                 @foreach ($application->orAssignments as $orItem)
-                                    <div class="flex items-center justify-between text-xs font-black">
-                                        <span class="text-gray/50 uppercase tracking-tighter">{{ $orItem->period_label }}</span>
-                                        <span class="text-green font-mono">{{ $orItem->or_number }}</span>
-                                    </div>
+                                    <label class="cursor-pointer group">
+                                        <input type="radio" name="installment_number" value="{{ $orItem->installment_number }}" 
+                                            x-model="selectedInstallment" 
+                                            @if($orItem->isPaid()) disabled @endif
+                                            class="peer hidden">
+                                        <div class="peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 border border-lumot/30 rounded-2xl p-3 transition-all group-hover:border-orange-400 bg-white text-green shadow-sm {{ $orItem->isPaid() ? 'opacity-40 grayscale cursor-not-allowed' : '' }}">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <p class="text-xs font-black">{{ $orItem->period_label }}</p>
+                                                @if($orItem->isPaid())
+                                                    <svg class="w-3 h-3 text-logo-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                @endif
+                                            </div>
+                                            <p class="text-[10px] font-mono font-bold opacity-70 mb-1 leading-none">{{ $orItem->or_number }}</p>
+                                            <p class="text-[9px] font-black uppercase opacity-60">₱{{ number_format((float)($application->assessment_amount / ($application->orAssignments->count() ?: 1)), 2) }}</p>
+                                        </div>
+                                    </label>
                                 @endforeach
                             </div>
-                        @endif
+                        </div>
 
                         <div class="mb-7">
-                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Primary Receipt Number <span class="text-red-500">*</span></label>
-                            <input type="text" name="or_number" required placeholder="e.g. 00001234"
-                                value="{{ $application->orAssignments->first()?->or_number }}"
+                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Official Receipt Number <span class="text-red-500">*</span></label>
+                            <input type="text" name="or_number" required placeholder="00001234"
+                                x-model="orNumbers[selectedInstallment]"
                                 class="w-full text-sm font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500/40 transition-all uppercase placeholder-gray/30 bg-orange-500/5">
                         </div>
 
@@ -1383,7 +1437,7 @@
                                 </div>
                                 <div>
                                     <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest mb-1">Fees Paid</p>
-                                    <p class="text-[11px] font-black text-logo-green">₱{{ number_format($application->assessment_amount, 2) }}</p>
+                                    <p class="text-[11px] font-black text-logo-green">₱{{ number_format((float)$application->assessment_amount, 2) }}</p>
                                 </div>
                             </div>
 

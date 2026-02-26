@@ -67,7 +67,24 @@
                                 <h3 class="text-xl font-black text-green leading-tight tracking-tight mt-1 group-hover:text-logo-teal transition-colors truncate">
                                     {{ $app->business->business_name ?? 'Untitled Business' }}
                                 </h3>
-                                <div class="flex items-center gap-3 mt-2 flex-wrap">
+                                <div class="mt-1 flex flex-col gap-0.5">
+                                    @php
+                                        $stageDesc = match($app->workflow_status) {
+                                            'submitted', 'verification' => 'Your application is under document verification.',
+                                            'assessment' => 'Assessment ready. Please review fees and pay.',
+                                            'payment' => 'Awaiting payment to proceed.',
+                                            'paid' => 'Payment received. Pending final approval.',
+                                            'approved' => 'Permit issued. You may now download your permit.',
+                                            'returned' => 'Action required. Please check remarks.',
+                                            'rejected' => 'Application was not approved.',
+                                            default => ''
+                                        };
+                                    @endphp
+                                    @if($stageDesc)
+                                        <p class="text-[11px] font-semibold text-gray/70">{{ $stageDesc }}</p>
+                                    @endif
+                                </div>
+                                <div class="flex items-center gap-3 mt-3 flex-wrap">
                                     <div class="flex items-center gap-1.5 text-[10px] font-black text-gray/50 uppercase tracking-widest">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-10V4m0 10V4m0 4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -85,8 +102,18 @@
                             </div>
                         </div>
 
-                        {{-- Action Buttons --}}
                         <div class="flex items-center gap-3 shrink-0 md:flex-col lg:flex-row">
+                            <form action="{{ route('client.applications.destroy', $app->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this application? This action cannot be undone.')" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="px-5 py-2.5 text-red-500 hover:bg-red-50 rounded-xl border border-red-200 transition-all shadow-sm flex items-center gap-2 text-[11px] font-black uppercase tracking-widest" title="Delete Application">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Delete
+                                </button>
+                            </form>
+
                             @if($app->workflow_status === 'draft')
                                 <a href="{{ route('client.applications.edit', $app->id) }}"
                                    class="px-5 py-2.5 bg-white text-logo-teal text-[11px] font-black uppercase tracking-widest rounded-xl border border-logo-teal/30 hover:bg-logo-teal/5 transition-all shadow-sm">
