@@ -35,6 +35,13 @@ use App\Http\Controllers\Bpls\BplsSettingsController;
 use App\Http\Controllers\Bpls\MasterlistController;
 use App\Http\Controllers\Settings\OrAssignmentController;
 use App\Http\Controllers\AuditLogController;
+
+
+
+
+Route::get('/payment/{entry}/available-ors', [BplsPaymentController::class, 'getAvailableOrNumbers'])
+    ->name('bpls.payment.available-ors');
+
 use App\Http\Controllers\Bpls\BplsPermitSignatoryController;
 use App\Http\Controllers\Bpls\Online\BplsApplicationReviewController;
 use App\Http\Controllers\Client\AuthController;
@@ -223,6 +230,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/masterlist', [MasterlistController::class, 'index'])->name('masterlist.index');
             Route::get('/masterlist/data', [MasterlistController::class, 'data'])->name('masterlist.data');
         });
+
 
         // Online BPLS Application Review (Staff)
         Route::prefix('online')->name('online.')->group(function () {
@@ -451,6 +459,7 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::put('/{application}', [ApplicationController::class, 'update'])->name('update');
             Route::get('/{application}/renew', [ApplicationController::class, 'renew'])->name('renew');
             Route::get('/{application}/permit/download', [ApplicationController::class, 'downloadPermit'])->name('permit.download');
+            Route::delete('/{application}', [ApplicationController::class, 'destroy'])->name('destroy');
         });
 
         // Alternative route names for backward compatibility

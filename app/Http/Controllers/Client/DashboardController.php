@@ -25,6 +25,15 @@ class DashboardController extends Controller
             'approved' => $client->applications()->where('workflow_status', 'approved')->count(),
         ];
 
-        return view('client.dashboard', compact('client', 'applications', 'counts'));
+        // Identify applications with pending installments (Paid or Approved but OR count < installment total)
+        $pendingInstallmentApps = $client->applications()
+            ->whereIn('workflow_status', ['paid', 'approved'])
+            ->with(['orAssignments' => function($q) { $q->where('status', 'unpaid'); }])
+            ->get()
+            ->filter(function($app) {
+                return $app->orAssignments->isNotEmpty();
+            });
+
+        return view('client.dashboard', compact('client', 'applications', 'counts', 'pendingInstallmentApps'));
     }
 }

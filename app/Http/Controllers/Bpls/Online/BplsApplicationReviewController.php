@@ -9,6 +9,8 @@ use App\Models\onlineBPLS\BplsDocument;
 use App\Models\BplsPermitSignatory;
 use App\Services\OrNumberAllocator;
 use App\Models\bpls\onlineBPLS\BplsApplicationOr;
+use App\Models\onlineBPLS\BplsOnlinePayment;
+use App\Models\BplsPayment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -81,7 +83,7 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     public function show(BplsApplication $application)
     {
-        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory']);
+        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory', 'businessEntry']);
 
         $docs = $application->documents->keyBy('document_type');
         $requiredMet = collect(BplsDocument::REQUIRED_TYPES)
@@ -336,27 +338,98 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     public function markPaid(Request $request, BplsApplication $application)
     {
-        $request->validate(['or_number' => 'required|string|max:100']);
+        $request->validate([
+            'or_number' => 'required|string|max:100',
+            'installment_number' => 'nullable|integer|min:1',
+        ]);
 
-        if ($application->workflow_status !== 'assessed') {
+        if (!in_array($application->workflow_status, ['assessed', 'paid'])) {
             return back()->with('error', 'Application is not in the Payment stage.');
         }
 
-        $application->update([
-            'workflow_status' => 'paid',
-            'or_number' => $request->or_number,
-            'paid_at' => now(),
-        ]);
+        $installmentNumber = (int) ($request->installment_number ?? 1);
 
-        $this->log(
-            $application,
-            'payment_received',
-            'assessed',
-            'paid',
-            'Payment confirmed. OR#: ' . $request->or_number
-        );
+        try {
+            DB::transaction(function () use ($request, $application, $installmentNumber) {
+                // 1. Mark the specific installment OR as paid
+                /** @var \App\Models\bpls\onlineBPLS\BplsApplicationOr|null $orItem */
+                $orItem = $application->orAssignments()
+                    ->where('installment_number', $installmentNumber)
+                    ->first();
 
-        return back()->with('success', 'Payment confirmed. Application is ready for final approval.');
+                if ($orItem) {
+                    $orItem->update([
+                        'or_number' => $request->or_number,
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                    ]);
+                }
+
+                // 2. Also record in bpls_online_payments (for mirroring/reports)
+                $application->payment()->updateOrCreate(
+                    ['installment_number' => $installmentNumber],
+                    [
+                        'reference_number' => 'MANUAL-' . now()->timestamp,
+                        'amount_paid' => $application->installment_amount,
+                        'payment_year' => $application->permit_year ?? now()->year,
+                        'payment_method' => 'walk_in',
+                        'installment_total' => $application->installment_count,
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                        'or_number' => $request->or_number,
+                    ]
+                );
+
+                // --- BRIDGE TO MASTER BPLS PAYMENT TABLE ---
+                if ($application->business_entry_id) {
+                    $installmentAmount = (float)$application->installment_amount;
+                    
+                    // Map installment to quarters
+                    $quarters = match($application->mode_of_payment) {
+                        'annual' => [1, 2, 3, 4],
+                        'semi_annual' => ($installmentNumber == 1) ? [1, 2] : [3, 4],
+                        'quarterly' => [(int)$installmentNumber],
+                        default => [1]
+                    };
+
+                    \App\Models\BplsPayment::create([
+                        'business_entry_id' => $application->business_entry_id,
+                        'payment_year'      => $application->permit_year ?? now()->year,
+                        'renewal_cycle'     => $application->businessEntry->renewal_cycle ?? 0,
+                        'or_number'         => $request->or_number,
+                        'payment_date'      => now(),
+                        'quarters_paid'     => $quarters,
+                        'amount_paid'       => $installmentAmount,
+                        'total_collected'   => $installmentAmount,
+                        'payment_method'    => 'walk_in',
+                        'payor'             => collect([$application->owner?->first_name, $application->owner?->last_name])->filter()->join(' '),
+                        'received_by'       => auth()->user()?->name ?? 'Treasury Staff',
+                    ]);
+                }
+
+                // 3. Logic: If first installment paid → For Approval (paid)
+                if ($application->isPaymentSatisfiedForApproval()) {
+                    $application->update([
+                        'workflow_status' => 'paid',
+                        'or_number' => $request->or_number, // latest/primary OR
+                        'paid_at' => now(),
+                    ]);
+                }
+            });
+
+            $this->log(
+                $application,
+                'payment_received_manual',
+                'assessed',
+                $application->fresh()->workflow_status,
+                "Manual payment confirmed for #{$installmentNumber}. OR#: " . $request->or_number
+            );
+
+            return back()->with('success', 'Payment confirmed for installment ' . $installmentNumber . '.');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Payment confirmation failed: ' . $e->getMessage());
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
