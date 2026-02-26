@@ -213,64 +213,105 @@ class BusinessListController extends Controller
     public function changeStatus(Request $request, BusinessEntry $entry)
     {
         $request->validate([
-            'status' => 'required|in:pending,for_payment,for_renewal_payment,completed,rejected,cancelled',
+            'status' => 'required|string',
             'remarks' => 'nullable|string|max:1000',
         ]);
 
         $now = Carbon::now('Asia/Manila');
+        $from = $entry->status;
+        $to = $request->status;
 
-        if ($request->status === 'completed') {
-            $blockReason = $this->checkUnpaidBalance($entry, $now);
-            if ($blockReason) {
+        // ── 1. Block 'completed' from being set manually ──────────────────────
+        // Completion must go through the payment flow which verifies all
+        // installments are paid. Manual override is not allowed.
+        if ($to === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status cannot be manually set to "Completed". '
+                    . 'The system sets this automatically after all installments are verified as paid.',
+            ], 422);
+        }
+
+        // ── 2. Block moving backward if payments exist ────────────────────────
+        // If a business is in for_payment or for_renewal_payment and already has
+        // payments recorded, it cannot be sent back to pending.
+        if ($to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment'])) {
+            $cycle = (int) ($entry->renewal_cycle ?? 0);
+            $permitYear = (int) ($entry->permit_year ?? $now->year);
+
+            $hasPayments = BplsPayment::where('business_entry_id', $entry->id)
+                ->where('payment_year', $permitYear)
+                ->where('renewal_cycle', $cycle)
+                ->exists();
+
+            if ($hasPayments) {
                 return response()->json([
                     'success' => false,
-                    'message' => $blockReason,
+                    'message' => 'Cannot move back to "For Approval" — payments have already been recorded '
+                        . "for this business in {$permitYear} (cycle {$cycle}). "
+                        . 'Please contact a supervisor to reverse payments before reassessing.',
                 ], 422);
             }
         }
 
+        // ── 3. Validate the transition is a known allowed move ────────────────
+        $allowedTransitions = [
+            'pending' => ['for_payment', 'rejected', 'cancelled'],
+            'for_payment' => ['pending', 'rejected', 'cancelled'],
+            'for_renewal_payment' => ['pending', 'rejected', 'cancelled'],
+            'completed' => ['pending'],   // re-assess flow
+            'rejected' => ['pending'],
+            'cancelled' => ['pending'],
+            'retired' => [],            // retired is terminal
+        ];
+
+        $allowed = $allowedTransitions[$from] ?? [];
+
+        if (!in_array($to, $allowed)) {
+            $fromLabel = $this->statusLabel($from);
+            $toLabel = $this->statusLabel($to);
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot change status from \"{$fromLabel}\" to \"{$toLabel}\". "
+                    . 'This transition is not permitted.',
+            ], 422);
+        }
+
+        // ── 4. Apply the update ───────────────────────────────────────────────
         $updateData = [
-            'status' => $request->status,
+            'status' => $to,
             'remarks' => $request->remarks,
         ];
 
-        if ($request->status === 'completed') {
-            $currentCycle = (int) ($entry->renewal_cycle ?? 0);
-            $newCycle = $currentCycle + 1;
-            $currentPermitYear = (int) ($entry->permit_year ?? $now->year);
-
-            $alreadyAdvanced = BplsPayment::where('business_entry_id', $entry->id)
-                ->where('payment_year', $currentPermitYear)
-                ->where('renewal_cycle', $newCycle)
-                ->exists();
-
-            if (!$alreadyAdvanced) {
-                $updateData['renewal_cycle'] = $newCycle;
-                $updateData['last_renewed_at'] = $now;
-                $updateData['renewal_total_due'] = null;
-                // permit_year intentionally NOT set here — set in approvePayment() next cycle
-            }
+        // If resetting to pending from payment stage, clear the approved_at
+        // so that the next assessment starts fresh (no leftover surcharge dates)
+        if ($to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment'])) {
+            $updateData['approved_at'] = null;
         }
 
         $entry->update($updateData);
 
-        $label = match ($request->status) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Status updated to: ' . $this->statusLabel($to) . '.',
+            'entry' => $entry->fresh(),
+        ]);
+    }
+
+
+    private function statusLabel(string $status): string
+    {
+        return match ($status) {
             'pending' => 'For Approval / Assessment',
             'for_payment' => 'Approved — Payment Stage',
             'for_renewal_payment' => 'Approved — Renewal Payment',
             'completed' => 'Completed — Ready to Renew',
             'rejected' => 'Rejected',
             'cancelled' => 'Cancelled',
-            default => ucwords(str_replace('_', ' ', $request->status)),
+            'retired' => 'Retired',
+            default => ucwords(str_replace('_', ' ', $status)),
         };
-
-        return response()->json([
-            'success' => true,
-            'message' => "Status updated to: {$label}.",
-            'entry' => $entry->fresh(),
-        ]);
     }
-
     // =========================================================================
     // HELPER: decodeQuartersPaid
     //

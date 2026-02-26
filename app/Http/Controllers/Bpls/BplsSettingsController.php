@@ -250,6 +250,79 @@ class BplsSettingsController extends Controller
         return view('modules.settings.or-assignments', compact('assignments', 'cashiers'));
     }
 
+    public function updateBeneficiaryDiscount(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    {
+        $request->validate([
+            // Toggle
+            'beneficiary_discount_enabled' => 'nullable|boolean',
+
+            // Stack rule
+            'beneficiary_discount_stack' => 'nullable|in:highest_only,additive',
+
+            // PWD
+            'pwd_discount_rate' => 'nullable|numeric|min:0|max:100',
+            'pwd_discount_apply_to' => 'nullable|in:total,permit_only',
+
+            // Senior Citizen
+            'senior_discount_rate' => 'nullable|numeric|min:0|max:100',
+            'senior_discount_apply_to' => 'nullable|in:total,permit_only',
+
+            // Solo Parent
+            'solo_parent_discount_rate' => 'nullable|numeric|min:0|max:100',
+            'solo_parent_discount_apply_to' => 'nullable|in:total,permit_only',
+
+            // 4Ps
+            'fourps_discount_rate' => 'nullable|numeric|min:0|max:100',
+            'fourps_discount_apply_to' => 'nullable|in:total,permit_only',
+
+            // Vaccination discounts
+            'vaccination_full_discount_rate' => 'nullable|numeric|min:0|max:100',
+            'vaccination_partial_discount_rate' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $settings = [
+            'beneficiary_discount_enabled' => $request->boolean('beneficiary_discount_enabled') ? '1' : '0',
+            'beneficiary_discount_stack' => $request->input('beneficiary_discount_stack', 'highest_only'),
+
+            'pwd_discount_rate' => $request->input('pwd_discount_rate', '20'),
+            'pwd_discount_apply_to' => $request->input('pwd_discount_apply_to', 'total'),
+
+            'senior_discount_rate' => $request->input('senior_discount_rate', '20'),
+            'senior_discount_apply_to' => $request->input('senior_discount_apply_to', 'total'),
+
+            'solo_parent_discount_rate' => $request->input('solo_parent_discount_rate', '10'),
+            'solo_parent_discount_apply_to' => $request->input('solo_parent_discount_apply_to', 'total'),
+
+            'fourps_discount_rate' => $request->input('fourps_discount_rate', '10'),
+            'fourps_discount_apply_to' => $request->input('fourps_discount_apply_to', 'total'),
+
+            'vaccination_full_discount_rate' => $request->input('vaccination_full_discount_rate', '5'),
+            'vaccination_partial_discount_rate' => $request->input('vaccination_partial_discount_rate', '0'),
+        ];
+
+        foreach ($settings as $key => $value) {
+            \App\Models\BplsSetting::updateOrCreate(
+                ['key' => $key],
+                ['value' => $value, 'group' => 'discount']
+            );
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Beneficiary discount settings saved.',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Beneficiary discount settings saved.');
+    }
+
+    public function updateBeneficiaryDiscounts(Request $request): \Illuminate\Http\JsonResponse|\Illuminate\Http\RedirectResponse
+    {
+        return $this->updateBeneficiaryDiscount($request);
+    }
+
+
     /**
      * Store a new OR Assignment.
      */
