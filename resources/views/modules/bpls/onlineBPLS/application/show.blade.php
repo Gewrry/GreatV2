@@ -293,10 +293,10 @@
                                     'Mobile' => $o?->mobile_no ?: '—',
                                     'Email' => $o?->email ?: '—',
                                 ] as $lbl => $val)
-                                            <div>
-                                                <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
-                                                <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
-                                            </div>
+                                                                <div>
+                                                                    <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
+                                                                    <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
+                                                                </div>
                             @endforeach
                         </div>
 
@@ -374,10 +374,10 @@
                                     'Business Mobile' => $b?->business_mobile ?: '—',
                                     'Business Email' => $b?->business_email ?: '—',
                                 ] as $lbl => $val)
-                                            <div>
-                                                <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
-                                                <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
-                                            </div>
+                                                                <div>
+                                                                    <p class="text-[10px] font-bold text-gray/40 uppercase tracking-wider">{{ $lbl }}</p>
+                                                                    <p class="text-sm font-semibold text-green mt-0.5 break-all">{{ $val }}</p>
+                                                                </div>
                             @endforeach
                         </div>
 
@@ -786,40 +786,32 @@
                 </div>
             </div>
 
-            {{-- MODAL: Set Assessment --}}
+           {{-- MODAL: Set Assessment (3-step) --}}
 <div x-show="showAssess" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-    <div @click.outside="showAssess = false" class="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-7 border border-lumot/20"
+    <div @click.outside="showAssess = false"
+        class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col border border-lumot/20"
         x-data="{
+            step: 1,
             assessmentAmount: {{ old('assessment_amount', $application->assessment_amount ?? 0) }},
             modeOfPayment: '{{ old('mode_of_payment', $application->mode_of_payment ?? 'annual') }}',
             computing: false,
             computeError: null,
             permitYear: null,
+            fees: [],
+            schedule: [],
+            perInstallment: 0,
             entryId: {{ $application->business_entry_id ?? 'null' }},
+            businessName: @js($b?->business_name ?? ''),
+            businessNature: @js($application->businessEntry?->business_nature ?? ''),
+            capitalInvestment: {{ $application->businessEntry?->capital_investment ?? 0 }},
+            businessScale: @js($application->businessEntry?->business_scale ?? ''),
 
-            get installmentAmount() {
-                if (this.assessmentAmount <= 0) return 0;
-                switch (this.modeOfPayment) {
-                    case 'quarterly':   return this.assessmentAmount / 4;
-                    case 'semi_annual': return this.assessmentAmount / 2;
-                    case 'annual':      return this.assessmentAmount;
-                    default: return 0;
-                }
-            },
-            get periodLabels() {
-                const year = this.permitYear ?? new Date().getFullYear();
-                switch (this.modeOfPayment) {
-                    case 'quarterly':   return [`Q1 ${year}`, `Q2 ${year}`, `Q3 ${year}`, `Q4 ${year}`];
-                    case 'semi_annual': return [`1st Half ${year}`, `2nd Half ${year}`];
-                    case 'annual':      return [`${year}`];
-                    default: return [];
-                }
-            },
             formatCurrency(value) {
                 return '₱' + parseFloat(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             },
+
             async computeFees() {
-                if (!this.entryId || !this.modeOfPayment) return;
+                if (!this.modeOfPayment) return;
                 this.computing = true;
                 this.computeError = null;
                 try {
@@ -840,6 +832,9 @@
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.message || 'Computation failed');
                     this.assessmentAmount = data.total_due;
+                    this.perInstallment = data.per_installment;
+                    this.fees = data.fees ?? [];
+                    this.schedule = data.schedule ?? [];
                     this.permitYear = data.permit_year ?? null;
                 } catch (err) {
                     this.computeError = err.message;
@@ -847,182 +842,375 @@
                     this.computing = false;
                 }
             },
+
+            async nextStep() {
+                if (this.step === 1) {
+                    await this.computeFees();
+                    if (!this.computeError) this.step = 2;
+                } else if (this.step === 2) {
+                    this.step = 3;
+                }
+            },
+
             init() {
                 this.$watch('showAssess', val => {
-                    if (val && this.entryId && !this.assessmentAmount) {
-                        this.computeFees();
-                    }
+                    if (val && this.entryId && !this.assessmentAmount) this.computeFees();
                 });
-                {{-- Auto-compute on open if no amount yet --}}
-                if (this.entryId && !this.assessmentAmount) {
-                    this.computeFees();
-                }
+                if (this.entryId && !this.assessmentAmount) this.computeFees();
             }
         }">
 
-        <div class="flex items-center gap-3 mb-6">
-            <div class="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center shadow-inner">
-                <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                </svg>
+        {{-- ── Sticky Header ── --}}
+        <div class="sticky top-0 bg-white/90 backdrop-blur-md px-6 py-4 border-b border-lumot/10 rounded-t-3xl z-10 shrink-0">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-purple-500/10 rounded-2xl flex items-center justify-center shadow-inner">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-sm font-black text-green uppercase tracking-widest">Finalize Assessment</h3>
+                </div>
+                {{-- Step indicators --}}
+                <div class="flex items-center gap-1.5">
+                    <template x-for="(label, i) in ['Details', 'Breakdown', 'Schedule']" :key="i">
+                        <button
+                            @click="if(i === 0) step = 1; else if(i === 1 && assessmentAmount > 0) step = 2; else if(i === 2 && assessmentAmount > 0) step = 3;"
+                            :class="step === i + 1
+                                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                                : (assessmentAmount > 0 || i === 0)
+                                    ? 'bg-lumot/20 text-gray hover:bg-purple-500/10 hover:text-purple-600'
+                                    : 'bg-lumot/10 text-gray/30 cursor-not-allowed'"
+                            class="px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all flex items-center gap-1.5">
+                            <span x-show="step > i + 1 && assessmentAmount > 0">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            </span>
+                            <span x-text="(i + 1) + '. ' + label"></span>
+                        </button>
+                    </template>
+                </div>
             </div>
-            <h3 class="text-sm font-black text-green uppercase tracking-widest">Finalize Assessment</h3>
         </div>
 
-        {{-- Capital Investment info row --}}
-        @if($application->businessEntry?->capital_investment)
-            <div class="mb-5 flex items-center justify-between px-4 py-3 bg-bluebody/40 border border-lumot/10 rounded-2xl">
-                <div>
-                    <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Capital / Gross Sales</p>
-                    <p class="text-sm font-black text-green mt-0.5">₱{{ number_format($application->businessEntry->capital_investment, 2) }}</p>
-                </div>
-                @if($application->businessEntry?->business_scale)
-                    <div class="text-right">
-                        <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Scale</p>
-                        <p class="text-xs font-black text-green mt-0.5">{{ $application->businessEntry->business_scale }}</p>
+        {{-- ── Scrollable Body ── --}}
+        <div class="overflow-y-auto flex-1 px-6 py-5">
+
+            {{-- ══ STEP 1: Details + Mode ══ --}}
+            <div x-show="step === 1" class="space-y-5">
+
+                {{-- Capital Investment info --}}
+                <div class="flex items-center justify-between px-4 py-3 bg-bluebody/40 border border-lumot/10 rounded-2xl">
+                    <div>
+                        <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Capital / Gross Sales</p>
+                        <p class="text-sm font-black text-green mt-0.5">
+                            {{ $application->businessEntry?->capital_investment
+    ? '₱' . number_format($application->businessEntry->capital_investment, 2)
+    : '—' }}
+                        </p>
                     </div>
-                @endif
-            </div>
-        @endif
+                    <div class="text-right">
+                        <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Business Nature</p>
+                        <p class="text-xs font-black text-green mt-0.5">
+                            {{ $application->businessEntry?->business_nature ?? '—' }}
+                        </p>
+                    </div>
+                    @if($application->businessEntry?->business_scale)
+                        <div class="text-right">
+                            <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Scale</p>
+                            <p class="text-xs font-black text-green mt-0.5">{{ $application->businessEntry->business_scale }}</p>
+                        </div>
+                    @endif
+                </div>
 
-        <form action="{{ route('bpls.online.application.assess', $application->id) }}" method="POST">
-            @csrf
+                {{-- Assessment Amount field --}}
+                <div>
+                    <div class="flex items-center justify-between mb-2 ml-1">
+                        <label class="text-[10px] font-black text-gray/40 uppercase tracking-widest">
+                            Total Assessment Amount (₱) <span class="text-red-500">*</span>
+                        </label>
+                        <button type="button" @click="computeFees()"
+                            :disabled="computing || !entryId"
+                            class="flex items-center gap-1 text-[10px] font-black text-purple-600 hover:text-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            <svg x-show="computing" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                            <svg x-show="!computing" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span x-text="computing ? 'Computing…' : 'Re-compute'"></span>
+                        </button>
+                    </div>
 
-            {{-- Assessment Amount --}}
-            <div class="mb-6">
-                <div class="flex items-center justify-between mb-2 ml-1">
-                    <label class="text-[10px] font-black text-gray/40 uppercase tracking-widest">
-                        Total Assessment Amount (₱) <span class="text-red-500">*</span>
-                    </label>
-                    {{-- Re-compute button --}}
-                    <button type="button" @click="computeFees()"
-                        :disabled="computing || !entryId"
-                        class="flex items-center gap-1 text-[10px] font-black text-purple-600 hover:text-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                        <svg x-show="computing" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <div x-show="computing" class="w-full h-[46px] bg-purple-500/5 border border-purple-500/20 rounded-2xl animate-pulse flex items-center px-4 gap-2">
+                        <svg class="w-4 h-4 animate-spin text-purple-400" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>
-                        <svg x-show="!computing" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        <span x-text="computing ? 'Computing…' : 'Re-compute'"></span>
-                    </button>
-                </div>
-
-                {{-- Computing skeleton --}}
-                <div x-show="computing" class="w-full h-[46px] bg-purple-500/5 border border-purple-500/20 rounded-2xl animate-pulse flex items-center px-4 gap-2">
-                    <svg class="w-4 h-4 animate-spin text-purple-400" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                    <span class="text-xs font-bold text-purple-400">Computing fees from fee rules…</span>
-                </div>
-
-                <div x-show="!computing" class="relative">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-gray/30">₱</span>
-                    <input type="number" name="assessment_amount" step="0.01" min="0.01" required
-                        x-model="assessmentAmount"
-                        placeholder="0.00"
-                        class="w-full pl-9 text-sm font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/40 transition-all bg-purple-500/5">
-                </div>
-
-                {{-- Permit year indicator --}}
-                <div x-show="permitYear && !computing" class="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
-                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    Billing year: <span class="font-extrabold" x-text="permitYear"></span>
-                </div>
-
-                {{-- Error --}}
-                <div x-show="computeError" class="mt-2 flex items-center gap-1.5 p-2.5 bg-red-50 border border-red-200 rounded-xl">
-                    <svg class="w-3.5 h-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span class="text-[10px] font-bold text-red-600" x-text="computeError"></span>
-                </div>
-
-                {{-- No linked entry warning --}}
-                @unless($application->business_entry_id)
-                    <div class="mt-2 flex items-center gap-1.5 p-2.5 bg-yellow-50 border border-yellow-200 rounded-xl">
-                        <svg class="w-3.5 h-3.5 text-yellow-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                        </svg>
-                        <span class="text-[10px] font-bold text-yellow-700">No linked business entry — enter amount manually.</span>
+                        <span class="text-xs font-bold text-purple-400">Computing fees from fee rules…</span>
                     </div>
-                @endunless
+
+                    <div x-show="!computing" class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-gray/30">₱</span>
+                        <input type="number" step="0.01" min="0.01"
+                            x-model="assessmentAmount"
+                            placeholder="0.00"
+                            class="w-full pl-9 text-sm font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/40 transition-all bg-purple-500/5">
+                    </div>
+
+                    <div x-show="permitYear && !computing" class="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-blue-600">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        Billing year: <span class="font-extrabold" x-text="permitYear"></span>
+                    </div>
+
+                    <div x-show="computeError" class="mt-2 flex items-center gap-1.5 p-2.5 bg-red-50 border border-red-200 rounded-xl">
+                        <svg class="w-3.5 h-3.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="text-[10px] font-bold text-red-600" x-text="computeError"></span>
+                    </div>
+
+                    @unless($application->business_entry_id)
+                        <div class="mt-2 flex items-center gap-1.5 p-2.5 bg-yellow-50 border border-yellow-200 rounded-xl">
+                            <svg class="w-3.5 h-3.5 text-yellow-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <span class="text-[10px] font-bold text-yellow-700">No linked business entry — enter amount manually.</span>
+                        </div>
+                    @endunless
+                </div>
+
+                {{-- Payment Frequency --}}
+                <div>
+                    <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3 ml-1">
+                        Payment Frequency <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <template x-for="opt in [
+                            { value: 'quarterly',   label: 'Quarterly',   sub: '4×' },
+                            { value: 'semi_annual', label: 'Semi-Annual', sub: '2×' },
+                            { value: 'annual',      label: 'Annual',      sub: '1×' },
+                        ]" :key="opt.value">
+                            <label class="cursor-pointer group">
+                                <input type="radio" :value="opt.value"
+                                    x-model="modeOfPayment"
+                                    @change="computeFees()"
+                                    class="peer hidden">
+                                <div class="peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 border border-lumot/30 rounded-2xl p-4 text-center transition-all group-hover:border-purple-400 bg-white text-green shadow-sm">
+                                    <p class="text-xl font-black mb-0.5" x-text="opt.sub"></p>
+                                    <p class="text-[9px] font-black uppercase tracking-tighter opacity-70" x-text="opt.label"></p>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Notes --}}
+                <!-- <div>
+                    <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Fee Breakdown / Notes</label>
+                    <textarea id="assess-notes-input" rows="3"
+                        placeholder="e.g. Mayor's Permit: ₱500, Garbage Fee: ₱200…"
+                        class="w-full text-sm border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-logo-teal/10 focus:border-logo-teal/40 resize-none placeholder-gray/30 transition-all">{{ old('assessment_notes', $application->assessment_notes) }}</textarea>
+                </div> -->
             </div>
 
-            {{-- Payment Frequency --}}
-            <div class="mb-6">
-                <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3 ml-1">
-                    Payment Frequency <span class="text-red-500">*</span>
-                </label>
-                <div class="grid grid-cols-3 gap-3">
-                    <template x-for="opt in [
-                        { value: 'quarterly',   label: 'Quarterly',   sub: '4×' },
-                        { value: 'semi_annual', label: 'Semi-Annual', sub: '2×' },
-                        { value: 'annual',      label: 'Annual',      sub: '1×' },
-                    ]" :key="opt.value">
-                        <label class="cursor-pointer group">
-                            <input type="radio" name="mode_of_payment" :value="opt.value"
-                                x-model="modeOfPayment"
-                                @change="computeFees()"
-                                class="peer hidden" required>
-                            <div class="peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 border border-lumot/30 rounded-2xl p-4 text-center transition-all group-hover:border-purple-400 bg-white text-green shadow-sm">
-                                <p class="text-xl font-black mb-0.5" x-text="opt.sub"></p>
-                                <p class="text-[9px] font-black uppercase tracking-tighter opacity-70" x-text="opt.label"></p>
+            {{-- ══ STEP 2: Fee Breakdown Table ══ --}}
+            <div x-show="step === 2" class="space-y-4">
+
+                {{-- Loading skeleton --}}
+                <div x-show="computing" class="space-y-2 animate-pulse">
+                    <div class="h-12 bg-lumot/30 rounded-xl"></div>
+                    <div class="border border-lumot/20 rounded-xl overflow-hidden">
+                        <div class="h-8 bg-green/30"></div>
+                        <div class="h-6 bg-logo-blue/20"></div>
+                        <div class="h-7 bg-lumot/20 border-b border-lumot/20"></div>
+                        <template x-for="i in 5" :key="i">
+                            <div class="grid grid-cols-3 px-4 py-3 border-b border-lumot/10 gap-4">
+                                <div class="h-3 bg-lumot/30 rounded"></div>
+                                <div class="h-3 bg-lumot/20 rounded"></div>
+                                <div class="h-3 bg-lumot/20 rounded"></div>
                             </div>
-                        </label>
-                    </template>
+                        </template>
+                        <div class="h-10 bg-logo-teal/10 border-t-2 border-logo-teal/20"></div>
+                    </div>
                 </div>
 
-                {{-- Installment preview --}}
-                <div x-show="assessmentAmount > 0 && !computing" x-transition class="mt-4 p-4 bg-bluebody/30 rounded-2xl border border-lumot/10 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Per Installment</span>
-                        <span class="text-sm font-black text-purple-600" x-text="formatCurrency(installmentAmount)"></span>
-                    </div>
-                    <div class="border-t border-lumot/10 pt-3">
-                        <p class="text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3">Payment Schedule</p>
-                        <div class="space-y-1.5">
-                            <template x-for="(label, i) in periodLabels" :key="i">
-                                <div class="flex items-center justify-between px-3 py-2 bg-white/50 border border-lumot/10 rounded-xl">
-                                    <div class="flex items-center gap-2.5">
-                                        <span class="w-5 h-5 rounded-lg bg-purple-500/10 text-purple-600 text-[9px] font-black flex items-center justify-center border border-purple-500/20" x-text="i + 1"></span>
-                                        <span class="text-[11px] font-black text-green tracking-tight" x-text="label"></span>
-                                    </div>
-                                    <span class="text-[10px] font-black text-gray/50" x-text="formatCurrency(installmentAmount)"></span>
+                <template x-if="!computing">
+                    <div class="space-y-4">
+                        {{-- Business summary bar --}}
+                        <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-extrabold text-green">{{ $b?->business_name }}</p>
+                                <p class="text-[10px] text-gray">{{ $application->businessEntry?->business_nature ?? '—' }}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-gray/60">Gross Sales</p>
+                                <p class="text-sm font-extrabold text-logo-teal">
+                                    ₱{{ number_format($application->businessEntry?->capital_investment ?? 0, 2) }}
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- Fee table --}}
+                        <div class="border border-lumot/20 rounded-xl overflow-hidden">
+                            <div class="bg-green text-white text-center py-2.5">
+                                <p class="text-xs font-extrabold tracking-wide uppercase">Business Permit and Licensing System</p>
+                            </div>
+                            <div class="bg-logo-blue text-white text-center py-2">
+                                <p class="text-xs font-bold uppercase">{{ $application->businessEntry?->business_nature ?? 'Business Nature' }}</p>
+                            </div>
+                            <div class="grid grid-cols-3 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
+                                <p class="text-[10px] font-extrabold text-gray/70 uppercase">Taxes / Fees</p>
+                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Base Value</p>
+                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-right">Tax Due</p>
+                            </div>
+                            <template x-for="fee in fees" :key="fee.id ?? fee.name">
+                                <div class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/30">
+                                    <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
+                                    <p class="text-xs text-gray/60 text-center font-mono" x-text="fee.base !== null && fee.base !== undefined
+                                            ? (typeof fee.base === 'number'
+                                                ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2})
+                                                : fee.base)
+                                            : '—'">
+                                    </p>
+                                    <p class="text-xs font-bold text-green text-right"
+                                        x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
                                 </div>
                             </template>
+                            <div class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
+                                <p class="text-xs font-extrabold text-green col-span-2">TOTAL TAX DUE</p>
+                                <p class="text-sm font-extrabold text-logo-teal text-right"
+                                    x-text="formatCurrency(assessmentAmount)"></p>
+                            </div>
+                            <div class="px-4 py-2 bg-lumot/10 flex items-center justify-between">
+                                <p class="text-[10px] text-gray/60">Mode:
+                                    <span class="font-bold capitalize"
+                                        x-text="modeOfPayment ? modeOfPayment.replace('_',' ') : '—'"></span>
+                                </p>
+                                <p class="text-[10px] text-gray/60">Per installment:
+                                    <span class="font-bold text-logo-teal"
+                                        x-text="perInstallment > 0 ? formatCurrency(perInstallment) : '—'"></span>
+                                </p>
+                            </div>
                         </div>
+                        <p class="text-[10px] text-gray/40 text-center">Computed using current LGU revenue code rates from the Fee Rules database. Only enabled fee rules are included.</p>
+                    </div>
+                </template>
+            </div>
+
+            {{-- ══ STEP 3: Payment Schedule ══ --}}
+            <div x-show="step === 3" class="space-y-4">
+
+                {{-- Summary bar --}}
+                <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-extrabold text-green">{{ $b?->business_name }}</p>
+                        <p class="text-[10px] text-gray capitalize"
+                            x-text="modeOfPayment ? modeOfPayment.replace('_',' ') + ' payment mode' : ''"></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray/60">Total Due</p>
+                        <p class="text-sm font-extrabold text-logo-teal" x-text="formatCurrency(assessmentAmount)"></p>
+                    </div>
+                </div>
+
+                {{-- RA 7160 notice --}}
+                <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <svg class="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-[10px] text-blue-700">
+                        Deadlines per <strong>RA 7160 Sec. 165</strong>: Jan 20 / Apr 20 / Jul 20 / Oct 20.
+                        <span class="text-red-500 font-bold">Overdue</span> installments are subject to a 25% surcharge (Sec. 168) applied at payment time.
+                        <template x-if="permitYear">
+                            <span class="font-bold text-blue-800">Billing year: <span x-text="permitYear"></span>.</span>
+                        </template>
+                    </p>
+                </div>
+
+                {{-- Schedule table --}}
+                <div class="border border-lumot/20 rounded-xl overflow-hidden">
+                    <div class="bg-green text-white text-center py-2.5">
+                        <p class="text-xs font-extrabold tracking-wide uppercase">
+                            Payment Schedule
+                            <template x-if="permitYear"><span x-text="'— ' + permitYear"></span></template>
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-2 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
+                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Payment Deadline</p>
+                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Base Amount</p>
+                    </div>
+                    <template x-for="(sched, i) in schedule" :key="i">
+                        <div class="grid grid-cols-2 px-4 py-3.5 border-b border-lumot/10 hover:bg-bluebody/30"
+                            :class="sched.overdue ? 'bg-red-50' : ''">
+                            <p class="text-sm text-center font-medium"
+                                :class="sched.overdue ? 'text-red-500' : 'text-gray'"
+                                x-text="sched.date"></p>
+                            <div class="text-center">
+                                <p class="text-sm font-bold text-green" x-text="formatCurrency(sched.amount)"></p>
+                                <p x-show="sched.overdue" class="text-[9px] text-red-400 font-bold">+25% surcharge at payment</p>
+                            </div>
+                        </div>
+                    </template>
+                    <div class="grid grid-cols-2 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
+                        <p class="text-xs font-extrabold text-green text-center">TOTAL</p>
+                        <p class="text-sm font-extrabold text-logo-teal text-center" x-text="formatCurrency(assessmentAmount)"></p>
                     </div>
                 </div>
             </div>
 
-            {{-- Notes --}}
-            <div class="mb-7">
-                <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Fee Breakdown / Notes</label>
-                <textarea name="assessment_notes" rows="3"
-                    placeholder="e.g. Mayor's Permit: ₱500, Garbage Fee: ₱200…"
-                    class="w-full text-sm border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-logo-teal/10 focus:border-logo-teal/40 resize-none placeholder-gray/30 transition-all">{{ old('assessment_notes', $application->assessment_notes) }}</textarea>
-            </div>
+        </div>
 
-            <div class="flex justify-end gap-3">
-                <button type="button" @click="showAssess = false"
-                    class="px-5 py-2.5 text-xs font-black bg-bluebody/30 text-gray uppercase tracking-widest rounded-2xl hover:bg-bluebody/50 transition-all border border-lumot/10">
+        {{-- ── Sticky Footer ── --}}
+        <div class="shrink-0 border-t border-lumot/10 px-6 py-4 flex items-center justify-between gap-3 bg-white/80 backdrop-blur-md rounded-b-3xl">
+            <div class="flex gap-2">
+                <button x-show="step > 1" @click="step--" type="button"
+                    class="px-4 py-2.5 text-xs font-black bg-bluebody/40 text-gray uppercase tracking-widest rounded-2xl hover:bg-bluebody/60 transition-all border border-lumot/10">
+                    ← Back
+                </button>
+                <button @click="showAssess = false" type="button"
+                    class="px-4 py-2.5 text-xs font-black bg-bluebody/30 text-gray uppercase tracking-widest rounded-2xl hover:bg-bluebody/50 transition-all border border-lumot/10">
                     Cancel
                 </button>
-                <button type="submit" :disabled="computing || assessmentAmount <= 0"
+            </div>
+
+            {{-- Steps 1 & 2: Next button --}}
+            <button x-show="step < 3" @click="nextStep()" type="button"
+                :disabled="computing || assessmentAmount <= 0"
+                class="px-5 py-2.5 text-xs font-black bg-logo-blue text-white uppercase tracking-widest rounded-2xl hover:bg-green transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2">
+                <svg x-show="computing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+                <span x-text="computing && step === 1 ? 'Computing…' : 'Next →'"></span>
+            </button>
+
+            {{-- Step 3: Final submit --}}
+            <form x-show="step === 3"
+                action="{{ route('bpls.online.application.assess', $application->id) }}"
+                method="POST"
+                @submit.prevent="
+                    document.getElementById('assess-amount-hidden').value = assessmentAmount;
+                    document.getElementById('assess-mode-hidden').value = modeOfPayment;
+                    document.getElementById('assess-notes-hidden').value = '';
+                    $el.submit();
+                ">
+                @csrf
+                <input type="hidden" id="assess-amount-hidden" name="assessment_amount">
+                <input type="hidden" id="assess-mode-hidden" name="mode_of_payment">
+                <input type="hidden" id="assess-notes-hidden" name="assessment_notes">
+                <button type="submit"
+                    :disabled="computing || assessmentAmount <= 0"
                     class="px-5 py-2.5 text-xs font-black bg-purple-600 text-white uppercase tracking-widest rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                    <svg x-show="computing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                     </svg>
                     Submit Assessment
                 </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 

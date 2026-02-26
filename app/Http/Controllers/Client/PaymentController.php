@@ -302,7 +302,8 @@ class PaymentController extends Controller
             $status = 'unpaid';
             if ($payment) {
                 $status = $payment->status;
-            } elseif (in_array($app->workflow_status, ['paid', 'approved']) && $count === 1) {
+            } elseif (in_array($app->workflow_status, ['paid', 'approved']) && $i === 1) {
+                // Only the first installment is guaranteed paid when workflow advances
                 $status = 'paid';
             }
 
@@ -376,28 +377,15 @@ class PaymentController extends Controller
             }
         }
 
-        // Count how many installments are paid
-        $paidCount = BplsOnlinePayment::where('bpls_application_id', $application->id)
-            ->where('status', 'paid')
-            ->count();
-
-        // If ALL installments paid → auto-advance workflow, no back office needed
-        if ($paidCount >= ($application->installment_count ?? 1) && $application->workflow_status === 'assessed') {
+        // Advance workflow after first payment regardless of mode.
+        // Client only needs to pay the first installment for the permit to be processed.
+        // Remaining installments (Q2/Q3/Q4 or 2nd Half) are paid later after permit is approved.
+        if ($application->workflow_status === 'assessed') {
             $application->update([
                 'workflow_status' => 'paid',
                 'paid_at' => now(),
                 'or_number' => $payment->reference_number,
             ]);
-
-            // Mark all OR assignments paid
-            if ($application->orAssignments) {
-                $application->orAssignments()->update(['status' => 'paid', 'paid_at' => now()]);
-            }
-
-            // Update business entry status
-            if ($application->business_entry_id && $application->businessEntry) {
-                $application->businessEntry->update(['status' => 'approved']);
-            }
 
             BplsActivityLog::create([
                 'bpls_application_id' => $application->id,
@@ -410,7 +398,6 @@ class PaymentController extends Controller
             ]);
         }
     }
-
     // -----------------------------------------------------------------------
     // Private: authorize client
     // -----------------------------------------------------------------------

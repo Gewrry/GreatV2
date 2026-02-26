@@ -37,7 +37,7 @@ class BplsApplication extends Model
         'permit_valid_until',
 
         // $casts — add these
-        'permit_valid_from'  => 'date',
+        'permit_valid_from' => 'date',
         'permit_valid_until' => 'date',
         // Timestamps per stage
         'submitted_at',
@@ -151,10 +151,10 @@ class BplsApplication extends Model
     public function getModeOfPaymentLabelAttribute(): string
     {
         return match ($this->mode_of_payment) {
-            'quarterly'   => 'Quarterly (4×)',
+            'quarterly' => 'Quarterly (4×)',
             'semi_annual' => 'Semi-Annual (2×)',
-            'annual'      => 'Annual (1×)',
-            default       => '—',
+            'annual' => 'Annual (1×)',
+            default => '—',
         };
     }
 
@@ -162,36 +162,36 @@ class BplsApplication extends Model
     {
         $amount = (float) $this->assessment_amount;
         return match ($this->mode_of_payment) {
-            'quarterly'   => $amount / 4,
+            'quarterly' => $amount / 4,
             'semi_annual' => $amount / 2,
-            default       => $amount, // annual or unset
+            default => $amount, // annual or unset
         };
     }
 
     public function getInstallmentCountAttribute(): int
     {
         return match ($this->mode_of_payment) {
-            'quarterly'   => 4,
+            'quarterly' => 4,
             'semi_annual' => 2,
-            default       => 1,
+            default => 1,
         };
     }
     public function payment()
-{
-    return $this->hasOne(BplsOnlinePayment::class, 'bpls_application_id');
-}
+    {
+        return $this->hasOne(BplsOnlinePayment::class, 'bpls_application_id');
+    }
 
 
-public function orAssignments(): HasMany
-{
-    return $this->hasMany(BplsApplicationOr::class, 'bpls_application_id')
-                ->orderBy('installment_number');
-}
+    public function orAssignments(): HasMany
+    {
+        return $this->hasMany(BplsApplicationOr::class, 'bpls_application_id')
+            ->orderBy('installment_number');
+    }
 
 
-public function signatory(): BelongsTo
-{
-    return $this->belongsTo(BplsPermitSignatory::class, 'signatory_id');
-}
+    public function signatory(): BelongsTo
+    {
+        return $this->belongsTo(BplsPermitSignatory::class, 'signatory_id');
+    }
 
 }
