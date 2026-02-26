@@ -143,35 +143,24 @@ class FeeRuleController extends Controller
             'capital_investment' => 'required|numeric|min:0',
             'business_scale' => 'nullable|string',
             'mode_of_payment' => 'required|in:annual,semi_annual,quarterly',
-            'entry_id' => 'nullable|integer',  // no exists: check — BusinessEntry::find() handles missing safely
+            'entry_id' => 'nullable|integer',
         ]);
 
         $gs = (float) $request->capital_investment;
         $scaleCode = $this->scaleCode($request->business_scale ?? '');
         $mode = $request->mode_of_payment;
 
-        $scaleLabels = [
-            1 => 'Micro',
-            2 => 'Small',
-            3 => 'Medium',
-            4 => 'Large',
-            5 => 'Enterprise',
-        ];
+        $scaleLabels = [1 => 'Micro', 2 => 'Small', 3 => 'Medium', 4 => 'Large', 5 => 'Enterprise'];
 
-        // FIX 1: Only active (enabled=1) rules are fetched.
-        // Disabling a rule in the Fee Rules Manager immediately removes it here.
         $rules = FeeRule::active()->ordered()->get();
 
         $fees = $rules->map(function (FeeRule $rule) use ($gs, $scaleCode, $scaleLabels) {
             $amount = $rule->compute($gs, $scaleCode);
-
-            // FIX 2: Correct Base Value per rule type.
             $base = match ($rule->base_type) {
                 'gross_sales' => $gs,
                 'scale' => $scaleLabels[$scaleCode] ?? 'Micro',
                 default => null,
             };
-
             return [
                 'id' => $rule->id,
                 'name' => $rule->name,
@@ -182,7 +171,6 @@ class FeeRuleController extends Controller
         });
 
         $totalDue = round($fees->sum('amount'), 2);
-
         $installmentCount = match ($mode) {
             'quarterly' => 4,
             'semi_annual' => 2,
@@ -190,16 +178,30 @@ class FeeRuleController extends Controller
         };
 
         // ── Resolve permit year ───────────────────────────────────────────────
-        // NEW: extracted to resolvePermitYear() so entry_id can be used when
-        // available, instead of always relying on the Oct/Nov/Dec month check.
         $permitYear = $this->resolvePermitYear($request->input('entry_id'));
+
+        // ── FIX: resolve approved_at and isRenewal from entry ────────────────
+        // For a brand-new entry (no entry_id yet), approved_at = now and
+        // isRenewal = false, so all quarters after today are not overdue.
+        $approvedAt = Carbon::now('Asia/Manila');
+        $isRenewal = false;
+
+        if ($request->filled('entry_id')) {
+            $entry = BusinessEntry::find($request->input('entry_id'));
+            if ($entry) {
+                $isRenewal = ((int) ($entry->renewal_cycle ?? 0)) > 0;
+                $approvedAt = $entry->approved_at
+                    ? Carbon::parse($entry->approved_at, 'Asia/Manila')
+                    : Carbon::now('Asia/Manila');
+            }
+        }
 
         return response()->json([
             'fees' => $fees,
             'total_due' => $totalDue,
             'per_installment' => round($totalDue / max(1, $installmentCount), 2),
-            'schedule' => $this->buildSchedule($totalDue, $mode, $permitYear),
-            'permit_year' => $permitYear,  // ← NEW: returned so blade can show "Billing year: 2027"
+            'schedule' => $this->buildSchedule($totalDue, $mode, $permitYear, $approvedAt, $isRenewal),
+            'permit_year' => $permitYear,
         ]);
     }
 
@@ -234,13 +236,24 @@ class FeeRuleController extends Controller
     // computing it internally. All date logic (FIX 3), overdue flag (FIX 4),
     // and amounts are completely unchanged from the original.
     // ─────────────────────────────────────────────────────────────────────────
-    private function buildSchedule(float $total, string $mode, int $permitYear): array
-    {
+    private function buildSchedule(
+        float $total,
+        string $mode,
+        int $permitYear,
+        ?Carbon $approvedAt = null,
+        bool $isRenewal = false
+    ): array {
         $now = Carbon::now('Asia/Manila');
+        $approvedAt = $approvedAt ?? $now;
 
-        $row = function (int $month, int $day, float $amount) use ($permitYear, $now): array {
+        $row = function (int $month, int $day, float $amount) use ($permitYear, $now, $approvedAt, $isRenewal): array {
             $due = Carbon::create($permitYear, $month, $day, 23, 59, 59, 'Asia/Manila');
-            $isLate = $due->lt($now);
+
+            // NEW: a new business is NOT overdue for quarters before their approval
+            $pastDue = $due->lt($now);
+            $wasLiable = $isRenewal || $due->gte($approvedAt);
+            $isLate = $pastDue && $wasLiable;
+
             $label = $due->format('F j, Y');
 
             return [
@@ -252,23 +265,14 @@ class FeeRuleController extends Controller
         };
 
         return match ($mode) {
-
-            // FIX 3: Annual — January 20 only
             'annual' => [
                 $row(1, 20, $total),
             ],
-
-            // FIX 3: Semi-Annual — January 20 and July 20
             'semi_annual' => (function () use ($total, $row): array{
                     $half = round($total / 2, 2);
                     $rem = round($total - $half, 2);
-                    return [
-                    $row(1, 20, $half),
-                    $row(7, 20, $rem),
-                    ];
+                    return [$row(1, 20, $half), $row(7, 20, $rem)];
                 })(),
-
-            // FIX 3: Quarterly — Jan 20, Apr 20, Jul 20, Oct 20
             'quarterly' => (function () use ($total, $row): array{
                     $q = round($total / 4, 2);
                     $rem = round($total - ($q * 3), 2);
@@ -279,10 +283,10 @@ class FeeRuleController extends Controller
                     $row(10, 20, $rem),
                     ];
                 })(),
-
             default => [],
         };
     }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers — completely unchanged from original

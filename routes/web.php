@@ -37,8 +37,6 @@ use App\Http\Controllers\Settings\OrAssignmentController;
 use App\Http\Controllers\AuditLogController;
 
 
-
-
 Route::get('/payment/{entry}/available-ors', [BplsPaymentController::class, 'getAvailableOrNumbers'])
     ->name('bpls.payment.available-ors');
 
@@ -49,6 +47,13 @@ use App\Http\Controllers\Client\ApplicationController;
 use App\Http\Controllers\Client\DashboardController;
 use App\Http\Controllers\Client\DocumentUploadController;
 use App\Http\Controllers\Client\PaymentController;
+
+
+
+
+
+Route::post('bpls/settings/update-beneficiary-discounts', [BplsSettingsController::class, 'updateBeneficiaryDiscounts'])
+    ->name('bpls.settings.update-beneficiary-discounts');
 
 // =============================================================================
 // AUDIT LOGS
@@ -164,10 +169,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [BplsController::class, 'index'])->name('index');
 
         // Settings
-
         Route::prefix('settings')->name('settings.')->group(function () {
             Route::get('/', [BplsSettingsController::class, 'index'])->name('index');
-
+            Route::post('/update-beneficiary-discount', [BplsSettingsController::class, 'updateBeneficiaryDiscount'])
+                ->name('update-beneficiary-discount');
+            Route::post('/update-beneficiary-discounts', [BplsSettingsController::class, 'updateBeneficiaryDiscounts'])
+                ->name('update-beneficiary-discounts');
             // OR Assignments — now uses OrAssignmentController (auto cashier from Auth user)
             Route::get('/or-assignments', [OrAssignmentController::class, 'index'])->name('or-assignments.index');
             Route::post('/or-assignments', [OrAssignmentController::class, 'store'])->name('or-assignments.store');
@@ -208,6 +215,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{entry}/compute-surcharge', [BplsPaymentController::class, 'computeSurcharge'])->name('compute-surcharge');
             Route::post('/{entry}/validate-or', [BplsPaymentController::class, 'validateOr'])->name('validate-or');
             Route::post('/{entry}/pay', [BplsPaymentController::class, 'pay'])->name('pay');
+
+            // ── Beneficiary flags (AJAX, method-spoofed PATCH) ──────────────
+            Route::post('/{entry}/update-beneficiary', [BplsPaymentController::class, 'updateBeneficiary'])->name('update-beneficiary');
+
+            // !! Keep the catch-all GET last to avoid swallowing the routes above
             Route::get('/{entry}', [BplsPaymentController::class, 'show'])->name('show');
         });
 
@@ -230,7 +242,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/masterlist', [MasterlistController::class, 'index'])->name('masterlist.index');
             Route::get('/masterlist/data', [MasterlistController::class, 'data'])->name('masterlist.data');
         });
-
 
         // Online BPLS Application Review (Staff)
         Route::prefix('online')->name('online.')->group(function () {

@@ -1,4 +1,11 @@
 {{-- resources/views/modules/bpls/permit.blade.php --}}
+{{--
+    Variables from controller:
+    $entry, $payment, $fees, $perInstallment
+    $mayorName      ← from bpls_settings
+    $treasurerName  ← from bpls_settings
+    $permitNumber   ← formatted from bpls_settings permit_number_format
+--}}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -20,7 +27,6 @@
             color: #000;
         }
 
-        /* ── Print / No-print controls ── */
         .no-print-btn {
             text-align: center;
             padding: 20px;
@@ -51,10 +57,8 @@
             margin: 0 6px;
         }
 
-        /* ── Permit Page ── */
         .permit-page {
             width: 215mm;
-            /* A4-ish width */
             min-height: 280mm;
             margin: 0 auto 30px;
             background: #fff;
@@ -66,7 +70,6 @@
             align-items: center;
         }
 
-        /* ── Decorative border lines ── */
         .permit-page::before {
             content: '';
             position: absolute;
@@ -83,7 +86,6 @@
             pointer-events: none;
         }
 
-        /* ── Header logos + title ── */
         .permit-header {
             display: flex;
             align-items: center;
@@ -143,7 +145,6 @@
             font-style: italic;
         }
 
-        /* ── Main title ── */
         .permit-title {
             font-size: 22px;
             font-weight: 900;
@@ -164,7 +165,6 @@
             margin-bottom: 14px;
         }
 
-        /* ── Business Name ── */
         .business-name {
             font-size: 26px;
             font-weight: 900;
@@ -184,7 +184,6 @@
             margin-bottom: 12px;
         }
 
-        /* ── Pursuant text ── */
         .pursuant-text {
             font-size: 11px;
             font-style: italic;
@@ -195,7 +194,6 @@
             margin-bottom: 14px;
         }
 
-        /* ── Permit Number ── */
         .permit-number {
             font-size: 22px;
             font-weight: 900;
@@ -206,7 +204,6 @@
             color: #1a3a5c;
         }
 
-        /* ── Owner / Details Section ── */
         .details-block {
             text-align: center;
             margin-bottom: 10px;
@@ -235,7 +232,6 @@
             margin-bottom: 8px;
         }
 
-        /* ── Divider ── */
         .divider {
             width: 60%;
             border: none;
@@ -243,7 +239,6 @@
             margin: 8px auto;
         }
 
-        /* ── Given this date ── */
         .given-text {
             font-size: 11px;
             font-style: italic;
@@ -252,7 +247,6 @@
             color: #333;
         }
 
-        /* ── Approval Section ── */
         .approval-section {
             display: flex;
             justify-content: space-between;
@@ -291,7 +285,6 @@
             font-style: italic;
         }
 
-        /* ── Footer Info Block (OR, Amount, Series etc.) ── */
         .permit-footer {
             width: 100%;
             margin-top: 24px;
@@ -324,7 +317,6 @@
             margin-top: 4px;
         }
 
-        /* ── Watermark / background text ── */
         .watermark {
             position: absolute;
             top: 50%;
@@ -372,18 +364,13 @@
 
 <body>
 
-    {{-- ── Print / Back Controls ── --}}
     <div class="no-print-btn">
         <button onclick="window.print()">🖨 Print Permit</button>
         <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
     </div>
 
-    {{-- ══════════════════════════════════════════════════════════════════════════
-         PERMIT PAGE
-    ══════════════════════════════════════════════════════════════════════════ --}}
     <div class="permit-page">
 
-        {{-- Watermark --}}
         <div class="watermark">OFFICIAL</div>
 
         <div class="permit-content">
@@ -400,7 +387,7 @@
                     <p class="office">Office of the Municipal Mayor</p>
                 </div>
                 <div class="seal">
-                    LGU<br>{{ substr($entry->business_municipality ?? 'SAMPLE', 0, 5) }}<br>SEAL
+                    LGU<br>{{ strtoupper(substr($entry->business_municipality ?? 'SAMPLE', 0, 5)) }}<br>SEAL
                 </div>
             </div>
 
@@ -420,10 +407,8 @@
                 Revenue Code of the Municipality of {{ $entry->business_municipality ?? 'Sample' }} described below
             </p>
 
-            {{-- ── Permit Number ── --}}
-            <div class="permit-number">
-                {{ $entry->permit_number ?? 'iLGU-BPLS-' . now()->year . '-' . str_pad($entry->id, 4, '0', STR_PAD_LEFT) }}
-            </div>
+            {{-- ── Permit Number (from settings format) ── --}}
+            <div class="permit-number">{{ $permitNumber }}</div>
 
             {{-- ── Owner Details ── --}}
             <div class="details-block">
@@ -461,16 +446,16 @@
             <div class="approval-section">
                 <div class="left">Approved:</div>
                 <div class="right">
-                    {{-- Signature placeholder --}}
                     <div
-                        style="height: 36px; display:flex; align-items:flex-end; justify-content:center; margin-bottom:2px;">
+                        style="height:36px; display:flex; align-items:flex-end; justify-content:center; margin-bottom:2px;">
                         <span
-                            style="font-family: 'Dancing Script', cursive; font-size:28px; color:#1a3a5c; font-style:italic;">
+                            style="font-family:'Dancing Script',cursive; font-size:28px; color:#1a3a5c; font-style:italic;">
                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                         </span>
                     </div>
                     <div class="signature-line"></div>
-                    <p class="mayor-name">JUAN P. DELA CRUZ</p>
+                    {{-- ← Uses setting value instead of hardcoded name --}}
+                    <p class="mayor-name">{{ strtoupper($mayorName) }}</p>
                     <p class="mayor-title">Municipal Mayor</p>
                 </div>
             </div>
@@ -483,18 +468,19 @@
                 </div>
                 <div class="footer-item">
                     <span class="fkey">Amount Paid :</span>
+                    {{-- ← Shows actual total_collected from the payment --}}
                     <span class="fval">₱{{ number_format($payment->total_collected, 2) }}</span>
                 </div>
                 <div class="footer-item">
                     <span class="fkey">Series :</span>
-                    <span class="fval">{{ now()->year }}</span>
+                    <span class="fval">{{ $entry->permit_year ?? now()->year }}</span>
                 </div>
                 <div class="footer-item">
                     <span class="fkey">Payment Mode :</span>
                     <span class="fval">{{ ucwords(str_replace('_', ' ', $entry->mode_of_payment)) }}</span>
                 </div>
                 <div class="valid-line">
-                    VALID UP TO DECEMBER 31, {{ now()->year }}
+                    VALID UP TO DECEMBER 31, {{ $entry->permit_year ?? now()->year }}
                 </div>
             </div>
 
