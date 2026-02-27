@@ -27,6 +27,7 @@ class BplsApplication extends Model
         'bpls_owner_id',
         'business_entry_id',
         'application_type',     // new | renewal
+        'discount_claimed',
         'permit_year',
         'workflow_status',      // submitted | returned | verified | assessed | paid | approved | rejected
         'ors_confirmed',
@@ -74,6 +75,7 @@ class BplsApplication extends Model
         'approved_at' => 'datetime',
         'assessment_amount' => 'decimal:2',
         'tax_incentive' => 'boolean',
+        'discount_claimed' => 'boolean',
     ];
 
     // ── Relationships ──────────────────────────────────────────────────────
@@ -135,7 +137,7 @@ class BplsApplication extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->workflow_status) {
-            'submitted' => 'For Verification',
+            'submitted' => $this->discount_claimed ? 'With Discount Claim – For Verification' : 'For Verification',
             'returned' => 'Returned to Client',
             'verified' => 'For Assessment',
             'assessed' => 'For Payment',

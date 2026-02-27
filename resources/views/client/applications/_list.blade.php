@@ -26,7 +26,7 @@
                 $statusColors = [
                     'approved' => 'bg-logo-green/10 text-logo-green border-logo-green/20 ring-logo-green/10',
                     'rejected' => 'bg-red-50 text-red-600 border-red-200 ring-red-500/10',
-                    'payment'  => 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/10',
+                    'assessed' => 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/10',
                     'returned' => 'bg-amber-50 text-amber-600 border-amber-200 ring-amber-500/10',
                 ];
                 $sc = $statusColors[$app->workflow_status] ?? 'bg-blue-50 text-blue-600 border-blue-200 ring-blue-500/10';
@@ -46,7 +46,7 @@
                                     <svg class="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                @elseif($app->workflow_status === 'payment')
+                                @elseif($app->workflow_status === 'assessed')
                                     <svg class="w-7 h-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                                     </svg>
@@ -71,8 +71,7 @@
                                     @php
                                         $stageDesc = match($app->workflow_status) {
                                             'submitted', 'verification' => 'Your application is under document verification.',
-                                            'assessment' => 'Assessment ready. Please review fees and pay.',
-                                            'payment' => 'Awaiting payment to proceed.',
+                                            'assessed' => 'Assessment ready. Please review fees and pay.',
                                             'paid' => 'Payment received. Pending final approval.',
                                             'approved' => 'Permit issued. You may now download your permit.',
                                             'returned' => 'Action required. Please check remarks.',
@@ -131,11 +130,17 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                     </svg>
                                 </a>
-                            @elseif($app->workflow_status === 'payment')
-                                <a href="{{ route('client.payment.show', $app->id) }}"
-                                   class="px-8 py-2.5 bg-orange-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-orange-700 transform hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-orange-600/20">
-                                    Proceed to Payment
-                                </a>
+                            @elseif($app->workflow_status === 'assessed')
+                                <div class="flex flex-col gap-2">
+                                    <a href="{{ route('client.payment.show', $app->id) }}"
+                                       class="px-8 py-2.5 bg-orange-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-orange-700 transform hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-orange-600/20 text-center">
+                                        Proceed to Payment
+                                    </a>
+                                    <a href="{{ route('client.payment.success', $app->id) }}"
+                                       class="text-center px-4 py-1.5 bg-white border border-orange-200 text-orange-600 text-[9px] font-bold rounded-lg hover:bg-orange-50 transition-colors">
+                                        🔄 Refresh Status
+                                    </a>
+                                </div>
                             @elseif($app->workflow_status === 'approved')
                                 <a href="{{ route('client.applications.show', $app->id) }}"
                                    class="px-5 py-2.5 bg-logo-green text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-green transform hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-logo-green/20">

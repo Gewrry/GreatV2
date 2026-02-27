@@ -24,7 +24,7 @@ class ApplicationController extends Controller
         'amendment_from' => ['Single Proprietorship', 'Partnership', 'Corporation'],
         'amendment_to' => ['Single Proprietorship', 'Partnership', 'Corporation'],
         'business_nature' => ['Retail', 'Wholesale', 'Manufacturing', 'Service', 'Mixed'],
-        'business_organization' => ['Single Proprietorship', 'Partnership', 'Corporation', 'Cooperative'],
+        'business_organization' => ['Single Proprietorship', 'Partnership', 'Corporation', 'Cooperative', 'BMBE'],
         'business_area_type' => ['Owned', 'Leased', 'Rent-Free'],
         'business_scale' => ['Micro', 'Small', 'Medium', 'Large'],
         'business_sector' => ['Agriculture', 'Industry', 'Services', 'Trade', 'Tourism'],
@@ -114,6 +114,11 @@ class ApplicationController extends Controller
             'documents.dti_sec_cda' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'documents.barangay_clearance' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'documents.community_tax' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'documents.beneficiary_senior' => 'required_if:is_senior,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'documents.beneficiary_pwd' => 'required_if:is_pwd,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'documents.beneficiary_solo_parent' => 'required_if:is_solo_parent,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'documents.beneficiary_bmbe' => 'required_if:is_bmbe,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'documents.beneficiary_cooperative' => 'required_if:is_cooperative,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ], [
             'documents.dti_sec_cda.required' => 'DTI/SEC/CDA Certificate is required.',
             'documents.barangay_clearance.required' => 'Barangay Clearance is required.',
@@ -123,8 +128,10 @@ class ApplicationController extends Controller
         ]);
 
         $client = $this->client();
+        $isCooperative = ($request->business_organization === 'Cooperative');
+        $isBmbe = ($request->business_organization === 'BMBE');
 
-        return DB::transaction(function () use ($request, $client) {
+        return DB::transaction(function () use ($request, $client, $isCooperative, $isBmbe) {
 
             // ── TABLE 1: bpls_owners ──────────────────────────────────────
             if ($request->filled('owner_id')) {
@@ -144,6 +151,8 @@ class ApplicationController extends Controller
                     'is_4ps' => $request->boolean('is_4ps'),
                     'is_solo_parent' => $request->boolean('is_solo_parent'),
                     'is_senior' => $request->boolean('is_senior'),
+                    'is_bmbe' => $isBmbe,
+                    'is_cooperative' => $isCooperative,
                     'discount_10' => $request->boolean('discount_10'),
                     'discount_5' => $request->boolean('discount_5'),
                     'region' => $request->owner_region,
@@ -223,6 +232,8 @@ class ApplicationController extends Controller
                 'is_4ps' => $owner->is_4ps,
                 'is_solo_parent' => $owner->is_solo_parent,
                 'is_senior' => $owner->is_senior,
+                'is_bmbe' => $isBmbe,
+                'is_cooperative' => $isCooperative,
                 'discount_10' => $owner->discount_10,
                 'discount_5' => $owner->discount_5,
                 'owner_region' => $owner->region,
@@ -278,6 +289,7 @@ class ApplicationController extends Controller
                 'bpls_owner_id' => $owner->id,
                 'business_entry_id' => $entry->id,
                 'application_type' => $request->input('application_type', 'new'),
+                'discount_claimed' => ($owner->is_senior || $owner->is_pwd || $owner->is_solo_parent || $isBmbe || $isCooperative),
                 'permit_year' => $permitYear,
                 'workflow_status' => 'submitted',
                 'submitted_at' => $now,
@@ -369,6 +381,8 @@ class ApplicationController extends Controller
             'is_4ps' => 'nullable',
             'is_solo_parent' => 'nullable',
             'is_senior' => 'nullable',
+            'is_bmbe' => 'nullable',
+            'is_cooperative' => 'nullable',
             'discount_10' => 'nullable',
             'discount_5' => 'nullable',
             'owner_region' => 'nullable|string|max:100',
@@ -410,6 +424,9 @@ class ApplicationController extends Controller
             'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
+        $isCooperative = ($request->business_organization === 'Cooperative');
+        $isBmbe = ($request->business_organization === 'BMBE');
+
         // ── Update Owner ──────────────────────────────────────────────────
         $application->owner->update([
             'last_name' => $request->last_name,
@@ -425,6 +442,8 @@ class ApplicationController extends Controller
             'is_4ps' => $request->boolean('is_4ps'),
             'is_solo_parent' => $request->boolean('is_solo_parent'),
             'is_senior' => $request->boolean('is_senior'),
+            'is_bmbe' => $isBmbe,
+            'is_cooperative' => $isCooperative,
             'discount_10' => $request->boolean('discount_10'),
             'discount_5' => $request->boolean('discount_5'),
             'region' => $request->owner_region,
@@ -501,6 +520,14 @@ class ApplicationController extends Controller
                 'last_name' => $request->last_name,
                 'first_name' => $request->first_name,
                 'middle_name' => $request->middle_name,
+                'is_pwd' => $request->boolean('is_pwd'),
+                'is_4ps' => $request->boolean('is_4ps'),
+                'is_solo_parent' => $request->boolean('is_solo_parent'),
+                'is_senior' => $request->boolean('is_senior'),
+                'is_bmbe' => $isBmbe,
+                'is_cooperative' => $isCooperative,
+                'discount_10' => $request->boolean('discount_10'),
+                'discount_5' => $request->boolean('discount_5'),
                 'mobile_no' => $request->mobile_no,
                 'email' => $request->email,
                 'owner_region' => $request->owner_region,
@@ -510,6 +537,10 @@ class ApplicationController extends Controller
                 'owner_street' => $request->owner_street,
             ]);
         }
+        
+        $application->update([
+            'discount_claimed' => ($request->boolean('is_senior') || $request->boolean('is_pwd') || $request->boolean('is_solo_parent') || $isBmbe || $isCooperative),
+        ]);
 
         // ── Upsert documents ──────────────────────────────────────────────
         if ($request->hasFile('documents')) {

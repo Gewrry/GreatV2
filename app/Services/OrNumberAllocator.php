@@ -43,10 +43,18 @@ class OrNumberAllocator
                 $padding = strlen((string) $assignment->start_or);
 
                 // OR numbers already consumed from this range
-                $used = BplsApplicationOr::where('or_assignment_id', $assignment->id)
+                $usedOnline = BplsApplicationOr::where('or_assignment_id', $assignment->id)
                     ->pluck('or_number')
                     ->map(fn ($n) => (int) $n)
                     ->toArray();
+
+                $usedManual = \App\Models\BplsPayment::where('or_number', '>=', $assignment->start_or)
+                    ->where('or_number', '<=', $assignment->end_or)
+                    ->pluck('or_number')
+                    ->map(fn ($n) => (int) $n)
+                    ->toArray();
+
+                $used = array_unique(array_merge($usedOnline, $usedManual));
 
                 for ($n = $start; $n <= $end; $n++) {
                     if (count($allocated) >= $count) break;

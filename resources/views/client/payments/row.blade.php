@@ -90,7 +90,7 @@
                                     · {{ \Carbon\Carbon::parse($installment['paid_at'])->format('M d, Y') }}
                                 @endif
                             </p>
-                        @elseif($instIsPending && $installment['payment'])
+                        @elseif($instIsPending && ($installment['payment'] ?? null))
                             <p class="text-[10px] text-yellow-600">
                                 Ref: {{ $installment['payment']->reference_number }}
                                 · Via {{ $installment['payment']->payment_method_label }}
@@ -110,14 +110,29 @@
                     </p>
 
                     @if($instIsPaid)
-                        <span class="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold rounded-lg">
-                            ✓ Paid
-                        </span>
+                        <div class="flex flex-col gap-1 items-end">
+                            <span class="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold rounded-lg">
+                                ✓ Paid
+                            </span>
+                            @if($installment['bpls_payment_id'])
+                                <a href="{{ route('client.payment.receipt', ['application' => $application->id, 'payment' => $installment['bpls_payment_id']]) }}" 
+                                   target="_blank"
+                                   class="text-[9px] font-bold text-logo-teal hover:underline flex items-center gap-1">
+                                    <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                    View Receipt
+                                </a>
+                            @endif
+                        </div>
 
                     @elseif($instIsPending)
-                        <span class="px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 text-[10px] font-bold rounded-lg">
-                            Verifying...
-                        </span>
+                        <div class="flex flex-col gap-1 items-end">
+                            <span class="px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 text-[10px] font-bold rounded-lg">
+                                Verifying...
+                            </span>
+                            <a href="{{ route('client.payment.success', $application->id) }}" class="text-[9px] font-bold text-yellow-600 hover:underline">
+                                🔄 Refresh
+                            </a>
+                        </div>
 
                     @elseif($instIsFailed || $instIsUnpaid)
                         {{-- PAY NOW BUTTON — shown for unpaid/failed on any active application --}}

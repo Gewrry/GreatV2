@@ -4,12 +4,6 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             @include('layouts.bpls.navbar')
 
-            {{--
-                PHP-generated JSON data lives in a <script> tag (NOT inside x-data).
-                Embedding @json() inside an HTML attribute breaks Alpine when the JSON
-                contains quotes/backslashes, causing the whole component to fail and
-                raw JS to appear as visible page text.
-            --}}
             <script>
                 window.__bplsSchedule = @json($schedule);
                 window.__bplsPaidQuarters = @json(array_values($paidQuarters));
@@ -17,10 +11,10 @@
                 window.__bplsModeCount = {{ $modeCount }};
                 window.__bplsAvailableOrsUrl = '{{ route('bpls.payment.available-ors', $entry->id) }}';
                 window.__bplsCsrf = document.querySelector ? document.querySelector('meta[name=csrf-token]')?.content : '';
+                window.__bplsBeneficiaryDiscountPerInstallment = {{ $beneficiaryDiscount['discount'] ?? 0 }};
             </script>
 
             <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4" x-data="{
-                /* ── Quarter state ── */
                 selectedQuarters: [],
                 paymentMethod: 'cash',
                 paymentDate: '{{ now()->format('Y-m-d') }}',
@@ -29,25 +23,22 @@
                 discount: 0,
                 discountRate: 0,
                 discountQualifies: false,
+                beneficiaryDiscount: window.__bplsBeneficiaryDiscountPerInstallment || 0,
+                beneficiaryLabel: '{{ addslashes($beneficiaryDiscount['label'] ?? '') }}',
                 paidQuarters: window.__bplsPaidQuarters || [],
                 perInstallment: window.__bplsPerInstallment || 0,
                 modeCount: window.__bplsModeCount || 4,
                 computing: false,
-            
-                /* ── OR Dropdown state ── */
                 availableOrs: [],
                 filteredOrs: [],
                 orSearch: '',
                 selectedOr: null,
-                /* { or_number, receipt_type } */
                 orDropdownOpen: false,
                 orLoading: true,
                 orError: '',
                 orFocusIndex: -1,
             
-                /* ────────────────────────────────────────────────────── */
                 init() {
-                    /* Auto-select overdue unpaid quarters */
                     const schedule = window.__bplsSchedule || [];
                     const autoSelect = [];
                     for (const row of schedule) {
@@ -59,12 +50,13 @@
                         this.selectedQuarters = autoSelect;
                         this.$nextTick(() => this.autoComputeSurcharge());
                     }
-            
-                    /* Load available ORs from server */
                     this.loadAvailableOrs();
+                    window.recalcPaymentTotals = () => {
+                        this.beneficiaryDiscount = window._beneficiaryDiscountPerInstallment ?? 0;
+                        if (this.selectedQuarters.length > 0) this.autoComputeSurcharge();
+                    };
                 },
             
-                /* ── Load available ORs from the controller endpoint ── */
                 async loadAvailableOrs() {
                     this.orLoading = true;
                     this.orError = '';
@@ -85,7 +77,6 @@
                     this.orLoading = false;
                 },
             
-                /* ── Filter dropdown list as user types ── */
                 filterOrs() {
                     const q = this.orSearch.toLowerCase().trim();
                     this.filteredOrs = q ?
@@ -96,7 +87,6 @@
                     this.orFocusIndex = -1;
                 },
             
-                /* ── Select an OR from the dropdown ── */
                 selectOr(or) {
                     this.selectedOr = or;
                     this.orSearch = or.or_number;
@@ -104,7 +94,6 @@
                     this.orFocusIndex = -1;
                 },
             
-                /* ── Keyboard navigation inside dropdown ── */
                 orKeydown(e) {
                     if (!this.orDropdownOpen) { this.orDropdownOpen = true; return; }
                     if (e.key === 'ArrowDown') {
@@ -121,7 +110,6 @@
                     }
                 },
             
-                /* ── Clear selection ── */
                 clearOr() {
                     this.selectedOr = null;
                     this.orSearch = '';
@@ -129,7 +117,6 @@
                     this.orDropdownOpen = false;
                 },
             
-                /* ── Quarter helpers ── */
                 toggleQuarter(q) {
                     if (this.paidQuarters.includes(q)) return;
                     const i = this.selectedQuarters.indexOf(q);
@@ -141,11 +128,15 @@
                 isPaid(q) { return this.paidQuarters.includes(q); },
             
                 get subtotal() { return this.perInstallment * this.selectedQuarters.length; },
+                get totalBeneficiaryDiscount() {
+                    return (this.beneficiaryDiscount || 0) * this.selectedQuarters.length;
+                },
                 get grandTotal() {
                     return this.subtotal +
                         parseFloat(this.surcharges || 0) +
                         parseFloat(this.backtaxes || 0) -
-                        parseFloat(this.discount || 0);
+                        parseFloat(this.discount || 0) -
+                        parseFloat(this.totalBeneficiaryDiscount || 0);
                 },
                 get amountInWords() {
                     const n = Math.round(this.grandTotal * 100);
@@ -154,15 +145,11 @@
                     const w = this.numToWords(pesos);
                     if (!w) return '';
                     return w.toUpperCase() + ' PESOS' +
-                        (cents > 0 ? ' AND ' + cents.toString().padStart(2, '0') + '/100 CENTAVOS' : '') +
-                        ' ONLY';
+                        (cents > 0 ? ' AND ' + cents.toString().padStart(2, '0') + '/100 CENTAVOS' : '') + ' ONLY';
                 },
                 numToWords(n) {
                     if (n === 0) return 'ZERO';
-                    const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE',
-                        'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN',
-                        'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'
-                    ];
+                    const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
                     const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
                     if (n < 20) return ones[n];
                     if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
@@ -182,9 +169,15 @@
                         });
                         const data = await res.json();
                         this.surcharges = data.surcharge || 0;
-                        this.discount = data.discount || 0;
-                        this.discountRate = data.discount_rate || 0;
-                        this.discountQualifies = data.discount_qualifies || false;
+                        this.discount = data.advance_discount || data.discount || 0;
+                        this.discountRate = data.advance_discount_rate || data.discount_rate || 0;
+                        this.discountQualifies = data.advance_discount_qualifies || data.discount_qualifies || false;
+                        if (data.beneficiary_discount !== undefined) {
+                            const perQ = this.selectedQuarters.length > 0 ? data.beneficiary_discount / this.selectedQuarters.length : 0;
+                            this.beneficiaryDiscount = perQ;
+                            this.beneficiaryLabel = data.beneficiary_label || '';
+                            window._beneficiaryDiscountPerInstallment = perQ;
+                        }
                     } catch (e) { console.error(e); }
                     this.computing = false;
                 },
@@ -362,26 +355,122 @@
                     </div>
                 @endif
 
-                {{-- ════════════════════════════════════════════════════════ --}}
+                {{-- ══════════════════════════════════════════════════════════════ --}}
+                {{-- ── BENEFICIARY / DISCOUNT STATUS (editable) ──               --}}
+                {{-- ══════════════════════════════════════════════════════════════ --}}
+                <div x-data="beneficiaryEditor()" x-init="beInit()"
+                    class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
+
+                    <div class="bg-purple-600 text-white py-2.5 px-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <p class="text-xs font-extrabold tracking-wide uppercase">Beneficiary / Discount Status</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span x-show="beSaving"
+                                class="flex items-center gap-1 text-[10px] font-semibold text-white/80">
+                                <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                                        stroke="currentColor" stroke-width="4" />
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                </svg>
+                                Saving…
+                            </span>
+                            <span x-show="beSaved" x-transition.duration.500ms
+                                class="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">✓ Saved</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <p class="text-xs text-gray/60 mb-4">Toggle the owner's classification. Changes save instantly
+                            and update the discount total.</p>
+
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <label class="cursor-pointer select-none">
+                                <input type="checkbox" x-model="beFlags.is_pwd" @change="beSave()"
+                                    class="peer hidden">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-purple-100 peer-checked:text-purple-800 peer-checked:border-purple-300 hover:border-purple-300">♿
+                                    PWD</span>
+                            </label>
+                            <label class="cursor-pointer select-none">
+                                <input type="checkbox" x-model="beFlags.is_senior" @change="beSave()"
+                                    class="peer hidden">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-amber-100 peer-checked:text-amber-800 peer-checked:border-amber-300 hover:border-amber-300">👴
+                                    Senior Citizen</span>
+                            </label>
+                            <label class="cursor-pointer select-none">
+                                <input type="checkbox" x-model="beFlags.is_solo_parent" @change="beSave()"
+                                    class="peer hidden">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-pink-100 peer-checked:text-pink-800 peer-checked:border-pink-300 hover:border-pink-300">👩‍👧
+                                    Solo Parent</span>
+                            </label>
+                            <label class="cursor-pointer select-none">
+                                <input type="checkbox" x-model="beFlags.is_4ps" @change="beSave()"
+                                    class="peer hidden">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-green-100 peer-checked:text-green-800 peer-checked:border-green-300 hover:border-green-300">🏠
+                                    4Ps</span>
+                            </label>
+                            <label class="cursor-pointer select-none">
+                                <input type="checkbox" x-model="beFlags.discount_10" @change="beSave()"
+                                    class="peer hidden">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-blue-100 peer-checked:text-blue-800 peer-checked:border-blue-300 hover:border-blue-300">💉
+                                    10% Fully Vaccinated</span>
+                            </label>
+                            <label class="cursor-pointer select-none">
+                                <input type="checkbox" x-model="beFlags.discount_5" @change="beSave()"
+                                    class="peer hidden">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-sky-100 peer-checked:text-sky-800 peer-checked:border-sky-300 hover:border-sky-300">💉
+                                    5% 1st Dose</span>
+                            </label>
+                        </div>
+
+                        <div class="p-3 rounded-xl border transition-colors"
+                            :class="beAmount > 0 ? 'bg-green-50 border-green-200' : 'bg-lumot/5 border-lumot/20'">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-bold text-gray"
+                                        x-text="beLabel || 'No beneficiary discount applies'"></p>
+                                    <p class="text-[11px] text-gray/50 mt-0.5" x-show="beRate > 0"
+                                        x-text="beRate + '% discount rate — multiplied by quarters selected'"></p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-extrabold"
+                                        :class="beAmount > 0 ? 'text-green-700' : 'text-gray/40'"
+                                        x-text="beAmount > 0 ? '- ₱' + beAmount.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : '₱0.00'">
+                                    </p>
+                                    <p class="text-[10px] text-gray/40" x-show="beAmount > 0">per installment</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p x-show="beError" x-text="beError" class="text-xs text-red-500 mt-2 font-semibold"></p>
+                    </div>
+                </div>
+
+                {{-- ══════════════════════════════════════════════════════════════ --}}
                 {{-- ── PAYMENT FORM ── --}}
-                {{-- ════════════════════════════════════════════════════════ --}}
+                {{-- ══════════════════════════════════════════════════════════════ --}}
                 <form action="{{ route('bpls.payment.pay', $entry->id) }}" method="POST"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
                     @csrf
 
-                    {{-- ── OR NUMBER DROPDOWN + DATE ── --}}
+                    {{-- OR + Date --}}
                     <div class="grid grid-cols-2 gap-4 p-5 border-b border-lumot/20">
-
-                        {{-- ── OR Number: searchable dropdown ── --}}
                         <div>
-                            <label class="block text-xs font-bold text-gray mb-1.5">
-                                O.R. / Control No. <span class="text-red-400">*</span>
-                            </label>
-
-                            {{-- Hidden input carries the selected value to the form POST --}}
+                            <label class="block text-xs font-bold text-gray mb-1.5">O.R. / Control No. <span
+                                    class="text-red-400">*</span></label>
                             <input type="hidden" name="or_number" :value="selectedOr ? selectedOr.or_number : ''">
 
-                            {{-- Loading skeleton --}}
                             <div x-show="orLoading"
                                 class="w-full h-10 bg-lumot/20 rounded-xl animate-pulse flex items-center px-3 gap-2">
                                 <svg class="w-4 h-4 text-logo-teal animate-spin" fill="none" viewBox="0 0 24 24">
@@ -392,7 +481,6 @@
                                 <span class="text-xs text-gray/50">Loading available OR numbers…</span>
                             </div>
 
-                            {{-- Error state (no ranges assigned) --}}
                             <div x-show="!orLoading && orError && availableOrs.length === 0"
                                 class="w-full border-2 border-red-200 bg-red-50 rounded-xl px-3 py-2.5 flex items-center gap-2">
                                 <svg class="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24"
@@ -403,10 +491,7 @@
                                 <span class="text-xs text-red-500 font-semibold" x-text="orError"></span>
                             </div>
 
-                            {{-- Dropdown combo-box --}}
                             <div x-show="!orLoading && availableOrs.length > 0" class="relative">
-
-                                {{-- Trigger / search input --}}
                                 <div class="relative">
                                     <input type="text" x-model="orSearch"
                                         @input="filterOrs(); orDropdownOpen = true;"
@@ -414,21 +499,15 @@
                                         @keydown="orKeydown($event)" @click.outside="orDropdownOpen = false"
                                         :class="{
                                             'border-logo-teal ring-2 ring-logo-teal/20 bg-green-50/40': selectedOr,
-                                            'border-lumot/30': !selectedOr,
+                                            'border-lumot/30':
+                                                !selectedOr
                                         }"
                                         class="w-full text-sm border rounded-xl px-3 py-2.5 pr-20 focus:outline-none transition-all duration-150"
                                         placeholder="Search OR number…" autocomplete="off">
-
-                                    {{-- Right-side badges / icons --}}
                                     <div class="absolute inset-y-0 right-2 flex items-center gap-1.5">
-
-                                        {{-- Receipt type badge (shows after selection) --}}
                                         <span x-show="selectedOr"
                                             class="text-[9px] font-extrabold px-1.5 py-0.5 bg-logo-teal text-white rounded-md"
-                                            x-text="selectedOr ? selectedOr.receipt_type : ''">
-                                        </span>
-
-                                        {{-- Clear button --}}
+                                            x-text="selectedOr ? selectedOr.receipt_type : ''"></span>
                                         <button type="button" x-show="selectedOr || orSearch" @click="clearOr()"
                                             class="text-gray/40 hover:text-red-400 transition-colors p-0.5">
                                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
@@ -437,8 +516,6 @@
                                                     d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         </button>
-
-                                        {{-- Chevron --}}
                                         <button type="button" @click="orDropdownOpen = !orDropdownOpen"
                                             class="text-gray/40 hover:text-gray transition-colors p-0.5">
                                             <svg class="w-4 h-4 transition-transform"
@@ -451,7 +528,6 @@
                                     </div>
                                 </div>
 
-                                {{-- Dropdown list --}}
                                 <div x-show="orDropdownOpen && filteredOrs.length > 0"
                                     x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
@@ -460,31 +536,27 @@
                                     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0 scale-95"
                                     class="absolute z-50 left-0 right-0 mt-1 bg-white border border-lumot/30 rounded-xl shadow-xl overflow-hidden"
                                     style="max-height: 240px; overflow-y: auto;">
-
-                                    {{-- Count header --}}
                                     <div
                                         class="sticky top-0 bg-lumot/10 border-b border-lumot/20 px-3 py-1.5 flex items-center justify-between">
                                         <span class="text-[10px] font-bold text-gray/60 uppercase">Available ORs</span>
                                         <span class="text-[10px] font-extrabold text-logo-teal"
                                             x-text="filteredOrs.length + ' of ' + availableOrs.length + ' available'"></span>
                                     </div>
-
-                                    {{-- OR rows --}}
                                     <template x-for="(or, idx) in filteredOrs" :key="or.or_number">
                                         <button type="button" @click="selectOr(or)"
                                             :class="{
-                                                'bg-logo-teal text-white': orFocusIndex === idx,
+                                                'bg-logo-teal text-white': orFocusIndex ===
+                                                    idx,
                                                 'bg-logo-teal/10': selectedOr && selectedOr.or_number === or
-                                                    .or_number && orFocusIndex !== idx,
-                                                'hover:bg-lumot/20': orFocusIndex !== idx && !(selectedOr && selectedOr
-                                                    .or_number === or.or_number),
+                                                    .or_number && orFocusIndex !==
+                                                    idx,
+                                                'hover:bg-lumot/20': orFocusIndex !== idx && !(selectedOr &&
+                                                    selectedOr.or_number === or.or_number)
                                             }"
                                             class="w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors border-b border-lumot/10 last:border-0">
-
                                             <div class="flex items-center gap-2.5">
-                                                {{-- Checkmark for currently selected --}}
                                                 <svg x-show="selectedOr && selectedOr.or_number === or.or_number"
-                                                    class="w-3.5 h-3.5 text-logo-teal shrink-0"
+                                                    class="w-3.5 h-3.5 shrink-0"
                                                     :class="orFocusIndex === idx ? 'text-white' : 'text-logo-teal'"
                                                     fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                                     stroke-width="3">
@@ -497,21 +569,17 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M9 12h6" />
                                                 </svg>
-
                                                 <span class="text-sm font-bold font-mono"
                                                     x-text="'#' + or.or_number"></span>
                                             </div>
-
                                             <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0"
                                                 :class="orFocusIndex === idx ? 'bg-white/20 text-white' :
                                                     'bg-logo-teal/10 text-logo-teal'"
-                                                x-text="or.receipt_type">
-                                            </span>
+                                                x-text="or.receipt_type"></span>
                                         </button>
                                     </template>
                                 </div>
 
-                                {{-- No results after filtering --}}
                                 <div x-show="orDropdownOpen && filteredOrs.length === 0 && orSearch"
                                     class="absolute z-50 left-0 right-0 mt-1 bg-white border border-lumot/30 rounded-xl shadow-xl p-4 text-center">
                                     <p class="text-xs text-gray/50">No OR matching <strong x-text="orSearch"></strong>
@@ -519,29 +587,23 @@
                                 </div>
                             </div>
 
-                            {{-- Selection confirmation strip --}}
                             <div x-show="selectedOr" class="mt-1.5 flex items-center gap-1.5">
                                 <svg class="w-3 h-3 text-logo-teal" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor" stroke-width="3">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
-                                <span class="text-[10px] font-bold text-logo-teal">OR
-                                    <span class="font-mono"
-                                        x-text="'#' + (selectedOr ? selectedOr.or_number : '')"></span>
-                                    selected
-                                </span>
+                                <span class="text-[10px] font-bold text-logo-teal">OR <span class="font-mono"
+                                        x-text="'#' + (selectedOr ? selectedOr.or_number : '')"></span> selected</span>
                                 <span
                                     class="text-[9px] font-extrabold px-1.5 py-0.5 bg-logo-teal/10 text-logo-teal rounded-full"
                                     x-text="selectedOr ? selectedOr.receipt_type : ''"></span>
                             </div>
 
-                            {{-- Validation error from server (on form re-submit) --}}
                             @error('or_number')
                                 <p class="mt-1.5 text-[10px] font-bold text-red-500">{{ $message }}</p>
                             @enderror
                         </div>
 
-                        {{-- ── Payment Date ── --}}
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1.5">Payment Date <span
                                     class="text-red-400">*</span></label>
@@ -551,7 +613,7 @@
                         </div>
                     </div>
 
-                    {{-- ── Payor + Fund Code ── --}}
+                    {{-- Payor + Fund Code --}}
                     <div class="grid grid-cols-2 gap-4 px-5 py-4 border-b border-lumot/20 bg-bluebody/20">
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1.5">Payor</label>
@@ -570,11 +632,11 @@
                         </div>
                     </div>
 
-                    {{-- ── Quarter Selection ── --}}
+                    {{-- Quarter Selection --}}
                     <div class="px-5 py-4 border-b border-lumot/20">
                         <label class="block text-xs font-bold text-gray mb-3">
-                            Select Quarter(s) to Pay
-                            <span class="text-gray/50 font-normal ml-1">(click to select, green = already paid)</span>
+                            Select Quarter(s) to Pay <span class="text-gray/50 font-normal ml-1">(click to select,
+                                green = already paid)</span>
                         </label>
                         <div class="grid grid-cols-{{ count($quarterStatus) ?: 4 }} gap-3">
                             @foreach ($quarterStatus as $q => $qs)
@@ -607,7 +669,7 @@
                         </div>
                     </div>
 
-                    {{-- ── Fee Breakdown ── --}}
+                    {{-- Fee Breakdown --}}
                     <div class="px-5 py-4 border-b border-lumot/20">
                         <p class="text-xs font-bold text-gray mb-3">Fee Breakdown</p>
                         <div class="border border-lumot/20 rounded-xl overflow-hidden">
@@ -677,6 +739,30 @@
                             <input x-show="false" type="hidden" name="discount"
                                 x-bind:value="discountQualifies ? discount : 0">
 
+                            {{-- ── Beneficiary Discount row ── --}}
+                            <div x-show="beneficiaryDiscount > 0 && selectedQuarters.length > 0"
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-purple-50/60">
+                                <div>
+                                    <p class="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
+                                        BENEFICIARY DISCOUNT
+                                        <span
+                                            class="text-[9px] font-extrabold bg-purple-600 text-white px-1.5 py-0.5 rounded-full"
+                                            x-text="beneficiaryLabel || 'Special'"></span>
+                                    </p>
+                                    <p class="text-[9px] text-purple-500/70 mt-0.5">Auto-applied from owner
+                                        classification</p>
+                                </div>
+                                <p class="text-xs text-gray/60 text-center font-mono self-center">—</p>
+                                <div class="flex items-center justify-end gap-1">
+                                    <span class="text-xs font-bold text-purple-700">−</span>
+                                    <span class="text-xs font-bold text-purple-700"
+                                        x-text="'₱' + totalBeneficiaryDiscount.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})"></span>
+                                </div>
+                            </div>
+
                             {{-- Total --}}
                             <div class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
                                 <p class="text-sm font-extrabold text-green col-span-2">TOTAL</p>
@@ -686,7 +772,7 @@
                             </div>
                         </div>
 
-                        {{-- Discount banner --}}
+                        {{-- Advance discount banner --}}
                         <div x-show="discountQualifies" x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 translate-y-1"
                             x-transition:enter-end="opacity-100 translate-y-0"
@@ -700,6 +786,24 @@
                                     class="font-extrabold" x-text="discountRate + '%'"></span> applied — <span
                                     class="font-extrabold"
                                     x-text="'₱' + parseFloat(discount).toLocaleString('en-PH',{minimumFractionDigits:2})"></span>!
+                            </p>
+                        </div>
+
+                        {{-- Beneficiary discount banner --}}
+                        <div x-show="beneficiaryDiscount > 0 && selectedQuarters.length > 0"
+                            x-transition:enter="transition ease-out duration-300"
+                            x-transition:enter-start="opacity-0 translate-y-1"
+                            x-transition:enter-end="opacity-100 translate-y-0"
+                            class="mt-3 flex items-center gap-2.5 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-xs text-purple-700 font-semibold">
+                                <span class="font-extrabold" x-text="beneficiaryLabel"></span> discount applied —
+                                <span class="font-extrabold"
+                                    x-text="'₱' + totalBeneficiaryDiscount.toLocaleString('en-PH',{minimumFractionDigits:2})"></span>!
                             </p>
                         </div>
 
@@ -720,7 +824,7 @@
                         </div>
                     </div>
 
-                    {{-- ── Amount in Words ── --}}
+                    {{-- Amount in Words --}}
                     <div class="px-5 py-4 border-b border-lumot/20">
                         <label class="block text-xs font-bold text-gray mb-1.5">Amount in Words</label>
                         <div class="w-full text-sm border border-lumot/20 rounded-xl px-3 py-2.5 bg-lumot/10 font-semibold text-green min-h-[42px]"
@@ -728,14 +832,14 @@
                         <input type="hidden" name="amount_in_words" :value="amountInWords">
                     </div>
 
-                    {{-- ── Remarks ── --}}
+                    {{-- Remarks --}}
                     <div class="px-5 py-4 border-b border-lumot/20">
                         <label class="block text-xs font-bold text-gray mb-1.5">Remarks</label>
                         <textarea name="remarks" rows="2" placeholder="Optional remarks…"
                             class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
                     </div>
 
-                    {{-- ── Payment Method ── --}}
+                    {{-- Payment Method --}}
                     <div class="px-5 py-4 border-b border-lumot/20">
                         <label class="block text-xs font-bold text-gray mb-3">Payment Method</label>
                         <div class="grid grid-cols-3 gap-3">
@@ -753,7 +857,7 @@
                         </div>
                     </div>
 
-                    {{-- ── Check / Money Order Details ── --}}
+                    {{-- Check / MO Details --}}
                     <div x-show="paymentMethod === 'check' || paymentMethod === 'money_order'"
                         class="px-5 py-4 border-b border-lumot/20 bg-bluebody/20">
                         <div class="grid grid-cols-3 gap-3">
@@ -776,7 +880,7 @@
                         </div>
                     </div>
 
-                    {{-- ── Submit Footer ── --}}
+                    {{-- Submit Footer --}}
                     <div class="flex items-center justify-between px-5 py-4 bg-lumot/10">
                         <a href="{{ route('bpls.business-list.index') }}"
                             class="px-5 py-2.5 bg-yellow-500 text-white text-sm font-bold rounded-xl hover:bg-yellow-600 transition-colors">Cancel</a>
@@ -788,7 +892,10 @@
                                 x-text="'₱' + grandTotal.toLocaleString('en-PH',{minimumFractionDigits:2})"></span>
                             <span x-show="discountQualifies"
                                 class="text-[10px] font-bold text-logo-green bg-logo-green/10 px-2 py-0.5 rounded-full border border-logo-green/20"
-                                x-text="discountRate + '% DISCOUNT'"></span>
+                                x-text="discountRate + '% ADV DISC'"></span>
+                            <span x-show="beneficiaryDiscount > 0"
+                                class="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200"
+                                x-text="beneficiaryLabel + ' DISC'"></span>
                         </div>
                         <button type="submit" :disabled="selectedQuarters.length === 0 || !selectedOr"
                             class="flex items-center gap-2 px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 disabled:opacity-40 disabled:cursor-not-allowed">
@@ -801,7 +908,7 @@
                     </div>
                 </form>
 
-                {{-- ── Payments History ── --}}
+                {{-- Payments History --}}
                 @if ($payments->count() > 0)
                     <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
                         <div class="bg-green text-white text-center py-2.5">
@@ -914,4 +1021,123 @@
             </div>{{-- end x-data --}}
         </div>
     </div>
+
+    @push('scripts')
+        <script>
+            function beneficiaryEditor() {
+                return {
+                    beFlags: {
+                        is_pwd: {{ $entry->is_pwd ? 'true' : 'false' }},
+                        is_senior: {{ $entry->is_senior ? 'true' : 'false' }},
+                        is_solo_parent: {{ $entry->is_solo_parent ? 'true' : 'false' }},
+                        is_4ps: {{ $entry->is_4ps ? 'true' : 'false' }},
+                        discount_10: {{ $entry->discount_10 ? 'true' : 'false' }},
+                        discount_5: {{ $entry->discount_5 ? 'true' : 'false' }},
+                    },
+                    beAmount: {{ $beneficiaryDiscount['discount'] ?? 0 }},
+                    beRate: {{ $beneficiaryDiscount['rate'] ?? 0 }},
+                    beLabel: '{{ addslashes($beneficiaryDiscount['label'] ?? '') }}',
+                    beSaving: false,
+                    beSaved: false,
+                    beError: '',
+                    beTimer: null,
+
+                    beInit() {
+                        // On page load: PHP already computed $beneficiaryDiscount from saved flags.
+                        // Push that value into the outer Alpine payment scope immediately.
+                        window._beneficiaryDiscountPerInstallment = this.beAmount;
+
+                        this.$nextTick(() => {
+                            this._syncToParent(this.beAmount, this.beLabel);
+                        });
+                    },
+
+                    beSave() {
+                        clearTimeout(this.beTimer);
+                        this.beError = '';
+                        this.beSaved = false;
+                        this.beTimer = setTimeout(() => this._beSaveNow(), 400);
+                    },
+
+                    async _beSaveNow() {
+                        this.beSaving = true;
+
+                        const payload = new FormData();
+                        // !! NO _method:PATCH — route is POST only
+                        payload.append('_token', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+                        Object.entries(this.beFlags).forEach(([k, v]) =>
+                            payload.append(k, v ? '1' : '0')
+                        );
+
+                        try {
+                            const res = await fetch(
+                                '{{ route('bpls.payment.update-beneficiary', $entry->id) }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    },
+                                    body: payload,
+                                }
+                            );
+                            const data = await res.json();
+
+                            if (!res.ok || !data.success) {
+                                this.beError = data.message ?? 'Failed to save. Please try again.';
+                                return;
+                            }
+
+                            this.beAmount = data.beneficiary.discount_per_installment ?? 0;
+                            this.beRate = data.beneficiary.rate ?? 0;
+                            this.beLabel = data.beneficiary.label ?? '';
+
+                            window._beneficiaryDiscountPerInstallment = this.beAmount;
+                            this._syncToParent(this.beAmount, this.beLabel);
+
+                            this.beSaved = true;
+                            setTimeout(() => {
+                                this.beSaved = false;
+                            }, 2500);
+
+                        } catch (err) {
+                            this.beError = 'Network error — could not save.';
+                            console.error('[beneficiaryEditor]', err);
+                        } finally {
+                            this.beSaving = false;
+                        }
+                    },
+
+                    // Finds the outer payment Alpine scope and syncs beneficiary values into it
+                    _syncToParent(amount, label) {
+                        this.$nextTick(() => {
+                            document.querySelectorAll('[x-data]').forEach(el => {
+                                try {
+                                    const scope = Alpine.$data(el);
+                                    // Identify the payment form scope by its unique 'selectedQuarters' property
+                                    if (scope && 'selectedQuarters' in scope) {
+                                        scope.beneficiaryDiscount = amount;
+                                        scope.beneficiaryLabel = label;
+                                        // Re-trigger surcharge/total calculation if quarters already selected
+                                        if (scope.selectedQuarters && scope.selectedQuarters.length > 0) {
+                                            scope.autoComputeSurcharge();
+                                        }
+                                    }
+                                } catch (_) {}
+                            });
+                        });
+                    },
+                };
+            }
+        </script>
+    @endpush
+
+
+
+
+
+
+
+
+
+
+
 </x-admin.app>

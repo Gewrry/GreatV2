@@ -64,7 +64,7 @@
                             class="px-4 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20">
                             📄 Upload Documents
                         </a>
-                    @elseif($application->workflow_status === 'payment')
+                    @elseif($application->workflow_status === 'assessed')
                         <a href="{{ route('client.payment.show', $application->id) }}"
                             class="px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/20 animate-pulse">
                             💳 Pay Now
@@ -85,8 +85,8 @@
                 ['key' => 'draft',        'label' => 'Application'],
                 ['key' => 'submitted',    'label' => 'Submitted'],
                 ['key' => 'verification', 'label' => 'Verification'],
-                ['key' => 'assessment',   'label' => 'Assessment'],
-                ['key' => 'payment',      'label' => 'Payment'],
+                ['key' => 'assessed',     'label' => 'Assessment'],
+                ['key' => 'paid',         'label' => 'Payment'],
                 ['key' => 'approved',     'label' => 'Approved'],
             ];
             $stageKeys = array_column($stages, 'key');
@@ -138,13 +138,18 @@
                 </div>
             @endif
 
-            @if($application->workflow_status === 'assessment')
-                <div class="mt-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center gap-2">
-                    <span class="text-indigo-600 text-lg">📊</span>
-                    <div>
-                        <p class="text-xs font-bold text-indigo-700">Assessment Ready</p>
-                        <p class="text-[10px] text-indigo-600">Your application has been assessed. Please review the fee summary below and proceed to payment.</p>
+            @if($application->workflow_status === 'assessed')
+                <div class="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-indigo-600 text-lg">📊</span>
+                        <div>
+                            <p class="text-xs font-bold text-indigo-700">Assessment Ready</p>
+                            <p class="text-[10px] text-indigo-600">Your application has been assessed. Please review the fee summary below and proceed to payment.</p>
+                        </div>
                     </div>
+                    <a href="{{ route('client.payment.success', $application->id) }}" class="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 text-[10px] font-bold rounded-lg hover:bg-indigo-50 transition-colors shadow-sm shrink-0">
+                        🔄 Refresh Status
+                    </a>
                 </div>
             @endif
 
@@ -257,7 +262,7 @@
                                 <span class="text-lg font-extrabold text-logo-teal">{{ $application->assessment->formatted_total }}</span>
                             </div>
                         </div>
-                        @if(in_array($application->workflow_status, ['payment']))
+                        @if(in_array($application->workflow_status, ['assessed']))
                             <a href="{{ route('client.payment.show', $application->id) }}"
                                 class="mt-4 w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md">
                                 💳 Proceed to Payment
@@ -317,7 +322,7 @@
                                             <td class="py-3 text-right">
                                                 @if($isPaid)
                                                     @if($inst['bpls_payment_id'])
-                                                        <a href="{{ route('bpls.payment.receipt', ['entry' => $application->business_entry_id, 'payment' => $inst['bpls_payment_id']]) }}" target="_blank"
+                                                        <a href="{{ route('client.payment.receipt', ['application' => $application->id, 'payment' => $inst['bpls_payment_id']]) }}" target="_blank"
                                                            class="text-[10px] font-extrabold text-logo-teal hover:underline flex items-center justify-end gap-1">
                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                                            Receipt

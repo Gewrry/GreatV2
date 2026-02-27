@@ -35,4 +35,37 @@ class OrAssignment extends Model
             default => $this->receipt_type,
         };
     }
+
+    /**
+     * Get the next available OR number in this range.
+     */
+    public function nextAvailableOr(): ?string
+    {
+        $start = (int) $this->start_or;
+        $end = (int) $this->end_or;
+        $padding = strlen($this->start_or);
+
+        // 1. Used in online applications
+        $usedOnline = \App\Models\bpls\onlineBPLS\BplsApplicationOr::where('or_assignment_id', $this->id)
+            ->pluck('or_number')
+            ->map(fn($n) => (int) $n)
+            ->toArray();
+
+        // 2. Used in manual payments (match by range since they don't have assignment_id)
+        $usedManual = \App\Models\BplsPayment::where('or_number', '>=', $this->start_or)
+            ->where('or_number', '<=', $this->end_or)
+            ->pluck('or_number')
+            ->map(fn($n) => (int) $n)
+            ->toArray();
+
+        $used = array_unique(array_merge($usedOnline, $usedManual));
+
+        for ($n = $start; $n <= $end; $n++) {
+            if (!in_array($n, $used)) {
+                return str_pad((string) $n, $padding, '0', STR_PAD_LEFT);
+            }
+        }
+
+        return null;
+    }
 }

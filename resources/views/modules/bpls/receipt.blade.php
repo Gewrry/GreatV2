@@ -1,7 +1,11 @@
 {{-- resources/views/modules/bpls/receipt.blade.php --}}
 {{--
+    Variables from controller:
     $payment, $entry, $fees, $discountRate
-    $receiptSettings  ← injected by controller: Collection keyed by setting key
+    $receiptSettings        ← BplsSetting keyed by key
+    $beneficiaryDiscount    ← float: beneficiary portion of discount
+    $beneficiaryLabel       ← string: e.g. "Solo Parent"
+    $advanceDiscount        ← float: advance payment portion of discount
 --}}
 <!DOCTYPE html>
 <html lang="en">
@@ -66,15 +70,19 @@
         };
         $ratio = $modeCount > 0 ? $qCount / $modeCount : 1;
 
+        // Count non-zero fee rows + extras to compute filler rows
         $nonEmptyRows = collect($fees)->filter(fn($f) => round($f['amount'] * $ratio, 2) > 0)->count();
         $extraRows = 0;
-        if (isset($payment->surcharges) && $payment->surcharges > 0) {
+        if (($payment->surcharges ?? 0) > 0) {
             $extraRows++;
         }
-        if (isset($payment->backtaxes) && $payment->backtaxes > 0) {
+        if (($payment->backtaxes ?? 0) > 0) {
             $extraRows++;
         }
-        if (isset($payment->discount) && $payment->discount > 0) {
+        if (($advanceDiscount ?? 0) > 0) {
+            $extraRows++;
+        }
+        if (($beneficiaryDiscount ?? 0) > 0) {
             $extraRows++;
         }
         $fillerRows = max(0, $minFeeRows - $nonEmptyRows - $extraRows);
@@ -250,6 +258,17 @@
             color: #16a34a;
         }
 
+        .fee-table tbody tr.beneficiary-row td {
+            background: #faf5ff;
+            color: #7e22ce;
+            font-weight: bold;
+            border-bottom: 1px solid #e9d5ff;
+        }
+
+        .fee-table tbody tr.beneficiary-row td.code {
+            color: #7e22ce;
+        }
+
         .fee-table tbody tr.surcharge-row td {
             background: #fff7ed;
             color: #ea580c;
@@ -414,6 +433,17 @@
             border-bottom: 1px solid #000;
         }
 
+        .beneficiary-badge {
+            background: #faf5ff;
+            border: 1px solid #d8b4fe;
+            color: #7e22ce;
+            font-size: 9px;
+            font-weight: bold;
+            text-align: center;
+            padding: 3px 8px;
+            border-bottom: 1px solid #000;
+        }
+
         .no-print-btn {
             text-align: center;
             padding: 16px;
@@ -463,12 +493,16 @@
     <div class="no-print-btn">
         <button onclick="window.print()">🖨 Print Receipt</button>
         &nbsp;
-        <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
+        @if(Auth::guard('client')->check())
+            <a href="{{ route('client.applications.show', $entry->bplsApplication->id ?? '') }}">← Back to Application</a>
+        @else
+            <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
+        @endif
     </div>
 
     <div class="receipt-wrap">
 
-        {{-- Header --}}
+        {{-- ── Header ── --}}
         <div class="header-top">
             <div class="logos">
                 <div class="logo-box">PH<br>Seal</div>
@@ -481,37 +515,45 @@
             </div>
         </div>
 
-        {{-- Discount Badge (toggleable) --}}
-        @if ($showDiscountBadge && isset($payment->discount) && $payment->discount > 0)
+        {{-- ── Advance Discount Badge ── --}}
+        @if ($showDiscountBadge && ($advanceDiscount ?? 0) > 0)
             <div class="discount-badge">
                 ✓ ADVANCE PAYMENT DISCOUNT APPLIED ({{ $discountRate ?? 0 }}% OFF)
             </div>
         @endif
 
-        {{-- AF Row --}}
+        {{-- ── Beneficiary Discount Badge ── --}}
+        @if (($beneficiaryDiscount ?? 0) > 0)
+            <div class="beneficiary-badge">
+                ✓ BENEFICIARY DISCOUNT APPLIED — {{ strtoupper($beneficiaryLabel ?? '') }}
+                (₱{{ number_format($beneficiaryDiscount, 2) }})
+            </div>
+        @endif
+
+        {{-- ── AF Row ── --}}
         <div class="af-row">
             <div>{{ $afLabel }}</div>
             <div>Revised January 1992</div>
         </div>
 
-        {{-- Date / OR Number --}}
+        {{-- ── Date / OR Number ── --}}
         <div class="date-or-row">
             <div>Date: {{ $payment->payment_date->format('M d, Y') }}</div>
             <div>PGL N.: {{ $payment->or_number }}</div>
         </div>
 
-        {{-- Agency / Fund Code --}}
+        {{-- ── Agency / Fund Code ── --}}
         <div class="agency-row">
             <div>{{ $agencyName }}</div>
             <div class="fund">{{ $payment->fund_code ?? $defaultFundCode }}</div>
         </div>
 
-        {{-- Payor --}}
+        {{-- ── Payor ── --}}
         <div class="payor-row">
             {{ strtoupper($payment->payor ?? $entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}
         </div>
 
-        {{-- Fee Table --}}
+        {{-- ── Fee Table ── --}}
         <table class="fee-table">
             <thead>
                 <tr>
@@ -521,6 +563,7 @@
                 </tr>
             </thead>
             <tbody>
+                {{-- Regular fees --}}
                 @foreach ($fees as $fee)
                     @php $feeAmt = round($fee['amount'] * $ratio, 2); @endphp
                     @if ($feeAmt > 0)
@@ -532,7 +575,8 @@
                     @endif
                 @endforeach
 
-                @if (isset($payment->surcharges) && $payment->surcharges > 0)
+                {{-- Surcharges --}}
+                @if (($payment->surcharges ?? 0) > 0)
                     <tr class="surcharge-row">
                         <td>SURCHARGES</td>
                         <td class="code">{{ $surchargeCode }}</td>
@@ -540,7 +584,8 @@
                     </tr>
                 @endif
 
-                @if (isset($payment->backtaxes) && $payment->backtaxes > 0)
+                {{-- Backtaxes --}}
+                @if (($payment->backtaxes ?? 0) > 0)
                     <tr class="backtax-row">
                         <td>BACKTAXES</td>
                         <td class="code">{{ $backtaxCode }}</td>
@@ -548,14 +593,25 @@
                     </tr>
                 @endif
 
-                @if (isset($payment->discount) && $payment->discount > 0)
+                {{-- Advance Discount --}}
+                @if (($advanceDiscount ?? 0) > 0)
                     <tr class="discount-row">
                         <td>ADVANCE DISCOUNT ({{ $discountRate ?? 0 }}%)</td>
                         <td class="code">—</td>
-                        <td>({{ number_format($payment->discount, 2) }})</td>
+                        <td>({{ number_format($advanceDiscount, 2) }})</td>
                     </tr>
                 @endif
 
+                {{-- Beneficiary Discount ← NEW --}}
+                @if (($beneficiaryDiscount ?? 0) > 0)
+                    <tr class="beneficiary-row">
+                        <td>BENEFICIARY DISCOUNT — {{ strtoupper($beneficiaryLabel ?? '') }}</td>
+                        <td class="code">—</td>
+                        <td>({{ number_format($beneficiaryDiscount, 2) }})</td>
+                    </tr>
+                @endif
+
+                {{-- Filler rows --}}
                 @for ($i = 0; $i < $fillerRows; $i++)
                     <tr>
                         <td>&nbsp;</td>
@@ -572,77 +628,79 @@
             </tfoot>
         </table>
 
-        {{-- Amount in Words (toggleable) --}}
+        {{-- ── Amount in Words ── --}}
         @if ($showAmountInWords)
             <div class="words-row">
                 <div class="label">Amount in Words</div>
                 <div class="value">
                     @php
-                        function numToWordsReceipt(float $amount): string
-                        {
-                            $n = (int) round($amount * 100);
-                            $pesos = intdiv($n, 100);
-                            $centavos = $n % 100;
-                            $ones = [
-                                '',
-                                'One',
-                                'Two',
-                                'Three',
-                                'Four',
-                                'Five',
-                                'Six',
-                                'Seven',
-                                'Eight',
-                                'Nine',
-                                'Ten',
-                                'Eleven',
-                                'Twelve',
-                                'Thirteen',
-                                'Fourteen',
-                                'Fifteen',
-                                'Sixteen',
-                                'Seventeen',
-                                'Eighteen',
-                                'Nineteen',
-                            ];
-                            $tens = [
-                                '',
-                                '',
-                                'Twenty',
-                                'Thirty',
-                                'Forty',
-                                'Fifty',
-                                'Sixty',
-                                'Seventy',
-                                'Eighty',
-                                'Ninety',
-                            ];
-                            $hw = function (int $num) use (&$hw, $ones, $tens): string {
-                                if ($num < 20) {
-                                    return $ones[$num];
+                        if (!function_exists('numToWordsReceipt')) {
+                            function numToWordsReceipt(float $amount): string
+                            {
+                                $n = (int) round($amount * 100);
+                                $pesos = intdiv($n, 100);
+                                $centavos = $n % 100;
+                                $ones = [
+                                    '',
+                                    'One',
+                                    'Two',
+                                    'Three',
+                                    'Four',
+                                    'Five',
+                                    'Six',
+                                    'Seven',
+                                    'Eight',
+                                    'Nine',
+                                    'Ten',
+                                    'Eleven',
+                                    'Twelve',
+                                    'Thirteen',
+                                    'Fourteen',
+                                    'Fifteen',
+                                    'Sixteen',
+                                    'Seventeen',
+                                    'Eighteen',
+                                    'Nineteen',
+                                ];
+                                $tens = [
+                                    '',
+                                    '',
+                                    'Twenty',
+                                    'Thirty',
+                                    'Forty',
+                                    'Fifty',
+                                    'Sixty',
+                                    'Seventy',
+                                    'Eighty',
+                                    'Ninety',
+                                ];
+                                $hw = function (int $num) use (&$hw, $ones, $tens): string {
+                                    if ($num < 20) {
+                                        return $ones[$num];
+                                    }
+                                    if ($num < 100) {
+                                        return $tens[intdiv($num, 10)] . ($num % 10 ? ' ' . $ones[$num % 10] : '');
+                                    }
+                                    if ($num < 1000) {
+                                        return $ones[intdiv($num, 100)] .
+                                            ' Hundred' .
+                                            ($num % 100 ? ' ' . $hw($num % 100) : '');
+                                    }
+                                    if ($num < 1000000) {
+                                        return $hw(intdiv($num, 1000)) .
+                                            ' Thousand' .
+                                            ($num % 1000 ? ' ' . $hw($num % 1000) : '');
+                                    }
+                                    return $hw(intdiv($num, 1000000)) .
+                                        ' Million' .
+                                        ($num % 1000000 ? ' ' . $hw($num % 1000000) : '');
+                                };
+                                $words = $pesos > 0 ? $hw($pesos) . ' Pesos' : 'Zero Pesos';
+                                if ($centavos > 0) {
+                                    $words .= ' and ' . str_pad($centavos, 2, '0', STR_PAD_LEFT) . '/100';
                                 }
-                                if ($num < 100) {
-                                    return $tens[intdiv($num, 10)] . ($num % 10 ? ' ' . $ones[$num % 10] : '');
-                                }
-                                if ($num < 1000) {
-                                    return $ones[intdiv($num, 100)] .
-                                        ' Hundred' .
-                                        ($num % 100 ? ' ' . $hw($num % 100) : '');
-                                }
-                                if ($num < 1000000) {
-                                    return $hw(intdiv($num, 1000)) .
-                                        ' Thousand' .
-                                        ($num % 1000 ? ' ' . $hw($num % 1000) : '');
-                                }
-                                return $hw(intdiv($num, 1000000)) .
-                                    ' Million' .
-                                    ($num % 1000000 ? ' ' . $hw($num % 1000000) : '');
-                            };
-                            $words = $pesos > 0 ? $hw($pesos) . ' Pesos' : 'Zero Pesos';
-                            if ($centavos > 0) {
-                                $words .= ' and ' . str_pad($centavos, 2, '0', STR_PAD_LEFT) . '/100';
+                                return $words . ' Only';
                             }
-                            return $words . ' Only';
                         }
                         echo numToWordsReceipt((float) $payment->total_collected);
                     @endphp
@@ -650,21 +708,15 @@
             </div>
         @endif
 
-        {{-- Remarks (toggleable) --}}
+        {{-- ── Remarks ── --}}
         @if ($showRemarks)
             <div class="remarks-row">
                 <span class="label">Remarks: </span>
                 {{ $payment->remarks ?? '' }}
-                @if (isset($payment->discount) && $payment->discount > 0)
-                    @if ($payment->remarks)
-                        |
-                    @endif
-                    Advance payment discount of ₱{{ number_format($payment->discount, 2) }} applied.
-                @endif
             </div>
         @endif
 
-        {{-- Payment Method --}}
+        {{-- ── Payment Method ── --}}
         <div class="payment-method-row">
             <div class="methods">
                 <div class="method-item">
@@ -703,23 +755,21 @@
             </div>
         </div>
 
-        {{-- Received text --}}
+        {{-- ── Received text ── --}}
         <div class="received-row">{{ $receivedText }}</div>
 
-        {{-- Signatories --}}
+        {{-- ── Signatories ── --}}
         <div class="signatories-row">
             <div class="signatory">
                 <p class="name">{{ strtoupper($sig1Name) }}</p>
                 <p class="title">{{ $sig1Title }}</p>
             </div>
-
             @if ($sig2Enabled && !empty($sig2Name))
                 <div class="signatory">
                     <p class="name">{{ strtoupper($sig2Name) }}</p>
                     <p class="title">{{ $sig2Title }}</p>
                 </div>
             @endif
-
             @if ($sig3Enabled && !empty($sig3Name))
                 <div class="signatory">
                     <p class="name">{{ strtoupper($sig3Name) }}</p>
@@ -728,7 +778,7 @@
             @endif
         </div>
 
-        {{-- Footer note --}}
+        {{-- ── Footer Note ── --}}
         @if (!empty($footerNote))
             <div class="footer-note">{{ $footerNote }}</div>
         @endif
