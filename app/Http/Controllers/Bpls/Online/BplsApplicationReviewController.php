@@ -11,6 +11,7 @@ use App\Services\OrNumberAllocator;
 use App\Models\bpls\onlineBPLS\BplsApplicationOr;
 use App\Models\onlineBPLS\BplsOnlinePayment;
 use App\Models\BplsPayment;
+use App\Models\OrAssignment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -91,11 +92,23 @@ class BplsApplicationReviewController extends Controller
 
         $signatories = BplsPermitSignatory::activeOrdered();
 
+        $userAssignments = OrAssignment::where('user_id', Auth::id())
+            ->where('receipt_type', '51C')
+            ->get()
+            ->map(function($a) {
+                return [
+                    'id' => $a->id,
+                    'label' => $a->start_or . ' - ' . $a->end_or,
+                    'next_or' => $a->nextAvailableOr()
+                ];
+            });
+
         return view('modules.bpls.onlineBPLS.application.show', compact(
             'application',
             'docs',
             'requiredMet',
-            'signatories'
+            'signatories',
+            'userAssignments'
         ));
     }
 
@@ -214,6 +227,12 @@ class BplsApplicationReviewController extends Controller
             'assessment_amount' => 'required|numeric|min:0.01',
             'mode_of_payment' => 'required|in:quarterly,semi_annual,annual',
             'assessment_notes' => 'nullable|string|max:1000',
+            'is_senior' => 'nullable|boolean',
+            'is_pwd' => 'nullable|boolean',
+            'is_solo_parent' => 'nullable|boolean',
+            'is_4ps' => 'nullable|boolean',
+            'is_bmbe' => 'nullable|boolean',
+            'is_cooperative' => 'nullable|boolean',
         ]);
 
         if ($application->workflow_status !== 'verified') {
@@ -260,6 +279,20 @@ class BplsApplicationReviewController extends Controller
                     'ors_confirmed' => false,   // reset confirmation on re-assessment
                     'workflow_status' => 'assessed',
                 ]);
+
+                // --- SYNC TO MASTER BUSINESS ENTRY ---
+                if ($application->business_entry_id) {
+                    $application->businessEntry->update([
+                        'total_due' => $request->assessment_amount,
+                        'mode_of_payment' => $request->mode_of_payment,
+                        'is_senior' => $request->is_senior ?? false,
+                        'is_pwd' => $request->is_pwd ?? false,
+                        'is_solo_parent' => $request->is_solo_parent ?? false,
+                        'is_4ps' => $request->is_4ps ?? false,
+                        'is_bmbe' => $request->is_bmbe ?? false,
+                        'is_cooperative' => $request->is_cooperative ?? false,
+                    ]);
+                }
             });
 
             $this->log(
@@ -272,7 +305,7 @@ class BplsApplicationReviewController extends Controller
 
             return back()->with('success', "Assessment saved — {$count} OR number(s) auto-assigned. Please review and confirm them.");
 
-        } catch (\RuntimeException $e) {
+        } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -309,7 +342,28 @@ class BplsApplicationReviewController extends Controller
                         throw new \RuntimeException("OR# {$orNumber} is already assigned to another application.");
                     }
 
-                    $orItem->update(['or_number' => $orNumber]);
+                    // --- OR range validation ---
+                    $assignment = OrAssignment::where('user_id', Auth::id())
+                        ->where('start_or', '<=', $orNumber)
+                        ->where('end_or', '>=', $orNumber)
+                        ->first();
+
+                    if (!$assignment) {
+                        $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)
+                            ->where('end_or', '>=', $orNumber)
+                            ->first();
+                        
+                        if ($anyAssignment) {
+                            throw new \RuntimeException("OR #{$orNumber} belongs to another cashier (" . $anyAssignment->cashier_name . ").");
+                        } else {
+                            throw new \RuntimeException("OR #{$orNumber} is not within any existing OR range. Please create a new OR range first.");
+                        }
+                    }
+
+                    $orItem->update([
+                        'or_number' => $orNumber,
+                        'or_assignment_id' => $assignment->id,
+                    ]);
                 }
 
                 $application->update([
@@ -328,7 +382,7 @@ class BplsApplicationReviewController extends Controller
 
             return back()->with('success', 'OR numbers confirmed. Proceed to confirm payment.');
 
-        } catch (\RuntimeException $e) {
+        } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -358,8 +412,28 @@ class BplsApplicationReviewController extends Controller
                     ->first();
 
                 if ($orItem) {
+                    // --- OR range validation ---
+                    $orNumber = $request->or_number;
+                    $assignment = OrAssignment::where('user_id', Auth::id())
+                        ->where('start_or', '<=', $orNumber)
+                        ->where('end_or', '>=', $orNumber)
+                        ->first();
+
+                    if (!$assignment) {
+                        $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)
+                            ->where('end_or', '>=', $orNumber)
+                            ->first();
+                        
+                        if ($anyAssignment) {
+                            throw new \RuntimeException("OR #{$orNumber} belongs to another cashier (" . $anyAssignment->cashier_name . ").");
+                        } else {
+                            throw new \RuntimeException("OR #{$orNumber} is not within any existing OR range. Please create a new OR range first.");
+                        }
+                    }
+
                     $orItem->update([
                         'or_number' => $request->or_number,
+                        'or_assignment_id' => $assignment->id,
                         'status' => 'paid',
                         'paid_at' => now(),
                     ]);
@@ -372,7 +446,7 @@ class BplsApplicationReviewController extends Controller
                         'reference_number' => 'MANUAL-' . now()->timestamp,
                         'amount_paid' => $application->installment_amount,
                         'payment_year' => $application->permit_year ?? now()->year,
-                        'payment_method' => 'walk_in',
+                        'payment_method' => 'over_the_counter',
                         'installment_total' => $application->installment_count,
                         'status' => 'paid',
                         'paid_at' => now(),
@@ -401,7 +475,7 @@ class BplsApplicationReviewController extends Controller
                         'quarters_paid'     => $quarters,
                         'amount_paid'       => $installmentAmount,
                         'total_collected'   => $installmentAmount,
-                        'payment_method'    => 'walk_in',
+                        'payment_method'    => 'over_the_counter',
                         'payor'             => collect([$application->owner?->first_name, $application->owner?->last_name])->filter()->join(' '),
                         'received_by'       => auth()->user()?->name ?? 'Treasury Staff',
                     ]);

@@ -43,6 +43,13 @@
             showEditOrs: false,
             selectedInstallment: 1,
             orNumbers: @js($application->orAssignments->pluck('or_number', 'installment_number')),
+            userAssignments: @js($userAssignments),
+            onRangeChange(rangeId, installmentNum) {
+                const range = this.userAssignments.find(r => r.id == rangeId);
+                if (range && range.next_or) {
+                    this.orNumbers[installmentNum] = range.next_or;
+                }
+            },
             openRejectDoc(id, name) { this.rejectDocId = id; this.rejectDocName = name; }
         }">
             @include('layouts.bpls.navbar')
@@ -604,6 +611,26 @@
                 {{-- ══ RIGHT: Documents Panel (2 cols) ════════════════════════════ --}}
                 <div class="lg:col-span-2 space-y-4">
 
+                    {{-- Discount Claim Notification --}}
+                    @if ($application->discount_claimed)
+                        <div class="bg-purple-50 border border-purple-200 rounded-2xl p-4 shadow-sm">
+                            <h4 class="text-[10px] font-black text-purple-700 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Discount Claimed for Verification
+                            </h4>
+                            <div class="flex flex-wrap gap-1.5 mb-3">
+                                @if($o?->is_senior) <span class="text-[9px] font-black px-2 py-1 bg-purple-600 text-white rounded-lg">Senior Citizen</span> @endif
+                                @if($o?->is_pwd) <span class="text-[9px] font-black px-2 py-1 bg-purple-600 text-white rounded-lg">PWD</span> @endif
+                                @if($o?->is_bmbe) <span class="text-[9px] font-black px-2 py-1 bg-purple-600 text-white rounded-lg">BMBE</span> @endif
+                                @if($o?->is_cooperative) <span class="text-[9px] font-black px-2 py-1 bg-purple-600 text-white rounded-lg">Cooperative</span> @endif
+                                @if($o?->is_solo_parent) <span class="text-[9px] font-black px-2 py-1 bg-purple-600 text-white rounded-lg">Solo Parent</span> @endif
+                            </div>
+                            <p class="text-[10px] text-purple-600 font-bold leading-tight">
+                                Please review the supporting documents below. If valid, confirm these designations in the <strong>Assessment</strong> step to apply the discount rates.
+                            </p>
+                        </div>
+                    @endif
+
                     {{-- Document verification summary --}}
                     <div class="bg-white rounded-2xl shadow-sm border border-lumot/20 p-4">
                         <div class="flex items-center justify-between mb-3">
@@ -847,6 +874,15 @@
             businessNature: @js($application->businessEntry?->business_nature ?? ''),
             capitalInvestment: {{ $application->businessEntry?->capital_investment ?? 0 }},
             businessScale: @js($application->businessEntry?->business_scale ?? ''),
+            isSenior: {{ $application->owner?->is_senior ? 'true' : 'false' }},
+            isPwd: {{ $application->owner?->is_pwd ? 'true' : 'false' }},
+            isSoloParent: {{ $application->owner?->is_solo_parent ? 'true' : 'false' }},
+            is4ps: {{ $application->owner?->is_4ps ? 'true' : 'false' }},
+            isBmbe: {{ $application->owner?->is_bmbe ? 'true' : 'false' }},
+            isCooperative: {{ $application->owner?->is_cooperative ? 'true' : 'false' }},
+            discountAmount: 0,
+            discountLabel: '',
+            baseAmount: 0,
 
             formatCurrency(value) {
                 return '₱' + parseFloat(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -869,11 +905,20 @@
                             business_scale: '{{ $application->businessEntry?->business_scale ?? '' }}',
                             mode_of_payment: this.modeOfPayment,
                             entry_id: this.entryId,
+                            is_senior: this.isSenior,
+                            is_pwd: this.isPwd,
+                            is_solo_parent: this.isSoloParent,
+                            is_4ps: this.is4ps,
+                            is_bmbe: this.isBmbe,
+                            is_cooperative: this.isCooperative,
                         }),
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.message || 'Computation failed');
-                    this.assessmentAmount = data.total_due;
+                    this.baseAmount = data.total_due;
+                    this.discountAmount = data.discount_amount;
+                    this.discountLabel = data.discount_label;
+                    this.assessmentAmount = data.total_after_discount;
                     this.perInstallment = data.per_installment;
                     this.fees = data.fees ?? [];
                     this.schedule = data.schedule ?? [];
@@ -1049,6 +1094,37 @@
                     </div>
                 </div>
 
+                {{-- Beneficiary Discounts --}}
+                <div>
+                    <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3 ml-1">Beneficiary Discounts</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isSenior ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
+                            <input type="checkbox" x-model="isSenior" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="text-[11px] font-black text-green uppercase tracking-tight">Senior Citizen</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isPwd ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
+                            <input type="checkbox" x-model="isPwd" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="text-[11px] font-black text-green uppercase tracking-tight">PWD</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isSoloParent ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
+                            <input type="checkbox" x-model="isSoloParent" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="text-[11px] font-black text-green uppercase tracking-tight">Solo Parent</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="is4ps ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
+                            <input type="checkbox" x-model="is4ps" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="text-[11px] font-black text-green uppercase tracking-tight">4Ps</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isBmbe ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
+                            <input type="checkbox" x-model="isBmbe" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="text-[11px] font-black text-green uppercase tracking-tight">BMBE</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isCooperative ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
+                            <input type="checkbox" x-model="isCooperative" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="text-[11px] font-black text-green uppercase tracking-tight">Cooperative</span>
+                        </label>
+                    </div>
+                </div>
+
                 {{-- Notes --}}
                 <!-- <div>
                     <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Fee Breakdown / Notes</label>
@@ -1121,6 +1197,17 @@
                                         x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
                                 </div>
                             </template>
+                             <div class="grid grid-cols-2 px-4 py-2 border-b border-lumot/10">
+                                <p class="text-[11px] font-bold text-gray/60">Base Tax Amount</p>
+                                <p class="text-[11px] font-bold text-gray text-right" x-text="formatCurrency(baseAmount)"></p>
+                            </div>
+                            <div x-show="discountAmount > 0" class="grid grid-cols-2 px-4 py-2 border-b border-lumot/10 bg-orange-50">
+                                <div class="flex flex-col">
+                                    <p class="text-[11px] font-bold text-orange-700">Beneficiary Discount</p>
+                                    <p class="text-[9px] font-black text-orange-600 uppercase tracking-tighter" x-text="discountLabel"></p>
+                                </div>
+                                <p class="text-[11px] font-black text-red-500 text-right" x-text="'- ' + formatCurrency(discountAmount)"></p>
+                            </div>
                             <div class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
                                 <p class="text-xs font-extrabold text-green col-span-2">TOTAL TAX DUE</p>
                                 <p class="text-sm font-extrabold text-logo-teal text-right"
@@ -1236,13 +1323,33 @@
                 @submit.prevent="
                     document.getElementById('assess-amount-hidden').value = assessmentAmount;
                     document.getElementById('assess-mode-hidden').value = modeOfPayment;
-                    document.getElementById('assess-notes-hidden').value = '';
+                    
+                    let notes = '';
+                    if (discountAmount > 0) {
+                        notes = 'Original Base Tax: ' + formatCurrency(baseAmount) + '\n' +
+                                'Discount (' + discountLabel + '): -' + formatCurrency(discountAmount) + '\n' +
+                                'Total Discounted Due: ' + formatCurrency(assessmentAmount);
+                    }
+                    document.getElementById('assess-notes-hidden').value = notes;
+                    
+                    document.getElementById('is-senior-hidden').value = isSenior ? 1 : 0;
+                    document.getElementById('is-pwd-hidden').value = isPwd ? 1 : 0;
+                    document.getElementById('is-solo-parent-hidden').value = isSoloParent ? 1 : 0;
+                    document.getElementById('is-4ps-hidden').value = is4ps ? 1 : 0;
+                    document.getElementById('is-bmbe-hidden').value = isBmbe ? 1 : 0;
+                    document.getElementById('is-cooperative-hidden').value = isCooperative ? 1 : 0;
                     $el.submit();
                 ">
                 @csrf
                 <input type="hidden" id="assess-amount-hidden" name="assessment_amount">
                 <input type="hidden" id="assess-mode-hidden" name="mode_of_payment">
                 <input type="hidden" id="assess-notes-hidden" name="assessment_notes">
+                <input type="hidden" id="is-senior-hidden" name="is_senior">
+                <input type="hidden" id="is-pwd-hidden" name="is_pwd">
+                <input type="hidden" id="is-solo-parent-hidden" name="is_solo_parent">
+                <input type="hidden" id="is-4ps-hidden" name="is_4ps">
+                <input type="hidden" id="is-bmbe-hidden" name="is_bmbe">
+                <input type="hidden" id="is-cooperative-hidden" name="is_cooperative">
                 <button type="submit"
                     :disabled="computing || assessmentAmount <= 0"
                     class="px-5 py-2.5 text-xs font-black bg-purple-600 text-white uppercase tracking-widest rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
@@ -1277,9 +1384,20 @@
                                         </span>
                                     </div>
                                     <div class="flex-1">
-                                        <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-1.5 ml-1">OR Number</label>
-                                        <input type="text" name="or_numbers[{{ $orItem->id }}]" value="{{ $orItem->or_number }}" required placeholder="e.g. 00001234"
-                                            class="w-full text-sm font-black text-green border border-lumot/30 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-4 focus:ring-logo-teal/10 focus:border-logo-teal/40 transition-all bg-white uppercase">
+                                        <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-1.5 ml-1">OR Range & Number</label>
+                                        <div class="flex gap-2">
+                                            <select @change="onRangeChange($event.target.value, {{ $orItem->installment_number }})"
+                                                class="flex-1 text-[11px] font-black text-green border border-lumot/30 rounded-xl px-2 py-2 focus:outline-none focus:ring-4 focus:ring-logo-teal/10 bg-white shadow-sm">
+                                                <option value="">— Select Range —</option>
+                                                @foreach ($userAssignments as $ua)
+                                                    <option value="{{ $ua['id'] }}">{{ $ua['label'] }} (Next: {{ $ua['next_or'] ?? 'FULL' }})</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="text" name="or_numbers[{{ $orItem->id }}]" 
+                                                x-model="orNumbers[{{ $orItem->installment_number }}]"
+                                                required placeholder="e.g. 00001234"
+                                                class="w-[120px] text-sm font-black text-green border border-lumot/30 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-4 focus:ring-logo-teal/10 focus:border-logo-teal/40 transition-all bg-white uppercase">
+                                        </div>
                                     </div>
                                     <div class="shrink-0 text-right min-w-[80px]">
                                         <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Amount</p>
@@ -1354,10 +1472,28 @@
                         </div>
 
                         <div class="mb-7">
-                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Official Receipt Number <span class="text-red-500">*</span></label>
-                            <input type="text" name="or_number" required placeholder="00001234"
-                                x-model="orNumbers[selectedInstallment]"
-                                class="w-full text-sm font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500/40 transition-all uppercase placeholder-gray/30 bg-orange-500/5">
+                            <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-2 ml-1">Official Receipt Range & Number <span class="text-red-500">*</span></label>
+                            <div class="flex flex-col gap-2">
+                                <select @change="onRangeChange($event.target.value, selectedInstallment)"
+                                    class="w-full text-[11px] font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500/40 transition-all bg-white shadow-sm">
+                                    <option value="">— Select Your OR Range —</option>
+                                    @forelse ($userAssignments as $ua)
+                                        <option value="{{ $ua['id'] }}">{{ $ua['label'] }} (Next: {{ $ua['next_or'] ?? 'FULL' }})</option>
+                                    @empty
+                                        <option value="" disabled>No OR ranges assigned to you!</option>
+                                    @endforelse
+                                </select>
+                                
+                                @if($userAssignments->isEmpty())
+                                    <div class="p-2.5 bg-red-50 border border-red-100 rounded-xl mb-1">
+                                        <p class="text-[10px] font-bold text-red-600">You don't have any OR ranges for '51C' receipts. <a href="{{ route('bpls.settings.or-assignments.index') }}" class="underline font-black">Create one in Settings</a> before confirming payment.</p>
+                                    </div>
+                                @endif
+
+                                <input type="text" name="or_number" required placeholder="00001234"
+                                    x-model="orNumbers[selectedInstallment]"
+                                    class="w-full text-sm font-black text-green border border-lumot/30 rounded-2xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500/40 transition-all uppercase placeholder-gray/30 bg-orange-500/5">
+                            </div>
                         </div>
 
                         <div class="flex justify-end gap-3">

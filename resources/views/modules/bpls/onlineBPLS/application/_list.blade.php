@@ -89,7 +89,7 @@
                         </td>
                         <td class="px-6 py-4 text-center">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ring-1 {{ $statusStyles }} whitespace-nowrap shadow-sm">
-                                {{ str_replace('_', ' ', $app->workflow_status) }}
+                                {{ $app->status_label }}
                             </span>
                         </td>
                         <td class="px-6 py-4">

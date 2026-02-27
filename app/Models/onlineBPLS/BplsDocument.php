@@ -31,6 +31,11 @@ class BplsDocument extends Model
         'lease_contract' => 'Lease Contract / Owner\'s Consent',
         'fire_clearance' => 'Fire Safety Inspection Certificate',
         'sanitary_permit' => 'Sanitary Permit',
+        'beneficiary_senior' => 'Senior Citizen Proof (ID/OSCA)',
+        'beneficiary_pwd' => 'PWD Proof (ID/PDAO)',
+        'beneficiary_bmbe' => 'BMBE Certification',
+        'beneficiary_cooperative' => 'CDA Registration / Certificate of Good Standing',
+        'beneficiary_solo_parent' => 'Solo Parent ID',
         'others' => 'Other Documents',
     ];
 

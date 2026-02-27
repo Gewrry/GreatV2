@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Models\BusinessEntry;
+use App\Models\BplsPayment;
+use App\Models\BplsSetting;
 
 class PaymentController extends Controller
 {
@@ -106,6 +109,10 @@ class PaymentController extends Controller
                                     ? ' (Installment ' . $installmentNumber . ' of ' . $application->installment_count . ')'
                                     : ''),
                             'remarks' => $payment->reference_number,
+                            'redirect' => [
+                                'success' => route('client.payment.success', $application->id),
+                                'failed' => route('client.payment.show', $application->id),
+                            ],
                         ],
                     ],
                 ]);
@@ -167,13 +174,13 @@ class PaymentController extends Controller
                 ->first();
 
         if (!$payment) {
-            return redirect()->route('client.payments.index')
+            return redirect()->route('client.applications.show', $application->id)
                 ->with('error', 'Payment record not found. If you were charged, please contact the office.');
         }
 
         // Already confirmed — don't re-verify
         if ($payment->isPaid()) {
-            return redirect()->route('client.payments.index')
+            return redirect()->route('client.applications.show', $application->id)
                 ->with('success', '✅ Payment already confirmed! Reference No: ' . $payment->reference_number);
         }
 
@@ -192,14 +199,14 @@ class PaymentController extends Controller
                     // AUTO-CONFIRM: mark paid, update application, no back office needed
                     $this->confirmPayment($payment, $application, $data);
 
-                    return redirect()->route('client.payments.index')
+                    return redirect()->route('client.applications.show', $application->id)
                         ->with('success', '✅ Payment confirmed! Reference No: ' . $payment->reference_number . '. Your application is now being processed.');
                 }
 
                 // PayMongo shows pending — could be processing
                 if ($status === 'pending') {
-                    return redirect()->route('client.payments.index')
-                        ->with('success', '⏳ Payment is being processed. This page will update automatically once confirmed.');
+                    return redirect()->route('client.applications.show', $application->id)
+                        ->with('success', '⏳ Payment is being processed. Click "Refresh Status" in a minute if it still shows pending.');
                 }
             }
         } catch (\Exception $e) {
@@ -207,7 +214,7 @@ class PaymentController extends Controller
         }
 
         // Fallback — payment might still be processing
-        return redirect()->route('client.payments.index')
+        return redirect()->route('client.applications.show', $application->id)
             ->with('success', '⏳ Payment submitted. Your payment is being verified. Please refresh in a few minutes.');
     }
 
@@ -310,6 +317,8 @@ class PaymentController extends Controller
             
             if ($status === 'unpaid' && $online && $online->isPaid()) {
                 $status = 'paid';
+            } elseif ($status === 'unpaid' && $online && $online->status === 'pending') {
+                $status = 'pending';
             }
 
             // Find matching master payment by OR number
@@ -321,6 +330,7 @@ class PaymentController extends Controller
                 'label' => $labels[$i - 1] ?? "Installment #{$i}",
                 'amount' => $perAmt,
                 'status' => $status,
+                'payment' => $online,
                 'paid_at' => $orItem?->paid_at ?? $online?->paid_at,
                 'or_number' => $orToMatch,
                 'bpls_payment_id' => $masterPay?->id,
@@ -435,7 +445,7 @@ class PaymentController extends Controller
                 'amount_paid'       => $installmentAmount,
                 'total_collected'   => $installmentAmount,
                 'payment_method'    => 'online',
-                'payor'             => collect([$application->owner->first_name, $application->owner->last_name])->filter()->join(' '),
+                'payor'             => collect([$application->owner?->first_name, $application->owner?->last_name])->filter()->join(' '),
                 'received_by'       => 'System (Online)',
             ]);
         }
@@ -473,5 +483,204 @@ class PaymentController extends Controller
         if (!in_array($application->workflow_status, ['assessed', 'paid', 'approved'])) {
             abort(403, 'Payment is not available at this stage.');
         }
+    }
+
+    /**
+     * View Receipt for a specific master payment.
+     */
+    public function receipt(BplsApplication $application, BplsPayment $payment)
+    {
+        $this->authorizeClient($application);
+
+        // Ensure the payment belongs to the application's business entry
+        if ($payment->business_entry_id !== $application->business_entry_id) {
+            abort(403, 'Unauthorized access to payment record.');
+        }
+
+        $entry = $application->businessEntry;
+        if (!$entry) {
+            abort(404, 'Business entry not found.');
+        }
+
+        $fees = $this->computeFees($entry);
+        $modeCount = $this->modeInstallments($entry->mode_of_payment);
+        $activeDue = $entry->active_total_due;
+        $perInstallment = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
+        $accountCodes = [
+            '631-001' => 'GROSS SALES TAX',
+            '631-002' => 'BUSINESS PERMIT (MAYORS PERMIT)',
+            '631-003' => 'GARBAGE FEES',
+            '631-004' => 'ANNUAL INSPECTION FEE',
+            '631-005' => 'SANITARY PERMIT FEE',
+            '631-006' => 'STICKER FEE',
+            '631-007' => 'LOCATIONAL / ZONING FEE',
+        ];
+
+        // Advance discount rate label
+        $discountRate = 0;
+        if ($payment->discount > 0) {
+            $discountRate = match ($entry->mode_of_payment) {
+                'annual' => (float) BplsSetting::get('advance_discount_annual', '10'),
+                'semi_annual' => (float) BplsSetting::get('advance_discount_semi_annual', '8'),
+                default => (float) BplsSetting::get('advance_discount_quarterly', '5'),
+            };
+        }
+
+        // Receipt settings
+        $receiptSettings = BplsSetting::query()->where('group', 'receipt')->get()->keyBy('key');
+
+        // Beneficiary discount logic
+        $quartersPaid = is_array($payment->quarters_paid) ? $payment->quarters_paid : [];
+        $qCount = count($quartersPaid);
+        $perQ = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
+
+        $beneficiaryInfo = $this->computeBeneficiaryDiscount($entry, $perQ * $qCount, $qCount);
+        $beneficiaryDiscount = $beneficiaryInfo['discount'];
+        $beneficiaryLabel = $beneficiaryInfo['label'];
+
+        // Advance discount = total discount stored - beneficiary portion
+        $advanceDiscount = max(0, round(($payment->discount ?? 0) - $beneficiaryDiscount, 2));
+
+        return view('modules.bpls.receipt', compact(
+            'entry',
+            'payment',
+            'fees',
+            'perInstallment',
+            'accountCodes',
+            'discountRate',
+            'receiptSettings',
+            'beneficiaryDiscount',
+            'beneficiaryLabel',
+            'advanceDiscount'
+        ));
+    }
+
+    /**
+     * Helper: compute fees (mirrored from BplsPaymentController)
+     */
+    private function computeFees(BusinessEntry $entry): array
+    {
+        $gs = (float) ($entry->capital_investment ?? 0);
+        $scale = $entry->business_scale ?? '';
+
+        $S0 = str_contains($scale, 'Micro') ? 1
+            : (str_contains($scale, 'Small') ? 2
+                : (str_contains($scale, 'Medium') ? 3
+                    : (str_contains($scale, 'Large') ? 4 : 1)));
+
+        $lbtRate = match (true) {
+            $gs <= 300000 => 0.018, $gs <= 1000000 => 0.0175,
+            $gs <= 2000000 => 0.016, $gs <= 3000000 => 0.015,
+            $gs <= 5000000 => 0.014, $gs <= 10000000 => 0.011,
+            $gs <= 20000000 => 0.009, $gs <= 50000000 => 0.006,
+            default => 0.005,
+        };
+
+        $mayorPermit = match ($S0) { 1 => 500, 2 => 1000, 3 => 2000, 4 => 3000, default => 5000};
+        $garbageFee = match ($S0) { 1 => 350, 2 => 400, 3 => 450, 4 => 600, default => 800};
+
+        return [
+            ['name' => 'GROSS SALES TAX', 'code' => '631-001', 'amount' => round($gs * $lbtRate, 2)],
+            ['name' => 'BUSINESS PERMIT (MAYORS PERMIT)', 'code' => '631-002', 'amount' => $mayorPermit],
+            ['name' => 'GARBAGE FEES', 'code' => '631-003', 'amount' => $garbageFee],
+            ['name' => 'ANNUAL INSPECTION FEE', 'code' => '631-004', 'amount' => $gs > 0 ? 200 : 0],
+            ['name' => 'SANITARY PERMIT FEE', 'code' => '631-005', 'amount' => 100],
+            ['name' => 'STICKER FEE', 'code' => '631-006', 'amount' => 200],
+            ['name' => 'LOCATIONAL / ZONING FEE', 'code' => '631-007', 'amount' => 500],
+        ];
+    }
+
+    /**
+     * Helper: mode installments
+     */
+    private function modeInstallments(?string $mode): int
+    {
+        return match ($mode) {
+            'annual' => 1,
+            'semi_annual' => 2,
+            default => 4,
+        };
+    }
+
+    /**
+     * Helper: compute beneficiary discount
+     */
+    private function computeBeneficiaryDiscount(BusinessEntry $entry, float $baseAmount, int $installmentCount = 1): array
+    {
+        $noDiscount = ['discount' => 0.0, 'rate' => 0.0, 'label' => '', 'groups' => []];
+
+        if (BplsSetting::get('beneficiary_discount_enabled', '0') !== '1') {
+            return $noDiscount;
+        }
+
+        $groups = [];
+        if ($entry->is_pwd) {
+            $groups[] = [
+                'label' => 'PWD',
+                'rate' => (float) BplsSetting::get('pwd_discount_rate', '20'),
+                'apply_to' => BplsSetting::get('pwd_discount_apply_to', 'total'),
+            ];
+        }
+        if ($entry->is_senior) {
+            $groups[] = [
+                'label' => 'Senior Citizen',
+                'rate' => (float) BplsSetting::get('senior_discount_rate', '20'),
+                'apply_to' => BplsSetting::get('senior_discount_apply_to', 'total'),
+            ];
+        }
+        if ($entry->is_solo_parent) {
+            $groups[] = [
+                'label' => 'Solo Parent',
+                'rate' => (float) BplsSetting::get('solo_parent_discount_rate', '10'),
+                'apply_to' => BplsSetting::get('solo_parent_discount_apply_to', 'total'),
+            ];
+        }
+        if ($entry->is_4ps) {
+            $groups[] = [
+                'label' => '4Ps',
+                'rate' => (float) BplsSetting::get('fourps_discount_rate', '10'),
+                'apply_to' => BplsSetting::get('fourps_discount_apply_to', 'total'),
+            ];
+        }
+
+        if (empty($groups)) return $noDiscount;
+
+        $stackRule = BplsSetting::get('beneficiary_discount_stack', 'highest_only');
+        $fees = $this->computeFees($entry);
+        $totalFees = collect($fees)->sum('amount');
+        $permitFee = collect($fees)->firstWhere('name', 'BUSINESS PERMIT (MAYORS PERMIT)')['amount'] ?? 0;
+        $permitRatio = $totalFees > 0 ? ($permitFee / $totalFees) : 1;
+
+        $computeGroupDiscount = function (array $group) use ($baseAmount, $permitRatio): float {
+            $effectiveBase = $group['apply_to'] === 'permit_only' ? round($baseAmount * $permitRatio, 2) : $baseAmount;
+            return round($effectiveBase * ($group['rate'] / 100), 2);
+        };
+
+        $discount = 0.0;
+        $effectiveRate = 0.0;
+        $groupLabels = [];
+
+        if ($stackRule === 'highest_only') {
+            usort($groups, fn($a, $b) => $computeGroupDiscount($b) <=> $computeGroupDiscount($a));
+            $best = $groups[0];
+            $discount = $computeGroupDiscount($best);
+            $effectiveRate = $best['rate'];
+            $groupLabels = [$best['label']];
+        } else {
+            foreach ($groups as $group) {
+                $discount += $computeGroupDiscount($group);
+                $effectiveRate += $group['rate'];
+                $groupLabels[] = $group['label'];
+            }
+            $discount = min($discount, $baseAmount);
+            $effectiveRate = min($effectiveRate, 100);
+        }
+
+        return [
+            'discount' => round($discount, 2),
+            'rate' => $effectiveRate,
+            'label' => implode(' / ', $groupLabels),
+            'groups' => $groupLabels,
+        ];
     }
 }

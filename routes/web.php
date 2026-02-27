@@ -490,6 +490,7 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::post('/', [PaymentController::class, 'initiate'])->name('initiate');
             Route::post('/confirm', [PaymentController::class, 'confirm'])->name('confirm');
             Route::get('/success', [PaymentController::class, 'success'])->name('success');
+            Route::get('/receipt/{payment}', [PaymentController::class, 'receipt'])->name('receipt');
         });
 
         Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');

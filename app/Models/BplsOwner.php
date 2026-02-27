@@ -26,6 +26,8 @@ class BplsOwner extends Model
         'is_4ps',
         'is_solo_parent',
         'is_senior',
+        'is_bmbe',
+        'is_cooperative',
         'discount_10',
         'discount_5',
         'region',
@@ -44,6 +46,8 @@ class BplsOwner extends Model
         'is_4ps' => 'boolean',
         'is_solo_parent' => 'boolean',
         'is_senior' => 'boolean',
+        'is_bmbe' => 'boolean',
+        'is_cooperative' => 'boolean',
         'discount_10' => 'boolean',
         'discount_5' => 'boolean',
     ];

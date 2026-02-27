@@ -144,6 +144,12 @@ class FeeRuleController extends Controller
             'business_scale' => 'nullable|string',
             'mode_of_payment' => 'required|in:annual,semi_annual,quarterly',
             'entry_id' => 'nullable|integer',
+            'is_senior' => 'nullable|boolean',
+            'is_pwd' => 'nullable|boolean',
+            'is_solo_parent' => 'nullable|boolean',
+            'is_4ps' => 'nullable|boolean',
+            'is_bmbe' => 'nullable|boolean',
+            'is_cooperative' => 'nullable|boolean',
         ]);
 
         $gs = (float) $request->capital_investment;
@@ -171,6 +177,55 @@ class FeeRuleController extends Controller
         });
 
         $totalDue = round($fees->sum('amount'), 2);
+        
+        // ── CALCULATE DISCOUNTS ───────────────────────────────────────────────
+        $discountAmount = 0.0;
+        $discountLabels = [];
+        $totalDiscountPercent = 0.0;
+        
+        // Find the Gross Sales Tax (LBT) fee to apply discounts to
+        $lbtFee = $fees->firstWhere('name', 'Gross Sales Tax (LBT)');
+        $lbtAmount = $lbtFee ? $lbtFee['amount'] : 0;
+
+        if ($request->boolean('is_cooperative')) {
+            $totalDiscountPercent += 1.0;
+            $discountLabels[] = 'Cooperative (100%)';
+        }
+        if ($request->boolean('is_bmbe')) {
+            $totalDiscountPercent += 1.0;
+            $discountLabels[] = 'BMBE (100%)';
+        }
+        if ($request->boolean('is_senior')) {
+            $totalDiscountPercent += 0.20;
+            $discountLabels[] = 'Senior Citizen (20%)';
+        }
+        if ($request->boolean('is_pwd')) {
+            $totalDiscountPercent += 0.20;
+            $discountLabels[] = 'PWD (20%)';
+        }
+        if ($request->boolean('is_solo_parent')) {
+            $totalDiscountPercent += 0.20;
+            $discountLabels[] = 'Solo Parent (20%)';
+        }
+        if ($request->boolean('is_4ps')) {
+             $totalDiscountPercent += 0.10;
+             $discountLabels[] = '4Ps (10%)';
+        }
+
+        // Cap discount at 100% of LBT
+        if ($totalDiscountPercent > 1.0) {
+            $totalDiscountPercent = 1.0;
+        }
+
+        if ($totalDiscountPercent > 0) {
+            $discountAmount = round($lbtAmount * $totalDiscountPercent, 2);
+            $discountLabel = implode(' + ', $discountLabels) . ' LBT Discount';
+        } else {
+            $discountLabel = '';
+        }
+
+        $totalAfterDiscount = max(0, $totalDue - $discountAmount);
+
         $installmentCount = match ($mode) {
             'quarterly' => 4,
             'semi_annual' => 2,
@@ -199,8 +254,11 @@ class FeeRuleController extends Controller
         return response()->json([
             'fees' => $fees,
             'total_due' => $totalDue,
-            'per_installment' => round($totalDue / max(1, $installmentCount), 2),
-            'schedule' => $this->buildSchedule($totalDue, $mode, $permitYear, $approvedAt, $isRenewal),
+            'discount_amount' => $discountAmount,
+            'discount_label' => $discountLabel,
+            'total_after_discount' => $totalAfterDiscount,
+            'per_installment' => round($totalAfterDiscount / max(1, $installmentCount), 2),
+            'schedule' => $this->buildSchedule($totalAfterDiscount, $mode, $permitYear, $approvedAt, $isRenewal),
             'permit_year' => $permitYear,
         ]);
     }

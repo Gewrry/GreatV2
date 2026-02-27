@@ -493,7 +493,11 @@
     <div class="no-print-btn">
         <button onclick="window.print()">🖨 Print Receipt</button>
         &nbsp;
-        <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
+        @if(Auth::guard('client')->check())
+            <a href="{{ route('client.applications.show', $entry->bplsApplication->id ?? '') }}">← Back to Application</a>
+        @else
+            <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
+        @endif
     </div>
 
     <div class="receipt-wrap">
