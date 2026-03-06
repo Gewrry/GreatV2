@@ -494,9 +494,13 @@
         <button onclick="window.print()">🖨 Print Receipt</button>
         &nbsp;
         @if(Auth::guard('client')->check())
-            <a href="{{ route('client.applications.show', $entry->bplsApplication->id ?? '') }}">← Back to Application</a>
+            <a href="{{ route('client.applications.show', $entry->bplsApplication->id ?? $entry->id) }}">← Back to Application</a>
         @else
-            <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
+            @if($entry instanceof \App\Models\onlineBPLS\BplsOnlineApplication)
+                <a href="{{ route('bpls.online.application.show', $entry->id) }}">← Back to Review</a>
+            @else
+                <a href="{{ route('bpls.payment.show', $entry->id) }}">← Back to Payment</a>
+            @endif
         @endif
     </div>
 

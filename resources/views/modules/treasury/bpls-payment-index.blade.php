@@ -1,8 +1,4 @@
-@extends('layouts.admin.app')
-
-@section('title', 'BPLS Payment Zone')
-
-@section('content')
+<x-admin.app>
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         {{-- Header Section --}}
@@ -102,7 +98,7 @@
                 this.loading = true;
                 try {
                     const params = new URLSearchParams(this.filters);
-                    const res = await fetch(`{{ route('bpls_payment') }}?${params}`, {
+                    const res = await fetch(`{{ route('treasury.bpls_payment') }}?${params}`, {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     if (!res.ok) throw new Error('Fetch failed');
@@ -142,4 +138,4 @@
 <style>
     [x-cloak] { display: none !important; }
 </style>
-@endsection
+</x-admin.app>

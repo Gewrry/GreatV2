@@ -1,14 +1,9 @@
-{{-- resources/views/client/dashboard.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard — BPLS Portal</title>
-    @vite(['resources/css/app.css'])
-</head>
-<body class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-8">
-    @include('client.partials.navbar')
-    <div class="max-w-4xl mx-auto">
+@extends('client.layouts.app')
+
+@section('title', 'Dashboard')
+
+@section('content')
+    <div class="max-w-4xl mx-auto px-4">
 
         {{-- Success Flash --}}
         @if(session('success'))
@@ -147,6 +142,4 @@
         </div>
 
     </div>
-
-</body>
-</html>
+@endsection

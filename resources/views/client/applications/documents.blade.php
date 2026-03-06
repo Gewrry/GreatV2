@@ -5,7 +5,7 @@
       $uploaded     — Collection of BplsDocument keyed by document_type
 --}}
 @php
-    /** @var \App\Models\onlineBPLS\BplsApplication $application */
+    /** @var \App\Models\onlineBPLS\BplsOnlineApplication $application */
     /** @var \Illuminate\Support\Collection $uploaded */
     $uploaded = $uploaded ?? collect();
 @endphp
