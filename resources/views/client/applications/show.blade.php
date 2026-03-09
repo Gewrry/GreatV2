@@ -49,17 +49,27 @@
 
                 {{-- Action Button --}}
                 <div class="flex items-center gap-2 shrink-0">
+                    <form action="{{ route('client.applications.destroy', $application->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this application? This action cannot be undone.')" class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="px-4 py-2 bg-red-50 text-red-600 text-sm font-bold rounded-xl border border-red-200 hover:bg-red-100 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                        </button>
+                    </form>
                     @if(in_array($application->workflow_status, ['draft','returned']))
                         <a href="{{ route('client.documents.index', $application->id) }}"
                             class="px-4 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20">
                             📄 Upload Documents
                         </a>
-                    @elseif($application->workflow_status === 'payment')
+                    @elseif($application->workflow_status === 'assessed')
                         <a href="{{ route('client.payment.show', $application->id) }}"
                             class="px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/20 animate-pulse">
                             💳 Pay Now
                         </a>
-                    @elseif($application->workflow_status === 'approved')
+                    @elseif($application->workflow_status === 'approved' || ($application->workflow_status === 'paid' && $application->isPaymentSatisfiedForApproval()))
                         <a href="{{ route('client.applications.permit.download', $application->id) }}"
                             class="px-4 py-2 bg-logo-green text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-green/20">
                             ⬇️ Download Permit
@@ -75,8 +85,8 @@
                 ['key' => 'draft',        'label' => 'Application'],
                 ['key' => 'submitted',    'label' => 'Submitted'],
                 ['key' => 'verification', 'label' => 'Verification'],
-                ['key' => 'assessment',   'label' => 'Assessment'],
-                ['key' => 'payment',      'label' => 'Payment'],
+                ['key' => 'assessed',     'label' => 'Assessment'],
+                ['key' => 'paid',         'label' => 'Payment'],
                 ['key' => 'approved',     'label' => 'Approved'],
             ];
             $stageKeys = array_column($stages, 'key');
@@ -117,16 +127,57 @@
                 @endforeach
             </div>
 
-            @if($application->workflow_status === 'returned' && $application->remarks)
-                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                    <p class="text-xs font-bold text-amber-700 mb-0.5">↩ Returned — Action Required</p>
-                    <p class="text-xs text-amber-600">{{ $application->remarks }}</p>
+            {{-- Status Banners --}}
+            @if($application->workflow_status === 'submitted' || $application->workflow_status === 'verification')
+                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2">
+                    <span class="text-blue-600 text-lg">📝</span>
+                    <div>
+                        <p class="text-xs font-bold text-blue-700">Under Verification</p>
+                        <p class="text-[10px] text-blue-600">Your application is under document verification. Our team will review your requirements shortly.</p>
+                    </div>
                 </div>
             @endif
-            @if($application->workflow_status === 'rejected' && $application->remarks)
-                <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl">
-                    <p class="text-xs font-bold text-red-700 mb-0.5">❌ Application Rejected</p>
-                    <p class="text-xs text-red-600">{{ $application->remarks }}</p>
+
+            @if($application->workflow_status === 'assessed')
+                <div class="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-indigo-600 text-lg">📊</span>
+                        <div>
+                            <p class="text-xs font-bold text-indigo-700">Assessment Ready</p>
+                            <p class="text-[10px] text-indigo-600">Your application has been assessed. Please review the fee summary below and proceed to payment.</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('client.payment.success', $application->id) }}" class="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 text-[10px] font-bold rounded-lg hover:bg-indigo-50 transition-colors shadow-sm shrink-0">
+                        🔄 Refresh Status
+                    </a>
+                </div>
+            @endif
+
+            @if($application->workflow_status === 'paid')
+                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-blue-600 text-lg">⏳</span>
+                        <div>
+                            <p class="text-xs font-bold text-blue-700">Your application has been paid and is pending final approval.</p>
+                            <p class="text-[10px] text-blue-600">The first required installment has been confirmed. The back office is now reviewing your application for permit issuance.</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if(in_array($application->workflow_status, ['paid', 'approved']) && collect($application->installments)->contains('status', 'unpaid'))
+                <div class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-between group relative">
+                    <div class="flex items-center gap-2">
+                        <span class="text-orange-600 text-lg">⚠️</span>
+                        <div>
+                            <p class="text-xs font-bold text-orange-700">Additional Installments Pending</p>
+                            <p class="text-[10px] text-orange-600">Your permit is {{ $application->workflow_status === 'approved' ? 'active' : 'being processed' }}, but there are remaining installments to be settled later.</p>
+                        </div>
+                    </div>
+                    {{-- Simple Tooltip --}}
+                    <div class="hidden group-hover:block absolute right-0 -top-10 bg-gray-800 text-white text-[10px] p-2 rounded shadow-lg z-20 max-w-xs transition-opacity duration-200">
+                        Quarterly or Semi-annual payments require subsequent payments based on the schedule below to keep the permit in good standing.
+                    </div>
                 </div>
             @endif
         </div>
@@ -211,7 +262,7 @@
                                 <span class="text-lg font-extrabold text-logo-teal">{{ $application->assessment->formatted_total }}</span>
                             </div>
                         </div>
-                        @if(in_array($application->workflow_status, ['payment']))
+                        @if(in_array($application->workflow_status, ['assessed']))
                             <a href="{{ route('client.payment.show', $application->id) }}"
                                 class="mt-4 w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-md">
                                 💳 Proceed to Payment
@@ -220,24 +271,74 @@
                     </div>
                 @endif
 
-                {{-- Payment Card --}}
-                @if($application->payment)
+                {{-- Payment Schedule Card --}}
+                @if($application->assessment)
                     <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-5">
-                        <h2 class="text-xs font-extrabold text-green uppercase tracking-wider mb-4">Payment</h2>
-                        <div class="grid grid-cols-2 gap-4">
-                            @foreach([
-                                ['Reference No.',  $application->payment->reference_number],
-                                ['Method',         $application->payment->payment_method_label],
-                                ['Amount Paid',    $application->payment->formatted_amount],
-                                ['Status',         ucfirst($application->payment->status)],
-                                ['Date Paid',      $application->payment->paid_at?->format('M d, Y h:i A') ?? '—'],
-                                ['OR No.',         $application->payment->or_number ?? '—'],
-                            ] as [$label, $value])
-                                <div>
-                                    <p class="text-[10px] font-bold text-gray/60 uppercase tracking-wider">{{ $label }}</p>
-                                    <p class="text-sm font-semibold text-green mt-0.5">{{ $value }}</p>
-                                </div>
-                            @endforeach
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xs font-extrabold text-green uppercase tracking-wider">Payment Schedule</h2>
+                            <span class="text-[10px] font-bold text-gray uppercase tracking-widest bg-bluebody/50 px-2 py-0.5 rounded-full">
+                                {{ ucfirst(str_replace('_', ' ', $application->mode_of_payment)) }}
+                            </span>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead>
+                                    <tr class="border-b border-lumot/10">
+                                        <th class="pb-2 text-[10px] font-extrabold text-gray/60 uppercase tracking-wider">Installment</th>
+                                        <th class="pb-2 text-[10px] font-extrabold text-gray/60 uppercase tracking-wider">Due Date</th>
+                                        <th class="pb-2 text-[10px] font-extrabold text-gray/60 uppercase tracking-wider text-right">Amount</th>
+                                        <th class="pb-2 text-[10px] font-extrabold text-gray/60 uppercase tracking-wider text-center">Status</th>
+                                        <th class="pb-2 text-[10px] font-extrabold text-gray/60 uppercase tracking-wider text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-lumot/5">
+                                    @foreach($application->installments as $inst)
+                                        @php
+                                            $isPaid = $inst['status'] === 'paid';
+                                            $canPay = $inst['status'] === 'unpaid' && ($loop->first || $application->installments[$loop->index-1]['status'] === 'paid');
+                                        @endphp
+                                        <tr class="group hover:bg-bluebody/30 transition-colors">
+                                            <td class="py-3">
+                                                <p class="text-xs font-bold text-green">{{ $inst['label'] }}</p>
+                                                @if($inst['or_number'])
+                                                    <p class="text-[9px] text-gray/60 font-semibold tracking-wide">OR #{{ $inst['or_number'] }}</p>
+                                                @endif
+                                            </td>
+                                            <td class="py-3 text-[11px] text-gray font-medium">{{ $inst['due_date'] }}</td>
+                                            <td class="py-3 text-xs font-bold text-green text-right">₱{{ number_format($inst['amount'], 2) }}</td>
+                                            <td class="py-3 text-center">
+                                                @if($isPaid)
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-logo-green/10 text-logo-green border border-logo-green/20">
+                                                        <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                        PAID
+                                                    </span>
+                                                @else
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-orange-100 text-orange-600 border border-orange-200">
+                                                        PENDING
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="py-3 text-right">
+                                                @if($isPaid)
+                                                    @if($inst['bpls_payment_id'])
+                                                        <a href="{{ route('client.payment.receipt', ['application' => $application->id, 'payment' => $inst['bpls_payment_id']]) }}" target="_blank"
+                                                           class="text-[10px] font-extrabold text-logo-teal hover:underline flex items-center justify-end gap-1">
+                                                           <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                                           Receipt
+                                                        </a>
+                                                    @endif
+                                                @elseif($canPay)
+                                                    <a href="{{ route('client.payment.show', ['application' => $application->id, 'installment' => $inst['number']]) }}"
+                                                       class="text-[10px] font-extrabold text-orange-500 hover:text-orange-600 bg-orange-50 px-2 py-1 rounded-lg border border-orange-200">
+                                                       Pay Now →
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 @endif

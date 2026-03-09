@@ -6,7 +6,7 @@ use App\Http\Livewire\Livewire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
-use App\Models\EmployeeInfo;
+use App\Models\HR\EmployeeInfo;
 use App\Models\Department;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;

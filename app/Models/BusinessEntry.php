@@ -26,6 +26,14 @@ class BusinessEntry extends Model
         // NOTE: is_pwd, is_4ps, is_solo_parent, is_senior, discount_10, discount_5
         //       are now stored in bpls_entry_benefits pivot. They are kept here as
         //       virtual helpers for backward compatibility during migration only.
+        'is_pwd',
+        'is_4ps',
+        'is_solo_parent',
+        'is_senior',
+        'is_bmbe',
+        'is_cooperative',
+        'discount_10',
+        'discount_5',
         'owner_region',
         'owner_province',
         'owner_municipality',
@@ -93,6 +101,14 @@ class BusinessEntry extends Model
         'dti_sec_cda_date' => 'date',
         'date_of_application' => 'date',
         'retirement_date' => 'date',
+        'is_pwd' => 'boolean',
+        'is_4ps' => 'boolean',
+        'is_solo_parent' => 'boolean',
+        'is_senior' => 'boolean',
+        'is_bmbe' => 'boolean',
+        'is_cooperative' => 'boolean',
+        'discount_10' => 'boolean',
+        'discount_5' => 'boolean',
         'tax_incentive' => 'boolean',
         'capital_investment' => 'decimal:2',
         'total_due' => 'decimal:2',
@@ -162,4 +178,8 @@ class BusinessEntry extends Model
     {
         return $this->hasOne(\App\Models\onlineBPLS\BplsApplication::class, 'business_entry_id');
     }
+    /**
+     * Check if this business entry came from online registration.
+     * Returns true if there's a related BplsOnlineApplication record.
+     */
 }

@@ -204,7 +204,7 @@
                         x-transition:leave-start="opacity-100 translate-y-0"
                         x-transition:leave-end="opacity-0 translate-y-1"
                         class="absolute top-full left-0 w-72 bg-white rounded-b-xl shadow-2xl border-t-2 border-logo-teal py-1.5 z-50">
-                        <a href="#"
+                        <a href="{{ route('treasury.rpt.payments.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-slate-50 hover:text-blue-700 transition-colors"><span
                                 class="w-1.5 h-1.5 rounded-full bg-logo-teal shrink-0"></span> RPT Payments &
                             Delinquents</a>
@@ -246,7 +246,7 @@
                         x-transition:leave-start="opacity-100 translate-y-0"
                         x-transition:leave-end="opacity-0 translate-y-1"
                         class="absolute top-full left-0 w-44 bg-white rounded-b-xl shadow-2xl border-t-2 border-logo-teal py-1.5 z-50">
-                        <a href="{{ route('bpls_payment') }}"
+                        <a href="{{ route('treasury.bpls_payment') }}"
                             class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-slate-50 hover:text-blue-700 transition-colors"><span
                                 class="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0"></span> BPLS payment Zone</a>
 
@@ -377,7 +377,12 @@
         'Miscellaneous' => ['Form 51C – General Receipt', 'List of RHU Patients', 'List of ACTIVE Miscellaneous Receipts', 'List of CANCELLED Miscellaneous Receipts'],
         'Water Bills' => ['Monthly Bills', 'Arrears', 'Service Connection', 'List of Paid O.R. Number', 'List of Void O.R. Number'],
         'CTC' => ['CTC Form – Individual', 'CTC Form – Corporation', 'List of PAID CTC Receipts', 'List of CANCELLED CTC Receipts'],
-        'RPTA' => ['RPT Payments & Delinquents', 'List of RPT Collections from Provincial Treasury Office', 'List of PAID Form 56 Receipts', 'List of CANCELLED Form 56 Receipts'],
+        'RPTA' => [
+            ['label' => 'RPT Payments & Delinquents', 'url' => route('treasury.rpt.payments.index')],
+            ['label' => 'List of RPT Collections from Provincial Treasury Office', 'url' => '#'],
+            ['label' => 'List of PAID Form 56 Receipts', 'url' => '#'],
+            ['label' => 'List of CANCELLED Form 56 Receipts', 'url' => '#']
+        ],
         'BPLS' => ['BPLS 2026', 'BPLS 2025', 'BPLS 2024', 'BPLS Active OR', 'BPLS Cancelled OR'],
         'VF' => ['Payment', 'List of Paid Vehicle Franchise'],
         'Settings' => ['Accountable Form Assignment', 'CTC Penalty Table', 'Delinquent Checker', 'Line of Business for BPLS', 'Revenue Sources', 'RPTA Amnesty', 'RPTA BASIC / SEF Tax', 'RPTA Penalty Table', 'Tax Category for BPLS'],
@@ -393,8 +398,13 @@
                     </button>
                     <div x-show="open" class="ml-4 pl-3 border-l border-logo-teal/30 space-y-0.5">
                         @foreach ($items as $item)
-                            <a href="#"
-                                class="block py-2 px-2 text-xs text-white/60 hover:text-white transition-colors rounded">{{ $item }}</a>
+                            @if(is_array($item))
+                                <a href="{{ $item['url'] }}"
+                                    class="block py-2 px-2 text-xs text-white/60 hover:text-white transition-colors rounded">{{ $item['label'] }}</a>
+                            @else
+                                <a href="#"
+                                    class="block py-2 px-2 text-xs text-white/60 hover:text-white transition-colors rounded">{{ $item }}</a>
+                            @endif
                         @endforeach
                     </div>
                 </div>

@@ -11,6 +11,7 @@ use App\Models\onlineBPLS\Client;
 use App\Models\onlineBPLS\BplsApplication;
 use App\Mail\NewClientCredentialsMail;
 
+use App\Models\onlineBPLS\BplsOnlineApplication;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
@@ -19,10 +20,18 @@ use Illuminate\Support\Facades\Log;
 
 class BusinessListController extends Controller
 {
-    public function index(Request $request)
-    {
-        $source = $request->get('source', 'all');
+public function index(Request $request)
+{
+    $source = $request->get('source', 'all');
 
+    if ($source === 'online') {
+        $query = BplsOnlineApplication::whereNull('deleted_at');
+        $totalCount = $query->count();
+        $pendingCount = (clone $query)->where('workflow_status', 'submitted')->count();
+        $approvedCount = (clone $query)->whereIn('workflow_status', ['assessed', 'paid'])->count();
+        $retiredCount = 0;
+        $renewalCount = (clone $query)->where('workflow_status', 'approved')->count();
+    } else {
         $query = BusinessEntry::whereNull('deleted_at');
 
         if ($source === 'online') {
@@ -83,26 +92,139 @@ class BusinessListController extends Controller
                     ->orWhere('business_municipality', 'like', "%{$q}%");
             });
         }
-
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('type') && $request->type !== 'all') {
-            $query->where('type_of_business', $request->type);
-        }
-
-        $paginated = $query->latest()->paginate(12);
-
-        return response()->json([
-            'data' => $paginated->items(),
-            'total' => $paginated->total(),
-            'current_page' => $paginated->currentPage(),
-            'last_page' => $paginated->lastPage(),
-            'from' => $paginated->firstItem(),
-            'to' => $paginated->lastItem(),
-        ]);
+        $renewalCount = (clone $query)->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
     }
+
+    $types = BusinessEntry::whereNull('deleted_at')->distinct()->pluck('type_of_business')->filter()->sort()->values();
+
+    return view('modules.bpls.business-list', compact(
+        'totalCount',
+        'pendingCount',
+        'approvedCount',
+        'retiredCount',
+        'renewalCount',
+        'types',
+        'source',
+    ));
+}
+public function search(Request $request)
+{
+    $source = $request->get('source', 'all');
+
+    if ($source === 'online') {
+        return $this->searchOnline($request);
+    }
+
+    // 'all' and 'walkin' both query BusinessEntry (walk-in only)
+    $query = BusinessEntry::whereNull('deleted_at')->with(['payments']);
+
+    if ($request->filled('q')) {
+        $q = $request->q;
+        $query->where(function ($b) use ($q) {
+            $b->where('business_name', 'like', "%{$q}%")
+                ->orWhere('trade_name', 'like', "%{$q}%")
+                ->orWhere('tin_no', 'like', "%{$q}%")
+                ->orWhere('last_name', 'like', "%{$q}%")
+                ->orWhere('first_name', 'like', "%{$q}%")
+                ->orWhere('mobile_no', 'like', "%{$q}%")
+                ->orWhere('business_barangay', 'like', "%{$q}%")
+                ->orWhere('business_municipality', 'like', "%{$q}%");
+        });
+    }
+
+    if ($request->filled('status') && $request->status !== 'all') {
+        $query->where('status', $request->status);
+    }
+
+    if ($request->filled('type') && $request->type !== 'all') {
+        $query->where('type_of_business', $request->type);
+    }
+
+    $paginated = $query->latest()->paginate(12);
+
+    return response()->json([
+        'data' => $paginated->items(),
+        'total' => $paginated->total(),
+        'current_page' => $paginated->currentPage(),
+        'last_page' => $paginated->lastPage(),
+        'from' => $paginated->firstItem(),
+        'to' => $paginated->lastItem(),
+    ]);
+}
+
+private function searchOnline(Request $request)
+{
+    $query = BplsOnlineApplication::with(['business', 'owner'])
+        ->whereNull('deleted_at');
+
+    if ($request->filled('q')) {
+        $q = $request->q;
+        $query->where(function ($sub) use ($q) {
+            $sub->where('application_number', 'like', "%{$q}%")
+                ->orWhereHas('business', function ($b) use ($q) {
+                    $b->where('business_name', 'like', "%{$q}%")
+                        ->orWhere('trade_name', 'like', "%{$q}%")
+                        ->orWhere('tin_no', 'like', "%{$q}%");
+                })
+                ->orWhereHas('owner', function ($o) use ($q) {
+                    $o->where('last_name', 'like', "%{$q}%")
+                        ->orWhere('first_name', 'like', "%{$q}%")
+                        ->orWhere('mobile_no', 'like', "%{$q}%");
+                });
+        });
+    }
+
+    if ($request->filled('status') && $request->status !== 'all') {
+        $query->where('workflow_status', $request->status);
+    }
+
+    $paginated = $query->latest()->paginate(12);
+
+    // Map to a shape the Blade JS expects
+    $items = $paginated->map(function ($app) {
+        return [
+            'id' => $app->id,
+            'business_name' => $app->business?->business_name,
+            'trade_name' => $app->business?->trade_name,
+            'tin_no' => $app->business?->tin_no,
+            'last_name' => $app->owner?->last_name,
+            'first_name' => $app->owner?->first_name,
+            'middle_name' => $app->owner?->middle_name,
+            'mobile_no' => $app->owner?->mobile_no,
+            'business_nature' => $app->business?->business_nature ?? null,
+            'business_scale' => $app->business?->business_scale ?? null,
+            'capital_investment' => null,
+            'mode_of_payment' => $app->mode_of_payment,
+            'business_barangay' => $app->business?->barangay,
+            'business_municipality' => $app->business?->municipality,
+            'type_of_business' => $app->business?->type_of_business,
+            'status' => $app->workflow_status,
+            'created_at' => $app->created_at,
+            'is_online' => true,
+            'application_number' => $app->application_number,
+            'bpls_application' => [
+                'id' => $app->id,
+                'application_number' => $app->application_number,
+                'workflow_status' => $app->workflow_status,
+                'assessment_amount' => $app->assessment_amount,
+                'mode_of_payment' => $app->mode_of_payment,
+                'permit_year' => $app->permit_year,
+                'submitted_at' => $app->submitted_at,
+                'or_assignments' => $app->orAssignments->toArray(),
+                'payment' => $app->payment?->toArray(),
+            ],
+        ];
+    });
+
+    return response()->json([
+        'data' => $items,
+        'total' => $paginated->total(),
+        'current_page' => $paginated->currentPage(),
+        'last_page' => $paginated->lastPage(),
+        'from' => $paginated->firstItem(),
+        'to' => $paginated->lastItem(),
+    ]);
+}
 
     public function show(BusinessEntry $entry)
     {

@@ -38,7 +38,7 @@ class Client extends Authenticatable
 
     public function applications()
     {
-        return $this->hasMany(BplsApplication::class, 'client_id');
+        return $this->hasMany(BplsOnlineApplication::class, 'client_id');
     }
 
     // -----------------------------------------------------------------------
