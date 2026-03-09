@@ -15,4 +15,12 @@ class Barangay extends Model
         'brgy_code',
         'brgy_desc',
     ];
+
+    /**
+     * Accessor for 'name' to map to 'brgy_name'
+     */
+    public function getNameAttribute()
+    {
+        return $this->brgy_name;
+    }
 }

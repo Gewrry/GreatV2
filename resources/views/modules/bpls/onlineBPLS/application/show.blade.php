@@ -1,7 +1,7 @@
 <x-admin.app>
 
     @php
-        /** @var \App\Models\onlineBPLS\BplsApplication $application */
+        /** @var \App\Models\onlineBPLS\BplsOnlineApplication $application */
         /** @var \Illuminate\Support\Collection $docs */
         /** @var bool $requiredMet */
         $docs = $docs ?? collect();
@@ -488,26 +488,33 @@
                                                         {{ $orItem->installment_number }}
                                                     </span>
                                                     <div>
-                                                        <p class="text-xs font-bold text-green">{{ $orItem->period_label }}</p>
+                                                        <div class="flex items-center gap-2">
+                                                            <p class="text-xs font-bold text-green">{{ $orItem->period_label }}</p>
+                                                            @if($orItem->isPaid())
+                                                                @php 
+                                                                    $masterPayment = $application->masterPayments->where('or_number', $orItem->or_number)->first();
+                                                                    if (!$masterPayment && $orItem->or_number) {
+                                                                        $masterPayment = \App\Models\BplsPayment::where('or_number', $orItem->or_number)->first();
+                                                                    }
+                                                                @endphp
+                                                                @if($masterPayment)
+                                                                    <a href="{{ route('bpls.payment.receipt', ['entry' => 'online_' . $application->id, 'payment' => $masterPayment->id]) }}" 
+                                                                       target="_blank"
+                                                                       class="text-[9px] font-black text-logo-teal hover:underline flex items-center gap-0.5">
+                                                                        <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                                                        VIEW RECEIPT
+                                                                    </a>
+                                                                @endif
+                                                            @endif
+                                                        </div>
                                                         <p class="text-[10px] font-mono font-bold text-gray/60 mt-0.5">OR# {{ $orItem->or_number }}</p>
                                                     </div>
                                                 </div>
                                                 <div class="flex items-center gap-3 shrink-0">
                                                     @if($orItem->isPaid())
-                                                        @php
-                                                            $masterPayment = $application->businessEntry?->activePayments()
-                                                                ->where('or_number', $orItem->or_number)
-                                                                ->first();
-                                                        @endphp
-                                                        @if($masterPayment)
-                                                            <a href="{{ route('bpls.payment.receipt', [$application->business_entry_id, $masterPayment->id]) }}" 
-                                                               target="_blank"
-                                                               class="p-2 bg-blue-500/10 text-blue-600 rounded-lg hover:bg-blue-500/20 transition-all border border-blue-500/20 flex items-center gap-1.5 shadow-sm group/btn"
-                                                               title="Print Official Receipt">
-                                                                <svg class="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                                                                <span class="text-[9px] font-black uppercase">Receipt</span>
-                                                            </a>
-                                                        @endif
+                                                        <span class="text-[10px] font-bold px-2 py-1 bg-logo-green/10 text-logo-green border border-logo-green/30 rounded-full">
+                                                            ✓ Paid
+                                                        </span>
                                                     @endif
                                                     <span class="text-sm font-extrabold text-green">
                                                         ₱{{ number_format((float)($application->assessment_amount / ($application->orAssignments->count() ?: 1)), 2) }}
@@ -865,15 +872,15 @@
             modeOfPayment: '{{ old('mode_of_payment', $application->mode_of_payment ?? 'annual') }}',
             computing: false,
             computeError: null,
-            permitYear: null,
+            permitYear: {{ $application->permit_year ?? now()->year }},
             fees: [],
             schedule: [],
             perInstallment: 0,
-            entryId: {{ $application->business_entry_id ?? 'null' }},
             businessName: @js($b?->business_name ?? ''),
-            businessNature: @js($application->businessEntry?->business_nature ?? ''),
-            capitalInvestment: {{ $application->businessEntry?->capital_investment ?? 0 }},
-            businessScale: @js($application->businessEntry?->business_scale ?? ''),
+            businessNature: @js($application->business?->business_nature ?? ''),
+            capitalInvestment: {{ $application->business?->capital_investment ?? ($application->assessment_amount ?? 0) }},
+            businessScale: @js($application->business?->business_scale ?? ''),
+            isRenewal: {{ $application->application_type === 'renewal' ? 'true' : 'false' }},
             isSenior: {{ $application->owner?->is_senior ? 'true' : 'false' }},
             isPwd: {{ $application->owner?->is_pwd ? 'true' : 'false' }},
             isSoloParent: {{ $application->owner?->is_solo_parent ? 'true' : 'false' }},
@@ -893,7 +900,7 @@
                 this.computing = true;
                 this.computeError = null;
                 try {
-                    const res = await fetch('{{ route('bpls.fee-rules.compute') }}', {
+                    const res = await fetch('{{ route('bpls.fee-rules.compute-online') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -901,28 +908,30 @@
                             'Accept': 'application/json',
                         },
                         body: JSON.stringify({
-                            capital_investment: {{ $application->businessEntry?->capital_investment ?? 0 }},
-                            business_scale: '{{ $application->businessEntry?->business_scale ?? '' }}',
-                            mode_of_payment: this.modeOfPayment,
-                            entry_id: this.entryId,
-                            is_senior: this.isSenior,
-                            is_pwd: this.isPwd,
-                            is_solo_parent: this.isSoloParent,
-                            is_4ps: this.is4ps,
-                            is_bmbe: this.isBmbe,
-                            is_cooperative: this.isCooperative,
+                            capital_investment: this.capitalInvestment,
+                            business_scale:     this.businessScale,
+                            business_nature:    this.businessNature,
+                            mode_of_payment:    this.modeOfPayment,
+                            permit_year:        this.permitYear,
+                            is_renewal:         this.isRenewal,
+                            is_senior:          this.isSenior,
+                            is_pwd:             this.isPwd,
+                            is_solo_parent:     this.isSoloParent,
+                            is_4ps:             this.is4ps,
+                            is_bmbe:            this.isBmbe,
+                            is_cooperative:     this.isCooperative,
                         }),
                     });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.message || 'Computation failed');
-                    this.baseAmount = data.total_due;
-                    this.discountAmount = data.discount_amount;
-                    this.discountLabel = data.discount_label;
+                    this.baseAmount       = data.total_due;
+                    this.discountAmount   = data.discount_amount;
+                    this.discountLabel    = data.discount_label;
                     this.assessmentAmount = data.total_after_discount;
-                    this.perInstallment = data.per_installment;
-                    this.fees = data.fees ?? [];
-                    this.schedule = data.schedule ?? [];
-                    this.permitYear = data.permit_year ?? null;
+                    this.perInstallment   = data.per_installment;
+                    this.fees             = data.fees ?? [];
+                    this.schedule         = data.schedule ?? [];
+                    this.permitYear       = data.permit_year ?? this.permitYear;
                 } catch (err) {
                     this.computeError = err.message;
                 } finally {
@@ -941,9 +950,9 @@
 
             init() {
                 this.$watch('showAssess', val => {
-                    if (val && this.entryId && !this.assessmentAmount) this.computeFees();
+                    if (val) this.computeFees();
                 });
-                if (this.entryId && !this.assessmentAmount) this.computeFees();
+                this.computeFees();
             }
         }">
 
@@ -990,21 +999,21 @@
                     <div>
                         <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Capital / Gross Sales</p>
                         <p class="text-sm font-black text-green mt-0.5">
-                            {{ $application->businessEntry?->capital_investment
-    ? '₱' . number_format($application->businessEntry->capital_investment, 2)
+                            {{ $application->assessment_amount
+    ? '₱' . number_format((float) $application->assessment_amount, 2)
     : '—' }}
                         </p>
                     </div>
                     <div class="text-right">
                         <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Business Nature</p>
                         <p class="text-xs font-black text-green mt-0.5">
-                            {{ $application->businessEntry?->business_nature ?? '—' }}
+                            {{ $application->business?->business_nature ?? '—' }}
                         </p>
                     </div>
-                    @if($application->businessEntry?->business_scale)
+                    @if($application->business?->business_scale)
                         <div class="text-right">
                             <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Scale</p>
-                            <p class="text-xs font-black text-green mt-0.5">{{ $application->businessEntry->business_scale }}</p>
+                            <p class="text-xs font-black text-green mt-0.5">{{ $application->business?->business_scale }}</p>
                         </div>
                     @endif
                 </div>
@@ -1016,7 +1025,7 @@
                             Total Assessment Amount (₱) <span class="text-red-500">*</span>
                         </label>
                         <button type="button" @click="computeFees()"
-                            :disabled="computing || !entryId"
+                            :disabled="computing"
                             class="flex items-center gap-1 text-[10px] font-black text-purple-600 hover:text-purple-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                             <svg x-show="computing" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -1059,14 +1068,7 @@
                         <span class="text-[10px] font-bold text-red-600" x-text="computeError"></span>
                     </div>
 
-                    @unless($application->business_entry_id)
-                        <div class="mt-2 flex items-center gap-1.5 p-2.5 bg-yellow-50 border border-yellow-200 rounded-xl">
-                            <svg class="w-3.5 h-3.5 text-yellow-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                            </svg>
-                            <span class="text-[10px] font-bold text-yellow-700">No linked business entry — enter amount manually.</span>
-                        </div>
-                    @endunless
+                    {{-- Capital investment pulled from BplsBusiness (online application) --}}
                 </div>
 
                 {{-- Payment Frequency --}}
@@ -1161,12 +1163,12 @@
                         <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
                             <div>
                                 <p class="text-xs font-extrabold text-green">{{ $b?->business_name }}</p>
-                                <p class="text-[10px] text-gray">{{ $application->businessEntry?->business_nature ?? '—' }}</p>
+                                <p class="text-[10px] text-gray">{{ $application->business?->business_nature ?? '—' }}</p>
                             </div>
                             <div class="text-right">
                                 <p class="text-[10px] text-gray/60">Gross Sales</p>
                                 <p class="text-sm font-extrabold text-logo-teal">
-                                    ₱{{ number_format($application->businessEntry?->capital_investment ?? 0, 2) }}
+                                    ₱{{ number_format($application->business?->capital_investment ?? 0, 2) }}
                                 </p>
                             </div>
                         </div>
@@ -1177,7 +1179,7 @@
                                 <p class="text-xs font-extrabold tracking-wide uppercase">Business Permit and Licensing System</p>
                             </div>
                             <div class="bg-logo-blue text-white text-center py-2">
-                                <p class="text-xs font-bold uppercase">{{ $application->businessEntry?->business_nature ?? 'Business Nature' }}</p>
+                                <p class="text-xs font-bold uppercase">{{ $application->business?->business_nature ?? 'Business Nature' }}</p>
                             </div>
                             <div class="grid grid-cols-3 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
                                 <p class="text-[10px] font-extrabold text-gray/70 uppercase">Taxes / Fees</p>

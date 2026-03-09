@@ -64,6 +64,7 @@
                     <div class="space-y-1">
 
                         <!-- Executive -->
+                        @if(Auth::user()->hasModuleAccess('executive'))
                         <a href="#"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
@@ -73,8 +74,10 @@
                             </svg>
                             <span>{{ __('Executive') }}</span>
                         </a>
+                        @endif
 
                         <!-- Admin -->
+                        @if(Auth::user()->hasModuleAccess('admin'))
                         <a href="{{ route('admin.dashboard.index') }}"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('admin.dashboard.index') ? 'bg-logo-blue text-white shadow-lg shadow-logo-blue/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
                             <svg class="w-5 h-5 mr-3 {{ request()->routeIs('admin.dashboard.index') ? 'text-white' : 'text-logo-blue group-hover:text-logo-green' }}"
@@ -87,8 +90,10 @@
                                 <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
                             @endif
                         </a>
+                        @endif
 
                         <!-- Accounting -->
+                        @if(Auth::user()->hasModuleAccess('accounting'))
                         <a href="#"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
@@ -98,8 +103,10 @@
                             </svg>
                             <span>{{ __('Accounting') }}</span>
                         </a>
+                        @endif
 
                         <!-- Agriculture Module -->
+                        @if(Auth::user()->hasModuleAccess('agriculture'))
                         <a href="#"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-logo-green group-hover:text-logo-teal transition-colors"
@@ -109,8 +116,10 @@
                             </svg>
                             <span>{{ __('Agriculture Module') }}</span>
                         </a>
+                        @endif
 
                         <!-- PPMP/APP Module -->
+                        @if(Auth::user()->hasModuleAccess('ppmp'))
                         <a href="#"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
@@ -120,8 +129,10 @@
                             </svg>
                             <span>{{ __('PPMP/APP Module') }}</span>
                         </a>
+                        @endif
 
                         <!-- Budget -->
+                        @if(Auth::user()->hasModuleAccess('budget'))
                         <a href="#"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-yellow group-hover:text-logo-green transition-colors"
@@ -131,19 +142,10 @@
                             </svg>
                             <span>{{ __('Budget') }}</span>
                         </a>
-
-                        <!-- Budget Proposal -->
-                        <a href="#"
-                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
-                            <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
-                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                            <span>{{ __('Budget Proposal') }}</span>
-                        </a>
+                        @endif
 
                         <!-- BPLS -->
+                        @if(Auth::user()->hasModuleAccess('bpls'))
                         <a href="#"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
@@ -153,8 +155,10 @@
                             </svg>
                             <span>{{ __('BPLS') }}</span>
                         </a>
+                        @endif
 
                         <!-- MSWD -->
+                        @if(Auth::user()->hasModuleAccess('mswd'))
                         <a href="#"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-logo-teal group-hover:text-logo-green transition-colors"
@@ -164,22 +168,26 @@
                             </svg>
                             <span>{{ __('MSWD') }}</span>
                         </a>
+                        @endif
 
                         <!-- Human Resource -->
-                        <a href="{{ route('employee-info.create') }}"
-                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('employee-info.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
-                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('employee-info.*') ? 'text-white' : 'text-logo-teal group-hover:text-logo-green' }}"
+                        @if(Auth::user()->hasModuleAccess('hr'))
+                        <a href="{{ route('hr.employees.index') }}"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs(['hr.*', 'employee-info.*']) ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs(['hr.*', 'employee-info.*']) ? 'text-white' : 'text-logo-teal group-hover:text-logo-green' }}"
                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
                             <span>{{ __('Human Resource') }}</span>
-                            @if (request()->routeIs('employee-info.*'))
+                            @if (request()->routeIs(['hr.*', 'employee-info.*']))
                                 <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
                             @endif
                         </a>
+                        @endif
 
                         <!-- RPT -->
+                        @if(Auth::user()->hasModuleAccess('rpt'))
                         <a href="{{ route('rpt.index') }}"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl text-gray hover:bg-lumot/30 hover:text-green transition-all duration-200 hover:translate-x-1">
                             <svg class="w-5 h-5 mr-3 text-logo-blue group-hover:text-logo-green transition-colors"
@@ -189,8 +197,10 @@
                             </svg>
                             <span>{{ __('RPT') }}</span>
                         </a>
+                        @endif
 
                         <!-- Treasury -->
+                        @if(Auth::user()->hasModuleAccess('treasury'))
                         <a href="{{ route('treasury.index') }}"
                             class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('treasury.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
                             <svg class="w-5 h-5 mr-3 {{ request()->routeIs('treasury.*') ? 'text-white' : 'text-yellow group-hover:text-logo-green' }}"
@@ -203,6 +213,7 @@
                                 <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
                             @endif
                         </a>
+                        @endif
 
                     </div>
                 </div>

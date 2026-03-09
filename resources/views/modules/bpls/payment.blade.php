@@ -9,7 +9,7 @@
                 window.__bplsPaidQuarters = @json(array_values($paidQuarters));
                 window.__bplsPerInstallment = {{ $perInstallment }};
                 window.__bplsModeCount = {{ $modeCount }};
-                window.__bplsAvailableOrsUrl = '{{ route('bpls.payment.available-ors', $entry->id) }}';
+                window.__bplsAvailableOrsUrl = '{{ route('bpls.payment.available-ors', $entry->unified_id ?? $entry->id) }}';
                 window.__bplsCsrf = document.querySelector ? document.querySelector('meta[name=csrf-token]')?.content : '';
                 window.__bplsBeneficiaryDiscountPerInstallment = {{ $beneficiaryDiscount['discount'] ?? 0 }};
             </script>
@@ -162,7 +162,7 @@
                     this.computing = true;
                     try {
                         const csrf = document.querySelector('meta[name=csrf-token]').content;
-                        const res = await fetch('{{ route('bpls.payment.compute-surcharge', $entry->id) }}', {
+                        const res = await fetch('{{ route('bpls.payment.compute-surcharge', $entry->unified_id ?? $entry->id) }}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
                             body: JSON.stringify({ quarters: this.selectedQuarters, payment_date: this.paymentDate }),
@@ -213,7 +213,7 @@
                     <script>
                         window.addEventListener('DOMContentLoaded', function() {
                             window.open(
-                                '{{ route('bpls.payment.receipt', ['entry' => $entry->id, 'payment' => session('payment_id')]) }}',
+                                '{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}',
                                 '_blank');
                         });
                     </script>
@@ -236,7 +236,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->id, 'payment' => session('payment_id')]) }}"
+                                <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
                                     target="_blank"
                                     class="flex items-center gap-2 px-5 py-3 bg-logo-teal text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -246,7 +246,7 @@
                                     </svg>
                                     Print Receipt
                                 </a>
-                                <a href="{{ route('bpls.payment.permit', ['entry' => $entry->id, 'payment' => session('payment_id')]) }}"
+                                <a href="{{ route('bpls.payment.permit', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
                                     target="_blank"
                                     class="flex items-center gap-2 px-5 py-3 bg-logo-green text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -460,7 +460,7 @@
                 {{-- ══════════════════════════════════════════════════════════════ --}}
                 {{-- ── PAYMENT FORM ── --}}
                 {{-- ══════════════════════════════════════════════════════════════ --}}
-                <form action="{{ route('bpls.payment.pay', $entry->id) }}" method="POST"
+                <form action="{{ route('bpls.payment.pay', $entry->unified_id ?? $entry->id) }}" method="POST"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
                     @csrf
 

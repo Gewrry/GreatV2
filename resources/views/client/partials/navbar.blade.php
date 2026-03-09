@@ -25,6 +25,10 @@
                     class="text-xs font-bold transition {{ request()->routeIs('client.payments.*') ? 'text-logo-teal' : 'text-gray hover:text-logo-teal' }}">
                     Business Payment
                 </a>
+                <a href="{{ route('client.rpt.index') }}"
+                    class="text-xs font-bold transition {{ request()->routeIs('client.rpt.*') ? 'text-logo-teal' : 'text-gray hover:text-logo-teal' }}">
+                    Property Tax
+                </a>
             </div>
         </div>
         <div class="flex items-center gap-3">

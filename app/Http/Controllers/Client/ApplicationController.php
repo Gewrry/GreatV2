@@ -4,11 +4,10 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\onlineBPLS\BplsApplication;
+use App\Models\onlineBPLS\BplsOnlineApplication;
 use App\Models\BplsBusiness;
 use App\Models\onlineBPLS\BplsDocument;
 use App\Models\BplsOwner;
-use App\Models\BusinessEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +41,7 @@ class ApplicationController extends Controller
     {
         $search = trim($request->get('search'));
 
-        $applications = BplsApplication::with(['business', 'owner'])
+        $applications = BplsOnlineApplication::with(['business', 'owner'])
             ->where('client_id', $this->client()->id)
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
@@ -68,7 +67,7 @@ class ApplicationController extends Controller
     {
         $renewal = null;
         if ($request->has('from')) {
-            $renewal = BplsApplication::with(['business', 'owner'])
+            $renewal = BplsOnlineApplication::with(['business', 'owner'])
                 ->where('client_id', $this->client()->id)
                 ->findOrFail($request->from);
         }
@@ -80,7 +79,7 @@ class ApplicationController extends Controller
     }
 
     // ── RENEW ──────────────────────────────────────────────────────────────
-    public function renew(BplsApplication $application)
+    public function renew(BplsOnlineApplication $application)
     {
         abort_unless($application->client_id === $this->client()->id, 403);
 
@@ -89,7 +88,7 @@ class ApplicationController extends Controller
         }
 
         $currentYear = now()->year;
-        $exists = BplsApplication::where('bpls_business_id', $application->bpls_business_id)
+        $exists = BplsOnlineApplication::where('bpls_business_id', $application->bpls_business_id)
             ->where('permit_year', '>=', $currentYear)
             ->whereIn('workflow_status', ['submitted', 'verified', 'assessed', 'paid', 'approved'])
             ->where('id', '!=', $application->id)
@@ -195,6 +194,7 @@ class ApplicationController extends Controller
                     'business_area_type' => $request->business_area_type,
                     'business_scale' => $request->business_scale,
                     'business_sector' => $request->business_sector,
+                    'business_nature' => $request->business_nature,
                     'zone' => $request->zone,
                     'occupancy' => $request->occupancy,
                     'business_area_sqm' => $request->business_area_sqm,
@@ -206,88 +206,21 @@ class ApplicationController extends Controller
                     'barangay' => $request->business_barangay,
                     'street' => $request->business_street,
                     'status' => 'pending',
-                    // NOTE: business_nature and capital_investment intentionally
-                    // omitted here — bpls_businesses has no such columns.
-                    // They are written directly to bpls_business_entries below.
                 ]);
             }
 
             $now = now();
             $permitYear = ($now->month >= 10) ? $now->year + 1 : $now->year;
 
-            // ── TABLE 3: bpls_business_entries ────────────────────────────
-            // business_nature and capital_investment are read from $request
-            // directly because bpls_businesses does not have these columns.
-            $entry = BusinessEntry::create([
-                'last_name' => $owner->last_name,
-                'first_name' => $owner->first_name,
-                'middle_name' => $owner->middle_name,
-                'citizenship' => $owner->citizenship,
-                'civil_status' => $owner->civil_status,
-                'gender' => $owner->gender,
-                'birthdate' => $owner->birthdate,
-                'mobile_no' => $owner->mobile_no,
-                'email' => $owner->email,
-                'is_pwd' => $owner->is_pwd,
-                'is_4ps' => $owner->is_4ps,
-                'is_solo_parent' => $owner->is_solo_parent,
-                'is_senior' => $owner->is_senior,
-                'is_bmbe' => $isBmbe,
-                'is_cooperative' => $isCooperative,
-                'discount_10' => $owner->discount_10,
-                'discount_5' => $owner->discount_5,
-                'owner_region' => $owner->region,
-                'owner_province' => $owner->province,
-                'owner_municipality' => $owner->municipality,
-                'owner_barangay' => $owner->barangay,
-                'owner_street' => $owner->street,
-                'emergency_contact_person' => $owner->emergency_contact_person,
-                'emergency_mobile' => $owner->emergency_mobile,
-                'emergency_email' => $owner->emergency_email,
-                'business_name' => $business->business_name,
-                'trade_name' => $business->trade_name,
-                'date_of_application' => $business->date_of_application,
-                'tin_no' => $business->tin_no,
-                'dti_sec_cda_no' => $business->dti_sec_cda_no,
-                'dti_sec_cda_date' => $business->dti_sec_cda_date,
-                'business_mobile' => $business->business_mobile,
-                'business_email' => $business->business_email,
-                'type_of_business' => $business->type_of_business,
-                'amendment_from' => $business->amendment_from,
-                'amendment_to' => $business->amendment_to,
-                'tax_incentive' => $business->tax_incentive,
-                'business_organization' => $business->business_organization,
-                'business_area_type' => $business->business_area_type,
-                'business_scale' => $business->business_scale,
-                'business_sector' => $business->business_sector,
-                'zone' => $business->zone,
-                'occupancy' => $business->occupancy,
-                'business_area_sqm' => $business->business_area_sqm,
-                'total_employees' => $business->total_employees,
-                'employees_lgu' => $business->employees_lgu,
-                'business_region' => $business->region,
-                'business_province' => $business->province,
-                'business_municipality' => $business->municipality,
-                'business_barangay' => $business->barangay,
-                'business_street' => $business->street,
-                // ↓ Read directly from $request — not via $business
-                'business_nature' => $request->business_nature,
-                'capital_investment' => $request->capital_investment,
-                'status' => 'pending',
-                'permit_year' => $permitYear,
-                'renewal_cycle' => 0,
-            ]);
-
-            // ── TABLE 4: bpls_applications ────────────────────────────────
-            $count = BplsApplication::withTrashed()->whereYear('created_at', $now->year)->count() + 1;
+            // ── TABLE 3: bpls_online_applications ────────────────────────
+            $count = BplsOnlineApplication::withTrashed()->whereYear('created_at', $now->year)->count() + 1;
             $appNum = 'APP-' . $now->year . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
 
-            $application = BplsApplication::create([
+            $application = BplsOnlineApplication::create([
                 'application_number' => $appNum,
                 'client_id' => $client->id,
                 'bpls_business_id' => $business->id,
                 'bpls_owner_id' => $owner->id,
-                'business_entry_id' => $entry->id,
                 'application_type' => $request->input('application_type', 'new'),
                 'discount_claimed' => ($owner->is_senior || $owner->is_pwd || $owner->is_solo_parent || $isBmbe || $isCooperative),
                 'permit_year' => $permitYear,
@@ -295,7 +228,7 @@ class ApplicationController extends Controller
                 'submitted_at' => $now,
             ]);
 
-            // ── TABLE 5: bpls_documents ───────────────────────────────────
+            // ── TABLE 4: bpls_documents ───────────────────────────────────
             if ($request->hasFile('documents')) {
                 foreach ($request->file('documents') as $type => $file) {
                     if (!array_key_exists($type, BplsDocument::TYPES))
@@ -340,7 +273,7 @@ class ApplicationController extends Controller
     }
 
     // ── EDIT ───────────────────────────────────────────────────────────────
-    public function edit(BplsApplication $application)
+    public function edit(BplsOnlineApplication $application)
     {
         abort_unless($application->client_id === $this->client()->id, 403);
 
@@ -357,7 +290,7 @@ class ApplicationController extends Controller
     }
 
     // ── UPDATE ─────────────────────────────────────────────────────────────
-    public function update(Request $request, BplsApplication $application)
+    public function update(Request $request, BplsOnlineApplication $application)
     {
         abort_unless($application->client_id === $this->client()->id, 403);
 
@@ -457,8 +390,6 @@ class ApplicationController extends Controller
         ]);
 
         // ── Update Business ───────────────────────────────────────────────
-        // NOTE: business_nature and capital_investment are excluded here
-        // because bpls_businesses has no such columns.
         $application->business->update([
             'business_name' => $request->business_name,
             'trade_name' => $request->trade_name,
@@ -472,6 +403,7 @@ class ApplicationController extends Controller
             'business_area_type' => $request->business_area_type,
             'business_scale' => $request->business_scale,
             'business_sector' => $request->business_sector,
+            'business_nature' => $request->business_nature,
             'zone' => $request->zone,
             'occupancy' => $request->occupancy,
             'business_area_sqm' => $request->business_area_sqm,
@@ -487,57 +419,6 @@ class ApplicationController extends Controller
             'street' => $request->business_street,
         ]);
 
-        // ── Sync BusinessEntry directly from $request ─────────────────────
-        // This is the authoritative write for business_nature and
-        // capital_investment since bpls_businesses has no such columns.
-        if ($application->businessEntry) {
-            $application->businessEntry->update([
-                'business_name' => $request->business_name,
-                'trade_name' => $request->trade_name,
-                'tin_no' => $request->tin_no,
-                'business_mobile' => $request->business_mobile,
-                'business_email' => $request->business_email,
-                'type_of_business' => $request->type_of_business,
-                'business_nature' => $request->business_nature,
-                'capital_investment' => $request->capital_investment,
-                'business_organization' => $request->business_organization,
-                'business_area_type' => $request->business_area_type,
-                'business_scale' => $request->business_scale,
-                'business_sector' => $request->business_sector,
-                'zone' => $request->zone,
-                'occupancy' => $request->occupancy,
-                'business_area_sqm' => $request->business_area_sqm,
-                'total_employees' => $request->total_employees,
-                'employees_lgu' => $request->employees_lgu,
-                'tax_incentive' => $request->boolean('tax_incentive'),
-                'amendment_from' => $request->amendment_from,
-                'amendment_to' => $request->amendment_to,
-                'business_region' => $request->business_region,
-                'business_province' => $request->business_province,
-                'business_municipality' => $request->business_municipality,
-                'business_barangay' => $request->business_barangay,
-                'business_street' => $request->business_street,
-                'last_name' => $request->last_name,
-                'first_name' => $request->first_name,
-                'middle_name' => $request->middle_name,
-                'is_pwd' => $request->boolean('is_pwd'),
-                'is_4ps' => $request->boolean('is_4ps'),
-                'is_solo_parent' => $request->boolean('is_solo_parent'),
-                'is_senior' => $request->boolean('is_senior'),
-                'is_bmbe' => $isBmbe,
-                'is_cooperative' => $isCooperative,
-                'discount_10' => $request->boolean('discount_10'),
-                'discount_5' => $request->boolean('discount_5'),
-                'mobile_no' => $request->mobile_no,
-                'email' => $request->email,
-                'owner_region' => $request->owner_region,
-                'owner_province' => $request->owner_province,
-                'owner_municipality' => $request->owner_municipality,
-                'owner_barangay' => $request->owner_barangay,
-                'owner_street' => $request->owner_street,
-            ]);
-        }
-        
         $application->update([
             'discount_claimed' => ($request->boolean('is_senior') || $request->boolean('is_pwd') || $request->boolean('is_solo_parent') || $isBmbe || $isCooperative),
         ]);
@@ -617,15 +498,14 @@ class ApplicationController extends Controller
     }
 
     // ── SHOW ───────────────────────────────────────────────────────────────
-    public function show(BplsApplication $application)
+    public function show(BplsOnlineApplication $application)
     {
         if ($application->client_id !== $this->client()->id) {
             abort(403);
         }
 
         $application->load(['business', 'owner', 'documents', 'payment']);
-        
-        // Load installments using the common logic if possible, or build them
+
         $paymentController = new PaymentController();
         $application->installments = $paymentController->buildInstallments($application);
 
@@ -633,7 +513,7 @@ class ApplicationController extends Controller
     }
 
     // ── DOWNLOAD PERMIT ────────────────────────────────────────────────────
-    public function downloadPermit(BplsApplication $application)
+    public function downloadPermit(BplsOnlineApplication $application)
     {
         if ($application->client_id !== $this->client()->id) {
             abort(403);
@@ -660,7 +540,7 @@ class ApplicationController extends Controller
     }
 
     // ── DESTROY ─────────────────────────────────────────────────────────────
-    public function destroy(BplsApplication $application)
+    public function destroy(BplsOnlineApplication $application)
     {
         if ($application->client_id !== $this->client()->id) {
             abort(403);
@@ -676,17 +556,7 @@ class ApplicationController extends Controller
                 $doc->delete();
             }
 
-            // Sync with master records:
-            // If this was a 'new' application, we should also delete the created business entry
-            if ($application->application_type === 'new' && $application->business_entry_id) {
-                $entry = \App\Models\BusinessEntry::find($application->business_entry_id);
-                if ($entry) {
-                    $entry->delete(); // Soft delete master record
-                }
-            }
-
-            // Hard-delete SNAPSHOT records as they are bound ONLY to this application
-            // and don't need to persist in bpls_businesses/bpls_owners if the app is deleted.
+            // Hard-delete snapshot records as they are bound ONLY to this application
             $application->business()?->forceDelete();
             $application->owner()?->forceDelete();
 

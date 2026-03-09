@@ -58,7 +58,14 @@ class OrAssignment extends Model
             ->map(fn($n) => (int) $n)
             ->toArray();
 
-        $used = array_unique(array_merge($usedOnline, $usedManual));
+        // 3. Used in RPT Payments
+        $usedRpt = \App\Models\RPT\RptPayment::where('or_no', '>=', $this->start_or)
+            ->where('or_no', '<=', $this->end_or)
+            ->pluck('or_no')
+            ->map(fn($n) => (int) $n)
+            ->toArray();
+
+        $used = array_unique(array_merge($usedOnline, $usedManual, $usedRpt));
 
         for ($n = $start; $n <= $end; $n++) {
             if (!in_array($n, $used)) {

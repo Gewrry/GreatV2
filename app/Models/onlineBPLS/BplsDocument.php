@@ -47,7 +47,7 @@ class BplsDocument extends Model
 
     public function application()
     {
-        return $this->belongsTo(BplsApplication::class, 'bpls_application_id');
+        return $this->belongsTo(BplsOnlineApplication::class, 'bpls_application_id');
     }
 
     public function getTypeLabelAttribute(): string
