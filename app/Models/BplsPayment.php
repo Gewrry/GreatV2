@@ -11,6 +11,7 @@ class BplsPayment extends Model
 
     protected $fillable = [
         'business_entry_id',
+        'bpls_application_id', // NEW - link to online applications
         'payment_year',       // NEW — fiscal year this payment covers
         'renewal_cycle',      // NEW — 0=original, 1=first renewal, etc.
         'or_number',
@@ -51,6 +52,11 @@ class BplsPayment extends Model
         return $this->belongsTo(BusinessEntry::class, 'business_entry_id');
     }
 
+    public function onlineApplication()
+    {
+        return $this->belongsTo(onlineBPLS\BplsOnlineApplication::class, 'bpls_application_id');
+    }
+
     // ── Scopes ─────────────────────────────────────────────────────────────
 
     /**
@@ -72,4 +78,5 @@ class BplsPayment extends Model
             ->where('payment_year', $entry->permit_year ?? now()->year)
             ->where('renewal_cycle', $entry->renewal_cycle ?? 0);
     }
+    
 }

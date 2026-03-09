@@ -218,7 +218,7 @@
                     <script>
                         window.addEventListener('DOMContentLoaded', function() {
                             window.open(
-                                '{{ route('bpls.payment.receipt', ['entry' => $entry->id, 'payment' => session('payment_id')]) }}',
+                                '{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}',
                                 '_blank');
                         });
                     </script>
@@ -241,12 +241,12 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->id, 'payment' => session('payment_id')]) }}"
+                                <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
                                     target="_blank"
                                     class="flex items-center gap-2 px-5 py-3 bg-logo-teal text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
                                     Print Receipt
                                 </a>
-                                <a href="{{ route('bpls.payment.permit', ['entry' => $entry->id, 'payment' => session('payment_id')]) }}"
+                                <a href="{{ route('bpls.payment.permit', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
                                     target="_blank"
                                     class="flex items-center gap-2 px-5 py-3 bg-logo-green text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
                                     Print Permit
@@ -471,7 +471,7 @@
                 {{-- ══════════════════════════════════════════════════════════════ --}}
                 {{-- ── PAYMENT FORM ──                                            --}}
                 {{-- ══════════════════════════════════════════════════════════════ --}}
-                <form action="{{ route('bpls.payment.pay', $entry->id) }}" method="POST"
+                <form action="{{ route('bpls.payment.pay', $entry->unified_id ?? $entry->id) }}" method="POST"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
                     @csrf
 

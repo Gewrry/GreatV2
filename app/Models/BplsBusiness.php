@@ -30,6 +30,7 @@ class BplsBusiness extends Model
         'business_area_type',
         'business_scale',
         'business_sector',
+        'business_nature',
         'zone',
         'occupancy',
         'business_area_sqm',

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\BplsPaymentController;
 use App\Models\Bpls\FeeRule;
 use App\Models\BusinessEntry;
+use App\Models\BplsSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -144,6 +145,12 @@ class FeeRuleController extends Controller
             'business_scale' => 'nullable|string',
             'mode_of_payment' => 'required|in:annual,semi_annual,quarterly',
             'entry_id' => 'nullable|integer',
+            'is_senior' => 'nullable|boolean',
+            'is_pwd' => 'nullable|boolean',
+            'is_solo_parent' => 'nullable|boolean',
+            'is_4ps' => 'nullable|boolean',
+            'is_bmbe' => 'nullable|boolean',
+            'is_cooperative' => 'nullable|boolean',
         ]);
 
         $gs = (float) $request->capital_investment;
@@ -171,6 +178,55 @@ class FeeRuleController extends Controller
         });
 
         $totalDue = round($fees->sum('amount'), 2);
+        
+        // ── CALCULATE DISCOUNTS ───────────────────────────────────────────────
+        $discountAmount = 0.0;
+        $discountLabels = [];
+        $totalDiscountPercent = 0.0;
+        
+        // Find the Gross Sales Tax (LBT) fee to apply discounts to
+        $lbtFee = $fees->firstWhere('name', 'Gross Sales Tax (LBT)');
+        $lbtAmount = $lbtFee ? $lbtFee['amount'] : 0;
+
+        if ($request->boolean('is_cooperative')) {
+            $totalDiscountPercent += 1.0;
+            $discountLabels[] = 'Cooperative (100%)';
+        }
+        if ($request->boolean('is_bmbe')) {
+            $totalDiscountPercent += 1.0;
+            $discountLabels[] = 'BMBE (100%)';
+        }
+        if ($request->boolean('is_senior')) {
+            $totalDiscountPercent += 0.20;
+            $discountLabels[] = 'Senior Citizen (20%)';
+        }
+        if ($request->boolean('is_pwd')) {
+            $totalDiscountPercent += 0.20;
+            $discountLabels[] = 'PWD (20%)';
+        }
+        if ($request->boolean('is_solo_parent')) {
+            $totalDiscountPercent += 0.20;
+            $discountLabels[] = 'Solo Parent (20%)';
+        }
+        if ($request->boolean('is_4ps')) {
+             $totalDiscountPercent += 0.10;
+             $discountLabels[] = '4Ps (10%)';
+        }
+
+        // Cap discount at 100% of LBT
+        if ($totalDiscountPercent > 1.0) {
+            $totalDiscountPercent = 1.0;
+        }
+
+        if ($totalDiscountPercent > 0) {
+            $discountAmount = round($lbtAmount * $totalDiscountPercent, 2);
+            $discountLabel = implode(' + ', $discountLabels) . ' LBT Discount';
+        } else {
+            $discountLabel = '';
+        }
+
+        $totalAfterDiscount = max(0, $totalDue - $discountAmount);
+
         $installmentCount = match ($mode) {
             'quarterly' => 4,
             'semi_annual' => 2,
@@ -199,9 +255,172 @@ class FeeRuleController extends Controller
         return response()->json([
             'fees' => $fees,
             'total_due' => $totalDue,
-            'per_installment' => round($totalDue / max(1, $installmentCount), 2),
-            'schedule' => $this->buildSchedule($totalDue, $mode, $permitYear, $approvedAt, $isRenewal),
+            'discount_amount' => $discountAmount,
+            'discount_label' => $discountLabel,
+            'total_after_discount' => $totalAfterDiscount,
+            'per_installment' => round($totalAfterDiscount / max(1, $installmentCount), 2),
+            'schedule' => $this->buildSchedule($totalAfterDiscount, $mode, $permitYear, $approvedAt, $isRenewal),
             'permit_year' => $permitYear,
+        ]);
+    }
+
+        // ─────────────────────────────────────────────────────────────────────────
+    // POST /bpls/fee-rules/compute-online
+    //
+    // Used exclusively by the Online BPLS assessment modal.
+    // capital_investment = assessment_amount from bpls_online_applications
+    // permit_year        = bpls_online_applications.permit_year (direct, no lookup)
+    // is_renewal         = application_type === 'renewal'
+    // ─────────────────────────────────────────────────────────────────────────
+    public function computeOnline(Request $request): JsonResponse
+    {
+        $request->validate([
+            'capital_investment' => 'required|numeric|min:0',
+            'business_nature'    => 'nullable|string',
+            'business_scale'     => 'nullable|string',
+            'mode_of_payment'    => 'required|in:annual,semi_annual,quarterly',
+            'permit_year'        => 'nullable|integer|min:2000|max:2100',
+            'is_renewal'         => 'nullable|boolean',
+            'is_senior'          => 'nullable|boolean',
+            'is_pwd'             => 'nullable|boolean',
+            'is_solo_parent'     => 'nullable|boolean',
+            'is_4ps'             => 'nullable|boolean',
+            'is_bmbe'            => 'nullable|boolean',
+            'is_cooperative'     => 'nullable|boolean',
+        ]);
+
+        $gs         = (float) $request->capital_investment;
+        $scaleCode  = $this->scaleCode($request->business_scale ?? '');
+        $mode       = $request->mode_of_payment;
+        $permitYear = (int) ($request->permit_year ?? Carbon::now('Asia/Manila')->year);
+        $isRenewal  = $request->boolean('is_renewal');
+
+        $scaleLabels = [1 => 'Micro', 2 => 'Small', 3 => 'Medium', 4 => 'Large', 5 => 'Enterprise'];
+
+        $rules = FeeRule::active()->ordered()->get();
+
+        $fees = $rules->map(function (FeeRule $rule) use ($gs, $scaleCode, $scaleLabels) {
+            $amount = $rule->compute($gs, $scaleCode);
+            $base   = match ($rule->base_type) {
+                'gross_sales' => $gs,
+                'scale'       => $scaleLabels[$scaleCode] ?? 'Micro',
+                default       => null,
+            };
+            return [
+                'id'        => $rule->id,
+                'name'      => $rule->name,
+                'base_type' => $rule->base_type,
+                'base'      => $base,
+                'amount'    => round($amount, 2),
+            ];
+        });
+
+        $totalDue = round($fees->sum('amount'), 2);
+
+        // ── Discounts — reads from BplsSetting exactly like walk-in computeBeneficiaryDiscount() ──
+        $discountAmount = 0.0;
+        $discountLabel  = '';
+
+        $beneficiaryEnabled = BplsSetting::get('beneficiary_discount_enabled', '0') === '1';
+
+        if ($beneficiaryEnabled) {
+            // Build groups for enabled beneficiary types
+            $groups = [];
+
+            if ($request->boolean('is_pwd')) {
+                $groups[] = [
+                    'label'    => 'PWD',
+                    'rate'     => (float) BplsSetting::get('pwd_discount_rate', '20'),
+                    'apply_to' => BplsSetting::get('pwd_discount_apply_to', 'total'),
+                ];
+            }
+            if ($request->boolean('is_senior')) {
+                $groups[] = [
+                    'label'    => 'Senior Citizen',
+                    'rate'     => (float) BplsSetting::get('senior_discount_rate', '20'),
+                    'apply_to' => BplsSetting::get('senior_discount_apply_to', 'total'),
+                ];
+            }
+            if ($request->boolean('is_solo_parent')) {
+                $groups[] = [
+                    'label'    => 'Solo Parent',
+                    'rate'     => (float) BplsSetting::get('solo_parent_discount_rate', '10'),
+                    'apply_to' => BplsSetting::get('solo_parent_discount_apply_to', 'total'),
+                ];
+            }
+            if ($request->boolean('is_4ps')) {
+                $groups[] = [
+                    'label'    => '4Ps',
+                    'rate'     => (float) BplsSetting::get('fourps_discount_rate', '10'),
+                    'apply_to' => BplsSetting::get('fourps_discount_apply_to', 'total'),
+                ];
+            }
+            // BMBE / Cooperative are treated as 100% LBT-exempt regardless of settings
+            if ($request->boolean('is_bmbe')) {
+                $groups[] = ['label' => 'BMBE',        'rate' => 100.0, 'apply_to' => 'total'];
+            }
+            if ($request->boolean('is_cooperative')) {
+                $groups[] = ['label' => 'Cooperative', 'rate' => 100.0, 'apply_to' => 'total'];
+            }
+
+            if (!empty($groups)) {
+                // Permit-fee ratio (for apply_to = permit_only)
+                $totalFeesAmt  = $fees->sum('amount');
+                $permitFeeAmt  = $fees->firstWhere('name', 'Gross Sales Tax (LBT)')['amount'] ?? 0;
+                $permitRatio   = $totalFeesAmt > 0 ? ($permitFeeAmt / $totalFeesAmt) : 1.0;
+
+                $computeGroupDiscount = function (array $group) use ($totalDue, $permitRatio): float {
+                    $effectiveBase = $group['apply_to'] === 'permit_only'
+                        ? round($totalDue * $permitRatio, 2)
+                        : $totalDue;
+                    return round($effectiveBase * ($group['rate'] / 100), 2);
+                };
+
+                $stackRule = BplsSetting::get('beneficiary_discount_stack', 'stack');
+
+                if ($stackRule === 'highest_only') {
+                    usort($groups, fn($a, $b) => $computeGroupDiscount($b) <=> $computeGroupDiscount($a));
+                    $best          = $groups[0];
+                    $discountAmount = $computeGroupDiscount($best);
+                    $discountLabel  = $best['label'] . ' Discount';
+                } else {
+                    $labels = [];
+                    foreach ($groups as $group) {
+                        $discountAmount += $computeGroupDiscount($group);
+                        $labels[]        = $group['label'];
+                    }
+                    $discountAmount = min($discountAmount, $totalDue);
+                    $discountLabel  = implode(' + ', $labels) . ' Discount';
+                }
+
+                $discountAmount = round($discountAmount, 2);
+            }
+        }
+
+        $totalAfterDiscount = max(0, $totalDue - $discountAmount);
+
+        $installmentCount = match ($mode) {
+            'quarterly'   => 4,
+            'semi_annual' => 2,
+            default       => 1,
+        };
+
+        // For renewals: treat as liable from Jan 1 of permit year (all quarters apply)
+        // For new registrations: liable from today (past quarters not overdue)
+        $approvedAt = $isRenewal
+            ? Carbon::create($permitYear, 1, 1, 0, 0, 0, 'Asia/Manila')
+            : Carbon::now('Asia/Manila');
+
+        return response()->json([
+            'fees'                 => $fees,
+            'total_due'            => $totalDue,
+            'discount_amount'      => $discountAmount,
+            'discount_label'       => $discountLabel,
+            'total_after_discount' => $totalAfterDiscount,
+            'per_installment'      => round($totalAfterDiscount / max(1, $installmentCount), 2),
+            'schedule'             => $this->buildSchedule($totalAfterDiscount, $mode, $permitYear, $approvedAt, $isRenewal),
+            'permit_year'          => $permitYear,
+            'business_nature'      => $request->business_nature,
         ]);
     }
 

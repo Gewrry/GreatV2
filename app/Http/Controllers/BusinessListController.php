@@ -8,9 +8,8 @@ use App\Models\BusinessEntry;
 use App\Models\BplsPayment;
 use App\Models\BplsSetting;
 use App\Models\onlineBPLS\Client;
-use App\Models\onlineBPLS\BplsApplication;
+use App\Models\onlineBPLS\BplsOnlineApplication;
 use App\Mail\NewClientCredentialsMail;
-
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
@@ -19,26 +18,35 @@ use Illuminate\Support\Facades\Log;
 
 class BusinessListController extends Controller
 {
+    // =========================================================================
+    // GET /bpls/business-list
+    // =========================================================================
     public function index(Request $request)
     {
         $source = $request->get('source', 'all');
 
-        $query = BusinessEntry::whereNull('deleted_at');
-
         if ($source === 'online') {
-            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
-            $query->whereIn('id', $onlineIds);
-        } elseif ($source === 'walkin') {
-            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
-            $query->whereNotIn('id', $onlineIds);
-        }
+            // Online = records that originated from BplsOnlineApplication
+            $query = BplsOnlineApplication::whereNull('deleted_at');
+            $totalCount = (clone $query)->count();
+            $pendingCount = (clone $query)->where('workflow_status', 'submitted')->count();
+            $approvedCount = (clone $query)->whereIn('workflow_status', ['assessed', 'paid'])->count();
+            $retiredCount = 0;
+            $renewalCount = (clone $query)->where('workflow_status', 'approved')->count();
+            $types = collect();
 
-        $totalCount = (clone $query)->count();
-        $pendingCount = (clone $query)->where('status', 'pending')->count();
-        $approvedCount = (clone $query)->whereIn('status', ['for_payment', 'for_renewal_payment'])->count();
-        $retiredCount = (clone $query)->where('status', 'retired')->count();
-        $renewalCount = (clone $query)->where('status', 'completed')->count();
-        $types = (clone $query)->distinct()->pluck('type_of_business')->filter()->sort()->values();
+        } else {
+            // Walk-in = BusinessEntry is walk-in only by nature;
+            // online applications live entirely in bpls_online_applications.
+            $query = BusinessEntry::whereNull('deleted_at');
+
+            $totalCount = (clone $query)->count();
+            $pendingCount = (clone $query)->where('status', 'pending')->count();
+            $approvedCount = (clone $query)->whereIn('status', ['for_payment', 'for_renewal_payment'])->count();
+            $retiredCount = (clone $query)->where('status', 'retired')->count();
+            $renewalCount = (clone $query)->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
+            $types = (clone $query)->distinct()->pluck('type_of_business')->filter()->sort()->values();
+        }
 
         return view('modules.bpls.business-list', compact(
             'totalCount',
@@ -51,23 +59,21 @@ class BusinessListController extends Controller
         ));
     }
 
+    // =========================================================================
+    // GET /bpls/business-list/search  (AJAX)
+    // =========================================================================
     public function search(Request $request)
     {
-        $query = BusinessEntry::whereNull('deleted_at')->with([
-            'bplsApplication',
-            'bplsApplication.orAssignments',
-            'bplsApplication.payment',
-            'payments',
-        ]);
-
         $source = $request->get('source', 'all');
+
         if ($source === 'online') {
-            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
-            $query->whereIn('id', $onlineIds);
-        } elseif ($source === 'walkin') {
-            $onlineIds = BplsApplication::whereNotNull('business_entry_id')->distinct()->pluck('business_entry_id');
-            $query->whereNotIn('id', $onlineIds);
+            return $this->searchOnline($request);
         }
+
+        // Walk-in = BusinessEntry is walk-in only by nature;
+        // online applications live entirely in bpls_online_applications.
+        $query = BusinessEntry::whereNull('deleted_at')
+            ->with(['payments']);
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -104,11 +110,93 @@ class BusinessListController extends Controller
         ]);
     }
 
+    // =========================================================================
+    // PRIVATE — Online search (BplsOnlineApplication)
+    // =========================================================================
+    private function searchOnline(Request $request)
+    {
+        $query = BplsOnlineApplication::with(['business', 'owner'])
+            ->whereNull('deleted_at');
+
+        if ($request->filled('q')) {
+            $q = $request->q;
+            $query->where(function ($sub) use ($q) {
+                $sub->where('application_number', 'like', "%{$q}%")
+                    ->orWhereHas('business', function ($b) use ($q) {
+                        $b->where('business_name', 'like', "%{$q}%")
+                            ->orWhere('trade_name', 'like', "%{$q}%")
+                            ->orWhere('tin_no', 'like', "%{$q}%");
+                    })
+                    ->orWhereHas('owner', function ($o) use ($q) {
+                        $o->where('last_name', 'like', "%{$q}%")
+                            ->orWhere('first_name', 'like', "%{$q}%")
+                            ->orWhere('mobile_no', 'like', "%{$q}%");
+                    });
+            });
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('workflow_status', $request->status);
+        }
+
+        $paginated = $query->latest()->paginate(12);
+
+        $items = $paginated->map(function ($app) {
+            return [
+                'id' => $app->id,
+                'business_name' => $app->business?->business_name,
+                'trade_name' => $app->business?->trade_name,
+                'tin_no' => $app->business?->tin_no,
+                'last_name' => $app->owner?->last_name,
+                'first_name' => $app->owner?->first_name,
+                'middle_name' => $app->owner?->middle_name,
+                'mobile_no' => $app->owner?->mobile_no,
+                'business_nature' => $app->business?->business_nature ?? null,
+                'business_scale' => $app->business?->business_scale ?? null,
+                'capital_investment' => null,
+                'mode_of_payment' => $app->mode_of_payment,
+                'business_barangay' => $app->business?->barangay,
+                'business_municipality' => $app->business?->municipality,
+                'type_of_business' => $app->business?->type_of_business,
+                'status' => $app->workflow_status,
+                'created_at' => $app->created_at,
+                'is_online' => true,
+                'application_number' => $app->application_number,
+                'bpls_application' => [
+                    'id' => $app->id,
+                    'application_number' => $app->application_number,
+                    'workflow_status' => $app->workflow_status,
+                    'assessment_amount' => $app->assessment_amount,
+                    'mode_of_payment' => $app->mode_of_payment,
+                    'permit_year' => $app->permit_year,
+                    'submitted_at' => $app->submitted_at,
+                    'or_assignments' => $app->orAssignments->toArray(),
+                    'payment' => $app->payment?->toArray(),
+                ],
+            ];
+        });
+
+        return response()->json([
+            'data' => $items,
+            'total' => $paginated->total(),
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'from' => $paginated->firstItem(),
+            'to' => $paginated->lastItem(),
+        ]);
+    }
+
+    // =========================================================================
+    // GET /bpls/business-list/{entry}
+    // =========================================================================
     public function show(BusinessEntry $entry)
     {
         return response()->json($entry);
     }
 
+    // =========================================================================
+    // POST /bpls/business-list/{entry}/assess
+    // =========================================================================
     public function assess(Request $request, BusinessEntry $entry)
     {
         $request->validate([
@@ -429,6 +517,20 @@ class BusinessListController extends Controller
     public function approveRenewal(Request $request, BusinessEntry $entry)
     {
         return app(BplsPaymentController::class)->approveRenewal($request, $entry);
+    }
+
+    // =========================================================================
+    // POST /bpls/business-list/{entry}/mark-paid
+    // =========================================================================
+    public function markPaid(Request $request, BusinessEntry $entry)
+    {
+        $entry->update(['status' => 'completed']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Business marked as paid.',
+            'entry' => $entry->fresh(),
+        ]);
     }
 
     // =========================================================================

@@ -22,17 +22,16 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('bpls_business_entries', function (Blueprint $table) {
-            // Unique, nullable — null until Approve to Payment is clicked
-            $table->string('business_id', 50)
-                ->nullable()
-                ->unique()
-                ->after('id')
-                ->comment('Generated on Approve to Payment. Format: {MUNI}-{YEAR}-{ID}');
-        });
+        if (!Schema::hasColumn('bpls_business_entries', 'business_id')) {
+            Schema::table('bpls_business_entries', function (Blueprint $table) {
+                $table->string('business_id', 50)
+                    ->nullable()
+                    ->unique()
+                    ->after('id')
+                    ->comment('Generated on Approve to Payment. Format: {MUNI}-{YEAR}-{ID}');
+            });
+        }
 
-        // Guard: walk_in_business_id already exists in clients per the SQL dump
-        // but add it safely in case a fresh install doesn't have it yet
         if (!Schema::hasColumn('clients', 'walk_in_business_id')) {
             Schema::table('clients', function (Blueprint $table) {
                 $table->unsignedBigInteger('walk_in_business_id')
@@ -50,10 +49,12 @@ return new class extends Migration {
 
     public function down(): void
     {
-        Schema::table('bpls_business_entries', function (Blueprint $table) {
-            $table->dropUnique(['business_id']);
-            $table->dropColumn('business_id');
-        });
+        if (Schema::hasColumn('bpls_business_entries', 'business_id')) {
+            Schema::table('bpls_business_entries', function (Blueprint $table) {
+                $table->dropUnique(['business_id']);
+                $table->dropColumn('business_id');
+            });
+        }
 
         if (Schema::hasColumn('clients', 'walk_in_business_id')) {
             Schema::table('clients', function (Blueprint $table) {

@@ -5,7 +5,7 @@ namespace App\Http\Livewire\Admin;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\User;
-use App\Models\EmployeeInfo;
+use App\Models\HR\EmployeeInfo;
 use App\Models\Department;
 use App\Models\Role;
 use Illuminate\Support\Facades\Hash;

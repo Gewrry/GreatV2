@@ -26,7 +26,7 @@ class BplsApplicationOr extends Model
 
     public function application(): BelongsTo
     {
-        return $this->belongsTo(BplsApplication::class, 'bpls_application_id');
+        return $this->belongsTo(BplsOnlinePayment::class, 'bpls_application_id');
     }
 
     public function orAssignment(): BelongsTo

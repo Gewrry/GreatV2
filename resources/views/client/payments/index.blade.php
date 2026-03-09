@@ -1,20 +1,10 @@
 {{-- resources/views/client/payments/index.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
+@extends('client.layouts.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business Payments</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
+@section('title', 'Business Payments')
 
-<body class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5">
-
-    @include('client.partials.navbar')
-
-    <div class="max-w-5xl mx-auto px-4 py-6">
+@section('content')
+    <div class="max-w-5xl mx-auto px-4">
 
         @if (session('success'))
             <div
@@ -132,6 +122,4 @@
 
         @endif
     </div>
-</body>
-
-</html>
+@endsection

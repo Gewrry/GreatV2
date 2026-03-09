@@ -1,12 +1,9 @@
 {{-- resources/views/client/applications/create.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
+@extends('client.layouts.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Business Application — BPLS Online Portal</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+@section('title', $renewal ? 'Renew Business Permit' : 'New Business Application')
+
+@push('styles')
     <style>
         /* Subtle dot-grid background */
         body {
@@ -28,13 +25,10 @@
             opacity: 0.4;
         }
     </style>
-</head>
+@endpush
 
-<body class="min-h-screen font-main antialiased">
-
-    @include('client.partials.navbar')
-
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12" x-data="{
+@section('content')
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8" x-data="{
         step: 1,
         maxReached: 1,
         loading: false,
@@ -115,10 +109,32 @@
     
         docFiles: {},
         docErrors: {},
-        get requiredCount() {
-            const required = {{ json_encode(\App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES) }};
-            return required.filter(t => !!this.docFiles[t]).length;
+        penaltyAccepted: false,
+
+        beneficiaryFlags: {
+            is_senior: false,
+            is_pwd: false,
+            is_solo_parent: false,
         },
+        businessOrganization: '{{ old('business_organization', $renewal?->business?->business_organization ?? '') }}',
+
+        get dynamicRequiredTypes() {
+            let base = {{ json_encode(\App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES) }};
+            if (this.beneficiaryFlags.is_senior) base.push('beneficiary_senior');
+            if (this.beneficiaryFlags.is_pwd) base.push('beneficiary_pwd');
+            if (this.beneficiaryFlags.is_solo_parent) base.push('beneficiary_solo_parent');
+            if (this.businessOrganization === 'BMBE') base.push('beneficiary_bmbe');
+            if (this.businessOrganization === 'Cooperative') base.push('beneficiary_cooperative');
+            return base;
+        },
+
+        get requiredCount() {
+            return this.dynamicRequiredTypes.filter(t => !!this.docFiles[t]).length;
+        },
+        get totalRequired() {
+            return this.dynamicRequiredTypes.length;
+        },
+
         handleFile(type, event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -711,6 +727,27 @@
                                         {{ old('tax_incentive', $renewal?->business?->tax_incentive ?? '') == '1' ? 'checked' : '' }}
                                         class="text-logo-teal focus:ring-logo-teal/30 w-4 h-4">
                                     <span class="text-sm font-semibold text-green">Yes</span>
+                    <div class="mb-5">
+                        <label class="block text-xs font-bold text-gray mb-2">Legal Entity / Special Classification</label>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach([
+                                ['name' => 'is_pwd',         'label' => 'PWD'],
+                                ['name' => 'is_4ps',         'label' => '4PS'],
+                                ['name' => 'is_solo_parent', 'label' => 'Solo Parent'],
+                                ['name' => 'is_senior',      'label' => 'Senior Citizen'],
+                                ['name' => 'discount_10',    'label' => '10% Fully Vaccinated'],
+                                ['name' => 'discount_5',     'label' => '5% 1st Dose'],
+                            ] as $badge)
+                                <label class="cursor-pointer">
+                                    <input type="checkbox" name="{{ $badge['name'] }}" 
+                                        class="peer hidden" 
+                                        @if(isset($badge['name']) && in_array($badge['name'], ['is_pwd', 'is_solo_parent', 'is_senior']))
+                                            x-model="beneficiaryFlags.{{ $badge['name'] }}"
+                                        @endif
+                                        {{ old($badge['name']) ? 'checked' : '' }}>
+                                    <span class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal inline-flex items-center px-3 py-1.5 text-xs font-semibold border border-lumot/40 rounded-full text-gray hover:border-logo-teal transition-all duration-150">
+                                        {{ $badge['label'] }}
+                                    </span>
                                 </label>
                                 <label class="flex items-center gap-2 cursor-pointer">
                                     <input type="radio" name="tax_incentive" value="0"
@@ -955,6 +992,22 @@
                                 <input type="email" name="emergency_email" placeholder="contact@example.com"
                                     value="{{ old('emergency_email', $renewal?->business?->emergency_email ?? '') }}"
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-logo-teal/30 focus:border-logo-teal/60 placeholder-gray/25 bg-white transition-all">
+                                <label class="block text-xs font-bold text-gray mb-1">{{ $sel['label'] }}</label>
+                                @if($sel['name'] === 'business_organization')
+                                    <select name="business_organization" x-model="businessOrganization" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
+                                        <option value="">-- Select --</option>
+                                        @foreach($options['business_organization'] as $opt)
+                                            <option value="{{ $opt }}" {{ old('business_organization', $renewal?->business?->business_organization ?? '') === $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <select name="{{ $sel['name'] }}" class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
+                                        <option value="">-- Select --</option>
+                                        @foreach($options[$sel['name']] as $opt)
+                                            <option value="{{ $opt }}" {{ old($sel['name'], $renewal?->business?->{$sel['name']} ?? '') === $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -1052,6 +1105,54 @@
                                                     x-text="docFiles['{{ $type }}']
                                                 ? docFiles['{{ $type }}'].name + ' · ' + formatSize(docFiles['{{ $type }}'].size)
                                                 : 'No file selected'"></span>
+                <div class="mb-5 p-3 bg-logo-teal/5 border border-logo-teal/20 rounded-xl flex items-start gap-2 mt-4">
+                    <svg class="w-4 h-4 text-logo-teal shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p class="text-xs text-gray font-medium">Please attach all <span x-text="totalRequired"></span> required documents. Max 5MB per file. Accepted: PDF, JPG, PNG.</p>
+                </div>
+
+                {{-- Required Documents --}}
+                <div class="mb-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-extrabold text-green uppercase tracking-wider">Required Documents</h3>
+                        <span class="text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">All 3 required</span>
+                    </div>
+                    <div class="space-y-3">
+                        <template x-for="type in dynamicRequiredTypes" :key="type">
+                            <div class="rounded-xl border p-4 transition-all duration-200"
+                                 :class="docFiles[type] ? 'border-logo-teal/40 bg-logo-teal/5' : 'border-lumot/30 bg-lumot/5'">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                                             :class="docFiles[type] ? 'bg-logo-teal/20' : 'bg-lumot/20'">
+                                            <template x-if="docFiles[type]">
+                                                <svg class="w-4 h-4 text-logo-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </template>
+                                            <template x-if="!docFiles[type]">
+                                                <svg class="w-4 h-4 text-gray/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                </svg>
+                                            </template>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-bold text-green truncate">
+                                                <span x-text="{
+                                                    'dti_sec_cda': 'DTI/SEC/CDA Certificate',
+                                                    'barangay_clearance': 'Barangay Clearance',
+                                                    'community_tax': 'Community Tax Certificate',
+                                                    'beneficiary_senior': 'Senior Citizen Proof (ID/OSCA)',
+                                                    'beneficiary_pwd': 'PWD Proof (ID/PDAO)',
+                                                    'beneficiary_bmbe': 'BMBE Certification',
+                                                    'beneficiary_cooperative': 'Cooperative CDA Registration',
+                                                    'beneficiary_solo_parent': 'Solo Parent ID'
+                                                }[type] || type.replace(/_/g, ' ')"></span>
+                                                <span class="text-red-400">*</span>
+                                            </p>
+                                            <p class="text-[11px] truncate transition-colors" :class="docFiles[type] ? 'text-logo-teal font-semibold' : 'text-gray/40'">
+                                                <span x-text="docFiles[type] ? docFiles[type].name + ' (' + formatSize(docFiles[type].size) + ')' : 'No file selected'"></span>
                                             </p>
                                             <template x-if="docErrors['{{ $type }}']">
                                                 <p class="text-[11px] text-red-500 font-semibold mt-0.5"
@@ -1068,6 +1169,11 @@
                                                     stroke="currentColor" stroke-width="2.5">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M6 18L18 6M6 6l12 12" />
+                                        <template x-if="docFiles[type]">
+                                            <button type="button" @click="removeFile(type)"
+                                                class="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                                                 </svg>
                                             </button>
                                         </template>
@@ -1087,12 +1193,21 @@
                                                 </svg>
                                                 <span
                                                     x-text="docFiles['{{ $type }}'] ? 'Replace' : 'Choose'"></span>
+                                            <input type="file" :name="'documents[' + type + ']'" accept=".pdf,.jpg,.jpeg,.png" class="hidden" @change="handleFile(type, $event)">
+                                            <span class="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                                                  :class="docFiles[type] ? 'bg-logo-blue/10 text-logo-blue hover:bg-logo-blue/20' : 'bg-logo-teal text-white hover:bg-green shadow-sm shadow-logo-teal/20'">
+                                                <span x-text="docFiles[type] ? 'Replace' : 'Choose File'"></span>
                                             </span>
                                         </label>
                                     </div>
                                 </div>
                             @endforeach
                         </div>
+                                <template x-if="docErrors[type]">
+                                    <p class="text-[11px] text-red-500 font-semibold mt-2 pl-11" x-text="docErrors[type]"></p>
+                                </template>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- Optional Documents --}}
@@ -1109,6 +1224,30 @@
                                             :class="docFiles['{{ $type }}'] ? 'text-logo-teal' : 'text-gray/35'">
                                             <span
                                                 x-text="docFiles['{{ $type }}'] ? docFiles['{{ $type }}'].name : 'Not attached'"></span>
+                {{-- Optional Documents --}}
+                <div>
+                    <h3 class="text-xs font-extrabold text-green uppercase tracking-wider mb-3">Optional / Supporting Documents</h3>
+                    <div class="space-y-2">
+                        <template x-for="(label, type) in {
+                            'lease_contract': 'Lease Contract / Owner\'s Consent',
+                            'fire_clearance': 'Fire Safety Inspection Certificate',
+                            'sanitary_permit': 'Sanitary Permit',
+                            'others': 'Other Documents'
+                        }" :key="type">
+                            <div class="flex items-center justify-between gap-3 p-3 rounded-xl border transition-all"
+                                 x-show="!dynamicRequiredTypes.includes(type)"
+                                 :class="docFiles[type] ? 'border-logo-teal/30 bg-logo-teal/5' : 'border-lumot/20 bg-lumot/5'">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                                         :class="docFiles[type] ? 'bg-logo-teal/20' : 'bg-lumot/20'">
+                                        <svg class="w-3.5 h-3.5" :class="docFiles[type] ? 'text-logo-teal' : 'text-gray/30'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                        </svg>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-semibold text-green truncate" x-text="label"></p>
+                                        <p class="text-[10px] truncate" :class="docFiles[type] ? 'text-logo-teal' : 'text-gray/30'">
+                                            <span x-text="docFiles[type] ? docFiles[type].name : 'Not attached'"></span>
                                         </p>
                                     </div>
                                     <div class="flex items-center gap-1.5 shrink-0">
@@ -1138,6 +1277,22 @@
                                 </div>
                             @endforeach
                         </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <template x-if="docFiles[type]">
+                                        <button type="button" @click="removeFile(type)" class="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </template>
+                                    <label class="cursor-pointer">
+                                        <input type="file" :name="'documents[' + type + ']'" accept=".pdf,.jpg,.jpeg,.png" class="hidden" @change="handleFile(type, $event)">
+                                        <span class="text-xs font-bold px-2.5 py-1 rounded-lg transition-colors"
+                                              :class="docFiles[type] ? 'bg-logo-blue/10 text-logo-blue hover:bg-logo-blue/20' : 'bg-lumot/20 text-gray hover:bg-lumot/40'">
+                                            <span x-text="docFiles[type] ? 'Replace' : 'Attach'"></span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- Progress bar --}}
@@ -1152,6 +1307,15 @@
                                 :class="requiredCount >= 3 ? 'bg-logo-teal' : 'bg-logo-teal/60'"
                                 :style="'width: ' + (requiredCount / 3 * 100) + '%'"></div>
                         </div>
+                {{-- Progress bar --}}
+                <div class="mt-5 pt-4 border-t border-lumot/20">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-xs text-gray font-semibold">Required documents attached</span>
+                        <span class="text-xs font-extrabold text-logo-teal" x-text="requiredCount + ' / ' + totalRequired"></span>
+                    </div>
+                    <div class="w-full h-2 bg-lumot/30 rounded-full overflow-hidden">
+                        <div class="h-full bg-logo-teal rounded-full transition-all duration-500"
+                             :style="'width: ' + (requiredCount / totalRequired * 100) + '%'"></div>
                     </div>
                 </div>
 
@@ -1209,6 +1373,44 @@
                         </span>
                     </button>
                 </div>
+            {{-- Penalty Acknowledgment --}}
+            <div class="bg-red-50 border border-red-100 rounded-xl p-4 mb-5">
+                <label class="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" x-model="penaltyAccepted" class="w-4 h-4 mt-0.5 rounded border-red-300 text-red-600 focus:ring-red-500">
+                    <div>
+                        <p class="text-[11px] font-black text-red-700 uppercase tracking-tight mb-1">Acknowledge Statement of Truth</p>
+                        <p class="text-[10px] text-red-600/70 leading-relaxed">
+                            I hereby acknowledge that all information and documents provided are true and correct. I understand that any false declaration or fraudulent document is subject to penalty and may result in the revocation of my business permit under the Local Tax Ordinance.
+                        </p>
+                    </div>
+                </label>
+            </div>
+
+            <div class="flex justify-between">
+                <button type="button" @click="prev()"
+                    class="px-6 py-2.5 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    Back to Fill Form
+                </button>
+                <button type="button"
+                    @click="requiredCount >= totalRequired && penaltyAccepted && !loading ? submitForm() : null"
+                    :disabled="requiredCount < totalRequired || !penaltyAccepted || loading"
+                    class="px-8 py-2.5 text-white text-sm font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :class="requiredCount >= totalRequired && penaltyAccepted ? 'bg-logo-green hover:bg-green shadow-logo-green/20' : 'bg-lumot/50 shadow-none'">
+                    <template x-if="!loading">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </template>
+                    <template x-if="loading">
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                    </template>
+                    <span x-text="loading ? 'Submitting...' : (requiredCount < totalRequired ? 'Attach All Proofs' : (!penaltyAccepted ? 'Acknowledge Statement' : 'Submit Application'))"></span>
+                </button>
+            </div>
 
             </div>{{-- end step 2 --}}
 
@@ -1458,7 +1660,6 @@
                 }
             };
         }
+        }
     </script>
-</body>
-
-</html>
+@endpush

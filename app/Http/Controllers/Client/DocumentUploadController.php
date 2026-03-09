@@ -4,7 +4,7 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
-use App\Models\onlineBPLS\BplsApplication;
+use App\Models\onlineBPLS\BplsOnlinePayment;
 use App\Models\onlineBPLS\BplsDocument;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +15,7 @@ class DocumentUploadController extends Controller
     // -----------------------------------------------------------------------
     // INDEX — show upload page
     // -----------------------------------------------------------------------
-    public function index(BplsApplication $application)
+    public function index(BplsOnlinePayment $application)
     {
         $this->authorizeAccess($application);
 
@@ -33,7 +33,7 @@ class DocumentUploadController extends Controller
     // -----------------------------------------------------------------------
     // UPLOAD — store a single document (replace if already exists)
     // -----------------------------------------------------------------------
-    public function upload(Request $request, BplsApplication $application)
+    public function upload(Request $request, BplsOnlinePayment $application)
     {
         $this->authorizeAccess($application);
 
@@ -70,7 +70,7 @@ class DocumentUploadController extends Controller
     // -----------------------------------------------------------------------
     // DESTROY — remove a document
     // -----------------------------------------------------------------------
-    public function destroy(BplsApplication $application, BplsDocument $document)
+    public function destroy(BplsOnlinePayment $application, BplsDocument $document)
     {
         $this->authorizeAccess($application);
 
@@ -93,7 +93,7 @@ class DocumentUploadController extends Controller
     // -----------------------------------------------------------------------
     // SUBMIT — transition draft → submitted
     // -----------------------------------------------------------------------
-    public function submit(BplsApplication $application)
+    public function submit(BplsOnlinePayment $application)
     {
         $this->authorizeAccess($application);
 
@@ -132,7 +132,7 @@ class DocumentUploadController extends Controller
     // -----------------------------------------------------------------------
     // Authorization helper
     // -----------------------------------------------------------------------
-    private function authorizeAccess(BplsApplication $application): void
+    private function authorizeAccess(BplsOnlinePayment $application): void
     {
         $clientId = Auth::guard('client')->id();
 

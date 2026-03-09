@@ -53,7 +53,7 @@
                             <p class="text-[9px] text-gray/50 uppercase tracking-tighter">Assessed Value</p>
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{{ route('bpls.payment.show', $bus->id) }}" 
+                            <a href="{{ route('bpls.payment.show', $bus->unified_id) }}" 
                                class="inline-flex items-center gap-2 px-4 py-2 bg-logo-green text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green transform hover:scale-105 transition-all shadow-md shadow-logo-green/20">
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
