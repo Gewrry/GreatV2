@@ -78,4 +78,5 @@ class BplsPayment extends Model
             ->where('payment_year', $entry->permit_year ?? now()->year)
             ->where('renewal_cycle', $entry->renewal_cycle ?? 0);
     }
+    
 }

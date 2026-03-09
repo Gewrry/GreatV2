@@ -1,16 +1,65 @@
 <?php
-// routes/web.php — COMPLETE FILE WITH YOUR CLIENTAUTHENTICATED MIDDLEWARE
+// =============================================================================
+// routes/web.php
+// =============================================================================
+// SECTION INDEX:
+//   1.  Imports / Use Statements
+//   2.  Standalone Routes (outside any prefix group)
+//   3.  Public Routes (no auth required)
+//   4.  LGU Staff Portal  [middleware: auth, verified]
+//       4a.  Audit Logs
+//       4b.  Profile Management
+//       4c.  HR Module
+//       4d.  Admin Module
+//       4e.  Treasury Module
+//       4f.  OR Assignments
+//       4g.  BPLS Module
+//       4h.  RPT Module
+//       4i.  Vehicle Franchising Module
+//   5.  Client Portal  [guard: client]
+//       5a.  Guest-only (login, register, password reset)
+//       5b.  Authenticated Client Routes
+//   6.  Public Webhooks (no CSRF)
+//   7.  Auth Routes (require __DIR__.'/auth.php')
+// =============================================================================
+
+// =============================================================================
+// 1. IMPORTS / USE STATEMENTS
+// =============================================================================
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Livewire\Admin\AdminDashboard;
 use App\Http\Livewire\Admin\AccountsManager;
+
+// Admin Controllers
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\BarangayController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ModuleController;
+
+// HR Controllers
 use App\Http\Controllers\Hr\HumanResourcesController;
+
+// RPT Controllers
+use App\Http\Controllers\RPT\RPTController;
+use App\Http\Controllers\RPT\TaxDeclarationController;
+use App\Http\Controllers\RPT\ReportController;
+use App\Http\Controllers\RPT\GISController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RPTA_SettingsController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptAuController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\AdditionalItemController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\AssessmentLevelController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\ClassificationController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\DepreciationRateBldgController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\OwnerController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\OtherImprovementController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptaSignatoryController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptTransactionCodeController;
+use App\Http\Controllers\RPT\RPTA_SETTINGS\RptaGenRevController;
+
+// BPLS Controllers
 use App\Http\Controllers\Hr\PlantillaController;
 use App\Http\Controllers\Hr\RecruitmentController;
 use App\Http\Controllers\HR\AppointmentController;
@@ -23,77 +72,115 @@ use App\Http\Controllers\BusinessListController;
 use App\Http\Controllers\Bpls\FeeRuleController;
 use App\Http\Controllers\Bpls\BplsSettingsController;
 use App\Http\Controllers\Bpls\MasterlistController;
-use App\Http\Controllers\Settings\OrAssignmentController;
-use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\FormCustomizationController;
+use App\Http\Controllers\BplsBenefitController;
 
+// BPLS Report Controllers
+use App\Http\Controllers\Bpls\ComplianceQuarterController;
+use App\Http\Controllers\Bpls\ComplianceDateRangeController;
+use App\Http\Controllers\Bpls\TaxDelinquentController;
+use App\Http\Controllers\Bpls\BusinessScaleCountController;
 
-Route::get('/payment/{entry}/available-ors', [BplsPaymentController::class, 'getAvailableOrNumbers'])
-    ->name('bpls.payment.available-ors');
-
+// BPLS Misc
 use App\Http\Controllers\Bpls\BplsPermitSignatoryController;
 use App\Http\Controllers\Bpls\Online\BplsApplicationReviewController;
+use App\Http\Controllers\BplsDashboardController;
+
+// Settings
+use App\Http\Controllers\Settings\OrAssignmentController;
+
+// Audit
+use App\Http\Controllers\AuditLogController;
+
+// Vehicle Franchising Controllers
+use App\Http\Controllers\VF\VehicleFranchisingController;
+use App\Http\Controllers\VF\VfPrintController;
+use App\Http\Controllers\VF\VfReportController;
+
+// Client Portal Controllers
 use App\Http\Controllers\Client\AuthController;
 use App\Http\Controllers\Client\ApplicationController;
 use App\Http\Controllers\Client\DashboardController;
 use App\Http\Controllers\Client\DocumentUploadController;
 use App\Http\Controllers\Client\PaymentController;
+use App\Http\Controllers\Client\WalkInPaymentsController;
 use App\Http\Controllers\Client\RptApplicationController;
+use App\Http\Controllers\Client\RptOnlinePaymentController;
+
 // RPT (Staff)
 use App\Http\Controllers\RPT\FaasPropertyController;
 use App\Http\Controllers\RPT\PropertyRegistrationController;
-use App\Http\Controllers\RPT\TaxDeclarationController;
 use App\Http\Controllers\RPT\OnlineApplicationController;
 use App\Http\Controllers\RPT\RptDashboardController;
 use App\Http\Controllers\RPT\RPTSettingsController;
 
+// =============================================================================
+// 2. STANDALONE ROUTES (outside any prefix/middleware group)
+// =============================================================================
 
+Route::get('/payment/{entry}/available-ors', [BplsPaymentController::class, 'getAvailableOrNumbers'])
+    ->name('bpls.payment.available-ors');
 
-
+Route::get('/bpls/dashboard/print', [BplsDashboardController::class, 'printView'])
+    ->name('bpls.dashboard.print');
 
 Route::post('bpls/settings/update-beneficiary-discounts', [BplsSettingsController::class, 'updateBeneficiaryDiscounts'])
     ->name('bpls.settings.update-beneficiary-discounts');
 
 // =============================================================================
-// AUDIT LOGS
+// 3. PUBLIC ROUTES (No Authentication Required)
 // =============================================================================
-Route::prefix('audit-logs')
-    ->middleware(['auth'])
-    ->name('audit-logs.')
-    ->group(function () {
-        Route::get('/', [AuditLogController::class, 'index'])->name('index');
-        Route::get('/data', [AuditLogController::class, 'data'])->name('data');
-        Route::get('/stats', [AuditLogController::class, 'stats'])->name('stats');
-        Route::get('/export', [AuditLogController::class, 'export'])->name('export');
-        Route::delete('/purge', [AuditLogController::class, 'purge'])->name('purge');
-        Route::get('/{auditLog}', [AuditLogController::class, 'show'])->name('show');
-    });
 
-// =============================================================================
-// PUBLIC ROUTES (No Authentication Required)
-// =============================================================================
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-Route::get('/dashboard', fn() => view('dashboard'))->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', fn() => view('dashboard'))
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
-// BPLS Public Search (accessible to everyone)
 Route::prefix('bpls')->name('bpls.')->group(function () {
     Route::get('/search-owner', [BusinessEntriesController::class, 'searchOwner'])->name('search-owner');
     Route::get('/search-business', [BusinessEntriesController::class, 'searchBusiness'])->name('search-business');
 });
 
+Route::resource('bpls/benefits', BplsBenefitController::class)
+    ->names('bpls.benefits')
+    ->except(['create', 'show']);
+
+Route::patch('bpls/benefits/{benefit}/toggle', [BplsBenefitController::class, 'toggleActive'])
+    ->name('bpls.benefits.toggle');
+
 // =============================================================================
-// LGU (STAFF) PORTAL - Requires 'auth' middleware (web guard)
+// 4. LGU STAFF PORTAL  [middleware: auth + verified]
 // =============================================================================
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // ==================== PROFILE MANAGEMENT ====================
+    // =========================================================================
+    // 4a. AUDIT LOGS
+    // =========================================================================
+    Route::prefix('audit-logs')
+        ->middleware(['auth'])
+        ->name('audit-logs.')
+        ->group(function () {
+            Route::get('/', [AuditLogController::class, 'index'])->name('index');
+            Route::get('/data', [AuditLogController::class, 'data'])->name('data');
+            Route::get('/stats', [AuditLogController::class, 'stats'])->name('stats');
+            Route::get('/export', [AuditLogController::class, 'export'])->name('export');
+            Route::delete('/purge', [AuditLogController::class, 'purge'])->name('purge');
+            Route::get('/{auditLog}', [AuditLogController::class, 'show'])->name('show');
+        });
+
+    // =========================================================================
+    // 4b. PROFILE MANAGEMENT
+    // =========================================================================
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // ==================== HR MODULE ====================
+    // =========================================================================
+    // 4c. HR MODULE  [module gate: hr]
+    // =========================================================================
     Route::prefix('employee-info')->name('employee-info.')->middleware('module:hr')->group(function () {
         Route::get('/create', [HumanResourcesController::class, 'create'])->name('create');
         Route::post('/', [HumanResourcesController::class, 'store'])->name('store');
@@ -163,7 +250,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/employees/{employee}/edit', [Employee201Controller::class, 'edit'])->name('employees.edit');
         Route::put('/employees/{employee}', [Employee201Controller::class, 'update'])->name('employees.update');
         Route::delete('/employees/{employee}', [Employee201Controller::class, 'destroy'])->name('employees.destroy');
-        
+
         // Employee 201 Details
         Route::post('/employees/{employee}/government-id', [Employee201Controller::class, 'storeGovernmentId'])->name('employees.government-id.store');
         Route::delete('/government-id/{governmentId}', [Employee201Controller::class, 'destroyGovernmentId'])->name('employees.government-id.destroy');
@@ -179,16 +266,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/document/{document}', [Employee201Controller::class, 'destroyDocument'])->name('employees.document.destroy');
         Route::post('/employees/{employee}/training', [Employee201Controller::class, 'storeTraining'])->name('employees.training.store');
         Route::delete('/training/{training}', [Employee201Controller::class, 'destroyTraining'])->name('employees.training.destroy');
-    });
+    }); // end hr module
 
-    // ==================== ADMIN MODULE ====================
+    // =========================================================================
+    // 4d. ADMIN MODULE  [module gate: admin]
+    // =========================================================================
     Route::prefix('admin')->name('admin.')->middleware('module:admin')->group(function () {
-        Route::get('/dashboard', AdminDashboard::class)->name('dashboard.index');
 
-        // Accounts Management
+        Route::get('/dashboard', AdminDashboard::class)->name('dashboard.index');
         Route::get('/accounts', AccountsManager::class)->name('accounts.index');
 
-        // Departments
         Route::prefix('departments')->name('departments.')->group(function () {
             Route::get('/', [DepartmentController::class, 'index'])->name('index');
             Route::post('/', [DepartmentController::class, 'store'])->name('store');
@@ -196,7 +283,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('destroy');
         });
 
-        // Barangays
         Route::prefix('barangays')->name('barangays.')->group(function () {
             Route::get('/', [BarangayController::class, 'index'])->name('index');
             Route::post('/', [BarangayController::class, 'store'])->name('store');
@@ -204,10 +290,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/{barangay}', [BarangayController::class, 'destroy'])->name('destroy');
         });
 
-        // Database Backup
         Route::get('/backup-database', [DatabaseBackupController::class, 'backup'])->name('database.backup');
 
-        // RBAC - Role Management
         Route::prefix('roles')->name('roles.')->group(function () {
             Route::get('/', [RoleController::class, 'index'])->name('index');
             Route::post('/', [RoleController::class, 'store'])->name('store');
@@ -217,7 +301,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{role}/modules', [RoleController::class, 'assignModules'])->name('assign-modules');
         });
 
-        // RBAC - Module Management
         Route::prefix('modules')->name('modules.')->group(function () {
             Route::get('/', [ModuleController::class, 'index'])->name('index');
             Route::post('/', [ModuleController::class, 'store'])->name('store');
@@ -226,9 +309,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::delete('/{module}', [ModuleController::class, 'destroy'])->name('destroy');
             Route::post('/{module}/toggle', [ModuleController::class, 'toggle'])->name('toggle');
         });
-    });
 
-    // ==================== TREASURY MODULE ====================
+    }); // end admin module
+
+    // =========================================================================
+    // 4e. TREASURY MODULE  [module gate: treasury]
+    // =========================================================================
     Route::prefix('treasury')->name('treasury.')->middleware('module:treasury')->group(function () {
         Route::get('/', fn() => view('modules.treasury.index'))->name('index');
         Route::get('/bpls-payment', [BplsPaymentController::class, 'index'])->name('bpls_payment');
@@ -242,9 +328,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{td}/nod', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'generateNOD'])->name('nod');
             Route::get('/payment/{payment}/receipt', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'receipt'])->name('receipt');
         });
-    });
 
-    // ==================== OR ASSIGNMENTS ====================
+    }); // end treasury module
+
+    // =========================================================================
+    // 4f. OR ASSIGNMENTS  (shared settings, no module gate)
+    // =========================================================================
     Route::prefix('settings/or-assignments')->name('or-assignments.')->group(function () {
         Route::get('/', [OrAssignmentController::class, 'index'])->name('index');
         Route::post('/', [OrAssignmentController::class, 'store'])->name('store');
@@ -253,44 +342,44 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{orAssignment}', [OrAssignmentController::class, 'destroy'])->name('destroy');
     });
 
-    // ==================== BPLS MODULE ====================
+    // =========================================================================
+    // 4g. BPLS MODULE  [module gate: bpls]
+    // =========================================================================
     Route::prefix('bpls')->name('bpls.')->middleware('module:bpls')->group(function () {
 
+        // 4g-i. Dashboard
         Route::get('/', [BplsController::class, 'index'])->name('index');
+        Route::get('/dashboard/data', [BplsDashboardController::class, 'data'])->name('dashboard.data');
 
-        // Settings
+        // 4g-ii. Settings
         Route::prefix('settings')->name('settings.')->group(function () {
             Route::get('/', [BplsSettingsController::class, 'index'])->name('index');
-            Route::post('/update-beneficiary-discount', [BplsSettingsController::class, 'updateBeneficiaryDiscount'])
-                ->name('update-beneficiary-discount');
-            Route::post('/update-beneficiary-discounts', [BplsSettingsController::class, 'updateBeneficiaryDiscounts'])
-                ->name('update-beneficiary-discounts');
-            // OR Assignments — now uses OrAssignmentController (auto cashier from Auth user)
+            Route::post('/update-beneficiary-discount', [BplsSettingsController::class, 'updateBeneficiaryDiscount'])->name('update-beneficiary-discount');
+            Route::post('/update-beneficiary-discounts', [BplsSettingsController::class, 'updateBeneficiaryDiscounts'])->name('update-beneficiary-discounts');
+            Route::post('/update-general', [BplsSettingsController::class, 'updateGeneral'])->name('update-general');
+            Route::post('/update-discount', [BplsSettingsController::class, 'updateDiscount'])->name('update-discount');
+            Route::post('/update-permit', [BplsSettingsController::class, 'updatePermit'])->name('update-permit');
+            Route::post('/update-receipt', [BplsSettingsController::class, 'updateReceipt'])->name('update-receipt');
             Route::get('/or-assignments', [OrAssignmentController::class, 'index'])->name('or-assignments.index');
             Route::post('/or-assignments', [OrAssignmentController::class, 'store'])->name('or-assignments.store');
             Route::get('/or-assignments/{orAssignment}/edit', [OrAssignmentController::class, 'edit'])->name('or-assignments.edit');
             Route::put('/or-assignments/{orAssignment}', [OrAssignmentController::class, 'update'])->name('or-assignments.update');
             Route::delete('/or-assignments/{orAssignment}', [OrAssignmentController::class, 'destroy'])->name('or-assignments.destroy');
-
-            Route::post('/update-general', [BplsSettingsController::class, 'updateGeneral'])->name('update-general');
-            Route::post('/update-discount', [BplsSettingsController::class, 'updateDiscount'])->name('update-discount');
-            Route::post('/update-permit', [BplsSettingsController::class, 'updatePermit'])->name('update-permit');
-            Route::post('/update-receipt', [BplsSettingsController::class, 'updateReceipt'])->name('update-receipt');
         });
 
-        // Business Entries
+        // 4g-iii. Business Entries
         Route::prefix('business-entries')->name('business-entries.')->group(function () {
             Route::get('/', [BusinessEntriesController::class, 'index'])->name('index');
             Route::post('/', [BusinessEntriesController::class, 'store'])->name('store');
         });
 
-        // Business List
+        // 4g-iv. Business List
         Route::prefix('business-list')->name('business-list.')->group(function () {
             Route::get('/', [BusinessListController::class, 'index'])->name('index');
             Route::get('/search', [BusinessListController::class, 'search'])->name('search');
             Route::get('/{entry}', [BusinessListController::class, 'show'])->name('show');
             Route::post('/{entry}/assess', [BusinessListController::class, 'assess'])->name('assess');
-            Route::post('/{entry}/approve-payment', [BplsPaymentController::class, 'approvePayment'])->name('approve-payment');
+            Route::post('/{entry}/approve-payment', [BusinessListController::class, 'approvePayment'])->name('approve-payment');
             Route::post('/{entry}/approve-renewal', [BusinessListController::class, 'approveRenewal'])->name('approve-renewal');
             Route::post('/{entry}/mark-paid', [BusinessListController::class, 'markPaid'])->name('mark-paid');
             Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
@@ -298,28 +387,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
         });
 
-        // Payments
+        // 4g-v. Payments
         Route::prefix('payment')->name('payment.')->group(function () {
             Route::get('/{entry}/permit/{payment}', [BplsPaymentController::class, 'permit'])->name('permit');
             Route::get('/{entry}/receipt/{payment}', [BplsPaymentController::class, 'receipt'])->name('receipt');
             Route::post('/{entry}/compute-surcharge', [BplsPaymentController::class, 'computeSurcharge'])->name('compute-surcharge');
             Route::post('/{entry}/validate-or', [BplsPaymentController::class, 'validateOr'])->name('validate-or');
             Route::post('/{entry}/pay', [BplsPaymentController::class, 'pay'])->name('pay');
-
-            // ── Beneficiary flags (AJAX, method-spoofed PATCH) ──────────────
             Route::post('/{entry}/update-beneficiary', [BplsPaymentController::class, 'updateBeneficiary'])->name('update-beneficiary');
-
-            // !! Keep the catch-all GET last to avoid swallowing the routes above
             Route::get('/{entry}', [BplsPaymentController::class, 'show'])->name('show');
         });
 
-        // Fee Rules
+        // 4g-vi. Fee Rules
         Route::prefix('fee-rules')->name('fee-rules.')->group(function () {
             Route::get('/manage', fn() => view('modules.bpls.fee-rules.index'))->name('manage');
             Route::post('/reorder', [FeeRuleController::class, 'reorder'])->name('reorder');
             Route::post('/reset-defaults', [FeeRuleController::class, 'resetDefaults'])->name('reset-defaults');
             Route::post('/compute', [FeeRuleController::class, 'compute'])->name('compute');
-            Route::post('/compute-online', [FeeRuleController::class, 'computeOnline'])->name('compute-online'); // ← add here
+            Route::post('/compute-online', [FeeRuleController::class, 'computeOnline'])->name('compute-online');
             Route::get('/', [FeeRuleController::class, 'index'])->name('index');
             Route::post('/', [FeeRuleController::class, 'store'])->name('store');
             Route::get('/{feeRule}', [FeeRuleController::class, 'show'])->name('show');
@@ -328,13 +413,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{feeRule}/toggle', [FeeRuleController::class, 'toggle'])->name('toggle');
         });
 
-        // Reports
+        // 4g-vii. Form Customization
+        Route::prefix('form-customization')->name('form-customization.')->group(function () {
+            Route::get('/', [FormCustomizationController::class, 'index'])->name('index');
+            Route::post('/', [FormCustomizationController::class, 'store'])->name('store');
+            Route::put('/{formOption}', [FormCustomizationController::class, 'update'])->name('update');
+            Route::delete('/{formOption}', [FormCustomizationController::class, 'destroy'])->name('destroy');
+        });
+
+        // 4g-viii. Reports
         Route::prefix('reports')->name('reports.')->group(function () {
             Route::get('/masterlist', [MasterlistController::class, 'index'])->name('masterlist.index');
             Route::get('/masterlist/data', [MasterlistController::class, 'data'])->name('masterlist.data');
+            Route::get('/scale', [BusinessScaleCountController::class, 'index'])->name('scale.index');
+            Route::get('/scale/data', [BusinessScaleCountController::class, 'data'])->name('scale.data');
+            Route::get('/compliance/quarter', [ComplianceQuarterController::class, 'index'])->name('compliance.quarter.index');
+            Route::get('/compliance/quarter/data', [ComplianceQuarterController::class, 'data'])->name('compliance.quarter.data');
+            Route::get('/compliance/daterange', [ComplianceDateRangeController::class, 'index'])->name('compliance.daterange.index');
+            Route::get('/compliance/daterange/data', [ComplianceDateRangeController::class, 'data'])->name('compliance.daterange.data');
+            Route::get('/delinquent', [TaxDelinquentController::class, 'index'])->name('delinquent.index');
+            Route::get('/delinquent/data', [TaxDelinquentController::class, 'data'])->name('delinquent.data');
+            Route::get('/or-report', [\App\Http\Controllers\Bpls\OrReportController::class, 'index'])->name('or-report.index');
+            Route::get('/or-report/print', [\App\Http\Controllers\Bpls\OrReportController::class, 'print'])->name('or-report.print');
+            Route::get('/or-report/export', [\App\Http\Controllers\Bpls\OrReportController::class, 'export'])->name('or-report.export');
         });
 
-        // Online BPLS Application Review (Staff)
+        // 4g-ix. Online Application Review
         Route::prefix('online')->name('online.')->group(function () {
             Route::get('/application', [BplsApplicationReviewController::class, 'index'])->name('application.index');
             Route::get('/application/{application}', [BplsApplicationReviewController::class, 'show'])->name('application.show');
@@ -349,26 +453,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/application/{application}/confirm-ors', [BplsApplicationReviewController::class, 'confirmOrs'])->name('application.confirm-ors');
         });
 
-        // Permit Signatories
+        // 4g-x. Permit Signatories
         Route::prefix('permit-signatories')->name('permit-signatories.')->group(function () {
             Route::post('/', [BplsPermitSignatoryController::class, 'store'])->name('store');
             Route::put('/{signatory}', [BplsPermitSignatoryController::class, 'update'])->name('update');
             Route::delete('/{signatory}', [BplsPermitSignatoryController::class, 'destroy'])->name('destroy');
         });
-    });
 
-    // ==================== BPLS MODULE ====================
+    }); // end bpls module
 
-    // ==================== RPT MODULE ====================
+    // =========================================================================
+    // 4h. RPT MODULE  [module gate: rpt]
+    // =========================================================================
     Route::prefix('rpt')->name('rpt.')->middleware('module:rpt')->group(function () {
 
         Route::get('/', [RptDashboardController::class, 'index'])->name('index');
-
+        
         // Property Registration (Intake)
         Route::prefix('registration')->name('registration.')->group(function () {
             Route::get('/', [PropertyRegistrationController::class, 'index'])->name('index');
             Route::get('/create', [PropertyRegistrationController::class, 'create'])->name('create');
             Route::get('/pending', [PropertyRegistrationController::class, 'pending'])->name('pending');
+                Route::get('/search', [PropertyRegistrationController::class, 'search'])->name('search');
             Route::post('/', [PropertyRegistrationController::class, 'store'])->name('store');
             Route::get('/{registration}', [PropertyRegistrationController::class, 'show'])->name('show');
             Route::post('/{registration}/archive', [PropertyRegistrationController::class, 'archive'])->name('archive');
@@ -377,6 +483,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // FAAS — Property Assessment
         Route::prefix('faas')->name('faas.')->group(function () {
             Route::get('/', [FaasPropertyController::class, 'index'])->name('index');
+            Route::get('/status-counts', [FaasPropertyController::class, 'statusCounts'])->name('status-counts');
             Route::get('/{registration}/create-draft', [FaasPropertyController::class, 'createDraft'])->name('create-draft');
             Route::post('/{registration}/store-draft', [FaasPropertyController::class, 'storeDraft'])->name('store-draft');
             Route::get('/{registration}/start/{component}', [FaasPropertyController::class, 'startAppraisal'])->name('start');
@@ -405,7 +512,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             // Attachments
             Route::post('/{faas}/attachment', [FaasPropertyController::class, 'uploadAttachment'])->name('attachment.store');
             Route::delete('/{faas}/attachment/{attachment}', [FaasPropertyController::class, 'destroyAttachment'])->name('attachment.destroy');
-            // General Revision (Governance Check #6)
+            // General Revision
             Route::post('/{faas}/general-revision', [FaasPropertyController::class, 'generalRevision'])->name('general-revision');
             Route::post('/{faas}/recompute', [FaasPropertyController::class, 'recomputeAll'])->name('recompute');
             Route::post('/{faas}/reassess', [FaasPropertyController::class, 'reassess'])->name('reassess');
@@ -413,7 +520,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{faas}/subdivide', [FaasPropertyController::class, 'subdivide'])->name('subdivide');
             Route::post('/consolidate', [FaasPropertyController::class, 'consolidate'])->name('consolidate.store');
             Route::post('/{faas}/cancel', [FaasPropertyController::class, 'cancel'])->name('cancel');
-        Route::put('/{faas}/master-update', [FaasPropertyController::class, 'masterUpdate'])->name('master-update');
+            Route::put('/{faas}/master-update', [FaasPropertyController::class, 'masterUpdate'])->name('master-update');
         });
 
         // Tax Declarations
@@ -432,6 +539,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{td}/notice', [TaxDeclarationController::class, 'printNotice'])->name('notice');
         });
 
+        // GIS
+        Route::prefix('gis')->name('gis.')->group(function () {
+            Route::get('/', [GISController::class, 'index'])->name('index');
+            Route::get('/geometries', [GISController::class, 'getGeometries'])->name('get_geometries');
+            Route::post('/update-geometry', [GISController::class, 'updateGeometry'])->name('update_geometry');
+        });
+
+        // Actual Use
+        Route::prefix('actual-use')->name('actual-use.')->group(function () {
+            Route::get('/', [RptAuController::class, 'index'])->name('index');
+            Route::post('/', [RptAuController::class, 'store'])->name('store');
+            Route::get('/{rptAu}', [RptAuController::class, 'show'])->name('show');
+            Route::post('/{rptAu}', [RptAuController::class, 'update'])->name('update');
+            Route::delete('/{rptAu}', [RptAuController::class, 'destroy'])->name('destroy');
+        });
+
+        // Additional Items
+        Route::prefix('additional-items')->name('additional-items.')->group(function () {
+            Route::get('/', [AdditionalItemController::class, 'index'])->name('index');
+            Route::post('/', [AdditionalItemController::class, 'store'])->name('store');
+            Route::get('/{additionalItem}', [AdditionalItemController::class, 'show'])->name('show');
+            Route::put('/{additionalItem}', [AdditionalItemController::class, 'update'])->name('update');
+            Route::delete('/{additionalItem}', [AdditionalItemController::class, 'destroy'])->name('destroy');
+        });
+
         // Online Applications (Staff Review)
         Route::prefix('online-applications')->name('online-applications.')->group(function () {
             Route::get('/', [OnlineApplicationController::class, 'index'])->name('index');
@@ -444,6 +576,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{application}/reject', [OnlineApplicationController::class, 'reject'])->name('reject');
         });
 
+        // Reports
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/', [ReportController::class, 'index'])->name('index');
+
+            $reports = [
+                'parcel-list'            => 'parcelList',
+                'rpu-list'               => 'rpuList',
+                'cancelled-list'         => 'cancelledList',
+                'faas-summary'           => 'faasSummary',
+                'td-summary'             => 'tdSummary',
+                'taxable-properties'     => 'taxableProperties',
+                'ownership-history'      => 'ownershipHistory',
+                'transfer-summary'       => 'transferSummary',
+                'multiple-owners'        => 'multipleOwners',
+                'td-audit-log'           => 'tdAuditLog',
+                'global-transaction-log' => 'globalTransactionLog',
+                'user-activity-audit'    => 'userActivityAudit',
+            ];
+
+            foreach ($reports as $slug => $method) {
+                $name     = str_replace('-', '_', $slug);
+                $ucMethod = ucfirst(lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $slug)))));
+                Route::get("/{$slug}", [ReportController::class, $method])->name($name);
+                Route::get("/{$slug}/export/pdf", [ReportController::class, 'export' . $ucMethod . 'PDF'])->name("{$name}.export.pdf");
+            }
+        });
+
         // Settings
         Route::prefix('settings')->name('settings.')->group(function () {
             Route::get('/', [RPTSettingsController::class, 'index'])->name('index');
@@ -451,17 +610,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/classes/{class}', [RPTSettingsController::class, 'updateClass'])->name('classes.update');
             Route::post('/actual-uses', [RPTSettingsController::class, 'storeActualUse'])->name('actual-uses.store');
             Route::put('/actual-uses/{actualUse}', [RPTSettingsController::class, 'updateActualUse'])->name('actual-uses.update');
-            
+
             // Assessment Levels
             Route::get('/assessment-levels', fn() => redirect()->route('rpt.settings.index'));
             Route::post('/assessment-levels', [RPTSettingsController::class, 'storeAssessmentLevel'])->name('assessment-levels.store');
             Route::delete('/assessment-levels/{level}', [RPTSettingsController::class, 'destroyAssessmentLevel'])->name('assessment-levels.destroy');
-            
+
             // Unit Values
             Route::get('/unit-values', fn() => redirect()->route('rpt.settings.index'));
             Route::post('/unit-values', [RPTSettingsController::class, 'storeUnitValue'])->name('unit-values.store');
             Route::delete('/unit-values/{unitValue}', [RPTSettingsController::class, 'destroyUnitValue'])->name('unit-values.destroy');
-            
+
             Route::post('/bldg-types', [RPTSettingsController::class, 'storeBldgType'])->name('bldg-types.store');
             Route::delete('/bldg-types/{bldgType}', [RPTSettingsController::class, 'destroyBldgType'])->name('bldg-types.destroy');
             Route::post('/revision-years', [RPTSettingsController::class, 'storeRevisionYear'])->name('revision-years.store');
@@ -470,45 +629,74 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/signatories/{id}', [RPTSettingsController::class, 'updateSignatory'])->name('signatories.update');
             Route::post('/global', [RPTSettingsController::class, 'updateGlobalSettings'])->name('global.update');
             Route::post('/barangay-codes', [RPTSettingsController::class, 'updateBarangayCodes'])->name('barangay-codes.update');
-            
-            // Fallbacks for other POST routes to avoid MethodNotAllowed on refresh
+
+            // Fallbacks
             Route::get('/classes', fn() => redirect()->route('rpt.settings.index'));
             Route::get('/actual-uses', fn() => redirect()->route('rpt.settings.index'));
             Route::get('/bldg-types', fn() => redirect()->route('rpt.settings.index'));
             Route::get('/revision-years', fn() => redirect()->route('rpt.settings.index'));
             Route::get('/signatories', fn() => redirect()->route('rpt.settings.index'));
         });
-    });
-});
+
+    }); // end rpt module
+
+    // =========================================================================
+    // 4i. VEHICLE FRANCHISING MODULE  [module gate: vehicle-franchising]
+    // =========================================================================
+    Route::prefix('vf')->name('vf.')->middleware('module:vehicle-franchising')->group(function () {
+
+        // 4i-i. Franchise Index / CRUD
+        Route::get('/', [VehicleFranchisingController::class, 'index'])->name('index');
+        Route::get('/create', [VehicleFranchisingController::class, 'create'])->name('create');
+        Route::post('/', [VehicleFranchisingController::class, 'store'])->name('store');
+        Route::get('/{franchise}', [VehicleFranchisingController::class, 'show'])->name('show');
+        Route::get('/{franchise}/edit', [VehicleFranchisingController::class, 'edit'])->name('edit');
+        Route::put('/{franchise}', [VehicleFranchisingController::class, 'update'])->name('update');
+        Route::delete('/{franchise}', [VehicleFranchisingController::class, 'destroy'])->name('destroy');
+        Route::get('/{franchise}/renew', [VehicleFranchisingController::class, 'renew'])->name('renew');
+        Route::post('/{franchise}/renew', [VehicleFranchisingController::class, 'storeRenewal'])->name('renew.store');
+
+        // 4i-ii. Prints
+        Route::prefix('print')->name('print.')->group(function () {
+            Route::get('/{franchise}/permit', [VfPrintController::class, 'permit'])->name('permit');
+            Route::get('/{franchise}/sticker', [VfPrintController::class, 'sticker'])->name('sticker');
+            Route::get('/{franchise}/orcr', [VfPrintController::class, 'orcr'])->name('orcr');
+        });
+
+        // 4i-iii. Reports
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/', [VfReportController::class, 'index'])->name('index');
+            Route::get('/masterlist', [VfReportController::class, 'masterlist'])->name('masterlist');
+            Route::get('/masterlist/data', [VfReportController::class, 'masterlistData'])->name('masterlist.data');
+            Route::get('/toda-summary', [VfReportController::class, 'todaSummary'])->name('toda-summary');
+            Route::get('/collection', [VfReportController::class, 'collection'])->name('collection');
+        });
+
+    }); // end vehicle-franchising module
+
+}); // end auth + verified middleware group
 
 // =============================================================================
-// CLIENT PORTAL - Uses your ClientAuthenticated middleware
+// 5. CLIENT PORTAL  [guard: client]
 // =============================================================================
 Route::prefix('portal')->name('client.')->group(function () {
 
-    // Guest-only routes (not authenticated as client)
     Route::middleware('guest:client')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login']);
         Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
         Route::post('/register', [AuthController::class, 'register']);
-
-        // Password reset routes (if implemented)
         Route::get('/forgot-password', [AuthController::class, 'showForgotForm'])->name('password.request');
         Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
         Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
         Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
     });
 
-    // Authenticated client routes - USING YOUR CUSTOM MIDDLEWARE
     Route::middleware([\App\Http\Middleware\ClientAuthenticated::class])->group(function () {
-        // Logout
-        Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-        // Dashboard
+        Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-        // Applications
         Route::prefix('applications')->name('applications.')->group(function () {
             Route::get('/', [ApplicationController::class, 'index'])->name('index');
             Route::get('/create', [ApplicationController::class, 'create'])->name('create');
@@ -521,11 +709,9 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::delete('/{application}', [ApplicationController::class, 'destroy'])->name('destroy');
         });
 
-        // Alternative route names for backward compatibility
         Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
         Route::post('/apply', [ApplicationController::class, 'store'])->name('apply.store');
 
-        // Documents
         Route::prefix('applications/{application}/documents')->name('documents.')->group(function () {
             Route::get('/', [DocumentUploadController::class, 'index'])->name('index');
             Route::post('/', [DocumentUploadController::class, 'upload'])->name('upload');
@@ -542,29 +728,48 @@ Route::prefix('portal')->name('client.')->group(function () {
         });
 
         Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+        Route::get('/walkin-payments', [WalkInPaymentsController::class, 'index'])->name('walkin-payments');
+        Route::get('/walkin-payments/{payment}/receipt', [WalkInPaymentsController::class, 'receipt'])->name('walkin-payments.receipt');
+        Route::get('/walkin-payments/{payment}/permit', [WalkInPaymentsController::class, 'permit'])->name('walkin-payments.permit');
 
         // RPT Online Property Registration
         Route::prefix('rpt')->name('rpt.')->group(function () {
             Route::get('/', [RptApplicationController::class, 'index'])->name('index');
             Route::get('/apply', [RptApplicationController::class, 'create'])->name('create');
             Route::post('/apply', [RptApplicationController::class, 'store'])->name('store');
+            Route::post('/link', [RptApplicationController::class, 'linkProperty'])->name('link');
+            Route::delete('/unlink/{link}', [RptApplicationController::class, 'unlinkProperty'])->name('unlink');
             Route::get('/{application}', [RptApplicationController::class, 'show'])->name('show');
         });
 
-        // Client search (reusing BPLS controllers but under client auth)
+        // RPT Online Payments (PayMongo)
+        Route::prefix('rpt-payments')->name('rpt-pay.')->group(function () {
+            Route::get('/', [RptOnlinePaymentController::class, 'search'])->name('search');
+            Route::get('/{td}/soa', [RptOnlinePaymentController::class, 'soa'])->name('soa');
+            Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
+            Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');
+        });
+
+        // Client search
         Route::get('/search-owner', [BusinessEntriesController::class, 'searchOwner'])->name('search-owner');
         Route::get('/search-business', [BusinessEntriesController::class, 'searchBusiness'])->name('search-business');
-    });
-});
+
+    }); // end client authenticated middleware
+
+}); // end client portal
 
 // =============================================================================
-// PUBLIC WEBHOOK (No CSRF protection)
+// 6. PUBLIC WEBHOOKS
 // =============================================================================
 Route::post('/portal/webhook/paymongo', [PaymentController::class, 'webhook'])
     ->name('client.webhook.paymongo')
     ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
 
+Route::post('/portal/webhook/paymongo-rpt', [RptOnlinePaymentController::class, 'webhook'])
+    ->name('client.webhook.paymongo-rpt')
+    ->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class);
+
 // =============================================================================
-// LGU/STAFF AUTH ROUTES (web guard)
+// 7. LGU/STAFF AUTH ROUTES
 // =============================================================================
 require __DIR__ . '/auth.php';

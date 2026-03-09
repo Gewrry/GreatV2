@@ -673,16 +673,37 @@
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 {{-- STATUS CHANGE MODAL --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- STATUS CHANGE MODAL — cleaner button-based UI (REPLACE old one) --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="statusModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
-                    x-transition:enter-end="opacity-100">
+                    x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+                    x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
                     <div class="absolute inset-0 bg-green/40 backdrop-blur-sm" @click="statusModal.open = false">
                     </div>
                     <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-md flex flex-col"
                         x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+
+                        {{-- Header --}}
                         <div class="flex items-center justify-between px-5 py-4 border-b border-lumot/20">
-                            <h3 class="text-sm font-extrabold text-green">Change Status</h3>
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-9 h-9 rounded-xl bg-logo-teal/10 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5 text-logo-teal" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-extrabold text-green">Change Status</h3>
+                                    <p class="text-[11px] text-gray truncate max-w-[200px]"
+                                        x-text="statusModal.entry?.business_name"></p>
+                                </div>
+                            </div>
                             <button @click="statusModal.open = false"
                                 class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -691,53 +712,80 @@
                                 </svg>
                             </button>
                         </div>
-                        <div class="p-5 space-y-4">
-                            <p class="text-xs text-gray">Changing status for: <span class="font-bold text-green"
-                                    x-text="statusModal.entry?.business_name"></span></p>
 
-                            {{-- Current status badge --}}
-                            <div class="flex items-center gap-2">
-                                <span class="text-[10px] text-gray/60 font-bold uppercase">Current:</span>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                        {{-- Body --}}
+                        <div class="p-5 space-y-4">
+
+                            {{-- Current status --}}
+                            <div class="flex items-center gap-3 p-3 bg-bluebody/60 rounded-xl">
+                                <p class="text-xs text-gray/60 font-bold uppercase shrink-0">Current</p>
+                                <span class="text-[11px] font-bold px-3 py-1 rounded-full border"
                                     :class="statusBadgeClass(statusModal.entry?.status)"
                                     x-text="statusLabel(statusModal.entry?.status)">
                                 </span>
                             </div>
 
-                            {{-- Info: completed is automatic --}}
-                            <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                                <svg class="w-4 h-4 text-blue-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                            {{-- Terminal state notice (retired) --}}
+                            <div x-show="statusModal.allowedTransitions().length === 0"
+                                class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                                <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
+                                <div>
+                                    <p class="text-[11px] font-bold text-orange-700">Status cannot be changed</p>
+                                    <p class="text-[10px] text-orange-600 mt-0.5">Retired businesses are permanently
+                                        closed. No further status changes are allowed.</p>
+                                </div>
+                            </div>
+
+                            {{-- "Completed is automatic" info (only when transitions exist) --}}
+                            <div x-show="statusModal.allowedTransitions().length > 0"
+                                class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                <svg class="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 <p class="text-[11px] text-blue-700">
-                                    <strong>"Completed"</strong> status is set automatically by the system after all
-                                    installments are verified as paid.
-                                    It cannot be set manually. To re-assess a completed business, move it back to
-                                    <strong>"For Approval"</strong>.
+                                    <strong>"Completed"</strong> is set automatically once all payments are verified.
+                                    You can move the business back for re-assessment or reject/cancel it below.
                                 </p>
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-bold text-gray mb-1.5">Change To</label>
-                                <select x-model="statusModal.form.status"
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white text-gray">
-
-                                    {{-- Show only valid transitions based on current status --}}
-                                    <template x-for="opt in statusModal.allowedTransitions()" :key="opt.value">
-                                        <option :value="opt.value" x-text="opt.label"></option>
-                                    </template>
-                                </select>
-
-                                {{-- Warning when no transitions available (retired / terminal) --}}
-                                <p x-show="statusModal.allowedTransitions().length === 0"
-                                    class="text-xs text-red-500 font-semibold mt-2">
-                                    ⚠ This status cannot be changed. Retired businesses are terminal.
-                                </p>
+                            {{-- Action buttons — one per allowed transition --}}
+                            <div x-show="statusModal.allowedTransitions().length > 0" class="space-y-2">
+                                <p class="text-xs font-bold text-gray mb-2">Change To</p>
+                                <template x-for="opt in statusModal.allowedTransitions()" :key="opt.value">
+                                    <button type="button" @click="statusModal.form.status = opt.value"
+                                        :class="{
+                                            'border-yellow-400 bg-yellow-50 text-yellow-800 ring-2 ring-yellow-300': statusModal
+                                                .form.status === opt.value && opt.color === 'yellow',
+                                            'border-red-400 bg-red-50 text-red-700 ring-2 ring-red-300': statusModal
+                                                .form.status === opt.value && opt.color === 'red',
+                                            'border-gray-400 bg-gray-50 text-gray-600 ring-2 ring-gray-300': statusModal
+                                                .form.status === opt.value && opt.color === 'gray',
+                                            'border-lumot/30 bg-white text-gray hover:bg-bluebody/60': statusModal.form
+                                                .status !== opt.value,
+                                        }"
+                                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all duration-150 text-left">
+                                        <span class="text-lg font-bold shrink-0 w-6 text-center"
+                                            x-text="opt.icon"></span>
+                                        <div>
+                                            <p class="text-sm font-bold" x-text="opt.label"></p>
+                                            <p class="text-[10px] opacity-70" x-text="opt.description"></p>
+                                        </div>
+                                        <svg x-show="statusModal.form.status === opt.value"
+                                            class="w-4 h-4 ml-auto shrink-0" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </button>
+                                </template>
                             </div>
 
-                            {{-- Late renewal warning --}}
+                            {{-- Late renewal warning (only when for_renewal_payment transition selected) --}}
                             <div x-show="statusModal.form.status === 'for_renewal_payment' && statusModal.isLateRenewal()"
                                 class="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                                 <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none"
@@ -748,13 +796,12 @@
                                 <div>
                                     <p class="text-[11px] font-bold text-amber-700">Late Renewal — Surcharge Applies
                                     </p>
-                                    <p class="text-[10px] text-amber-600 mt-0.5">Today is past January 20. The first
-                                        installment will carry a surcharge penalty applied automatically at the payment
-                                        page.</p>
+                                    <p class="text-[10px] text-amber-600 mt-0.5">Today is past January 20. A 25%
+                                        surcharge will apply at the payment stage.</p>
                                 </div>
                             </div>
 
-                            {{-- Warning when reverting to pending --}}
+                            {{-- Back to pending warning --}}
                             <div x-show="statusModal.form.status === 'pending' && (statusModal.entry?.status === 'for_payment' || statusModal.entry?.status === 'for_renewal_payment')"
                                 class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
                                 <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none"
@@ -765,17 +812,20 @@
                                 <p class="text-[11px] text-orange-700 font-semibold">
                                     Moving back to "For Approval" will clear the approval date and require
                                     re-assessment.
-                                    This will be blocked if any payments have already been recorded.
+                                    <strong>This will be blocked if payments have already been recorded.</strong>
                                 </p>
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-bold text-gray mb-1.5">Remarks <span
-                                        class="font-normal text-gray/50">(optional)</span></label>
-                                <textarea x-model="statusModal.form.remarks" rows="3" placeholder="Add remarks or notes..."
+                            {{-- Remarks --}}
+                            <div x-show="statusModal.form.status">
+                                <label class="block text-xs font-bold text-gray mb-1.5">
+                                    Remarks <span class="font-normal text-gray/50">(optional)</span>
+                                </label>
+                                <textarea x-model="statusModal.form.remarks" rows="2" placeholder="Add a note about this status change..."
                                     class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
                             </div>
 
+                            {{-- Error message --}}
                             <div x-show="statusModal.error"
                                 class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
                                 <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
@@ -786,18 +836,24 @@
                                 <p class="text-[11px] text-red-700 font-semibold" x-text="statusModal.error"></p>
                             </div>
                         </div>
+
+                        {{-- Footer --}}
                         <div class="flex gap-2 px-5 py-4 border-t border-lumot/20">
                             <button @click="statusModal.open = false"
-                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
-                            <button @click="saveStatus()" :disabled="statusModal.saving"
-                                class="flex-1 px-4 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
+                                Cancel
+                            </button>
+                            <button @click="saveStatus()"
+                                :disabled="statusModal.saving || !statusModal.form.status || statusModal.allowedTransitions()
+                                    .length === 0"
+                                class="flex-1 px-4 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                                 <svg x-show="statusModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
                                     viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10"
                                         stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                 </svg>
-                                <span x-text="statusModal.saving ? 'Saving...' : 'Save Status'"></span>
+                                <span x-text="statusModal.saving ? 'Saving...' : 'Confirm Change'"></span>
                             </button>
                         </div>
                     </div>
@@ -1103,7 +1159,7 @@
                 </div>
 
                 {{-- ── Stat Pills ── --}}
-                <div class="grid grid-cols-4 gap-3 mb-5">
+                <div class="grid sm:grid-cols-4 grid-cols-2 gap-3 mb-5">
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-blue/10 flex items-center justify-center shrink-0">
@@ -1264,8 +1320,8 @@
                 <div x-show="!loading && entries.length === 0"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-12 text-center mb-5">
                     <div class="w-16 h-16 bg-lumot/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-gray/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            stroke-width="1.5">
+                        <svg class="w-8 h-8 text-gray/40" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round"
                                 d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -1959,12 +2015,6 @@
     @push('scripts')
         <script>
             function businessList() {
-
-
-
-
-
-
                 return {
                     entries: [],
                     loading: true,
@@ -1994,7 +2044,7 @@
                         schedule: [],
                         totalDue: 0,
                         perInstallment: 0,
-                        permitYear: null, // ← NEW: stores the resolved billing year from server
+                        permitYear: null,
                         form: {
                             business_nature: '',
                             business_scale: '',
@@ -2008,6 +2058,7 @@
                         loading: false,
                         entry: null
                     },
+
                     statusModal: {
                         open: false,
                         saving: false,
@@ -2017,63 +2068,70 @@
                             status: '',
                             remarks: ''
                         },
+
                         labelFor(s) {
                             const map = {
                                 'pending': 'For Approval / Assessment',
-                                'for_payment': 'Approved — Payment Stage',
-                                'for_renewal_payment': 'Approved — Renewal Payment',
+                                'for_payment': 'For Payment (New Registration)',
+                                'for_renewal_payment': 'For Renewal Payment',
+                                'approved': 'For Payment',
                                 'completed': 'Completed — Ready to Renew',
                                 'rejected': 'Rejected',
                                 'cancelled': 'Cancelled',
                                 'retired': 'Retired',
                             };
-                            return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Unknown');
+                            return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—');
                         },
-                        currentLabel() {
-                            return this.labelFor(this.entry?.status);
-                        },
+
                         isLateRenewal() {
                             const now = new Date();
                             const jan20 = new Date(now.getFullYear(), 0, 20);
                             return now > jan20;
                         },
+
                         allowedTransitions() {
                             const s = this.entry?.status;
-                            const ALL_OPTIONS = {
+
+                            const OPTIONS = {
                                 pending: {
                                     value: 'pending',
-                                    label: 'For Approval / Assessment'
-                                },
-                                for_payment: {
-                                    value: 'for_payment',
-                                    label: 'Approved — Payment Stage (New)'
-                                },
-                                for_renewal_payment: {
-                                    value: 'for_renewal_payment',
-                                    label: 'Approved — Renewal Payment'
+                                    label: 'Back to Approval',
+                                    description: 'Return to assessment queue for re-assessment',
+                                    icon: '↩',
+                                    color: 'yellow',
                                 },
                                 rejected: {
                                     value: 'rejected',
-                                    label: 'Rejected'
+                                    label: 'Reject',
+                                    description: 'Mark this application as rejected',
+                                    icon: '✕',
+                                    color: 'red',
                                 },
                                 cancelled: {
                                     value: 'cancelled',
-                                    label: 'Cancelled'
+                                    label: 'Cancel',
+                                    description: 'Cancel this application',
+                                    icon: '⊘',
+                                    color: 'gray',
                                 },
                             };
-                            // Map of current status → which statuses it can transition to
+
+                            // 'approved' is a legacy DB value treated same as 'for_payment'
                             const map = {
-                                pending: ['rejected', 'cancelled'],
-                                for_payment: ['pending', 'rejected', 'cancelled'],
-                                for_renewal_payment: ['pending', 'rejected', 'cancelled'],
-                                completed: ['pending'],
-                                rejected: ['pending'],
-                                cancelled: ['pending'],
-                                retired: [],
+                                'pending': ['rejected', 'cancelled'],
+                                'for_payment': ['pending', 'rejected', 'cancelled'],
+                                'for_renewal_payment': ['pending', 'rejected', 'cancelled'],
+                                'approved': ['pending', 'rejected', 'cancelled'],
+                                'completed': ['pending'],
+                                'rejected': ['pending'],
+                                'cancelled': ['pending'],
+                                'retired': [],
                             };
-                            return (map[s] ?? []).map(v => ALL_OPTIONS[v]).filter(Boolean);
+
+                            return (map[s] ?? []).map(v => OPTIONS[v]).filter(Boolean);
                         },
                     },
+
                     retireModal: {
                         open: false,
                         saving: false,
@@ -2086,6 +2144,7 @@
                             retirement_remarks: ''
                         }
                     },
+
                     certModal: {
                         open: false,
                         entry: null,
@@ -2105,14 +2164,13 @@
                         this.modal.schedule = [];
                         this.modal.totalDue = 0;
                         this.modal.perInstallment = 0;
-                        this.modal.permitYear = null; // ← reset billing year
+                        this.modal.permitYear = null;
                         this.modal.form = {
                             business_nature: entry.business_nature || '',
                             business_scale: entry.business_scale || '',
                             capital_investment: entry.capital_investment || '',
                             mode_of_payment: entry.mode_of_payment || '',
                         };
-                        // Pre-compute if entry already has saved assessment values
                         if (this.modal.form.capital_investment && this.modal.form.mode_of_payment) {
                             this.computeFees();
                         }
@@ -2123,10 +2181,6 @@
                     },
 
                     // ── computeFees() ─────────────────────────────────────────────────
-                    // THE KEY FIX: passes entry_id to the server so it can call
-                    // resolveNextPermitYear() and return the correct billing year
-                    // (e.g. 2027 if 2026 is already fully paid) instead of
-                    // blindly using now()->year which showed overdue 2026 dates.
                     async computeFees() {
                         const gs = parseFloat(this.modal.form.capital_investment) || 0;
                         const mode = this.modal.form.mode_of_payment;
@@ -2155,8 +2209,7 @@
                                     capital_investment: gs,
                                     business_scale: this.modal.form.business_scale || '',
                                     mode_of_payment: mode,
-                                    entry_id: this.modal.entry?.id ??
-                                        null, // ← THE FIX: pass entry id so server can resolve correct year
+                                    entry_id: this.modal.entry?.id ?? null,
                                 }),
                             });
 
@@ -2170,7 +2223,7 @@
                             this.modal.totalDue = data.total_due;
                             this.modal.perInstallment = data.per_installment;
                             this.modal.schedule = data.schedule;
-                            this.modal.permitYear = data.permit_year ?? null; // ← store resolved year for display
+                            this.modal.permitYear = data.permit_year ?? null;
 
                         } catch (err) {
                             this.modal.error = err.message;
@@ -2215,10 +2268,9 @@
                         }
                     },
 
-                    // ── MARK AS PAID ─────────────────────────────────────────────────────
+                    // ── MARK AS PAID ──────────────────────────────────────────────────
                     async markAsPaid(entry) {
                         if (!confirm('Are you sure you want to mark this application as paid?')) return;
-
                         try {
                             const url = `{{ url('bpls/business-list') }}/${entry.id}/mark-paid`;
                             const res = await window.fetch(url, {
@@ -2231,7 +2283,6 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.message || 'Failed to mark as paid.');
-
                             alert('Application marked as paid successfully!');
                             window.location.reload();
                         } catch (err) {
@@ -2262,7 +2313,7 @@
                     // ── STATUS modal ──────────────────────────────────────────────────
                     openStatusModal(entry) {
                         this.statusModal.entry = entry;
-                        this.statusModal.form.status = entry.status || 'pending';
+                        this.statusModal.form.status = '';
                         this.statusModal.form.remarks = '';
                         this.statusModal.error = null;
                         this.statusModal.saving = false;
@@ -2270,6 +2321,10 @@
                     },
 
                     async saveStatus() {
+                        if (!this.statusModal.form.status) {
+                            this.statusModal.error = 'Please select a status to change to.';
+                            return;
+                        }
                         this.statusModal.saving = true;
                         this.statusModal.error = null;
                         try {
@@ -2286,7 +2341,10 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.message || 'Failed to update status.');
                             const idx = this.entries.findIndex(e => e.id === this.statusModal.entry.id);
-                            if (idx !== -1) this.entries[idx] = data.entry;
+                            if (idx !== -1) this.entries[idx] = {
+                                ...this.entries[idx],
+                                ...data.entry
+                            };
                             this.statusModal.open = false;
                         } catch (err) {
                             this.statusModal.error = err.message;
@@ -2361,29 +2419,29 @@
                         const content = document.getElementById('retirement-certificate-print').innerHTML;
                         const win = window.open('', '_blank', 'width=800,height=900');
                         win.document.write(`<!DOCTYPE html><html><head>
-                                                    <title>Business Retirement Certificate</title>
-                                                    <meta charset="UTF-8">
-                                                    <style>
-                                                        *{box-sizing:border-box;margin:0;padding:0}
-                                                        body{font-family:Arial,sans-serif;padding:32px;color:#222}
-                                                        .text-center{text-align:center}.text-right{text-align:right}
-                                                        p,span{display:block;line-height:1.5}
-                                                        .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
-                                                        .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
-                                                        .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
-                                                        .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
-                                                        .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
-                                                        .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
-                                                        .my-3{margin:12px auto}.w-16{width:64px}
-                                                        .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
-                                                        .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
-                                                        .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
-                                                        .font-extrabold{font-weight:900}.font-bold{font-weight:700}
-                                                        .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
-                                                        .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
-                                                        @media print{body{padding:16px}}
-                                                    </style>
-                                                </head><body>${content}</body></html>`);
+                    <title>Business Retirement Certificate</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        *{box-sizing:border-box;margin:0;padding:0}
+                        body{font-family:Arial,sans-serif;padding:32px;color:#222}
+                        .text-center{text-align:center}.text-right{text-align:right}
+                        p,span{display:block;line-height:1.5}
+                        .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
+                        .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
+                        .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
+                        .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
+                        .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
+                        .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
+                        .my-3{margin:12px auto}.w-16{width:64px}
+                        .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
+                        .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
+                        .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
+                        .font-extrabold{font-weight:900}.font-bold{font-weight:700}
+                        .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
+                        .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
+                        @media print{body{padding:16px}}
+                    </style>
+                </head><body>${content}</body></html>`);
                         win.document.close();
                         setTimeout(() => {
                             win.focus();
@@ -2395,8 +2453,9 @@
                     statusLabel(s) {
                         const map = {
                             'pending': 'For Approval',
-                            'for_payment': 'Approved — Payment',
-                            'for_renewal_payment': 'Renewal — Payment',
+                            'for_payment': 'For Payment',
+                            'for_renewal_payment': 'For Renewal Payment',
+                            'approved': 'For Payment', // ← legacy DB value
                             'completed': 'Completed',
                             'rejected': 'Rejected',
                             'cancelled': 'Cancelled',
@@ -2404,30 +2463,40 @@
                         };
                         return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Pending');
                     },
+
                     statusBadgeClass(s) {
-                        if (s === 'for_payment' || s === 'for_renewal_payment')
-                            return 'bg-teal-50 text-logo-teal border-teal-200';
-                        if (s === 'completed')
-                            return 'bg-green-50 text-logo-green border-green-200';
-                        if (s === 'rejected')
-                            return 'bg-red-50 text-red-500 border-red-200';
-                        if (s === 'retired')
-                            return 'bg-orange-50 text-orange-500 border-orange-200';
-                        if (s === 'cancelled')
-                            return 'bg-gray-50 text-gray border-gray-200';
-                        return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                        const map = {
+                            'for_payment': 'bg-teal-50 text-logo-teal border-teal-200',
+                            'for_renewal_payment': 'bg-teal-50 text-logo-teal border-teal-200',
+                            'approved': 'bg-teal-50 text-logo-teal border-teal-200', // ← legacy
+                            'completed': 'bg-green-50 text-logo-green border-green-200',
+                            'rejected': 'bg-red-50 text-red-500 border-red-200',
+                            'retired': 'bg-orange-50 text-orange-500 border-orange-200',
+                            'cancelled': 'bg-gray-50 text-gray-400 border-gray-200',
+                            'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                        };
+                        return map[s] || 'bg-yellow-50 text-yellow-700 border-yellow-200';
                     },
+
                     statusBarClass(s) {
-                        if (s === 'for_payment' || s === 'for_renewal_payment') return 'bg-logo-teal';
-                        if (s === 'completed') return 'bg-logo-green';
-                        if (s === 'rejected') return 'bg-red-400';
-                        if (s === 'retired') return 'bg-orange-400';
-                        if (s === 'cancelled') return 'bg-gray-300';
-                        return 'bg-yellow-400';
+                        const map = {
+                            'for_payment': 'bg-logo-teal',
+                            'for_renewal_payment': 'bg-logo-teal',
+                            'approved': 'bg-logo-teal', // ← legacy
+                            'completed': 'bg-logo-green',
+                            'rejected': 'bg-red-400',
+                            'retired': 'bg-orange-400',
+                            'cancelled': 'bg-gray-300',
+                            'pending': 'bg-yellow-400',
+                        };
+                        return map[s] || 'bg-yellow-400';
                     },
+
+                    // 'approved' is the legacy value for 'for_payment' — show Payment button for both
                     canPay(s) {
-                        return s === 'for_payment' || s === 'for_renewal_payment';
+                        return s === 'for_payment' || s === 'for_renewal_payment' || s === 'approved';
                     },
+
                     canAssess(s) {
                         return s === 'pending' || s === 'completed';
                     },

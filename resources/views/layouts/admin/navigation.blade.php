@@ -13,11 +13,11 @@
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Department Management
                         </a>
-                        <a href="{{route('admin.barangays.index')}}"
+                        <a href="{{ route('admin.barangays.index') }}"
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Barangay Management
                         </a>
-                        <a href="{{route('admin.accounts.index')}}"
+                        <a href="{{ route('admin.accounts.index') }}"
                             class="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                             Account Management
                         </a>

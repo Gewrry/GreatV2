@@ -24,24 +24,35 @@ class TaxDeclarationController extends Controller
     public function index(Request $request)
     {
         $tds = TaxDeclaration::with(['property.barangay', 'revisionYear'])
-            ->when($request->filled('search'), fn($q) => $q->whereHas('property.propertyRegistration', function ($q2) use ($request) {
-                $q2->where('owner_name', 'like', '%' . $request->search . '%')
-                   ->orWhere('arp_no', 'like', '%' . $request->search . '%')
-                   ->orWhere('td_no', 'like', '%' . $request->search . '%');
-            }))
-            ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->search;
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('td_no',     'like', "%{$search}%")
+                        ->orWhere('owner_name', 'like', "%{$search}%")
+                        ->orWhereHas('property', fn($q2) =>
+                            $q2->where('arp_no', 'like', "%{$search}%")
+                        );
+                });
+            })
+            ->when($request->filled('status'),        fn($q) => $q->where('status', $request->status))
             ->when($request->filled('property_type'), fn($q) => $q->where('property_type', $request->property_type))
-            ->when($request->filled('barangay_id'), fn($q) => $q->whereHas('property', fn($q2) => $q2->where('barangay_id', $request->barangay_id)))
-            ->when($request->filled('date_from'), fn($q) => $q->whereDate('created_at', '>=', $request->date_from))
-            ->when($request->filled('date_to'), fn($q) => $q->whereDate('created_at', '<=', $request->date_to))
+            ->when($request->filled('barangay_id'),   fn($q) => $q->whereHas('property', fn($q2) =>
+                $q2->where('barangay_id', $request->barangay_id)
+            ))
             ->latest()
             ->paginate(20)
             ->withQueryString();
 
-        $barangays = \App\Models\Barangay::orderBy('brgy_name')->get();
-        return view('modules.rpt.td.index', compact('tds', 'barangays'));
-    }
+        $barangays      = \App\Models\Barangay::orderBy('brgy_name')->get();
+        $forReviewCount = TaxDeclaration::where('status', 'for_review')->count();
+        $approvedCount  = TaxDeclaration::where('status', 'approved')->count();
+        $forwardedCount = TaxDeclaration::where('status', 'forwarded')->count();
 
+        return view('modules.rpt.td.index', compact(
+            'tds', 'barangays',
+            'forReviewCount', 'approvedCount', 'forwardedCount'
+        ));
+    }
     public function create(Request $request)
     {
         $property = $request->filled('faas_property_id')

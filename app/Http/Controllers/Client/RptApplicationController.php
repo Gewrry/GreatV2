@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\RPT\RptOnlineApplication;
 use App\Models\RPT\RptApplicationDocument;
+use App\Models\RPT\ClientLinkedProperty;
+use App\Models\RPT\TaxDeclaration;
+use App\Models\RPT\RptBilling;
 use App\Models\Barangay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,15 +16,36 @@ use Illuminate\Support\Facades\Storage;
 class RptApplicationController extends Controller
 {
     /**
-     * Display the client's RPT applications.
+     * Display the client's RPT applications and linked properties.
      */
     public function index()
     {
-        $applications = RptOnlineApplication::where('client_id', Auth::guard('client')->id())
+        $clientId = Auth::guard('client')->id();
+
+        $applications = RptOnlineApplication::where('client_id', $clientId)
             ->latest()
             ->paginate(10);
 
-        return view('client.rpt.index', compact('applications'));
+        // Load linked properties with their TD and billing status
+        $linkedProperties = ClientLinkedProperty::where('client_id', $clientId)
+            ->with(['taxDeclaration.property.barangay'])
+            ->latest('linked_at')
+            ->get();
+
+        // Calculate current balance for each linked property
+        foreach ($linkedProperties as $link) {
+            $td = $link->taxDeclaration;
+            if ($td) {
+                $unpaid = RptBilling::where('tax_declaration_id', $td->id)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->sum('balance');
+                $link->current_balance = $unpaid;
+            } else {
+                $link->current_balance = 0;
+            }
+        }
+
+        return view('client.rpt.index', compact('applications', 'linkedProperties'));
     }
 
     /**
@@ -105,5 +129,54 @@ class RptApplicationController extends Controller
         abort_if($application->client_id !== Auth::guard('client')->id(), 403);
         $application->load('barangay', 'documents');
         return view('client.rpt.show', compact('application'));
+    }
+
+    /**
+     * Link a property (Tax Declaration) to the client's account.
+     */
+    public function linkProperty(Request $request)
+    {
+        $request->validate([
+            'td_no' => 'required|string|max:100',
+            'nickname' => 'nullable|string|max:100',
+        ]);
+
+        $td = TaxDeclaration::where('td_no', $request->td_no)
+            ->where('status', 'forwarded')
+            ->first();
+
+        if (!$td) {
+            return back()->with('error', 'No forwarded Tax Declaration found with TD No. "' . $request->td_no . '". Make sure the property has been forwarded by the Assessor\'s Office.');
+        }
+
+        $clientId = Auth::guard('client')->id();
+
+        // Check for duplicate
+        $exists = ClientLinkedProperty::where('client_id', $clientId)
+            ->where('tax_declaration_id', $td->id)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'This property is already linked to your account.');
+        }
+
+        ClientLinkedProperty::create([
+            'client_id'          => $clientId,
+            'tax_declaration_id' => $td->id,
+            'nickname'           => $request->nickname,
+            'linked_at'          => now(),
+        ]);
+
+        return back()->with('success', '✅ Property with TD No. "' . $td->td_no . '" has been linked to your account!');
+    }
+
+    /**
+     * Unlink a property from the client's account.
+     */
+    public function unlinkProperty(ClientLinkedProperty $link)
+    {
+        abort_if($link->client_id !== Auth::guard('client')->id(), 403);
+        $link->delete();
+        return back()->with('success', 'Property has been unlinked from your account.');
     }
 }

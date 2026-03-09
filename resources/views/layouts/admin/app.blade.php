@@ -1,11 +1,11 @@
+{{-- resources/views/layouts/app.blade.php --}}
 @include('partials.header')
 
 <body class="font-main antialiased">
     <div class="flex min-h-screen bg-logo-teal/80">
 
         <!-- Overlay for mobile -->
-        <div id="sidebar-overlay"
-            class="fixed inset-0 bg-black/50 z-20 lg:hidden hidden transition-opacity duration-300">
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-20 lg:hidden hidden transition-opacity duration-300">
         </div>
 
         <!-- Sidebar -->
@@ -28,7 +28,7 @@
                 </div>
             </div>
 
-            <nav class="p-4 space-y-6">
+            <nav class="sm:p-4 px-4 space-y-6 w-full">
 
                 <!-- Dashboard Section -->
                 <div>
@@ -61,17 +61,20 @@
                         'admin' => [
                             'route' => 'admin.dashboard.index',
                             'routeMatch' => 'admin.*',
-                            'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+                            'icon' =>
+                                'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
                         ],
                         'bpls' => [
                             'route' => 'bpls.index',
                             'routeMatch' => 'bpls.*',
-                            'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+                            'icon' =>
+                                'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
                         ],
                         'rpt' => [
                             'route' => 'rpt.index',
                             'routeMatch' => 'rpt.*',
-                            'icon' => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+                            'icon' =>
+                                'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
                         ],
                         'hr' => [
                             'route' => 'hr.employees.index',
@@ -81,42 +84,56 @@
                         'treasury' => [
                             'route' => 'treasury.index',
                             'routeMatch' => 'treasury.*',
-                            'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+                            'icon' =>
+                                'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
                         ],
                         'executive' => [
                             'route' => null,
                             'routeMatch' => null,
-                            'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+                            'icon' =>
+                                'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
                         ],
                         'accounting' => [
                             'route' => null,
                             'routeMatch' => null,
-                            'icon' => 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+                            'icon' =>
+                                'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
                         ],
                         'agriculture' => [
                             'route' => null,
                             'routeMatch' => null,
-                            'icon' => 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+                            'icon' =>
+                                'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
                         ],
                         'ppmp' => [
                             'route' => null,
                             'routeMatch' => null,
-                            'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
+                            'icon' =>
+                                'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
                         ],
                         'budget' => [
                             'route' => null,
                             'routeMatch' => null,
-                            'icon' => 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+                            'icon' =>
+                                'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
                         ],
                         'mswd' => [
                             'route' => null,
                             'routeMatch' => null,
-                            'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+                            'icon' =>
+                                'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+                        ],
+                        // Vehicle Franchising — routes live under prefix('vf')->name('vf.')
+                        'vehicle-franchising' => [
+                            'route' => 'vf.index',
+                            'routeMatch' => 'vf.*',
+                            'icon' =>
+                                'M8 17a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4zM3 4h2l2.5 8h9L19 7H7M3 4H1m2 0l1 3',
                         ],
                     ];
                 @endphp
 
-                @if($accessibleModules->isNotEmpty())
+                @if ($accessibleModules->isNotEmpty())
                     <div>
                         <h3
                             class="text-xs font-bold text-logo-blue uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
@@ -124,38 +141,40 @@
                             Modules
                         </h3>
                         <div class="space-y-1">
-                            @foreach($accessibleModules as $module)
-                                            @php
-                                                $cfg = $moduleConfig[$module->slug] ?? null;
-                                                $routeName = $cfg['route'] ?? ($module->route_name ?: null);
-                                                $routeMatch = $cfg['routeMatch'] ?? null;
-                                                $iconPath = $cfg['icon'] ?? ($module->icon_svg ?: 'M4 6h16M4 12h16M4 18h16');
-                                                $isActive = $routeMatch && request()->routeIs($routeMatch);
-                                                $href = $routeName && \Illuminate\Support\Facades\Route::has($routeName)
-                                                    ? route($routeName)
-                                                    : '#';
-                                            @endphp
-                                            <a href="{{ $href }}" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200
-                                                        {{ $isActive
-                                ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105'
-                                : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
-                                                <svg class="w-5 h-5 mr-3 {{ $isActive ? 'text-white' : 'text-logo-teal group-hover:text-logo-green' }}"
-                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="{{ $iconPath }}" />
-                                                </svg>
-                                                <span>{{ __($module->name) }}</span>
-                                                @if($isActive)
-                                                    <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
-                                                @endif
-                                            </a>
+                            @foreach ($accessibleModules as $module)
+                                @php
+                                    $cfg = $moduleConfig[$module->slug] ?? null;
+                                    $routeName = $cfg['route'] ?? ($module->route_name ?: null);
+                                    $routeMatch = $cfg['routeMatch'] ?? null;
+                                    $iconPath = $cfg['icon'] ?? ($module->icon_svg ?: 'M4 6h16M4 12h16M4 18h16');
+                                    $isActive = $routeMatch && request()->routeIs($routeMatch);
+                                    $href =
+                                        $routeName && \Illuminate\Support\Facades\Route::has($routeName)
+                                            ? route($routeName)
+                                            : '#';
+                                @endphp
+                                <a href="{{ $href }}"
+                                    class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200
+                                        {{ $isActive
+                                            ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105'
+                                            : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                                    <svg class="w-5 h-5 mr-3 {{ $isActive ? 'text-white' : 'text-logo-teal group-hover:text-logo-green' }}"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="{{ $iconPath }}" />
+                                    </svg>
+                                    <span>{{ __($module->name) }}</span>
+                                    @if ($isActive)
+                                        <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                                    @endif
+                                </a>
                             @endforeach
                         </div>
                     </div>
                 @endif
 
                 <!-- Settings Section -->
-                @if(auth()->user()->isSuperAdmin() || auth()->user()->hasModuleAccess('bpls'))
+                @if (auth()->user()->isSuperAdmin() || auth()->user()->hasModuleAccess('bpls'))
                     <div>
                         <h3
                             class="text-xs font-bold text-logo-blue uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
@@ -261,7 +280,8 @@
 
                 @if ($errors->any())
                     <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 10000)"
-                        class="mb-6 p-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm" role="alert">
+                        class="mb-6 p-4 text-red-800 rounded-2xl bg-red-50 border border-red-100 shadow-sm"
+                        role="alert">
                         <div class="flex items-center mb-2">
                             <svg class="flex-shrink-0 w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd"
@@ -304,7 +324,7 @@
     </script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
             const toggleBtn = document.getElementById('mobile-menu-button');
@@ -343,7 +363,7 @@
 
             initSidebar();
 
-            toggleBtn.addEventListener('click', function () {
+            toggleBtn.addEventListener('click', function() {
                 toggleSidebar();
                 if (window.innerWidth >= 1024) {
                     const isNowHidden = sidebar.classList.contains('-translate-x-full');
@@ -354,14 +374,14 @@
             overlay.addEventListener('click', closeSidebar);
 
             sidebar.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', function () {
+                link.addEventListener('click', function() {
                     if (window.innerWidth < 1024) {
                         closeSidebar();
                     }
                 });
             });
 
-            window.addEventListener('resize', function () {
+            window.addEventListener('resize', function() {
                 if (window.innerWidth >= 1024) {
                     overlay.classList.add('hidden');
                 }

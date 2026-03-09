@@ -61,4 +61,21 @@ class BplsOwner extends Model
     {
         return "{$this->last_name}, {$this->first_name}" . ($this->middle_name ? " {$this->middle_name}" : '');
     }
+
+
+
+    public function benefits()
+    {
+        return $this->belongsToMany(BplsBenefit::class, 'bpls_owner_benefits', 'owner_id', 'benefit_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Backward-compat helper: check if owner has a specific benefit by field_key.
+     * Usage: $owner->hasBenefit('is_pwd')
+     */
+    public function hasBenefit(string $fieldKey): bool
+    {
+        return $this->benefits->contains('field_key', $fieldKey);
+    }
 }

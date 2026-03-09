@@ -4,7 +4,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('layouts.bpls.navbar')
 
-            <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4">
+            <div class="min-h-screen  bg-gradient-to-br from-bluebody via-white to-blue/5 p-4">
 
                 <div class="mb-6 flex items-center justify-between">
                     <div>
@@ -184,17 +184,23 @@
                                 </div>
 
                                 {{-- Legal Entity Badges --}}
+                                {{-- Legal Entity / Special Classification – DYNAMIC ──────────────── --}}
                                 <div class="mb-5">
-                                    <label class="block text-xs font-bold text-gray mb-2">Legal Entity / Special
-                                        Classification</label>
+                                    <label class="block text-xs font-bold text-gray mb-2">
+                                        Legal Entity / Special Classification
+                                    </label>
                                     <div class="flex flex-wrap gap-2">
-                                        @foreach ([['name' => 'is_pwd', 'label' => 'PWD'], ['name' => 'is_4ps', 'label' => '4PS'], ['name' => 'is_solo_parent', 'label' => 'Solo Parent'], ['name' => 'is_senior', 'label' => 'Senior Citizen'], ['name' => 'discount_10', 'label' => '10% Fully Vaccinated'], ['name' => 'discount_5', 'label' => '5% 1st Dose']] as $badge)
+                                        @foreach ($benefits as $benefit)
                                             <label class="cursor-pointer">
-                                                <input type="checkbox" name="{{ $badge['name'] }}"
-                                                    id="{{ $badge['name'] }}" class="peer hidden">
+                                                <input type="checkbox" name="benefit_ids[]"
+                                                    id="benefit_{{ $benefit->id }}" value="{{ $benefit->id }}"
+                                                    class="benefit-checkbox peer hidden">
                                                 <span
-                                                    class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal inline-flex items-center px-3 py-1.5 text-xs font-semibold border border-lumot/40 rounded-full text-gray hover:border-logo-teal transition-all duration-150">
-                                                    {{ $badge['label'] }}
+                                                    class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal
+                             inline-flex items-center px-3 py-1.5 text-xs font-semibold border
+                             border-lumot/40 rounded-full text-gray hover:border-logo-teal transition-all duration-150"
+                                                    title="{{ $benefit->description }} ({{ $benefit->discount_percent }}% discount)">
+                                                    {{ $benefit->name }}
                                                 </span>
                                             </label>
                                         @endforeach
@@ -600,6 +606,14 @@
     @push('scripts')
         <script>
             function ownerSearch() {
+
+                document.querySelectorAll('.benefit-checkbox').forEach(cb => cb.checked = false);
+                if (owner.benefit_ids && owner.benefit_ids.length) {
+                    owner.benefit_ids.forEach(id => {
+                        const el = document.getElementById('benefit_' + id);
+                        if (el) el.checked = true;
+                    });
+                }
                 return {
                     query: '',
                     results: [],
