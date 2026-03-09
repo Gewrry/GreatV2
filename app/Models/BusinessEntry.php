@@ -23,12 +23,9 @@ class BusinessEntry extends Model
         'birthdate',
         'mobile_no',
         'email',
-        'is_pwd',
-        'is_4ps',
-        'is_solo_parent',
-        'is_senior',
-        'discount_10',
-        'discount_5',
+        // NOTE: is_pwd, is_4ps, is_solo_parent, is_senior, discount_10, discount_5
+        //       are now stored in bpls_entry_benefits pivot. They are kept here as
+        //       virtual helpers for backward compatibility during migration only.
         'owner_region',
         'owner_province',
         'owner_municipality',
@@ -73,22 +70,17 @@ class BusinessEntry extends Model
         'total_due',
         'approved_at',
 
-        // ── Renewal tracking (NEW) ────────────────────────────────────────
-        // permit_year: the fiscal year the current total_due covers
+        // Renewal tracking
         'permit_year',
-        // renewal_cycle: 0=original, 1=first renewal, 2=second, …
         'renewal_cycle',
-        // renewal_total_due: total assessed for the renewal cycle
-        // (original total_due is NEVER overwritten, kept as historical record)
         'renewal_total_due',
-        // last_renewed_at: timestamp of most recent renewal action
         'last_renewed_at',
 
         // Status & workflow
         'status',
         'remarks',
 
-        // Retirement (from previous migration)
+        // Retirement
         'retirement_reason',
         'retirement_date',
         'retirement_remarks',
@@ -101,12 +93,6 @@ class BusinessEntry extends Model
         'dti_sec_cda_date' => 'date',
         'date_of_application' => 'date',
         'retirement_date' => 'date',
-        'is_pwd' => 'boolean',
-        'is_4ps' => 'boolean',
-        'is_solo_parent' => 'boolean',
-        'is_senior' => 'boolean',
-        'discount_10' => 'boolean',
-        'discount_5' => 'boolean',
         'tax_incentive' => 'boolean',
         'capital_investment' => 'decimal:2',
         'total_due' => 'decimal:2',
@@ -126,10 +112,6 @@ class BusinessEntry extends Model
         return $this->hasMany(BplsPayment::class, 'business_entry_id');
     }
 
-    /**
-     * Only payments for the CURRENT active permit year + renewal cycle.
-     * Use this everywhere in payment logic — never use payments() directly.
-     */
     public function activePayments()
     {
         return $this->hasMany(BplsPayment::class, 'business_entry_id')
@@ -137,13 +119,17 @@ class BusinessEntry extends Model
             ->where('renewal_cycle', $this->renewal_cycle ?? 0);
     }
 
+    /**
+     * Benefits applied at the time this entry was created (snapshot).
+     */
+    public function benefits()
+    {
+        return $this->belongsToMany(BplsBenefit::class, 'bpls_entry_benefits', 'business_entry_id', 'benefit_id')
+            ->withTimestamps();
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    /**
-     * The total due for whatever cycle is currently active.
-     * During original registration: total_due
-     * During a renewal cycle: renewal_total_due (falls back to total_due)
-     */
     public function getActiveTotalDueAttribute(): float
     {
         if (($this->renewal_cycle ?? 0) > 0 && $this->renewal_total_due > 0) {
@@ -152,35 +138,26 @@ class BusinessEntry extends Model
         return (float) ($this->total_due ?? 0);
     }
 
-    /**
-     * True when status is for_renewal — i.e. permit has expired and
-     * needs a new assessment before payment can proceed.
-     */
     public function needsRenewal(): bool
     {
         return $this->status === 'for_renewal';
     }
 
-    /**
-     * True when a renewal has been assessed and is awaiting payment.
-     */
     public function isForRenewalPayment(): bool
     {
         return $this->status === 'for_renewal_payment';
     }
 
-    /**
-     * Check if this business entry came from online registration.
-     * Returns true if there's a related BplsApplication record.
-     */
+    public function hasBenefit(string $fieldKey): bool
+    {
+        return $this->benefits->contains('field_key', $fieldKey);
+    }
+
     public function isOnlineApplication(): bool
     {
         return \App\Models\onlineBPLS\BplsApplication::where('business_entry_id', $this->id)->exists();
     }
 
-    /**
-     * Get the related BplsApplication if this is an online application.
-     */
     public function bplsApplication()
     {
         return $this->hasOne(\App\Models\onlineBPLS\BplsApplication::class, 'business_entry_id');
