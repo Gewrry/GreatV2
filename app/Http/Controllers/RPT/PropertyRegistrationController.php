@@ -79,19 +79,58 @@ class PropertyRegistrationController extends Controller
             'machinery_description' => 'nullable|string|max:1000',
 
             'remarks'        => 'nullable|string|max:1000',
+            
+            // New Attachments validation
+            'documents'           => 'nullable|array',
+            'documents.*.type'    => 'required|string',
+            'documents.*.label'   => 'nullable|string|max:100',
+            'documents.*.file'    => 'required|file|max:10240', // 10MB
         ]);
 
-        $data['created_by'] = Auth::id();
-        $data['status'] = 'registered';
+        $regData = collect($data)->except(['documents'])->toArray();
+        $regData['created_by'] = Auth::id();
+        $regData['status'] = 'registered';
 
-        $registration = RptPropertyRegistration::create($data);
+        $registration = \Illuminate\Support\Facades\DB::transaction(function() use ($regData, $request) {
+            $registration = RptPropertyRegistration::create($regData);
 
-        return redirect()->route('rpt.registration.show', $registration)->with('success', 'Property intake registered successfully.');
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $index => $docFile) {
+                    if (isset($docFile['file'])) {
+                        $file = $docFile['file'];
+                        $path = $file->store('rpt/registrations/' . $registration->id, 'public');
+                        
+                        $registration->attachments()->create([
+                            'type'              => $request->input("documents.$index.type"),
+                            'label'             => $request->input("documents.$index.label"),
+                            'file_path'         => $path,
+                            'original_filename' => $file->getClientOriginalName(),
+                            'uploaded_by'       => Auth::id(),
+                        ]);
+                    }
+                }
+            }
+            return $registration;
+        });
+
+        return redirect()->route('rpt.registration.show', $registration)->with('success', 'Property intake registered successfully with documents.');
     }
 
     public function show(RptPropertyRegistration $registration)
     {
-        $registration->load(['barangay', 'faasProperties', 'creator']);
+        $registration->load(['barangay', 'faasProperties', 'creator', 'attachments.uploadedBy']);
         return view('modules.rpt.registration.show', compact('registration'));
+    }
+
+    public function archive(Request $request, RptPropertyRegistration $registration)
+    {
+        $request->validate(['remarks' => 'required|string|max:500']);
+        
+        $registration->update([
+            'status' => 'archived',
+            'remarks' => $registration->remarks . "\n[Archived by " . Auth::user()->name . " on " . now()->format('M d, Y') . "]: " . $request->remarks
+        ]);
+
+        return redirect()->route('rpt.registration.index')->with('success', 'Registration has been archived.');
     }
 }

@@ -16,7 +16,7 @@ class FaasMachinery extends Model
     const MIN_RESIDUAL_RATE     = 0.20;
 
     protected $fillable = [
-        'faas_property_id', 'rpta_actual_use_id',
+        'faas_property_id', 'faas_land_id', 'rpta_actual_use_id',
         'machine_name', 'brand', 'model_no', 'serial_no', 'year_acquired', 'original_cost',
         'useful_life', 'depreciation_rate', 'depreciation_amount', 'market_value',
         'assessment_level', 'assessed_value',
@@ -39,6 +39,11 @@ class FaasMachinery extends Model
     public function taxDeclaration(): HasOne
     {
         return $this->hasOne(TaxDeclaration::class, 'faas_machinery_id');
+    }
+
+    public function land(): BelongsTo
+    {
+        return $this->belongsTo(FaasLand::class, 'faas_land_id');
     }
 
     public function actualUse(): BelongsTo

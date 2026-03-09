@@ -46,6 +46,14 @@
                              <i class="fas fa-stamp"></i> Bulk Generate TD
                         </button>
                         @endif
+
+                        {{-- Consolidation Trigger (N-to-1) --}}
+                        <div id="bulk-actions-bar" class="hidden flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1 animate-in slide-in-from-right duration-200">
+                            <span class="text-[10px] font-black text-indigo-700 uppercase"><i class="fas fa-layer-group"></i> <span id="selected-count">0</span> Selected</span>
+                            <button type="button" onclick="openConsolidateModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-[10px] font-bold shadow-sm shadow-indigo-200 transition-all uppercase">
+                                Consolidate (Merge)
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -141,9 +149,12 @@
                                     @forelse($properties as $property)
                                         <tr class="hover:bg-gray-50 transition-colors">
                                             <td class="px-4 py-3">
-                                                @if($property->status === 'recommended')
-                                                <input type="checkbox" class="row-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ $property->id }}">
-                                                @endif
+                                                <input type="checkbox" class="row-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                                       value="{{ $property->id }}"
+                                                       data-type="{{ $property->property_type }}"
+                                                       data-status="{{ $property->status }}"
+                                                       data-area="{{ $property->lands->sum('area_sqm') }}"
+                                                       data-address="{{ $property->owner_address }}">
                                             </td>
                                             <td class="px-4 py-3">
                                                 <div class="font-bold text-gray-800">{{ $property->arp_no ?: 'PENDING' }}</div>
@@ -289,4 +300,5 @@
             });
         });
     </script>
+    @include('modules.rpt.faas.modals._consolidate')
 </x-admin.app>

@@ -159,12 +159,9 @@
                          x-transition:leave-end="transform opacity-0 scale-95"
                          style="display: none;">
                         <div class="py-1">
-                            <form action="{{ route('rpt.faas.transfer', $faas) }}" method="POST">
-                                @csrf
-                                <button type="submit" onclick="return confirm('Initiate Transfer of Ownership?')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-blue-50 flex items-center gap-3 transition-colors uppercase tracking-wider">
-                                    <i class="fas fa-exchange-alt text-blue-500 w-4"></i> Transfer of Ownership
-                                </button>
-                            </form>
+                            <button type="button" @click="document.getElementById('transferModal').classList.remove('hidden'); open = false;" class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-blue-50 flex items-center gap-3 transition-colors uppercase tracking-wider">
+                                <i class="fas fa-exchange-alt text-blue-500 w-4"></i> Transfer of Ownership
+                            </button>
                             <form action="{{ route('rpt.faas.reassess', $faas) }}" method="POST">
                                 @csrf
                                 <button type="submit" onclick="return confirm('Initiate Reassessment?')" class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-blue-50 flex items-center gap-3 transition-colors uppercase tracking-wider">
@@ -178,8 +175,9 @@
                                 </button>
                             </form>
                             <div class="border-t border-gray-100 my-1"></div>
-                            <button disabled class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-400 flex items-center gap-3 uppercase tracking-wider cursor-not-allowed">
-                                <i class="fas fa-object-ungroup w-4"></i> Subdivision
+                            <button type="button" @click="document.getElementById('subdivideModal').classList.remove('hidden'); open = false;" 
+                                    class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-emerald-50 flex items-center gap-3 transition-colors uppercase tracking-wider">
+                                <i class="fas fa-object-ungroup text-emerald-500 w-4"></i> Subdivision
                             </button>
                             <button disabled class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-400 flex items-center gap-3 uppercase tracking-wider cursor-not-allowed">
                                 <i class="fas fa-object-group w-4"></i> Consolidation

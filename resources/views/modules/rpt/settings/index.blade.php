@@ -149,10 +149,17 @@
                 </div>
 
                 {{-- Assessment Levels (Rates) --}}
-                <div class="bg-white rounded-xl shadow lg:col-span-2">
+                <div class="bg-white rounded-xl shadow lg:col-span-2" x-data="{ showAddLevel: false }">
                     <div class="px-5 py-3 border-b font-bold text-gray-700 flex items-center justify-between">
                         <span><i class="fas fa-percent text-indigo-500 mr-1"></i> Assessment Levels (Revision Year: {{ $currentRevision?->year ?? 'NONE' }})</span>
-                        <span class="text-[10px] font-normal text-gray-400">Determines the Assessed Value based on Actual Use & Market Value range</span>
+                        <div class="flex items-center gap-2">
+                             @if($currentRevision)
+                                <button @click="showAddLevel = !showAddLevel" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                                    <i class="fas fa-plus-circle"></i> Add Rate
+                                </button>
+                             @endif
+                             <span class="text-[10px] font-normal text-gray-400 hidden sm:block">Determines the Assessed Value based on Actual Use & Market Value range</span>
+                        </div>
                     </div>
                     <div class="p-0 overflow-x-auto">
                         <table class="w-full text-xs text-left">
@@ -184,12 +191,13 @@
                         </table>
                     </div>
                     @if($currentRevision)
-                    <div class="px-5 py-4 border-t bg-gray-50">
+                    <div class="px-5 py-4 border-t bg-indigo-50/50" x-show="showAddLevel" x-transition>
+                        <div class="mb-3 text-xs font-bold text-indigo-600">Register New Assessment Rate</div>
                         <form action="{{ route('rpt.settings.assessment-levels.store') }}" method="POST" class="grid grid-cols-2 lg:grid-cols-5 gap-2">
                             @csrf
                             <input type="hidden" name="revision_year_id" value="{{ $currentRevision->id }}">
-                            <select name="rpta_actual_use_id" required class="border rounded px-2 py-1 text-xs">
-                                <option value="">— Actual Use —</option>
+                            <select name="rpta_actual_use_id" required class="border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                                <option value="">— Select Actual Use —</option>
                                 @foreach($classes as $cls)
                                     <optgroup label="{{ $cls->name }}">
                                         @foreach($cls->actualUses as $au)
@@ -198,10 +206,10 @@
                                     </optgroup>
                                 @endforeach
                             </select>
-                            <input type="number" name="min_value" placeholder="Min Value" step="0.01" value="0.00" required class="border rounded px-2 py-1 text-xs">
-                            <input type="number" name="max_value" placeholder="Max Value (empty for none)" step="0.01" class="border rounded px-2 py-1 text-xs">
-                            <input type="number" name="rate" placeholder="Rate % (e.g. 10)" step="1" min="0" max="100" required class="border rounded px-2 py-1 text-xs">
-                            <button type="submit" class="bg-indigo-600 text-white text-xs px-3 py-1 rounded font-bold">Add Rate</button>
+                            <input type="number" name="min_value" placeholder="Min Value" step="0.01" value="0.00" required class="border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" name="max_value" placeholder="Max Value (empty for none)" step="0.01" class="border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <input type="number" name="rate" placeholder="Rate % (e.g. 10)" step="1" min="0" max="100" required class="border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <button type="submit" class="bg-indigo-600 text-white text-xs px-3 py-1 rounded font-bold shadow-sm hover:bg-indigo-700 transition">Save Rate</button>
                         </form>
                     </div>
                     @endif

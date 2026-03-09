@@ -16,6 +16,7 @@ use App\Models\Barangay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\RPT\StoreFaasRequest;
 use App\Services\RPT\FaasValidationService;
@@ -403,11 +404,20 @@ class FaasPropertyController extends Controller
 
         $data = $request->validate([
             'rpta_actual_use_id' => 'required|exists:rpta_actual_uses,id',
+            'faas_land_id'       => 'nullable|exists:faas_lands,id',
             'machine_name'       => 'required|string|max:255',
             'original_cost'      => 'required|numeric|min:0',
             'year_acquired'      => 'required|integer|min:1900|max:' . date('Y'),
             'useful_life'        => 'required|integer|min:1',
         ]);
+
+        // Same-Property Rule: Ensure the selected land belongs to THIS FAAS
+        if ($request->faas_land_id) {
+            $linkedLand = FaasLand::find($request->faas_land_id);
+            if (!$linkedLand || $linkedLand->faas_property_id !== $faas->id) {
+                return back()->with('error', 'Integrity Error: The selected land lot does not belong to this property record.');
+            }
+        }
 
         // Auto-connect Assessment Level
         $age      = (int)date('Y') - (int)$request->year_acquired;
@@ -436,11 +446,20 @@ class FaasPropertyController extends Controller
 
         $data = $request->validate([
             'rpta_actual_use_id' => 'required|exists:rpta_actual_uses,id',
+            'faas_land_id'       => 'nullable|exists:faas_lands,id',
             'machine_name'       => 'required|string|max:255',
             'original_cost'      => 'required|numeric|min:0',
             'year_acquired'      => 'required|integer|min:1900|max:' . date('Y'),
             'useful_life'        => 'required|integer|min:1',
         ]);
+
+        // Same-Property Rule
+        if ($request->faas_land_id) {
+            $linkedLand = FaasLand::find($request->faas_land_id);
+            if (!$linkedLand || $linkedLand->faas_property_id !== $faas->id) {
+                return back()->with('error', 'Integrity Error: The selected land lot does not belong to this property record.');
+            }
+        }
 
         // Auto-connect Assessment Level
         $age      = (int)date('Y') - (int)$request->year_acquired;
@@ -914,7 +933,7 @@ class FaasPropertyController extends Controller
     public function transferOwnership(Request $request, FaasProperty $faas, FaasValidationService $validator)
     {
         $validator->assertCanGeneralRevise($faas); // Reuses the same "Can be revised" logic
-        $validator->assertHasTaxClearance($faas); // Legal Guard: Ensure amiliar is paid
+        $validator->assertHasTaxClearance($faas); // Legal Guard: Ensure all taxes are paid
 
         $data = $request->validate([
             'new_owner_name'             => 'required|string|max:255',
@@ -1030,6 +1049,7 @@ class FaasPropertyController extends Controller
             'children.*.lot_no'         => 'nullable|string|max:50',
             'children.*.area_sqm'       => 'required|numeric|min:0.0001',
             'children.*.owner_name'     => 'nullable|string|max:255',
+            'children.*.owner_address'  => 'nullable|string|max:500',
             'children.*.property_kind'  => 'nullable|string|in:land,road_lot,open_space,alley',
             'children.*.is_corner_lot'  => 'nullable',
             'children.*.is_exempt'      => 'nullable',
@@ -1074,7 +1094,7 @@ class FaasPropertyController extends Controller
                 $childFaas = FaasProperty::create([
                     'owner_name'               => $childOwner,
                     'owner_tin'                => !empty($childData['owner_name']) ? null : $faas->owner_tin,
-                    'owner_address'            => !empty($childData['owner_name']) ? null : $faas->owner_address,
+                    'owner_address'            => !empty($childData['owner_address']) ? $childData['owner_address'] : $faas->owner_address,
                     'owner_contact'            => !empty($childData['owner_name']) ? null : $faas->owner_contact,
                     'administrator_name'       => $faas->administrator_name,
                     'administrator_address'    => $faas->administrator_address,
@@ -1197,81 +1217,122 @@ class FaasPropertyController extends Controller
     }
 
     /**
-     * Land Consolidation (Merge):
-     * 1. Merges N Mother Land Parcels into 1 Child Parcel.
-     * 2. Validates all parents are approved land records.
-     * 3. Creates 1 new Draft FAAS record linked to all N parents.
+     * Property Consolidation:
+     * 1. Merges N Mother Land Parcels into 1 Successor Parcel.
+     * 2. Mothers are marked as INACTIVE (Consolidated).
+     * 3. A new Successor Draft is created.
      */
     public function consolidate(Request $request, FaasValidationService $validator)
     {
         $request->validate([
-            'ids' => 'required|array|min:2',
-            'ids.*' => 'exists:faas_properties,id',
-            'remarks' => 'nullable|string|max:500',
+            'mother_ids'        => 'required|array|min:2',
+            'mother_ids.*'      => 'exists:faas_properties,id',
+            'owner_name'        => 'required|string|max:255',
+            'owner_address'     => 'required|string|max:500',
+            'effectivity_date'  => 'required|date',
+            'remarks'           => 'nullable|string|max:500',
+            // Documents
+            'doc_plan'          => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'doc_tech_desc'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'doc_deed'          => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
-        $validator->assertCanConsolidate($request->ids);
+        $validator->assertCanConsolidate($request->mother_ids);
 
-        $parents = FaasProperty::with('lands')->whereIn('id', $request->ids)->get();
-        $totalArea = $parents->sum(fn($p) => $p->lands->sum('area_sqm'));
-        $firstParent = $parents->first(); // Use first parent as template for ownership/location
+        $mothers = FaasProperty::whereIn('id', $request->mother_ids)->get();
 
-        $newFaas = DB::transaction(function () use ($parents, $totalArea, $firstParent, $request) {
-            // Create the new consolidated Draft
-            $consolidatedFaas = FaasProperty::create([
-                'owner_name'               => $firstParent->owner_name,
-                'owner_tin'                => $firstParent->owner_tin,
-                'owner_address'            => $firstParent->owner_address,
-                'owner_contact'            => $firstParent->owner_contact,
-                'administrator_name'       => $firstParent->administrator_name,
-                'administrator_address'    => $firstParent->administrator_address,
-                'barangay_id'              => $firstParent->barangay_id,
-                'street'                   => $firstParent->street,
-                'municipality'             => $firstParent->municipality,
-                'province'                 => $firstParent->province,
-                'property_type'            => 'land',
-                'title_no'                 => 'CONSOLIDATED-' . now()->format('YmdHis'), // Placeholder for new title
-                'status'                   => 'draft',
-                'created_by'               => Auth::id(),
-                'remarks'                  => $request->remarks ?: "Consolidation of " . $parents->count() . " parcels. Total Area: {$totalArea} sqm.",
+        // Security: Ensure all mothers are same Barangay (service handles status/type/clearance)
+        if ($mothers->isEmpty()) return back()->with('error', 'No mothers selected.');
+        
+        $barangayId = $mothers->first()->barangay_id;
+        foreach ($mothers as $m) {
+            if ($m->barangay_id !== $barangayId) {
+                return back()->with('error', "Cannot consolidate: Mother properties must be in the same Barangay.");
+            }
+        }
+
+        $totalArea = 0;
+        foreach ($mothers as $m) {
+            $totalArea += $m->lands()->sum('area_sqm');
+        }
+
+        $successor = DB::transaction(function () use ($mothers, $request, $totalArea, $barangayId) {
+            // 1. Create Successor Draft
+            $successor = FaasProperty::create([
+                'property_type'         => 'land',
+                'owner_name'            => $request->owner_name,
+                'owner_address'         => $request->owner_address,
+                'barangay_id'           => $barangayId,
+                'effectivity_date'      => $request->effectivity_date,
+                'revision_type'         => 'consolidation',
+                'status'                => 'draft',
+                'lot_no'                => $request->lot_no,
+                'blk_no'                => $request->blk_no,
+                'survey_no'             => $request->survey_no,
+                'title_no'              => $request->title_no,
+                'remarks'               => $request->remarks,
+                'created_by'            => Auth::id(),
             ]);
 
-            // Create the single merged land parcel
-            $motherLand = $firstParent->lands->first();
-            if ($motherLand) {
-                $newLand = $motherLand->replicate();
-                $newLand->faas_property_id = $consolidatedFaas->id;
-                $newLand->area_sqm = $totalArea;
-                $newLand->save();
+            // 2. Create Land Component for Successor
+            // Inherit from first mother
+            $firstLand = $mothers->first()->lands()->first();
+            $successor->lands()->create([
+                'rpta_actual_use_id' => $firstLand ? $firstLand->rpta_actual_use_id : null,
+                'area_sqm'           => $totalArea,
+                'unit_value'         => $firstLand ? $firstLand->unit_value : 0,
+                'land_type'          => 'land',
+            ]);
 
-                $consolidatedFaas->computeTotalValues();
-            }
+            // 3. Link Predecessors & Mark Mothers Inactive
+            foreach ($mothers as $mother) {
+                $successor->predecessors()->attach($mother->id, ['relation_type' => 'consolidation']);
+                
+                $mother->update([
+                    'status'      => 'inactive',
+                    'inactive_at' => now(),
+                    'remarks'     => "Consolidated into Successor [Draft]"
+                ]);
 
-            // Link all parents in many-to-many predecessors table
-            $consolidatedFaas->predecessors()->attach($parents->pluck('id')->toArray(), ['relation_type' => 'consolidation']);
-
-            foreach ($parents as $parent) {
                 FaasActivityLog::create([
-                    'faas_property_id' => $parent->id,
+                    'faas_property_id' => $mother->id,
                     'user_id'          => Auth::id(),
-                    'action'           => 'consolidation_initiated',
-                    'description'      => "Property merged into new consolidated Record ID: {$consolidatedFaas->id}.",
+                    'action'           => 'consolidated',
+                    'description'      => "Property consolidated into Successor ID: {$successor->id}.",
                 ]);
             }
 
+            // 4. Handle Documents
+            $docs = ['doc_plan' => 'Consolidation Plan', 'doc_tech_desc' => 'Technical Description', 'doc_deed' => 'Consolidation Deed'];
+            foreach ($docs as $field => $label) {
+                if ($request->hasFile($field)) {
+                    $file = $request->file($field);
+                    $path = $file->store('rpt/faas-attachments', 'public');
+                    
+                    FaasAttachment::create([
+                        'faas_property_id' => $successor->id,
+                        'type'             => 'legal_requirement',
+                        'label'            => $label,
+                        'file_path'        => $path,
+                        'original_filename'=> $file->getClientOriginalName(),
+                        'uploaded_by'      => Auth::id(),
+                    ]);
+                }
+            }
+
             FaasActivityLog::create([
-                'faas_property_id' => $consolidatedFaas->id,
+                'faas_property_id' => $successor->id,
                 'user_id'          => Auth::id(),
                 'action'           => 'created_by_consolidation',
-                'description'      => "New consolidated record created from " . $parents->count() . " parent parcels.",
+                'description'      => "New FAAS Draft created by merging " . $mothers->count() . " parcels. Total Area: {$totalArea} SQM.",
             ]);
 
-            return $consolidatedFaas;
+            return $successor;
         });
 
         return redirect()
-            ->route('rpt.faas.show', $newFaas)
-            ->with('success', 'Consolidated Draft created successfully from ' . $parents->count() . ' parcels. Please review the merged area and details.');
+            ->route('rpt.faas.show', $successor)
+            ->with('success', 'Properties consolidated successfully. Successor Draft created.');
     }
 
     /**
@@ -1385,3 +1446,4 @@ class FaasPropertyController extends Controller
         return back()->with('success', "{$count} Tax Declarations generated successfully.");
     }
 }
+

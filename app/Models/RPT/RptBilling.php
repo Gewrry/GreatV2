@@ -67,16 +67,39 @@ class RptBilling extends Model
     }
 
     /**
-     * Calculate prompt payment discount (e.g., 10% if paid before deadline).
+     * Calculate discount (Advance vs Prompt).
      */
     public function calculateDiscount(Carbon $date): float
     {
-        // Standard Discount logic: Usually 10% if paid in Jan or Feb for the whole year or Q1.
-        // Some LGUs have quarterly advance discounts, but 10% early-year is most common.
-        if ($this->quarter == 1 && $this->tax_year == $date->year && $date->month <= 2) {
+        // Eligibility: Must NOT have any prior delinquencies
+        if ($this->hasDelinquencies()) {
+            return 0.0;
+        }
+
+        // 1. Advance Payment (20%): Paid BEFORE the start of the target tax year
+        if ($date->year < $this->tax_year) {
+            return round((float) $this->total_tax_due * 0.20, 2);
+        }
+
+        // 2. Prompt Payment (10%): Paid on or before the exact due date of any quarter in the current year
+        // We ensure that the payment is made no later than the due date.
+        // E.g. Q1 due Mar 31, Q2 due Jun 30, Q3 due Sep 30, Q4 due Dec 31
+        if ($date->lte($this->due_date)) {
              return round((float) $this->total_tax_due * 0.10, 2);
         }
+
         return 0.0;
+    }
+
+    /**
+     * Check if this property has any delinquencies prior to this billing's year.
+     */
+    public function hasDelinquencies(): bool
+    {
+        return $this->taxDeclaration->billings()
+            ->where('tax_year', '<', $this->tax_year)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->exists();
     }
 
     /**

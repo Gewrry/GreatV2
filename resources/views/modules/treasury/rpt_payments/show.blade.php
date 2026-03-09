@@ -6,7 +6,7 @@
 
             @if(session('success'))
                 <div class="bg-green-100 text-green-800 border border-green-300 rounded-lg px-4 py-3 mb-4 mt-4 flex items-center gap-2">
-                    <i class="fas fa-check-circle"></i> {{ session('success') }}
+                    <i class="fas fa-check-circle"></i> {!! session('success') !!}
                 </div>
             @endif
 
@@ -196,12 +196,14 @@
                                         <span class="text-sm font-semibold text-gray-600">Base Tax (Basic + SEF)</span>
                                         <span class="text-sm font-mono text-gray-800">₱ {{ number_format($billing->total_tax_due, 2) }}</span>
                                     </div>
-                                    @if($billing->discount_amount > 0)
+                                    @php
+                                        $discountPct = $billing->total_tax_due > 0 ? round(($billing->discount_amount / $billing->total_tax_due) * 100) : 0;
+                                        $discountLabel = $discountPct >= 20 ? 'Advance Payment Discount (20%)' : ($discountPct >= 10 ? 'Prompt Payment Discount (10%)' : 'Discount Applied');
+                                    @endphp
                                     <div class="flex justify-between items-center">
-                                        <span class="text-sm font-semibold text-green-600">Prompt Payment Discount (-)</span>
-                                        <span class="text-sm font-mono text-green-600">- ₱ {{ number_format($billing->discount_amount, 2) }}</span>
+                                        <span class="text-sm font-semibold {{ $billing->discount_amount > 0 ? 'text-green-600' : 'text-gray-500' }}">{{ $discountLabel }} (-)</span>
+                                        <span class="text-sm font-mono {{ $billing->discount_amount > 0 ? 'text-green-600' : 'text-gray-500' }}">- ₱ {{ number_format($billing->discount_amount, 2) }}</span>
                                     </div>
-                                    @endif
                                     @if($billing->penalty_amount > 0)
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm font-semibold text-rose-500">Penalties / Surcharges (+)</span>
@@ -219,23 +221,39 @@
                                 </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-base font-bold text-gray-800">Outstanding Balance</span>
-                                    <span class="text-xl font-bold font-mono text-rose-600">₱ {{ number_format($billing->balance, 2) }}</span>
+                                    <span class="text-xl font-bold font-mono text-rose-600" id="outstanding_balance_display">₱ {{ number_format($billing->balance, 2) }}</span>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6" x-data="{
+                                balance: {{ $billing->balance }},
+                                tendered: {{ $billing->balance }},
+                                get change() { return Math.max(0, this.tendered - this.balance); }
+                            }">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Amount to Pay (₱) <span class="text-red-500">*</span></label>
-                                    <div class="relative">
+                                    <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">Amount to Pay (Exact) <span class="text-red-500">*</span></label>
+                                    <div class="relative mb-3">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <span class="text-gray-500 font-bold sm:text-lg">₱</span>
+                                            <span class="text-gray-500 font-bold sm:text-sm">₱</span>
                                         </div>
                                         <input type="number" name="amount_paid" required step="0.01" min="1" max="{{ $billing->balance }}"
-                                            value="{{ $billing->balance }}"
-                                            class="w-full pl-10 pr-4 py-3 border-gray-300 rounded-xl shadow-inner text-xl font-mono text-logo-teal font-bold focus:ring-logo-teal focus:border-logo-teal bg-teal-50/30">
-                                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                                            <span class="text-gray-400 text-[10px] uppercase tracking-wider">Exact Amt</span>
+                                            x-model.number="balance" readonly
+                                            class="w-full pl-10 pr-4 py-2 border-gray-300 rounded-lg shadow-inner text-lg font-mono text-logo-teal font-bold bg-teal-50/10 cursor-not-allowed">
+                                    </div>
+                                    
+                                    <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">Cash Tendered by Client <span class="text-blue-500">*</span></label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <span class="text-blue-500 font-bold sm:text-lg">₱</span>
                                         </div>
+                                        <input type="number" required step="0.01" min="{{ $billing->balance }}"
+                                            x-model.number="tendered"
+                                            class="w-full pl-10 pr-4 py-3 border-blue-300 rounded-xl shadow-inner text-xl font-mono text-blue-700 font-bold focus:ring-blue-500 focus:border-blue-500 bg-blue-50/30">
+                                    </div>
+                                    
+                                    <div class="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-center">
+                                        <span class="text-[11px] font-bold text-gray-600 uppercase">Change Due:</span>
+                                        <span class="text-lg font-mono font-bold" :class="change > 0 ? 'text-green-600' : 'text-gray-500'" x-text="'₱ ' + change.toFixed(2)"></span>
                                     </div>
                                 </div>
                                 <div>
@@ -294,7 +312,9 @@
                                         <div class="p-5 hover:bg-slate-50 transition-colors">
                                             <div class="flex justify-between items-start mb-2">
                                                 <div>
-                                                    <p class="text-xs font-bold text-gray-800 uppercase tracking-wide">O.R. {{ $payment->or_no }}</p>
+                                                    <a href="{{ route('treasury.rpt.payments.receipt', $payment) }}" target="_blank" class="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline uppercase tracking-wide flex items-center gap-1">
+                                                        <i class="fas fa-print"></i> O.R. {{ $payment->or_no }}
+                                                    </a>
                                                     <p class="text-[10px] text-gray-500 mt-0.5">{{ $payment->payment_date->format('M d, Y') }} • Year {{ $payment->billing->tax_year }}</p>
                                                 </div>
                                                 <div class="text-right">

@@ -11,16 +11,21 @@
                             {{ strtoupper($registration->status) }}
                         </span>
                     </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <a href="{{ route('rpt.registration.index') }}" class="px-3 py-1.5 border rounded border-gray-300 text-gray-600 hover:bg-gray-50 text-sm">
-                            <i class="fas fa-list mr-1"></i> List
-                        </a>
-                        @if($registration->faasProperties->isEmpty())
+                        @if($registration->status === 'registered')
+                            <button type="button" onclick="openArchiveModal()" class="px-3 py-1.5 border rounded border-red-300 text-red-600 hover:bg-red-50 text-sm">
+                                <i class="fas fa-archive mr-1"></i> Archive
+                            </button>
+                        @endif
+
+                        @if($registration->faasProperties->isEmpty() && $registration->status !== 'archived')
                             <a href="{{ route('rpt.faas.start', [$registration, $registration->property_type]) }}"
                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm shadow-sm font-bold flex items-center gap-2">
                                 Start Appraisal <i class="fas fa-arrow-right"></i>
                             </a>
-
+                        @elseif($registration->status === 'archived')
+                             <span class="px-3 py-1.5 bg-gray-200 text-gray-600 rounded text-sm font-bold">
+                                <i class="fas fa-lock mr-1"></i> ARCHIVED
+                            </span>
                         @else
                             {{-- Already has FAAS records --}}
                             @foreach($registration->faasProperties as $fp)
@@ -78,6 +83,53 @@
                 </div>
             </div>
 
+            </div>
+
+            <div class="bg-white rounded-xl shadow mb-6">
+                <div class="px-6 py-4 border-b flex justify-between items-center">
+                    <h3 class="font-bold text-gray-800">Supporting Documents</h3>
+                    <span class="text-xs text-gray-400">{{ $registration->attachments->count() }} file(s) attached</span>
+                </div>
+                <div class="p-0">
+                    @if($registration->attachments->isEmpty())
+                        <div class="p-8 text-center text-gray-400 italic text-sm">
+                            No documents were uploaded during intake.
+                        </div>
+                    @else
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                            @foreach($registration->attachments as $file)
+                                <div class="border rounded-lg p-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
+                                    <div class="w-10 h-10 rounded bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
+                                        @php
+                                            $ext = pathinfo($file->file_path, PATHINFO_EXTENSION);
+                                            $icon = match($ext) {
+                                                'pdf' => 'fa-file-pdf',
+                                                'jpg', 'jpeg', 'png' => 'fa-file-image',
+                                                default => 'fa-file'
+                                            };
+                                        @endphp
+                                        <i class="fas {{ $icon }} text-xl"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-xs font-bold text-gray-500 uppercase tracking-tight">{{ str_replace('_', ' ', $file->type) }}</div>
+                                        <div class="text-sm font-medium text-gray-800 truncate" title="{{ $file->label ?: $file->original_filename }}">
+                                            {{ $file->label ?: $file->original_filename }}
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <a href="{{ asset('storage/' . $file->file_path) }}" target="_blank" class="text-xs text-blue-600 hover:underline font-bold">
+                                                <i class="fas fa-external-link-alt mr-0.5"></i> Open
+                                            </a>
+                                            <span class="text-[10px] text-gray-400">•</span>
+                                            <span class="text-[10px] text-gray-400">By {{ $file->uploadedBy?->name ?? 'System' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="bg-white rounded-xl shadow">
                 <div class="px-6 py-4 border-b">
                     <h3 class="font-bold text-gray-800">Associated FAAS Records</h3>
@@ -125,7 +177,51 @@
                     @endif
                 </div>
             </div>
+
+            @if($registration->remarks)
+                <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-widest mb-2">History / Remarks</h4>
+                    <div class="text-sm text-yellow-900 whitespace-pre-wrap font-mono leading-relaxed">{{ $registration->remarks }}</div>
+                </div>
+            @endif
             
         </div>
     </div>
+
+    {{-- Archive Modal --}}
+    <div id="archiveModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-gray-800">Archive Registration #{{ $registration->id }}</h3>
+                <button onclick="closeArchiveModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form action="{{ route('rpt.registration.archive', $registration) }}" method="POST" class="p-6">
+                @csrf
+                <p class="text-sm text-gray-600 mb-4">
+                    Archiving will mark this record as inactive. This is typically done for erroneous, duplicate, or cancelled registrations.
+                </p>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Archiving <span class="text-red-500">*</span></label>
+                    <textarea name="remarks" rows="3" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-300" placeholder="Describe why this registration is being archived..."></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeArchiveModal()" class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm">
+                        Confirm Archive
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openArchiveModal() {
+            document.getElementById('archiveModal').classList.remove('hidden');
+            document.getElementById('archiveModal').classList.add('flex');
+        }
+        function closeArchiveModal() {
+            document.getElementById('archiveModal').classList.remove('flex');
+            document.getElementById('archiveModal').classList.add('hidden');
+        }
+    </script>
 </x-admin.app>

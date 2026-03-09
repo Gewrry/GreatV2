@@ -13,6 +13,11 @@ class RptPropertyRegistration extends Model
         return $this->hasMany(FaasProperty::class, 'property_registration_id');
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(RptRegistrationAttachment::class, 'rpt_property_registration_id');
+    }
+
     public function barangay()
     {
         return $this->belongsTo(\App\Models\Barangay::class);

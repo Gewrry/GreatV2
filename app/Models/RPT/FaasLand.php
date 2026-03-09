@@ -13,7 +13,7 @@ class FaasLand extends Model
     protected $fillable = [
         'faas_property_id', 'rpta_actual_use_id', 'survey_no', 'lot_no', 'blk_no', 'area_sqm',
         'unit_value', 'base_market_value', 'market_value_adjustments', 'market_value',
-        'assessment_level', 'assessed_value', 'latitude', 'longitude',
+        'assessment_level', 'assessed_value', 'latitude', 'longitude', 'is_corner_lot', 'land_type',
     ];
 
     protected $casts = [
@@ -26,6 +26,7 @@ class FaasLand extends Model
         'assessed_value'            => 'decimal:2',
         'latitude'                  => 'decimal:8',
         'longitude'                 => 'decimal:8',
+        'is_corner_lot'             => 'boolean',
     ];
 
     public function property(): BelongsTo

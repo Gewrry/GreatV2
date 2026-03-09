@@ -1,10 +1,14 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\HR;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\User;
+use App\Models\Department;
+use App\Models\Office;
 
 class EmployeeInfo extends Model
 {
@@ -40,6 +44,9 @@ class EmployeeInfo extends Model
         'biometrics_no',
         'rate_per_day',
         'department_id',
+        'office_id',
+        'plantilla_position_id',
+        'salary_step',
     ];
 
     /**
@@ -56,17 +63,6 @@ class EmployeeInfo extends Model
     ];
 
     /**
-     * The attributes that should be mutated to dates.
-     *
-     * @var array
-     */
-    protected $dates = [
-        'birthday',
-        'hire_date',
-        'end_of_contract_date',
-    ];
-
-    /**
      * Get the department that the employee belongs to.
      */
     public function user()
@@ -77,6 +73,16 @@ class EmployeeInfo extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function office(): BelongsTo
+    {
+        return $this->belongsTo(Office::class);
+    }
+
+    public function plantillaPosition(): BelongsTo
+    {
+        return $this->belongsTo(PlantillaPosition::class, 'plantilla_position_id');
     }
 
     /**
@@ -125,6 +131,41 @@ class EmployeeInfo extends Model
         return $query->where('department_id', $departmentId);
     }
 
+    public function governmentIds(): HasMany
+    {
+        return $this->hasMany(EmployeeGovernmentId::class, 'employee_id');
+    }
+
+    public function familyBackground(): HasMany
+    {
+        return $this->hasMany(EmployeeFamilyBackground::class, 'employee_id');
+    }
+
+    public function education(): HasMany
+    {
+        return $this->hasMany(EmployeeEducation::class, 'employee_id');
+    }
+
+    public function civilServices(): HasMany
+    {
+        return $this->hasMany(EmployeeCivilService::class, 'employee_id');
+    }
+
+    public function workExperiences(): HasMany
+    {
+        return $this->hasMany(EmployeeWorkExperience::class, 'employee_id');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(EmployeeDocument::class, 'employee_id');
+    }
+
+    public function trainings(): HasMany
+    {
+        return $this->hasMany(EmployeeTraining::class, 'employee_id');
+    }
+
     /**
      * Scope a query to search employees by name or ID.
      *
@@ -141,5 +182,4 @@ class EmployeeInfo extends Model
                 ->orWhere('email', 'like', "%{$search}%");
         });
     }
-    
 }

@@ -8,6 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+
+            // Drop existing tables in reverse order to respect foreign keys
+    Schema::dropIfExists('rpta_signatories');
+    Schema::dropIfExists('rpta_revision_years');
+    Schema::dropIfExists('rpta_bldg_types');
+    Schema::dropIfExists('rpta_unit_values');
+    Schema::dropIfExists('rpta_assessment_levels');
+    Schema::dropIfExists('rpta_actual_uses');
+    Schema::dropIfExists('rpta_classes');
         // ─── SETTINGS TABLES ───────────────────────────────────────────────────
 
         // Property Classifications (Residential, Commercial, Agricultural, etc.)

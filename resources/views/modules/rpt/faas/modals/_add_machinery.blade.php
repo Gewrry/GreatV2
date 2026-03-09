@@ -9,6 +9,15 @@
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Located on Specific Land Lot</label>
+                    <select name="faas_land_id" class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all">
+                        <option value="">— General Property Site —</option>
+                        @foreach($faas->lands as $l)
+                            <option value="{{ $l->id }}">Lot: {{ $l->lot_no ?: '?' }} / Blk: {{ $l->blk_no ?: '?' }} ({{ $l->actualUse?->name }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="md:col-span-2">
                     <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Classification *</label>
                     <select name="rpta_actual_use_id" required class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all">
                         <option value="">— Select Classification —</option>

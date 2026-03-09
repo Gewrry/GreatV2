@@ -11,6 +11,11 @@ use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ModuleController;
 use App\Http\Controllers\Hr\HumanResourcesController;
+use App\Http\Controllers\Hr\PlantillaController;
+use App\Http\Controllers\Hr\RecruitmentController;
+use App\Http\Controllers\HR\AppointmentController;
+use App\Http\Controllers\HR\Employee201Controller;
+use App\Http\Controllers\HR\SalaryGradeController;
 use App\Http\Controllers\BplsController;
 use App\Http\Controllers\BplsPaymentController;
 use App\Http\Controllers\BusinessEntriesController;
@@ -94,6 +99,88 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/', [HumanResourcesController::class, 'store'])->name('store');
     });
 
+    Route::prefix('hr')->name('hr.')->middleware('module:hr')->group(function () {
+        // Plantilla
+        Route::get('/plantilla', [PlantillaController::class, 'index'])->name('plantilla.index');
+        Route::get('/plantilla/create', [PlantillaController::class, 'create'])->name('plantilla.create');
+        Route::post('/plantilla', [PlantillaController::class, 'store'])->name('plantilla.store');
+        Route::get('/plantilla/{plantilla}', [PlantillaController::class, 'show'])->name('plantilla.show');
+        Route::get('/plantilla/{plantilla}/edit', [PlantillaController::class, 'edit'])->name('plantilla.edit');
+        Route::put('/plantilla/{plantilla}', [PlantillaController::class, 'update'])->name('plantilla.update');
+        Route::delete('/plantilla/{plantilla}', [PlantillaController::class, 'destroy'])->name('plantilla.destroy');
+        Route::get('/plantilla/divisions/{officeId}', [PlantillaController::class, 'getDivisions'])->name('plantilla.divisions');
+        Route::get('/plantilla/salary/{salaryGradeId}/{step}', [PlantillaController::class, 'getSalary'])->name('plantilla.salary');
+
+        // Salary Grades
+        Route::resource('salary-grades', SalaryGradeController::class);
+
+        // Recruitment - Vacancies
+        Route::get('/recruitment/vacancies', [RecruitmentController::class, 'vacanciesIndex'])->name('recruitment.vacancies.index');
+        Route::get('/recruitment/vacancies/create', [RecruitmentController::class, 'vacanciesCreate'])->name('recruitment.vacancies.create');
+        Route::post('/recruitment/vacancies', [RecruitmentController::class, 'vacanciesStore'])->name('recruitment.vacancies.store');
+        Route::get('/recruitment/vacancies/{vacancy}', [RecruitmentController::class, 'vacanciesShow'])->name('recruitment.vacancies.show');
+        Route::get('/recruitment/vacancies/{vacancy}/edit', [RecruitmentController::class, 'vacanciesEdit'])->name('recruitment.vacancies.edit');
+        Route::put('/recruitment/vacancies/{vacancy}', [RecruitmentController::class, 'vacanciesUpdate'])->name('recruitment.vacancies.update');
+        Route::delete('/recruitment/vacancies/{vacancy}', [RecruitmentController::class, 'vacanciesDestroy'])->name('recruitment.vacancies.destroy');
+        Route::post('/recruitment/vacancies/{vacancy}/publish', [RecruitmentController::class, 'vacanciesPublish'])->name('recruitment.vacancies.publish');
+        Route::post('/recruitment/vacancies/{vacancy}/close', [RecruitmentController::class, 'vacanciesClose'])->name('recruitment.vacancies.close');
+
+        // Recruitment - Applicants
+        Route::get('/recruitment/applicants', [RecruitmentController::class, 'applicantsIndex'])->name('recruitment.applicants.index');
+        Route::get('/recruitment/applicants/create', [RecruitmentController::class, 'applicantsCreate'])->name('recruitment.applicants.create');
+        Route::post('/recruitment/applicants', [RecruitmentController::class, 'applicantsStore'])->name('recruitment.applicants.store');
+        Route::get('/recruitment/applicants/{applicant}', [RecruitmentController::class, 'applicantsShow'])->name('recruitment.applicants.show');
+        Route::get('/recruitment/applicants/{applicant}/edit', [RecruitmentController::class, 'applicantsEdit'])->name('recruitment.applicants.edit');
+        Route::put('/recruitment/applicants/{applicant}', [RecruitmentController::class, 'applicantsUpdate'])->name('recruitment.applicants.update');
+        Route::delete('/recruitment/applicants/{applicant}', [RecruitmentController::class, 'applicantsDestroy'])->name('recruitment.applicants.destroy');
+        Route::post('/recruitment/applicants/{applicant}/select', [RecruitmentController::class, 'applicantsSelect'])->name('recruitment.applicants.select');
+        Route::post('/recruitment/applicants/{applicant}/reject', [RecruitmentController::class, 'applicantsReject'])->name('recruitment.applicants.reject');
+
+        // Recruitment - Interviews
+        Route::get('/recruitment/interviews', [RecruitmentController::class, 'interviewsIndex'])->name('recruitment.interviews.index');
+        Route::get('/recruitment/interviews/schedule', [RecruitmentController::class, 'interviewsSchedule'])->name('recruitment.interviews.schedule');
+        Route::post('/recruitment/interviews', [RecruitmentController::class, 'interviewsStore'])->name('recruitment.interviews.store');
+        Route::post('/recruitment/interviews/{interview}/result', [RecruitmentController::class, 'interviewsResult'])->name('recruitment.interviews.result');
+        Route::delete('/recruitment/interviews/{interview}', [RecruitmentController::class, 'interviewsDestroy'])->name('recruitment.interviews.destroy');
+
+        // Appointments
+        Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
+        Route::get('/appointments/create', [AppointmentController::class, 'create'])->name('appointments.create');
+        Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+        Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
+        Route::get('/appointments/{appointment}/edit', [AppointmentController::class, 'edit'])->name('appointments.edit');
+        Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
+        Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
+        Route::post('/appointments/{appointment}/terminate', [AppointmentController::class, 'terminate'])->name('appointments.terminate');
+        Route::get('/appointments/plantilla/{id}', [AppointmentController::class, 'getPlantillaDetails'])->name('appointments.plantilla-details');
+        Route::get('/appointments/applicant/{id}', [AppointmentController::class, 'getApplicantDetails'])->name('appointments.applicant-details');
+
+        // Employee 201 Files
+        Route::get('/employees', [Employee201Controller::class, 'index'])->name('employees.index');
+        Route::get('/employees/create', [Employee201Controller::class, 'create'])->name('employees.create');
+        Route::post('/employees', [Employee201Controller::class, 'store'])->name('employees.store');
+        Route::get('/employees/{employee}', [Employee201Controller::class, 'show'])->name('employees.show');
+        Route::get('/employees/{employee}/edit', [Employee201Controller::class, 'edit'])->name('employees.edit');
+        Route::put('/employees/{employee}', [Employee201Controller::class, 'update'])->name('employees.update');
+        Route::delete('/employees/{employee}', [Employee201Controller::class, 'destroy'])->name('employees.destroy');
+        
+        // Employee 201 Details
+        Route::post('/employees/{employee}/government-id', [Employee201Controller::class, 'storeGovernmentId'])->name('employees.government-id.store');
+        Route::delete('/government-id/{governmentId}', [Employee201Controller::class, 'destroyGovernmentId'])->name('employees.government-id.destroy');
+        Route::post('/employees/{employee}/family-background', [Employee201Controller::class, 'storeFamilyBackground'])->name('employees.family-background.store');
+        Route::delete('/family-background/{family}', [Employee201Controller::class, 'destroyFamilyBackground'])->name('employees.family-background.destroy');
+        Route::post('/employees/{employee}/education', [Employee201Controller::class, 'storeEducation'])->name('employees.education.store');
+        Route::delete('/education/{education}', [Employee201Controller::class, 'destroyEducation'])->name('employees.education.destroy');
+        Route::post('/employees/{employee}/civil-service', [Employee201Controller::class, 'storeCivilService'])->name('employees.civil-service.store');
+        Route::delete('/civil-service/{civilService}', [Employee201Controller::class, 'destroyCivilService'])->name('employees.civil-service.destroy');
+        Route::post('/employees/{employee}/work-experience', [Employee201Controller::class, 'storeWorkExperience'])->name('employees.work-experience.store');
+        Route::delete('/work-experience/{workExperience}', [Employee201Controller::class, 'destroyWorkExperience'])->name('employees.work-experience.destroy');
+        Route::post('/employees/{employee}/document', [Employee201Controller::class, 'storeDocument'])->name('employees.document.store');
+        Route::delete('/document/{document}', [Employee201Controller::class, 'destroyDocument'])->name('employees.document.destroy');
+        Route::post('/employees/{employee}/training', [Employee201Controller::class, 'storeTraining'])->name('employees.training.store');
+        Route::delete('/training/{training}', [Employee201Controller::class, 'destroyTraining'])->name('employees.training.destroy');
+    });
+
     // ==================== ADMIN MODULE ====================
     Route::prefix('admin')->name('admin.')->middleware('module:admin')->group(function () {
         Route::get('/dashboard', AdminDashboard::class)->name('dashboard.index');
@@ -153,6 +240,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{billing}/pay', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'storePayment'])->name('store');
             Route::get('/{td}/clearance', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'taxClearance'])->name('clearance');
             Route::get('/{td}/nod', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'generateNOD'])->name('nod');
+            Route::get('/payment/{payment}/receipt', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'receipt'])->name('receipt');
         });
     });
 
@@ -283,6 +371,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/pending', [PropertyRegistrationController::class, 'pending'])->name('pending');
             Route::post('/', [PropertyRegistrationController::class, 'store'])->name('store');
             Route::get('/{registration}', [PropertyRegistrationController::class, 'show'])->name('show');
+            Route::post('/{registration}/archive', [PropertyRegistrationController::class, 'archive'])->name('archive');
         });
 
         // FAAS — Property Assessment
@@ -322,7 +411,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{faas}/reassess', [FaasPropertyController::class, 'reassess'])->name('reassess');
             Route::post('/{faas}/transfer', [FaasPropertyController::class, 'transferOwnership'])->name('transfer');
             Route::post('/{faas}/subdivide', [FaasPropertyController::class, 'subdivide'])->name('subdivide');
-            Route::post('/consolidate', [FaasPropertyController::class, 'consolidate'])->name('consolidate');
+            Route::post('/consolidate', [FaasPropertyController::class, 'consolidate'])->name('consolidate.store');
             Route::post('/{faas}/cancel', [FaasPropertyController::class, 'cancel'])->name('cancel');
         Route::put('/{faas}/master-update', [FaasPropertyController::class, 'masterUpdate'])->name('master-update');
         });

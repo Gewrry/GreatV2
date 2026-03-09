@@ -112,8 +112,10 @@ class FaasValidationService extends ValidationService
         }
 
         // Block if pending TDs exist
-        if ($faas->taxDeclarations()->whereIn('status', ['draft', 'for_review', 'approved'])->exists()) {
-            $this->fail('td', 'Cannot revise: There are pending or approved Tax Declarations that have not yet been forwarded to Treasury.');
+        $pendingTds = $faas->taxDeclarations()->whereIn('status', ['draft', 'for_review', 'approved'])->get();
+        if ($pendingTds->isNotEmpty()) {
+            $tdList = $pendingTds->map(fn($t) => $t->td_no ?: '(Draft)')->implode(', ');
+            $this->fail('td', "Cannot revise: There are pending or un-finalized Tax Declarations ({$tdList}) that have not yet been forwarded to Treasury. Please forward them or cancel/delete drafts before proceeding.");
         }
 
         // Block if children already exist
@@ -143,6 +145,9 @@ class FaasValidationService extends ValidationService
         if ($faas->isInactive()) {
             $this->fail('status', 'Target FAAS is already inactive.');
         }
+
+        // Compliance Guard: Tax Clearance required for Subdivision (Sec. 209 R.A. 7160)
+        $this->assertHasTaxClearance($faas);
     }
 
     /**
@@ -170,6 +175,9 @@ class FaasValidationService extends ValidationService
             if ($faas->isInactive()) {
                 $this->fail('status', "Property {$faas->arp_no} is already inactive.");
             }
+
+            // Compliance Guard: Tax Clearance required for Consolidation
+            $this->assertHasTaxClearance($faas);
         }
     }
 

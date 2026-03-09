@@ -21,6 +21,7 @@ class RptPaymentController extends Controller
     {
         $search = $request->input('search');
         $status = $request->input('status', 'unpaid'); // unpaid, paid, all
+        $barangayId = $request->input('barangay_id');
 
         // We query Tax Declarations that are forwarded to Treasury
         $query = TaxDeclaration::with(['property.barangay', 'billings'])
@@ -37,9 +38,16 @@ class RptPaymentController extends Controller
             });
         }
 
-        $taxDeclarations = $query->latest()->paginate(15)->withQueryString();
+        if ($barangayId) {
+            $query->whereHas('property', function ($p) use ($barangayId) {
+                $p->where('barangay_id', $barangayId);
+            });
+        }
 
-        return view('modules.treasury.rpt_payments.index', compact('taxDeclarations', 'search', 'status'));
+        $taxDeclarations = $query->latest()->paginate(15)->withQueryString();
+        $barangays = \App\Models\Barangay::orderBy('brgy_name')->get();
+
+        return view('modules.treasury.rpt_payments.index', compact('taxDeclarations', 'search', 'status', 'barangays', 'barangayId'));
     }
 
     /**
@@ -129,8 +137,11 @@ class RptPaymentController extends Controller
              return redirect()->back()->withErrors(['amount_paid' => 'Payment exceeds remaining balance.']);
         }
 
-        DB::transaction(function () use ($request, $billing) {
+        $paymentId = null;
+        DB::transaction(function () use ($request, $billing, &$paymentId) {
             $totalDue = (float) $billing->total_amount_due;
+            
+            // We use the exact balance due for the OR and system records, NOT the cash tendered.
             $paidAmt  = (float) $request->amount_paid;
             
             // Calculate proportional split for Basic and SEF portions of the base tax
@@ -142,7 +153,7 @@ class RptPaymentController extends Controller
             $sefTaxPortion   = round((float)$billing->sef_tax * $ratio, 2);
 
             // Create the payment record
-            RptPayment::create([
+            $payment = RptPayment::create([
                 'rpt_billing_id' => $billing->id,
                 'or_no'          => $request->or_no,
                 'amount'         => $paidAmt,
@@ -157,12 +168,25 @@ class RptPaymentController extends Controller
                 'collected_by'   => Auth::id(),
                 'remarks'        => $request->remarks,
             ]);
+            $paymentId = $payment->id;
 
             // Update Billing totals
             $billing->recordPayment($paidAmt);
         });
 
-        return redirect()->back()->with('success', "RPT Payment for Year {$billing->tax_year} successfully recorded under OR No. {$request->or_no}");
+        $receiptUrl = route('treasury.rpt.payments.receipt', $paymentId);
+        $successMsg = "RPT Payment for Year {$billing->tax_year} successfully recorded under OR No. {$request->or_no}. <a href='{$receiptUrl}' target='_blank' class='underline font-bold ml-2'><i class='fas fa-print'></i> Print Form 56 Receipt</a>";
+
+        return redirect()->back()->with('success', $successMsg);
+    }
+
+    /**
+     * Show the printable Official Receipt (Form 56) for a payment.
+     */
+    public function receipt(RptPayment $payment)
+    {
+        $payment->load(['billing.taxDeclaration.property.barangay', 'collectedBy']);
+        return view('modules.treasury.rpt_payments.receipt', compact('payment'));
     }
 
     public function taxClearance(TaxDeclaration $td)

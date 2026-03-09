@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Barangay;
 use App\Models\User;
 
@@ -17,10 +18,11 @@ class FaasProperty extends Model
 
     protected $fillable = [
         'property_registration_id', 'property_type', 'effectivity_date', 'revision_type',
-        'arp_no', 'pin', 'owner_name', 'owner_tin', 'owner_address', 'owner_contact',
+        'arp_no', 'pin', 'section_no', 'parcel_no', 'owner_name', 'owner_tin', 'owner_address', 'owner_contact',
         'administrator_name', 'administrator_address', 'barangay_id', 'street',
         'municipality', 'province', 'status',
-        'previous_faas_property_id',  // ← General Revision: link to old FAAS
+        'title_no', 'lot_no', 'blk_no', 'survey_no',
+        'previous_faas_property_id', 'revision_year_id',
         'created_by', 'approved_by', 'approved_at', 'inactive_at', 'remarks',
     ];
 
@@ -102,6 +104,26 @@ class FaasProperty extends Model
     public function successors(): HasMany
     {
         return $this->hasMany(FaasProperty::class, 'previous_faas_property_id');
+    }
+
+    /**
+     * Many-to-Many Predecessors (Subdivision/Consolidation Audit Trail)
+     */
+    public function predecessors(): BelongsToMany
+    {
+        return $this->belongsToMany(FaasProperty::class, 'faas_predecessors', 'faas_property_id', 'previous_faas_property_id')
+                    ->withPivot('relation_type')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Many-to-Many Successors (Inverse of Predecessors)
+     */
+    public function manyToManySuccessors(): BelongsToMany
+    {
+        return $this->belongsToMany(FaasProperty::class, 'faas_predecessors', 'previous_faas_property_id', 'faas_property_id')
+                    ->withPivot('relation_type')
+                    ->withTimestamps();
     }
 
     public function attachments(): HasMany
@@ -336,5 +358,62 @@ class FaasProperty extends Model
         $formattedSeq = str_pad($seq, (int) $padding, '0', STR_PAD_LEFT);
 
         return "{$district}-{$brgyCode}-{$formattedSeq}";
+    }
+
+    /**
+     * Generate standard Property Index Number (PIN) - 14 Digits.
+     * Format: PROV-MUN-BRGY-SECTION-PARCEL
+     * Example: 045-02-0012-001-05
+     */
+    public function generatePin(): string
+    {
+        if ($this->property_type === 'land' || $this->property_type === 'mixed') {
+            return $this->generateBasePin();
+        }
+
+        if ($this->property_type === 'building') {
+            /** @var FaasBuilding|null $bldg */
+            $bldg = $this->buildings()->first();
+            if ($bldg && $bldg->land && $bldg->land->property) {
+                $basePin = $bldg->land->property->generateBasePin();
+                $seq = FaasBuilding::where('faas_land_id', $bldg->faas_land_id)
+                    ->where('id', '<=', $bldg->id)
+                    ->count();
+                return "{$basePin}-B{$seq}";
+            }
+        }
+
+        if ($this->property_type === 'machinery') {
+            /** @var FaasMachinery|null $mach */
+            $mach = $this->machineries()->first();
+            if ($mach && isset($mach->land) && $mach->land && $mach->land->property) {
+                $basePin = $mach->land->property->generateBasePin();
+                $seq = FaasMachinery::where('faas_land_id', $mach->faas_land_id)
+                    ->where('id', '<=', $mach->id)
+                    ->count();
+                return "{$basePin}-M{$seq}";
+            }
+        }
+
+        return $this->generateBasePin();
+    }
+
+    /**
+     * Internal helper to generate the 14-digit Land PIN base.
+     */
+    public function generateBasePin(): string
+    {
+        $prov = str_pad(RptaSetting::get('province_code', '000'), 3, '0', STR_PAD_LEFT);
+        $mun  = str_pad(RptaSetting::get('municipality_code', '00'), 2, '0', STR_PAD_LEFT);
+        
+        $brgyCode = '0000';
+        if ($this->barangay) {
+            $brgyCode = str_pad($this->barangay->brgy_code ?? '0000', 4, '0', STR_PAD_LEFT);
+        }
+
+        $section = str_pad($this->section_no ?: '000', 3, '0', STR_PAD_LEFT);
+        $parcel  = str_pad($this->parcel_no  ?: '00',  2, '0', STR_PAD_LEFT);
+
+        return "{$prov}-{$mun}-{$brgyCode}-{$section}-{$parcel}";
     }
 }

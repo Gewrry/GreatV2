@@ -30,6 +30,13 @@
                         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by Owner, TD No. or ARP No.…"
                             class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-logo-teal">
                         
+                        <select name="barangay_id" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-logo-teal">
+                            <option value="">All Barangays</option>
+                            @foreach($barangays as $brgy)
+                                <option value="{{ $brgy->id }}" {{ request('barangay_id') == $brgy->id ? 'selected' : '' }}>{{ $brgy->name }}</option>
+                            @endforeach
+                        </select>
+
                         <select name="status" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
                             <option value="unpaid" {{ request('status')=='unpaid'?'selected':'' }}>Unpaid / Pending</option>
                             <option value="paid" {{ request('status')=='paid'?'selected':'' }}>Fully Paid</option>

@@ -3,11 +3,22 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-
+use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     public function up(): void
     {
+            // Disable FK checks so drops work regardless of constraint order
+    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+    Schema::dropIfExists('faas_activity_logs');
+    Schema::dropIfExists('faas_attachments');
+    Schema::dropIfExists('faas_machineries');
+    Schema::dropIfExists('faas_buildings');
+    Schema::dropIfExists('faas_lands');
+    Schema::dropIfExists('faas_properties');
+
+    DB::statement('SET FOREIGN_KEY_CHECKS=1');
         // ─── FAAS PROPERTY REGISTRY ────────────────────────────────────────────
 
         // Core property profile — one record per ARP/PIN
