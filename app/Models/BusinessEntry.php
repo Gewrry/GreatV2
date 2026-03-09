@@ -33,6 +33,7 @@ class BusinessEntry extends Model
         'owner_street',
 
         // Business info
+        'business_id',
         'business_name',
         'trade_name',
         'date_of_application',

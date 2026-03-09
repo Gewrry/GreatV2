@@ -1122,6 +1122,7 @@
                 </div>
 
                 {{-- ── Header ── --}}
+                @include('modules.bpls.partials.edit-business-modal')
                 <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                         <h1 class="text-2xl font-extrabold text-green tracking-tight">Business List</h1>
@@ -1138,6 +1139,15 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                             </svg>
                             New Entry
+                        </a>
+                        <a href="{{ route('bpls.records.index') }}"
+                            class="flex items-center gap-1.5 px-4 py-2 bg-white text-gray text-xs font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Records
                         </a>
                     </div>
                 </div>
@@ -1629,6 +1639,15 @@
                                                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
                                             </button>
+                                            <button type="button" @click="openEditModal(entry)"
+                                                title="Edit Business"
+                                                class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
 
                                         </div>
                                     </div>
@@ -1852,6 +1871,17 @@
                                                     </template>
 
                                                     {{-- Always shown --}}
+
+                                                    <button type="button" @click="openEditModal(entry)"
+                                                        title="Edit Business"
+                                                        class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
+                                                        <svg class="w-3.5 h-3.5" fill="none"
+                                                            viewBox="0 0 24 24" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                    </button>
                                                     <button type="button" x-show="entry.status === 'retired'"
                                                         @click="openCertModal(entry)"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors whitespace-nowrap">
@@ -1965,6 +1995,15 @@
                                                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         <span x-text="entry.status === 'completed' ? 'Re-Assess' : 'Assess'"></span>
+                                    </button>
+
+                                    <button type="button" @click="openEditModal(entry)" title="Edit Business"
+                                        class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
                                     </button>
                                     <button type="button" @click="openViewModal(entry)" title="View Details"
                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
@@ -2116,7 +2155,6 @@
                                 },
                             };
 
-                            // 'approved' is a legacy DB value treated same as 'for_payment'
                             const map = {
                                 'pending': ['rejected', 'cancelled'],
                                 'for_payment': ['pending', 'rejected', 'cancelled'],
@@ -2151,6 +2189,85 @@
                         issuedAt: ''
                     },
 
+                    // ── Edit Modal ────────────────────────────────────────────────────
+                    editModal: {
+                        open: false,
+                        loading: false,
+                        saving: false,
+                        saved: false,
+                        error: null,
+                        successMsg: null,
+                        tab: 'edit',
+                        entry: null,
+                        amendments: [],
+                        originalName: null,
+                        originalTradeName: null,
+                        form: {
+                            business_name: '',
+                            trade_name: '',
+                            tin_no: '',
+                            type_of_business: '',
+                            business_nature: '',
+                            business_scale: '',
+                            business_organization: '',
+                            zone: '',
+                            total_employees: '',
+                            business_mobile: '',
+                            business_email: '',
+                            business_barangay: '',
+                            business_municipality: '',
+                            business_street: '',
+                            last_name: '',
+                            first_name: '',
+                            middle_name: '',
+                            mobile_no: '',
+                            email: '',
+                            reason: '',
+                            reason_custom: '',
+                            remarks: '',
+                        },
+                    },
+
+                    // ── getChangedPreview — call as method in template ────────────────
+                    getChangedPreview() {
+                        if (!this.editModal.entry) return [];
+                        const tracked = {
+                            business_name: 'Business Name',
+                            trade_name: 'Trade Name',
+                            tin_no: 'TIN No.',
+                            type_of_business: 'Business Type',
+                            business_nature: 'Nature',
+                            business_scale: 'Scale',
+                            business_barangay: 'Barangay',
+                            business_municipality: 'Municipality',
+                            business_street: 'Street',
+                            last_name: 'Last Name',
+                            first_name: 'First Name',
+                            middle_name: 'Middle Name',
+                            mobile_no: 'Mobile No.',
+                            email: 'Email',
+                            business_mobile: 'Business Mobile',
+                            business_email: 'Business Email',
+                            business_organization: 'Organization',
+                            zone: 'Zone',
+                            total_employees: 'Total Employees',
+                        };
+                        const diffs = [];
+                        for (const [field, label] of Object.entries(tracked)) {
+                            const oldVal = String(this.editModal.entry[field] ?? '').trim();
+                            const newVal = String(this.editModal.form[field] ?? '').trim();
+                            if (oldVal !== newVal) {
+                                diffs.push({
+                                    field,
+                                    label,
+                                    old: oldVal || null,
+                                    new: newVal || null
+                                });
+                            }
+                        }
+                        return diffs;
+                    },
+
                     // ── ASSESS modal ──────────────────────────────────────────────────
                     openModal(entry) {
                         this.modal.entry = entry;
@@ -2180,7 +2297,6 @@
                         this.modal.open = false;
                     },
 
-                    // ── computeFees() ─────────────────────────────────────────────────
                     async computeFees() {
                         const gs = parseFloat(this.modal.form.capital_investment) || 0;
                         const mode = this.modal.form.mode_of_payment;
@@ -2236,7 +2352,6 @@
                         }
                     },
 
-                    // ── approvePayment() ──────────────────────────────────────────────
                     async approvePayment() {
                         this.modal.saving = true;
                         this.modal.saved = false;
@@ -2268,7 +2383,6 @@
                         }
                     },
 
-                    // ── MARK AS PAID ──────────────────────────────────────────────────
                     async markAsPaid(entry) {
                         if (!confirm('Are you sure you want to mark this application as paid?')) return;
                         try {
@@ -2419,34 +2533,169 @@
                         const content = document.getElementById('retirement-certificate-print').innerHTML;
                         const win = window.open('', '_blank', 'width=800,height=900');
                         win.document.write(`<!DOCTYPE html><html><head>
-                    <title>Business Retirement Certificate</title>
-                    <meta charset="UTF-8">
-                    <style>
-                        *{box-sizing:border-box;margin:0;padding:0}
-                        body{font-family:Arial,sans-serif;padding:32px;color:#222}
-                        .text-center{text-align:center}.text-right{text-align:right}
-                        p,span{display:block;line-height:1.5}
-                        .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
-                        .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
-                        .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
-                        .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
-                        .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
-                        .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
-                        .my-3{margin:12px auto}.w-16{width:64px}
-                        .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
-                        .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
-                        .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
-                        .font-extrabold{font-weight:900}.font-bold{font-weight:700}
-                        .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
-                        .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
-                        @media print{body{padding:16px}}
-                    </style>
-                </head><body>${content}</body></html>`);
+                <title>Business Retirement Certificate</title>
+                <meta charset="UTF-8">
+                <style>
+                    *{box-sizing:border-box;margin:0;padding:0}
+                    body{font-family:Arial,sans-serif;padding:32px;color:#222}
+                    .text-center{text-align:center}.text-right{text-align:right}
+                    p,span{display:block;line-height:1.5}
+                    .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
+                    .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
+                    .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
+                    .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
+                    .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
+                    .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
+                    .my-3{margin:12px auto}.w-16{width:64px}
+                    .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
+                    .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
+                    .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
+                    .font-extrabold{font-weight:900}.font-bold{font-weight:700}
+                    .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
+                    .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
+                    @media print{body{padding:16px}}
+                </style>
+            </head><body>${content}</body></html>`);
                         win.document.close();
                         setTimeout(() => {
                             win.focus();
                             win.print();
                         }, 500);
+                    },
+
+                    // ── EDIT modal ────────────────────────────────────────────────────
+                    async openEditModal(entry) {
+                        this.editModal.open = true;
+                        this.editModal.loading = true;
+                        this.editModal.tab = 'edit';
+                        this.editModal.saved = false;
+                        this.editModal.error = null;
+                        this.editModal.successMsg = null;
+                        this.editModal.entry = entry;
+                        this.editModal.amendments = [];
+
+                        try {
+                            const res = await window.fetch(`{{ url('bpls/business-list') }}/${entry.id}/edit-data`, {
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            const data = await res.json();
+
+                            this.editModal.entry = data.entry;
+                            this.editModal.amendments = data.amendments ?? [];
+                            this.editModal.originalName = data.entry.business_name ?? '';
+                            this.editModal.originalTradeName = data.entry.trade_name ?? '';
+
+                            const e = data.entry;
+                            this.editModal.form = {
+                                business_name: e.business_name ?? '',
+                                trade_name: e.trade_name ?? '',
+                                tin_no: e.tin_no ?? '',
+                                type_of_business: e.type_of_business ?? '',
+                                business_nature: e.business_nature ?? '',
+                                business_scale: e.business_scale ?? '',
+                                business_organization: e.business_organization ?? '',
+                                zone: e.zone ?? '',
+                                total_employees: e.total_employees ?? '',
+                                business_mobile: e.business_mobile ?? '',
+                                business_email: e.business_email ?? '',
+                                business_barangay: e.business_barangay ?? '',
+                                business_municipality: e.business_municipality ?? '',
+                                business_street: e.business_street ?? '',
+                                last_name: e.last_name ?? '',
+                                first_name: e.first_name ?? '',
+                                middle_name: e.middle_name ?? '',
+                                mobile_no: e.mobile_no ?? '',
+                                email: e.email ?? '',
+                                reason: '',
+                                reason_custom: '',
+                                remarks: '',
+                            };
+                        } catch (err) {
+                            this.editModal.error = 'Failed to load business data: ' + err.message;
+                        } finally {
+                            this.editModal.loading = false;
+                        }
+                    },
+
+                    closeEditModal() {
+                        this.editModal.open = false;
+                    },
+
+                    async saveEdit() {
+                        if (this.editModal.saving) return;
+
+                        const reason = this.editModal.form.reason === 'Other' ?
+                            this.editModal.form.reason_custom :
+                            this.editModal.form.reason;
+
+                        if (!reason) {
+                            this.editModal.error = 'Please provide a reason for the amendment.';
+                            return;
+                        }
+
+                        if (this.getChangedPreview().length === 0) {
+                            this.editModal.error = 'No changes detected.';
+                            return;
+                        }
+
+                        this.editModal.saving = true;
+                        this.editModal.saved = false;
+                        this.editModal.error = null;
+
+                        try {
+                            const url = `{{ url('bpls/business-list') }}/${this.editModal.entry.id}/edit`;
+                            const res = await window.fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    ...this.editModal.form,
+                                    reason
+                                }),
+                            });
+
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Failed to save changes.');
+
+                            // Reflect changes instantly in the list
+                            const idx = this.entries.findIndex(e => e.id === this.editModal.entry.id);
+                            if (idx !== -1) this.entries[idx] = {
+                                ...this.entries[idx],
+                                ...data.entry
+                            };
+
+                            this.editModal.entry = data.entry;
+                            this.editModal.originalName = data.entry.business_name;
+                            this.editModal.saved = true;
+                            this.editModal.successMsg = data.message;
+
+                            // Refresh amendment history
+                            try {
+                                const h = await window.fetch(
+                                    `{{ url('bpls/business-list') }}/${data.entry.id}/edit-data`, {
+                                        headers: {
+                                            'Accept': 'application/json'
+                                        }
+                                    });
+                                const hd = await h.json();
+                                this.editModal.amendments = hd.amendments ?? [];
+                            } catch (_) {}
+
+                            // Switch to history tab after 1.2s
+                            setTimeout(() => {
+                                this.editModal.tab = 'history';
+                            }, 1200);
+
+                        } catch (err) {
+                            this.editModal.error = err.message;
+                        } finally {
+                            this.editModal.saving = false;
+                        }
                     },
 
                     // ── STATUS HELPERS ────────────────────────────────────────────────
@@ -2455,7 +2704,7 @@
                             'pending': 'For Approval',
                             'for_payment': 'For Payment',
                             'for_renewal_payment': 'For Renewal Payment',
-                            'approved': 'For Payment', // ← legacy DB value
+                            'approved': 'For Payment',
                             'completed': 'Completed',
                             'rejected': 'Rejected',
                             'cancelled': 'Cancelled',
@@ -2468,7 +2717,7 @@
                         const map = {
                             'for_payment': 'bg-teal-50 text-logo-teal border-teal-200',
                             'for_renewal_payment': 'bg-teal-50 text-logo-teal border-teal-200',
-                            'approved': 'bg-teal-50 text-logo-teal border-teal-200', // ← legacy
+                            'approved': 'bg-teal-50 text-logo-teal border-teal-200',
                             'completed': 'bg-green-50 text-logo-green border-green-200',
                             'rejected': 'bg-red-50 text-red-500 border-red-200',
                             'retired': 'bg-orange-50 text-orange-500 border-orange-200',
@@ -2482,7 +2731,7 @@
                         const map = {
                             'for_payment': 'bg-logo-teal',
                             'for_renewal_payment': 'bg-logo-teal',
-                            'approved': 'bg-logo-teal', // ← legacy
+                            'approved': 'bg-logo-teal',
                             'completed': 'bg-logo-green',
                             'rejected': 'bg-red-400',
                             'retired': 'bg-orange-400',
@@ -2492,7 +2741,6 @@
                         return map[s] || 'bg-yellow-400';
                     },
 
-                    // 'approved' is the legacy value for 'for_payment' — show Payment button for both
                     canPay(s) {
                         return s === 'for_payment' || s === 'for_renewal_payment' || s === 'approved';
                     },

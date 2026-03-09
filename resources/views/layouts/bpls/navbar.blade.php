@@ -12,8 +12,8 @@
     {{-- Top accent line --}}
     <div class="h-1 bg-gradient-to-r from-logo-blue via-logo-teal to-logo-green"></div>
 
-    <div class="bg-blue">
-        <div class="flex items-center h-12 px-4">
+    <div class="bg-blue w-full">
+        <div class="flex items-center h-12 px-4 ">
 
             {{-- Brand --}}
             <a href="{{ route('dashboard') }}" class="flex items-center gap-2 shrink-0 mr-3">

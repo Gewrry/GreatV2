@@ -78,7 +78,7 @@ class BusinessListController extends Controller
                     ->orWhere('last_name', 'like', "%{$q}%")
                     ->orWhere('first_name', 'like', "%{$q}%")
                     ->orWhere('mobile_no', 'like', "%{$q}%")
-                    ->orWhere('business_id_no', 'like', "%{$q}%")   // ← searchable
+                    ->orWhere('business_id', 'like', "%{$q}%")
                     ->orWhere('business_barangay', 'like', "%{$q}%")
                     ->orWhere('business_municipality', 'like', "%{$q}%");
             });
@@ -148,7 +148,7 @@ class BusinessListController extends Controller
         $now = Carbon::now('Asia/Manila');
         $totalDue = (float) $request->total_due;
 
-        // ── 1. New registration or renewal? ───────────────────────────────────
+        // ── 1. New registration or renewal? ──────────────────────────────────
         $currentCycle = (int) ($entry->renewal_cycle ?? 0);
         $isRenewal = $currentCycle > 0;
 
@@ -157,20 +157,14 @@ class BusinessListController extends Controller
         $permitYear = $paymentController->resolveNextPermitYear($entry);
 
         // ── 3. Generate Business ID on FIRST approval only ────────────────────
-        //       Format driven by BplsSetting 'business_id_format'.
-        //       Default: BUS-{YEAR}-{ID}  → e.g. BUS-2026-000029
-        //       Supported placeholders: {year}, {id}, {barangay_code}
-        $businessIdNo = $entry->business_id_no;
+        //       Column name in DB: business_id (varchar 50)
+        //       Supports BOTH formats from settings:
+        //         Curly:   {muni}-{year}-{id}  → e.g. PILA-2026-000029
+        //         Bracket: [MUNI]-[YEAR]-[ID]  → e.g. PILA-2026-000029
+        $businessId = $entry->business_id;
 
-        if (empty($businessIdNo)) {
-            $format = BplsSetting::get('business_id_format', 'BUS-{year}-{id}');
-            $barangayCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_barangay ?? 'BRG'), 0, 4));
-
-            $businessIdNo = str_replace(
-                ['{year}', '{id}', '{barangay_code}'],
-                [$permitYear, str_pad($entry->id, 6, '0', STR_PAD_LEFT), $barangayCode],
-                $format
-            );
+        if (empty($businessId)) {
+            $businessId = self::generateBusinessId($entry, $permitYear);
         }
 
         // ── 4. Build update payload ───────────────────────────────────────────
@@ -180,7 +174,7 @@ class BusinessListController extends Controller
             'capital_investment' => $request->capital_investment,
             'mode_of_payment' => $request->mode_of_payment,
             'permit_year' => $permitYear,
-            'business_id_no' => $businessIdNo,          // ← store it
+            'business_id' => $businessId,   // ← correct column name
             'approved_at' => $now,
             'status' => $isRenewal ? 'for_renewal_payment' : 'for_payment',
         ];
@@ -192,28 +186,30 @@ class BusinessListController extends Controller
         }
 
         $entry->update($updateData);
+        $entry->refresh();
 
-        // ── 5. Auto-create Client account for NEW registrations only ──────────
+        // ── 5. Auto-create or update Client account ───────────────────────────
+        //       Flow (from flowchart):
+        //       Assess → Generate business_id → Save to bpls_business_entries
+        //              → Find/Create Client by email
+        //              → Save walk_in_business_id = entry->id on Client
+        //       This allows the portal to query bpls_payments by walk_in_business_id
+
         Log::info('BPLS approvePayment: client account check', [
             'entry_id' => $entry->id,
             'business_name' => $entry->business_name,
+            'business_id' => $businessId,
             'entry_email' => $entry->email,
             'is_renewal' => $isRenewal,
             'renewal_cycle' => $currentCycle,
-            'business_id_no' => $businessIdNo,
         ]);
 
-        if (!$isRenewal && !empty($entry->email)) {
+        if (!empty($entry->email)) {
 
             $existingClient = Client::where('email', $entry->email)->first();
 
-            Log::info('BPLS approvePayment: existing client check', [
-                'entry_email' => $entry->email,
-                'existing_client' => $existingClient ? $existingClient->id : null,
-            ]);
-
             if (!$existingClient) {
-
+                // ── Create new Client with walk_in_business_id linked ─────────
                 $tempPassword = 'Bpls@' . Str::random(8);
 
                 $newClient = Client::create([
@@ -224,58 +220,62 @@ class BusinessListController extends Controller
                     'mobile_no' => $entry->mobile_no,
                     'password' => Hash::make($tempPassword),
                     'status' => 'active',
-                    'walk_in_business_id' => $entry->id,   // ← link to business entry
+                    'walk_in_business_id' => $entry->id,  // ← key link for portal
                 ]);
 
-                Log::info('BPLS approvePayment: client record created & linked', [
+                Log::info('BPLS approvePayment: new client created', [
                     'client_id' => $newClient->id,
-                    'client_email' => $newClient->email,
                     'walk_in_business_id' => $entry->id,
-                    'business_id_no' => $businessIdNo,
+                    'business_id' => $businessId,
                 ]);
 
-                try {
-                    Mail::to($entry->email)->send(new NewClientCredentialsMail(
-                        clientName: trim($entry->first_name . ' ' . $entry->last_name),
-                        businessName: $entry->business_name,
-                        email: $entry->email,
-                        tempPassword: $tempPassword,
-                        portalUrl: config('app.client_portal_url', url('/portal/login')),
-                    ));
+                // Send credentials email only on first registration
+                if (!$isRenewal) {
+                    try {
+                        Mail::to($entry->email)->send(new NewClientCredentialsMail(
+                            clientName: trim($entry->first_name . ' ' . $entry->last_name),
+                            businessName: $entry->business_name,
+                            email: $entry->email,
+                            tempPassword: $tempPassword,
+                            portalUrl: config('app.client_portal_url', url('/portal/login')),
+                        ));
 
-                    Log::info('BPLS approvePayment: credentials email sent', [
-                        'to' => $entry->email,
-                        'entry' => $entry->id,
-                    ]);
+                        Log::info('BPLS approvePayment: credentials email sent', [
+                            'to' => $entry->email,
+                            'entry' => $entry->id,
+                        ]);
 
-                } catch (\Throwable $e) {
-                    Log::error('BPLS approvePayment: FAILED to send credentials email', [
-                        'entry_id' => $entry->id,
-                        'email' => $entry->email,
-                        'error' => $e->getMessage(),
-                    ]);
+                    } catch (\Throwable $e) {
+                        Log::error('BPLS approvePayment: FAILED to send credentials email', [
+                            'entry_id' => $entry->id,
+                            'email' => $entry->email,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
 
             } else {
-                // Client already exists — just make sure walk_in_business_id is set
+                // ── Client exists — ensure walk_in_business_id is always set ──
+                // This covers cases where client was created via online portal
+                // but now has a walk-in business linked
                 if (is_null($existingClient->walk_in_business_id)) {
                     $existingClient->update(['walk_in_business_id' => $entry->id]);
 
                     Log::info('BPLS approvePayment: linked existing client to business entry', [
                         'client_id' => $existingClient->id,
                         'walk_in_business_id' => $entry->id,
+                        'business_id' => $businessId,
+                    ]);
+                } else {
+                    Log::info('BPLS approvePayment: client already linked, no update needed', [
+                        'client_id' => $existingClient->id,
+                        'existing_walk_in_business_id' => $existingClient->walk_in_business_id,
                     ]);
                 }
-
-                Log::info('BPLS approvePayment: client already exists, skipping creation', [
-                    'email' => $entry->email,
-                    'client_id' => $existingClient->id,
-                ]);
             }
 
         } else {
-            Log::info('BPLS approvePayment: skipped client creation', [
-                'reason' => $isRenewal ? 'is_renewal' : 'no_email_on_entry',
+            Log::info('BPLS approvePayment: skipped client create/link — no email on entry', [
                 'entry_id' => $entry->id,
             ]);
         }
@@ -292,7 +292,7 @@ class BusinessListController extends Controller
             'debug' => [
                 'permit_year' => $permitYear,
                 'is_renewal' => $isRenewal,
-                'business_id_no' => $businessIdNo,
+                'business_id' => $businessId,
             ],
         ]);
     }
@@ -528,18 +528,32 @@ class BusinessListController extends Controller
     }
 
     // =========================================================================
-    // generateBusinessId — public static so permit/receipt blades can call it
-    //                       as a fallback if business_id_no is somehow null
+    // generateBusinessId — public static, used by approvePayment + blade fallback
+    //
+    // Reads 'business_id_format' from BplsSetting.
+    // Supports BOTH placeholder styles used across the system:
+    //   Curly  : {year}  {id}  {muni}  {barangay_code}
+    //   Bracket: [YEAR]  [ID]  [MUNI]  [BARANGAY]
+    //
+    // Example results (format = "PILA-{year}-{id}" or "PILA-[YEAR]-[ID]"):
+    //   → PILA-2026-000029
     // =========================================================================
     public static function generateBusinessId(BusinessEntry $entry, int $permitYear): string
     {
-        $format = BplsSetting::get('business_id_format', 'BUS-{year}-{id}');
-        $barangayCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_barangay ?? 'BRG'), 0, 4));
+        // Read format from settings — default matches your blade's hint format
+        $format = BplsSetting::get('business_id_format', '{muni}-{year}-{id}');
 
-        return str_replace(
-            ['{year}', '{id}', '{barangay_code}'],
-            [$permitYear, str_pad($entry->id, 6, '0', STR_PAD_LEFT), $barangayCode],
+        $muniCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_municipality ?? 'MUN'), 0, 4));
+        $barangayCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_barangay ?? 'BRG'), 0, 4));
+        $paddedId = str_pad($entry->id, 6, '0', STR_PAD_LEFT);
+
+        // Replace BOTH curly {placeholder} and bracket [PLACEHOLDER] styles
+        $format = str_ireplace(
+            ['{year}', '{id}', '{muni}', '{barangay_code}', '[YEAR]', '[ID]', '[MUNI]', '[BARANGAY]'],
+            [$permitYear, $paddedId, $muniCode, $barangayCode, $permitYear, $paddedId, $muniCode, $barangayCode],
             $format
         );
+
+        return $format;
     }
 }

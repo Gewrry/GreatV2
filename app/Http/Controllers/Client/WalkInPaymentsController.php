@@ -8,7 +8,6 @@ use App\Models\BusinessEntry;
 use App\Models\BplsPayment;
 use App\Models\BplsSetting;
 use App\Models\Bpls\FeeRule;
-use App\Http\Controllers\Bpls\DiscountController;
 use Illuminate\Support\Facades\Auth;
 
 class WalkInPaymentsController extends Controller
@@ -20,21 +19,34 @@ class WalkInPaymentsController extends Controller
     {
         $client = Auth::guard('client')->user();
 
-        if (is_null($client->walk_in_business_id)) {
-            return view('client.walkin-payments', [
-                'entry' => null,
-                'payments' => collect(),
-                'client' => $client,
-            ]);
+        // ── Find ALL business entries that belong to this client by email ──────
+        // This supports clients who own multiple businesses, since
+        // walk_in_business_id can only store one ID but email matches all.
+        $entries = BusinessEntry::where('email', $client->email)
+            ->whereNull('deleted_at')
+            ->with([
+                'payments' => fn($q) => $q->orderByDesc('payment_date')->orderByDesc('id'),
+            ])
+            ->get();
+
+        // ── Fallback: also check walk_in_business_id in case email is missing ──
+        if ($entries->isEmpty() && !is_null($client->walk_in_business_id)) {
+            $fallback = BusinessEntry::with([
+                'payments' => fn($q) => $q->orderByDesc('payment_date')->orderByDesc('id'),
+            ])->find($client->walk_in_business_id);
+
+            $entries = $fallback ? collect([$fallback]) : collect();
         }
 
-        $entry = BusinessEntry::with([
-            'payments' => fn($q) => $q->orderByDesc('payment_date')->orderByDesc('id'),
-        ])->find($client->walk_in_business_id);
+        // ── Flatten all payments across all businesses ─────────────────────────
+        $payments = $entries->flatMap(fn($e) => $e->payments)
+            ->sortByDesc('payment_date')
+            ->values();
 
-        $payments = $entry ? $entry->payments : collect();
+        // ── For backward compat: single entry view (first active business) ─────
+        $entry = $entries->firstWhere('status', '!=', 'retired') ?? $entries->first();
 
-        return view('client.walkin-payments', compact('client', 'entry', 'payments'));
+        return view('client.walkin-payments', compact('client', 'entries', 'entry', 'payments'));
     }
 
     // =========================================================================
@@ -44,18 +56,15 @@ class WalkInPaymentsController extends Controller
     {
         $client = Auth::guard('client')->user();
 
-        abort_unless(
-            $client->walk_in_business_id &&
-            $payment->business_entry_id == $client->walk_in_business_id,
-            403
-        );
+        // ── Authorize: payment must belong to one of the client's businesses ───
+        $this->authorizePayment($client, $payment);
 
         $entry = BusinessEntry::find($payment->business_entry_id);
 
         // ── Receipt settings ──────────────────────────────────────────────────
         $receiptSettings = BplsSetting::all()->keyBy('key');
 
-        // ── Compute fee rows from active FeeRules ────────────────────────────
+        // ── Compute fee rows from active FeeRules ─────────────────────────────
         $fees = $this->computeFees($entry, $payment);
 
         // ── Discount breakdown ────────────────────────────────────────────────
@@ -83,11 +92,8 @@ class WalkInPaymentsController extends Controller
     {
         $client = Auth::guard('client')->user();
 
-        abort_unless(
-            $client->walk_in_business_id &&
-            $payment->business_entry_id == $client->walk_in_business_id,
-            403
-        );
+        // ── Authorize: payment must belong to one of the client's businesses ───
+        $this->authorizePayment($client, $payment);
 
         $entry = BusinessEntry::find($payment->business_entry_id);
 
@@ -97,11 +103,16 @@ class WalkInPaymentsController extends Controller
         $mayorName = $settings['mayor_name']->value ?? 'MUNICIPAL MAYOR';
         $treasurerName = $settings['treasurer_name']->value ?? 'MUNICIPAL TREASURER';
 
-        // ── Permit number format (e.g. "2026-000023") ─────────────────────────
+        // ── Permit number format — supports both {year}/{id} and [YEAR]/[ID] ──
         $format = $settings['permit_number_format']->value ?? '{year}-{id}';
-        $permitNumber = str_replace(
-            ['{year}', '{id}'],
-            [$entry->permit_year ?? now()->year, str_pad($entry->id, 6, '0', STR_PAD_LEFT)],
+        $paddedId = str_pad($entry->id, 6, '0', STR_PAD_LEFT);
+        $permitYear = $entry->permit_year ?? now()->year;
+        $muniCode = strtoupper(substr($entry->business_municipality ?? 'BPLS', 0, 4));
+        $brgyCode = strtoupper(substr($entry->business_barangay ?? 'BRG', 0, 3));
+
+        $permitNumber = str_ireplace(
+            ['{year}', '{id}', '{muni}', '{barangay_code}', '[YEAR]', '[ID]', '[MUNI]', '[BARANGAY]'],
+            [$permitYear, $paddedId, $muniCode, $brgyCode, $permitYear, $paddedId, $muniCode, $brgyCode],
             $format
         );
 
@@ -121,17 +132,37 @@ class WalkInPaymentsController extends Controller
     }
 
     // =========================================================================
-    // PRIVATE HELPERS
+    // PRIVATE: AUTHORIZATION HELPER
+    // =========================================================================
+
+    /**
+     * Abort 403 unless the payment belongs to one of the client's businesses.
+     *
+     * Checks:
+     *   1. Payment's business_entry belongs to an entry with the client's email
+     *   2. OR payment's business_entry_id matches client's walk_in_business_id (fallback)
+     */
+    private function authorizePayment($client, BplsPayment $payment): void
+    {
+        // Primary check: email match across all owned businesses
+        $ownsViaEmail = BusinessEntry::where('email', $client->email)
+            ->where('id', $payment->business_entry_id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        // Fallback check: legacy walk_in_business_id
+        $ownsViaId = !is_null($client->walk_in_business_id)
+            && $payment->business_entry_id == $client->walk_in_business_id;
+
+        abort_unless($ownsViaEmail || $ownsViaId, 403, 'You do not have access to this payment.');
+    }
+
+    // =========================================================================
+    // PRIVATE: FEE COMPUTATION
     // =========================================================================
 
     /**
      * Compute fee rows using the SAME FeeRule engine the admin side uses.
-     *
-     * Mirrors FeeRuleController::compute():
-     *   - Load only ACTIVE fee rules, in order
-     *   - Call $rule->compute($grossSales, $scaleCode) per rule
-     *   - Multiply each amount by the quarter ratio (how many quarters this
-     *     payment covers vs the full year mode)
      *
      * @return array<int, array{name: string, code: string, amount: float}>
      */
@@ -158,7 +189,7 @@ class WalkInPaymentsController extends Controller
         return $rules
             ->map(fn(FeeRule $rule) => [
                 'name' => $rule->name,
-                'code' => $rule->code ?? '631-001',   // fall back if no code column
+                'code' => $rule->code ?? '631-001',
                 'amount' => round($rule->compute($grossSales, $scaleCode) * $ratio, 2),
             ])
             ->filter(fn($f) => $f['amount'] > 0)
@@ -166,14 +197,12 @@ class WalkInPaymentsController extends Controller
             ->toArray();
     }
 
+    // =========================================================================
+    // PRIVATE: DISCOUNT SPLIT
+    // =========================================================================
+
     /**
      * Split $payment->discount into advance vs beneficiary portions.
-     *
-     * Rule: if the entry has ANY beneficiary flag (PWD / senior / solo parent /
-     * 4Ps) AND there is a stored discount on the payment, treat the full
-     * discount as beneficiary. Otherwise treat it as advance payment discount.
-     *
-     * This mirrors what BplsPaymentController stores when processing payment.
      *
      * @return array{float, float, string}  [advanceDiscount, beneficiaryDiscount, beneficiaryLabel]
      */
@@ -185,29 +214,55 @@ class WalkInPaymentsController extends Controller
             return [0.0, 0.0, ''];
         }
 
-        // Determine beneficiary label (priority order matches BplsPaymentController)
+        // ── Detect beneficiary label from remarks first (most reliable) ───────
+        $remarks = strtolower($payment->remarks ?? '');
         $label = '';
-        if ($entry->is_pwd)
-            $label = 'PWD';
-        elseif ($entry->is_senior)
-            $label = 'Senior Citizen';
-        elseif ($entry->is_solo_parent)
-            $label = 'Solo Parent';
-        elseif ($entry->is_4ps)
-            $label = '4Ps';
 
+        if (str_contains($remarks, 'pwd'))
+            $label = 'PWD';
+        elseif (str_contains($remarks, 'senior'))
+            $label = 'Senior Citizen';
+        elseif (str_contains($remarks, 'solo parent'))
+            $label = 'Solo Parent';
+        elseif (str_contains($remarks, '4ps') || str_contains($remarks, 'pantawid'))
+            $label = '4Ps';
+        elseif (str_contains($remarks, 'benefit') || str_contains($remarks, 'discount applied')) {
+            if ($entry->is_pwd)
+                $label = 'PWD';
+            elseif ($entry->is_senior)
+                $label = 'Senior Citizen';
+            elseif ($entry->is_solo_parent)
+                $label = 'Solo Parent';
+            elseif ($entry->is_4ps)
+                $label = '4Ps';
+            else
+                $label = 'Beneficiary';
+        }
+
+        // ── If no beneficiary hint in remarks, check entry flags directly ─────
+        if (empty($label)) {
+            if ($entry->is_pwd)
+                $label = 'PWD';
+            elseif ($entry->is_senior)
+                $label = 'Senior Citizen';
+            elseif ($entry->is_solo_parent)
+                $label = 'Solo Parent';
+            elseif ($entry->is_4ps)
+                $label = '4Ps';
+        }
+
+        // ── If we found a beneficiary label → beneficiary discount ───────────
         if (!empty($label)) {
             return [0.0, $total, $label];
         }
 
-        // No beneficiary flag → it's an advance payment discount
+        // ── Otherwise treat as advance discount ──────────────────────────────
         return [$total, 0.0, ''];
     }
+    // =========================================================================
+    // PRIVATE: DISCOUNT RATE
+    // =========================================================================
 
-    /**
-     * Get the applicable advance discount rate for this entry's payment mode.
-     * Reads from BplsSetting — same keys used by DiscountController.
-     */
     private function getDiscountRate(BusinessEntry $entry): float
     {
         return match ($entry->mode_of_payment) {
@@ -217,10 +272,10 @@ class WalkInPaymentsController extends Controller
         };
     }
 
-    /**
-     * Convert business_scale string to numeric code.
-     * Identical to FeeRuleController::scaleCode().
-     */
+    // =========================================================================
+    // PRIVATE: SCALE CODE
+    // =========================================================================
+
     private function scaleCode(string $scale): int
     {
         $map = [

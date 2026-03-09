@@ -85,8 +85,8 @@ use App\Http\Controllers\Bpls\BplsSettingsController;
 use App\Http\Controllers\Bpls\MasterlistController;
 use App\Http\Controllers\FormCustomizationController;
 use App\Http\Controllers\BplsBenefitController;
-
-
+use App\Http\Controllers\Bpls\BusinessRecordsController;
+use App\Http\Controllers\BusinessEntryEditController;
 
 // BPLS Report Controllers
 use App\Http\Controllers\Bpls\ComplianceQuarterController;
@@ -117,6 +117,10 @@ use App\Http\Controllers\Client\DashboardController;
 use App\Http\Controllers\Client\DocumentUploadController;
 use App\Http\Controllers\Client\PaymentController;
 use App\Http\Controllers\Client\WalkInPaymentsController;
+
+
+
+
 
 // =============================================================================
 // 2. STANDALONE ROUTES (outside any prefix/middleware group)
@@ -293,6 +297,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
             Route::post('/{entry}/retire', [BusinessListController::class, 'retire'])->name('retire');
             Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
+
+            // 👇 ADD THESE — edit routes
+            Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])->name('edit-data');
+            Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])->name('edit');
+            Route::get('/{entry}/amendments', [BusinessEntryEditController::class, 'history'])->name('amendments');
         });
 
         // 4g-v. Payments
@@ -652,4 +661,37 @@ Route::post('/portal/webhook/paymongo', [PaymentController::class, 'webhook'])
 // =============================================================================
 // 7. LGU/STAFF AUTH ROUTES
 // =============================================================================
+
+
+
+
+// =============================================================================
+// 8. BPLS Record Viewing
+// =============================================================================
+
+Route::get('/bpls/records', [BusinessRecordsController::class, 'index'])->name('bpls.records.index');
+Route::get('/bpls/records/{id}', [BusinessRecordsController::class, 'show'])->name('bpls.records.show');
+Route::get('/bpls/records/payments/search', [BusinessRecordsController::class, 'searchPayments'])->name('bpls.records.payments');
+
+
+
+
+// =============================================================================
+// 8. BPLS Business details Editing
+// =============================================================================
+
+// Route::prefix('bpls/business-list')->name('bpls.business-list.')->group(function () {
+//     // ... existing routes ...
+
+//     Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])
+//         ->name('edit-data');
+
+//     Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])
+//         ->name('edit');
+
+//     Route::get('/{entry}/amendments', [BusinessEntryEditController::class, 'history'])
+//         ->name('amendments');
+// });
+
+
 require __DIR__ . '/auth.php';
