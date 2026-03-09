@@ -13,6 +13,11 @@ return [
     |
     */
 
+    'url' => env('APP_URL', 'http://localhost'),
+
+    // ADD THIS ↓
+    'client_portal_url' => env('CLIENT_PORTAL_URL', env('APP_URL', 'http://localhost') . '/portal/login'),
+
     'name' => env('APP_NAME', 'GReAT'),
 
     /*

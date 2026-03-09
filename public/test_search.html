@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FAAS Search Test</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Testing FAAS List Search</h2>
+    <div id="results"></div>
+    
+    <script>
+        // Test the search endpoint
+        $.ajax({
+            url: 'http://localhost:8000/rpt/faas_list',
+            type: 'GET',
+            data: {
+                draw: 1,
+                start: 0,
+                length: 10,
+                search: {
+                    value: 'test',
+                    regex: false
+                }
+            },
+            success: function(response) {
+                console.log('Search Response:', response);
+                $('#results').html('<pre>' + JSON.stringify(response, null, 2) + '</pre>');
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                $('#results').html('<p style="color:red">Error: ' + error + '</p>');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\HR;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Department;
-use App\Models\EmployeeInfo;
+use App\Models\HR\EmployeeInfo;
 
 class HumanResourcesController extends Controller
 {
