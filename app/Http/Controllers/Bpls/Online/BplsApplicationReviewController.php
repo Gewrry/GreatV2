@@ -4,14 +4,17 @@
 namespace App\Http\Controllers\BPLS\Online;
 
 use App\Http\Controllers\Controller;
-use App\Models\onlineBPLS\BplsApplication;
 use App\Models\onlineBPLS\BplsDocument;
 use App\Models\BplsPermitSignatory;
 use App\Services\OrNumberAllocator;
 use App\Models\bpls\onlineBPLS\BplsApplicationOr;
+use App\Models\onlineBPLS\BplsOnlinePayment;
+use App\Models\BplsPayment;
+use App\Models\OrAssignment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\onlineBPLS\BplsOnlineApplication;
 
 class BplsApplicationReviewController extends Controller
 {
@@ -39,7 +42,7 @@ class BplsApplicationReviewController extends Controller
         $status = $request->get('status', 'submitted');
         $search = trim($request->get('search'));
 
-        $applications = BplsApplication::with(['business', 'owner', 'documents'])
+        $applications = BplsOnlineApplication::with(['business', 'owner', 'documents'])
             ->when($status !== 'all', fn($q) => $q->where('workflow_status', $status))
             ->when(
                 $search,
@@ -60,7 +63,7 @@ class BplsApplicationReviewController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $counts = BplsApplication::selectRaw('workflow_status, count(*) as total')
+        $counts = BplsOnlineApplication::selectRaw('workflow_status, count(*) as total')
             ->groupBy('workflow_status')
             ->pluck('total', 'workflow_status');
 
@@ -79,9 +82,9 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     // SHOW
     // ═══════════════════════════════════════════════════════════════════════
-    public function show(BplsApplication $application)
+    public function show(BplsOnlineApplication $application)
     {
-        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory', 'businessEntry']);
+        $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory', 'masterPayments']);
 
         $docs = $application->documents->keyBy('document_type');
         $requiredMet = collect(BplsDocument::REQUIRED_TYPES)
@@ -89,11 +92,23 @@ class BplsApplicationReviewController extends Controller
 
         $signatories = BplsPermitSignatory::activeOrdered();
 
+        $userAssignments = OrAssignment::where('user_id', Auth::id())
+            ->where('receipt_type', '51C')
+            ->get()
+            ->map(function($a) {
+                return [
+                    'id' => $a->id,
+                    'label' => $a->start_or . ' - ' . $a->end_or,
+                    'next_or' => $a->nextAvailableOr()
+                ];
+            });
+
         return view('modules.bpls.onlineBPLS.application.show', compact(
             'application',
             'docs',
             'requiredMet',
-            'signatories'
+            'signatories',
+            'userAssignments'
         ));
     }
 
@@ -141,7 +156,7 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     // APPROVE — Verification → Assessment (verified)
     // ═══════════════════════════════════════════════════════════════════════
-    public function approve(BplsApplication $application)
+    public function approve(BplsOnlineApplication $application)
     {
         if ($application->workflow_status !== 'submitted') {
             return back()->with('error', 'Application cannot be approved at this stage.');
@@ -176,7 +191,7 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     // RETURN TO CLIENT
     // ═══════════════════════════════════════════════════════════════════════
-    public function returnToClient(Request $request, BplsApplication $application)
+    public function returnToClient(Request $request, BplsOnlineApplication $application)
     {
         $request->validate(['remarks' => 'required|string|max:1000']);
 
@@ -206,12 +221,18 @@ class BplsApplicationReviewController extends Controller
     // Auto-assigns OR numbers from the pool based on payment frequency.
     // Officer can edit them afterwards via confirmOrs().
     // ═══════════════════════════════════════════════════════════════════════
-    public function assess(Request $request, BplsApplication $application)
+    public function assess(Request $request, BplsOnlineApplication $application)
     {
         $request->validate([
             'assessment_amount' => 'required|numeric|min:0.01',
             'mode_of_payment' => 'required|in:quarterly,semi_annual,annual',
             'assessment_notes' => 'nullable|string|max:1000',
+            'is_senior' => 'nullable|boolean',
+            'is_pwd' => 'nullable|boolean',
+            'is_solo_parent' => 'nullable|boolean',
+            'is_4ps' => 'nullable|boolean',
+            'is_bmbe' => 'nullable|boolean',
+            'is_cooperative' => 'nullable|boolean',
         ]);
 
         if ($application->workflow_status !== 'verified') {
@@ -253,10 +274,10 @@ class BplsApplicationReviewController extends Controller
 
                 $application->update([
                     'assessment_amount' => $request->assessment_amount,
-                    'mode_of_payment' => $request->mode_of_payment,
-                    'assessment_notes' => $request->assessment_notes,
-                    'ors_confirmed' => false,   // reset confirmation on re-assessment
-                    'workflow_status' => 'assessed',
+                    'mode_of_payment'   => $request->mode_of_payment,
+                    'assessment_notes'  => $request->assessment_notes,
+                    'ors_confirmed'     => false,
+                    'workflow_status'   => 'assessed',
                 ]);
             });
 
@@ -270,7 +291,7 @@ class BplsApplicationReviewController extends Controller
 
             return back()->with('success', "Assessment saved — {$count} OR number(s) auto-assigned. Please review and confirm them.");
 
-        } catch (\RuntimeException $e) {
+        } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -280,7 +301,7 @@ class BplsApplicationReviewController extends Controller
     // Marks ors_confirmed = true once the officer is satisfied.
     // workflow_status stays 'assessed' — this is sub-step 2 of Payment.
     // ═══════════════════════════════════════════════════════════════════════
-    public function confirmOrs(Request $request, BplsApplication $application)
+    public function confirmOrs(Request $request, BplsOnlineApplication $application)
     {
         $request->validate([
             'or_numbers' => 'required|array',
@@ -307,7 +328,28 @@ class BplsApplicationReviewController extends Controller
                         throw new \RuntimeException("OR# {$orNumber} is already assigned to another application.");
                     }
 
-                    $orItem->update(['or_number' => $orNumber]);
+                    // --- OR range validation ---
+                    $assignment = OrAssignment::where('user_id', Auth::id())
+                        ->where('start_or', '<=', $orNumber)
+                        ->where('end_or', '>=', $orNumber)
+                        ->first();
+
+                    if (!$assignment) {
+                        $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)
+                            ->where('end_or', '>=', $orNumber)
+                            ->first();
+                        
+                        if ($anyAssignment) {
+                            throw new \RuntimeException("OR #{$orNumber} belongs to another cashier (" . $anyAssignment->cashier_name . ").");
+                        } else {
+                            throw new \RuntimeException("OR #{$orNumber} is not within any existing OR range. Please create a new OR range first.");
+                        }
+                    }
+
+                    $orItem->update([
+                        'or_number' => $orNumber,
+                        'or_assignment_id' => $assignment->id,
+                    ]);
                 }
 
                 $application->update([
@@ -326,7 +368,7 @@ class BplsApplicationReviewController extends Controller
 
             return back()->with('success', 'OR numbers confirmed. Proceed to confirm payment.');
 
-        } catch (\RuntimeException $e) {
+        } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -334,35 +376,122 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     // MARK PAID — Payment (assessed) → For Approval (paid)
     // ═══════════════════════════════════════════════════════════════════════
-    public function markPaid(Request $request, BplsApplication $application)
+    public function markPaid(Request $request, BplsOnlineApplication $application)
     {
-        $request->validate(['or_number' => 'required|string|max:100']);
+        $request->validate([
+            'or_number' => 'required|string|max:100',
+            'installment_number' => 'nullable|integer|min:1',
+        ]);
 
-        if ($application->workflow_status !== 'assessed') {
+        if (!in_array($application->workflow_status, ['assessed', 'paid'])) {
             return back()->with('error', 'Application is not in the Payment stage.');
         }
 
-        $application->update([
-            'workflow_status' => 'paid',
-            'or_number' => $request->or_number,
-            'paid_at' => now(),
-        ]);
+        $installmentNumber = (int) ($request->installment_number ?? 1);
 
-        $this->log(
-            $application,
-            'payment_received',
-            'assessed',
-            'paid',
-            'Payment confirmed. OR#: ' . $request->or_number
-        );
+        try {
+            DB::transaction(function () use ($request, $application, $installmentNumber) {
+                // 1. Mark the specific installment OR as paid
+                /** @var \App\Models\bpls\onlineBPLS\BplsApplicationOr|null $orItem */
+                $orItem = $application->orAssignments()
+                    ->where('installment_number', $installmentNumber)
+                    ->first();
 
-        return back()->with('success', 'Payment confirmed. Application is ready for final approval.');
+                if ($orItem) {
+                    // --- OR range validation ---
+                    $orNumber = $request->or_number;
+                    $assignment = OrAssignment::where('user_id', Auth::id())
+                        ->where('start_or', '<=', $orNumber)
+                        ->where('end_or', '>=', $orNumber)
+                        ->first();
+
+                    if (!$assignment) {
+                        $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)
+                            ->where('end_or', '>=', $orNumber)
+                            ->first();
+                        
+                        if ($anyAssignment) {
+                            throw new \RuntimeException("OR #{$orNumber} belongs to another cashier (" . $anyAssignment->cashier_name . ").");
+                        } else {
+                            throw new \RuntimeException("OR #{$orNumber} is not within any existing OR range. Please create a new OR range first.");
+                        }
+                    }
+
+                    $orItem->update([
+                        'or_number' => $request->or_number,
+                        'or_assignment_id' => $assignment->id,
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                    ]);
+                }
+
+                // 2. Also record in bpls_online_payments (for mirroring/reports)
+                $application->payment()->updateOrCreate(
+                    ['installment_number' => $installmentNumber],
+                    [
+                        'reference_number' => 'MANUAL-' . now()->timestamp,
+                        'amount_paid' => $application->installment_amount,
+                        'payment_year' => $application->permit_year ?? now()->year,
+                        'payment_method' => 'over_the_counter',
+                        'installment_total' => $application->installment_count,
+                        'status' => 'paid',
+                        'paid_at' => now(),
+                        'or_number' => $request->or_number,
+                    ]
+                );
+
+                // --- BRIDGE TO MASTER BPLS PAYMENT TABLE ---
+                $installmentAmount = (float)$application->installment_amount;
+                $quarters = match($application->mode_of_payment) {
+                    'annual' => [1, 2, 3, 4],
+                    'semi_annual' => ($installmentNumber == 1) ? [1, 2] : [3, 4],
+                    'quarterly' => [(int)$installmentNumber],
+                    default => [1]
+                };
+
+                \App\Models\BplsPayment::create([
+                    'bpls_application_id' => $application->id,
+                    'payment_year'      => $application->permit_year ?? now()->year,
+                    'renewal_cycle'     => 0, // Online apps start fresh or manage their own
+                    'or_number'         => $request->or_number,
+                    'payment_date'      => now(),
+                    'quarters_paid'     => $quarters,
+                    'amount_paid'       => $installmentAmount,
+                    'total_collected'   => $installmentAmount,
+                    'payment_method'    => 'over_the_counter',
+                    'payor'             => collect([$application->owner?->first_name, $application->owner?->last_name])->filter()->join(' '),
+                    'received_by'       => auth()->user()?->name ?? 'Treasury Staff',
+                ]);
+
+                // 3. Logic: If first installment paid → For Approval (paid)
+                if ($application->isPaymentSatisfiedForApproval()) {
+                    $application->update([
+                        'workflow_status' => 'paid',
+                        'or_number'       => $request->or_number, // latest/primary OR
+                        'paid_at'         => now(),
+                    ]);
+                }
+            });
+
+            $this->log(
+                $application,
+                'payment_received_manual',
+                'assessed',
+                $application->fresh()->workflow_status,
+                "Manual payment confirmed for #{$installmentNumber}. OR#: " . $request->or_number
+            );
+
+            return back()->with('success', 'Payment confirmed for installment ' . $installmentNumber . '.');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Payment confirmation failed: ' . $e->getMessage());
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
     // FINAL APPROVE — For Approval (paid) → Approved
     // ═══════════════════════════════════════════════════════════════════════
-    public function finalApprove(Request $request, BplsApplication $application)
+    public function finalApprove(Request $request, BplsOnlineApplication $application)
     {
         $request->validate([
             'or_number' => 'nullable|string|max:100',
@@ -404,11 +533,6 @@ class BplsApplicationReviewController extends Controller
             'approved_by' => Auth::id(),
         ]);
 
-        // Update the linked BusinessEntry status to approved
-        if ($application->business_entry_id) {
-            $application->businessEntry->update(['status' => 'approved']);
-        }
-
         $this->log(
             $application,
             'final_approved',
@@ -426,7 +550,7 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     // REJECT APPLICATION
     // ═══════════════════════════════════════════════════════════════════════
-    public function reject(Request $request, BplsApplication $application)
+    public function reject(Request $request, BplsOnlineApplication $application)
     {
         $request->validate(['rejection_reason' => 'required|string|max:1000']);
 
@@ -449,7 +573,7 @@ class BplsApplicationReviewController extends Controller
     // ═══════════════════════════════════════════════════════════════════════
     // HELPER: Activity log
     // ═══════════════════════════════════════════════════════════════════════
-    private function log(BplsApplication $app, string $action, string $from, string $to, string $remarks = ''): void
+    private function log(BplsOnlineApplication $app, string $action, string $from, string $to, string $remarks = ''): void
     {
         if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
             \App\Models\onlineBPLS\BplsActivityLog::create([

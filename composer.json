@@ -12,6 +12,7 @@
         "laravel/framework": "^12.47",
         "laravel/tinker": "^2.10.1",
         "livewire/livewire": "^4.0",
+        "predis/predis": "^3.4",
         "symfony/mailer": "^7.4",
         "yajra/laravel-datatables-oracle": "*"
     },

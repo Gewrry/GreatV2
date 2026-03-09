@@ -5,24 +5,12 @@
     $entry    — App\Models\BplsBusinessEntry|null
     $payments — Illuminate\Support\Collection<App\Models\BplsPayment>
 --}}
-<!DOCTYPE html>
-<html lang="en">
+@extends('client.layouts.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Walk-in Payment Records — BPLS Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    @vite(['resources/css/app.css'])
+@section('title', 'Walk-in Payment Records')
+
+@push('styles')
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
         .glass {
             background: rgba(255, 255, 255, 0.72);
             backdrop-filter: saturate(180%) blur(20px);
@@ -48,15 +36,8 @@
         }
 
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0) scale(1);
-            }
-
-            50% {
-                transform: translateY(-20px) scale(1.04);
-            }
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.04); }
         }
 
         .card-press {
@@ -74,36 +55,15 @@
         }
 
         @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(16px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .fade-up {
-            animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both;
-        }
-
-        .delay-1 {
-            animation-delay: .06s;
-        }
-
-        .delay-2 {
-            animation-delay: .12s;
-        }
-
-        .delay-3 {
-            animation-delay: .18s;
-        }
-
-        .delay-4 {
-            animation-delay: .24s;
-        }
+        .fade-up { animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both; }
+        .delay-1 { animation-delay: .06s; }
+        .delay-2 { animation-delay: .12s; }
+        .delay-3 { animation-delay: .18s; }
+        .delay-4 { animation-delay: .24s; }
 
         /* Quarter badge */
         .q-badge {
@@ -127,25 +87,13 @@
         }
 
         /* Method pills */
-        .pill-cash {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .pill-check {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .pill-mo {
-            background: #fef9c3;
-            color: #854d0e;
-        }
+        .pill-cash { background: #dcfce7; color: #15803d; }
+        .pill-check { background: #dbeafe; color: #1d4ed8; }
+        .pill-mo { background: #fef9c3; color: #854d0e; }
     </style>
-</head>
+@endpush
 
-<body class="min-h-screen overflow-x-hidden" style="background:#f0faf8;">
-
+@section('content')
     {{-- Animated Background --}}
     <div class="fixed inset-0 -z-10 overflow-hidden">
         <div class="blob absolute -top-32 -left-32 w-96 h-96 bg-teal-300"></div>
@@ -153,7 +101,6 @@
         <div class="blob blob-3 absolute -bottom-24 left-1/4 w-72 h-72 bg-cyan-200"></div>
     </div>
 
-    @include('client.partials.navbar')
 
     <div class="max-w-lg mx-auto px-4 pt-6 pb-28 space-y-4">
 
@@ -488,6 +435,4 @@
         </p>
 
     </div>
-</body>
-
-</html>
+@endsection

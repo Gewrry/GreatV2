@@ -17,7 +17,9 @@ use App\Models\BplsSetting;
 return new class extends Migration {
     public function up(): void
     {
-        // Ensure column exists (safe guard — no-op if already there)
+        // ----------------------------------------------------------------
+        // 1. Ensure business_id column exists on bpls_business_entries
+        // ----------------------------------------------------------------
         if (!Schema::hasColumn('bpls_business_entries', 'business_id')) {
             Schema::table('bpls_business_entries', function (Blueprint $table) {
                 $table->string('business_id', 50)
@@ -28,7 +30,9 @@ return new class extends Migration {
             });
         }
 
-        // Backfill existing approved entries that have no business_id yet
+        // ----------------------------------------------------------------
+        // 2. Backfill business_id for existing approved entries
+        // ----------------------------------------------------------------
         $format = BplsSetting::where('key', 'business_id_format')->value('value') ?? 'BUS-{year}-{id}';
 
         $entries = DB::table('bpls_business_entries')
@@ -37,10 +41,10 @@ return new class extends Migration {
             ->get(['id', 'permit_year', 'business_barangay', 'business_municipality']);
 
         foreach ($entries as $entry) {
-            $year = $entry->permit_year ?? now()->year;
+            $year        = $entry->permit_year ?? now()->year;
             $barangayCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_barangay ?? 'BRG'), 0, 4));
-            $muniCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_municipality ?? 'MUN'), 0, 4));
-            $paddedId = str_pad($entry->id, 6, '0', STR_PAD_LEFT);
+            $muniCode    = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_municipality ?? 'MUN'), 0, 4));
+            $paddedId    = str_pad($entry->id, 6, '0', STR_PAD_LEFT);
 
             $businessId = str_replace(
                 ['{year}', '{id}', '{barangay_code}', '{muni}'],
@@ -53,8 +57,15 @@ return new class extends Migration {
                 ->update(['business_id' => $businessId]);
         }
 
-        // Also fix any clients whose walk_in_business_id is NULL
-        // but whose email matches a business entry that has been approved
+        // ----------------------------------------------------------------
+        // 3. Backfill walk_in_business_id on clients
+        //    Skip entirely if the column does not exist yet — it will be
+        //    handled by the migration that adds the column.
+        // ----------------------------------------------------------------
+        if (!Schema::hasColumn('clients', 'walk_in_business_id')) {
+            return;
+        }
+
         $unlinkedClients = DB::table('clients')
             ->whereNull('walk_in_business_id')
             ->whereNull('deleted_at')
@@ -65,7 +76,7 @@ return new class extends Migration {
             // (walk-in = no bpls_application link)
             $entry = DB::table('bpls_business_entries as be')
                 ->leftJoin('bpls_applications as ba', 'ba.business_entry_id', '=', 'be.id')
-                ->whereNull('ba.id')                // walk-in only
+                ->whereNull('ba.id')
                 ->where('be.email', $client->email)
                 ->whereNotNull('be.approved_at')
                 ->whereNull('be.deleted_at')
