@@ -1,126 +1,287 @@
+{{-- resources/views/modules/rpt/registration/show.blade.php --}}
 <x-admin.app>
+    <style>[x-cloak] { display: none !important; }</style>
+
     <div class="py-2">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('layouts.rpt.navbar')
-            
-            <div class="bg-white rounded-xl shadow mb-6">
-                <div class="px-6 py-4 border-b flex justify-between items-center flex-wrap gap-3">
-                    <div>
-                        <h2 class="text-xl font-bold text-gray-800">Property Registration #{{ $registration->id }}</h2>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $registration->status === 'registered' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
-                            {{ strtoupper($registration->status) }}
-                        </span>
+
+            <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4">
+
+                {{-- ── Header ── --}}
+                <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <a href="{{ route('rpt.registration.index') }}"
+                            class="p-2 rounded-xl text-gray hover:text-logo-teal hover:bg-logo-teal/10 transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                        </a>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h1 class="text-2xl font-extrabold text-green tracking-tight">
+                                    Property Registration
+                                </h1>
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-full border
+                                    {{ $registration->status === 'registered' ? 'bg-green-50 text-logo-green border-green-200' :
+                                       ($registration->status === 'archived'  ? 'bg-gray-50 text-gray-400 border-gray-200'   :
+                                                                                 'bg-yellow-50 text-yellow-700 border-yellow-200') }}">
+                                    {{ strtoupper($registration->status) }}
+                                </span>
+                            </div>
+                            <p class="text-gray text-sm mt-0.5">
+                                Registration #{{ $registration->id }}
+                                @if($registration->created_at)
+                                    &mdash; Registered {{ $registration->created_at->format('M d, Y') }}
+                                @endif
+                            </p>
+                        </div>
                     </div>
+
+                    {{-- Action buttons --}}
+                    <div class="flex items-center gap-2 flex-wrap">
                         @if($registration->status === 'registered')
-                            <button type="button" onclick="openArchiveModal()" class="px-3 py-1.5 border rounded border-red-300 text-red-600 hover:bg-red-50 text-sm">
-                                <i class="fas fa-archive mr-1"></i> Archive
+                            <button type="button" onclick="openArchiveModal()"
+                                class="flex items-center gap-1.5 px-4 py-2 bg-white text-red-500 text-xs font-bold rounded-xl border border-red-200 hover:bg-red-50 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8m-9 4v4m4-4v4" />
+                                </svg>
+                                Archive
                             </button>
                         @endif
 
                         @if($registration->faasProperties->isEmpty() && $registration->status !== 'archived')
                             <a href="{{ route('rpt.faas.start', [$registration, $registration->property_type]) }}"
-                               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm shadow-sm font-bold flex items-center gap-2">
-                                Start Appraisal <i class="fas fa-arrow-right"></i>
+                                class="flex items-center gap-1.5 px-4 py-2 bg-logo-teal text-white text-xs font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                                Start Appraisal
                             </a>
                         @elseif($registration->status === 'archived')
-                             <span class="px-3 py-1.5 bg-gray-200 text-gray-600 rounded text-sm font-bold">
-                                <i class="fas fa-lock mr-1"></i> ARCHIVED
+                            <span class="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-400 text-xs font-bold rounded-xl">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                </svg>
+                                Archived
                             </span>
                         @else
-                            {{-- Already has FAAS records --}}
                             @foreach($registration->faasProperties as $fp)
                                 <a href="{{ route('rpt.faas.show', $fp) }}"
-                                   class="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm shadow-sm font-medium">
-                                    <i class="fas fa-file-alt mr-1"></i> View FAAS #{{ $fp->id }}
+                                    class="flex items-center gap-1.5 px-4 py-2 bg-logo-blue text-white text-xs font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-blue/20">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    View FAAS #{{ $fp->id }}
                                 </a>
                             @endforeach
                         @endif
                     </div>
                 </div>
-                
-                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Owner Information</h3>
-                        <dl class="text-sm space-y-2">
-                            <div class="flex"><dt class="w-32 text-gray-500">Name:</dt><dd class="font-medium text-gray-800">{{ $registration->owner_name }}</dd></div>
-                            <div class="flex"><dt class="w-32 text-gray-500">Address:</dt><dd class="text-gray-800">{{ $registration->owner_address }}</dd></div>
-                            <div class="flex"><dt class="w-32 text-gray-500">TIN:</dt><dd class="text-gray-800">{{ $registration->owner_tin ?: '-' }}</dd></div>
-                            <div class="flex"><dt class="w-32 text-gray-500">Contact:</dt><dd class="text-gray-800">{{ $registration->owner_contact ?: '-' }}</dd></div>
-                        </dl>
-                        
-                        @if($registration->administrator_name)
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-6 mb-3">Administrator</h3>
-                        <dl class="text-sm space-y-2">
-                            <div class="flex"><dt class="w-32 text-gray-500">Name:</dt><dd class="font-medium text-gray-800">{{ $registration->administrator_name }}</dd></div>
-                            <div class="flex"><dt class="w-32 text-gray-500">Address:</dt><dd class="text-gray-800">{{ $registration->administrator_address }}</dd></div>
-                        </dl>
-                        @endif
+
+                {{-- ── Success Flash ── --}}
+                @if(session('success'))
+                    <div class="flex items-center gap-2 p-3 bg-logo-green/10 border border-logo-green/20 rounded-xl mb-5">
+                        <svg class="w-4 h-4 text-logo-green shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-xs font-semibold text-logo-green">{{ session('success') }}</span>
                     </div>
-                    
-                    <div>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Property Details</h3>
-                        <dl class="text-sm space-y-2">
-                            <div class="flex"><dt class="w-32 text-gray-500">Type:</dt><dd class="font-medium capitalize text-gray-800">{{ $registration->property_type }}</dd></div>
-                            <div class="flex"><dt class="w-32 text-gray-500">Location:</dt><dd class="text-gray-800">{{ $registration->full_address }}</dd></div>
-                            <div class="flex"><dt class="w-32 text-gray-500">Title No:</dt><dd class="text-gray-800">{{ $registration->title_no ?: '-' }}</dd></div>
-                            <div class="flex"><dt class="w-32 text-gray-500">Lot & Blk:</dt>
-                                <dd class="text-gray-800">
-                                    {{ $registration->lot_no ? 'Lot '.$registration->lot_no : '' }} 
-                                    {{ $registration->blk_no ? 'Blk '.$registration->blk_no : '' }}
-                                    {{ !$registration->lot_no && !$registration->blk_no ? '-' : '' }}
-                                </dd>
+                @endif
+
+                {{-- ── Main Info Grid ── --}}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+                    {{-- Owner Information --}}
+                    <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden">
+                        <div class="px-5 py-3.5 border-b border-lumot/20 flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-logo-blue/10 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-logo-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
                             </div>
-                            <div class="flex"><dt class="w-32 text-gray-500">Survey No:</dt><dd class="text-gray-800">{{ $registration->survey_no ?: '-' }}</dd></div>
-                            
-                            @if($registration->estimated_floor_area)
-                                <div class="flex mt-2 pt-2 border-t border-gray-100"><dt class="w-32 text-gray-500">Est. Floor Area:</dt><dd class="font-medium text-gray-800">{{ number_format($registration->estimated_floor_area, 2) }} sqm</dd></div>
+                            <h3 class="text-xs font-extrabold text-gray/70 uppercase tracking-widest">Owner Information</h3>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Full Name</p>
+                                    <p class="text-sm font-extrabold text-green">{{ $registration->owner_name }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">TIN</p>
+                                    <p class="text-sm text-gray font-mono">{{ $registration->owner_tin ?: '—' }}</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Address</p>
+                                    <p class="text-sm text-gray">{{ $registration->owner_address }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Contact</p>
+                                    <p class="text-sm text-gray">{{ $registration->owner_contact ?: '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Email</p>
+                                    <p class="text-sm text-gray truncate">{{ $registration->owner_email ?: '—' }}</p>
+                                </div>
+                            </div>
+
+                            @if($registration->administrator_name)
+                                <div class="pt-3 mt-3 border-t border-lumot/20">
+                                    <p class="text-[10px] font-extrabold text-gray/50 uppercase tracking-widest mb-2">Administrator</p>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <p class="text-[10px] text-gray/50 font-bold uppercase">Name</p>
+                                            <p class="text-sm font-bold text-gray">{{ $registration->administrator_name }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] text-gray/50 font-bold uppercase">Address</p>
+                                            <p class="text-sm text-gray">{{ $registration->administrator_address ?: '—' }}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             @endif
-                            @if($registration->machinery_description)
-                                <div class="flex mt-2 pt-2 border-t border-gray-100"><dt class="w-32 text-gray-500">Description:</dt><dd class="font-medium text-gray-800">{{ $registration->machinery_description }}</dd></div>
-                            @endif
-                        </dl>
+                        </div>
+                    </div>
+
+                    {{-- Property Details --}}
+                    <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden">
+                        <div class="px-5 py-3.5 border-b border-lumot/20 flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-logo-teal/10 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-logo-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xs font-extrabold text-gray/70 uppercase tracking-widest">Property Details</h3>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Property Type</p>
+                                    <p class="text-sm font-extrabold text-logo-teal capitalize">{{ $registration->property_type }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Barangay</p>
+                                    <p class="text-sm text-gray">{{ $registration->barangay?->brgy_name ?? '—' }}</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Full Location</p>
+                                    <p class="text-sm text-gray">{{ $registration->full_address }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Title No.</p>
+                                    <p class="text-sm text-gray font-mono">{{ $registration->title_no ?: '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Survey No.</p>
+                                    <p class="text-sm text-gray font-mono">{{ $registration->survey_no ?: '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Lot No.</p>
+                                    <p class="text-sm text-gray">{{ $registration->lot_no ? 'Lot ' . $registration->lot_no : '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Block No.</p>
+                                    <p class="text-sm text-gray">{{ $registration->blk_no ? 'Blk ' . $registration->blk_no : '—' }}</p>
+                                </div>
+
+                                @if($registration->estimated_floor_area)
+                                    <div>
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Est. Floor Area</p>
+                                        <p class="text-sm font-bold text-logo-teal">{{ number_format($registration->estimated_floor_area, 2) }} sqm</p>
+                                    </div>
+                                @endif
+
+                                @if($registration->machinery_description)
+                                    <div class="col-span-2">
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Machinery Description</p>
+                                        <p class="text-sm text-gray">{{ $registration->machinery_description }}</p>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            </div>
+                {{-- ── Supporting Documents ── --}}
+                <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
+                    <div class="px-5 py-3.5 border-b border-lumot/20 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-logo-blue/10 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-logo-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xs font-extrabold text-gray/70 uppercase tracking-widest">Supporting Documents</h3>
+                        </div>
+                        <span class="text-[10px] font-bold text-gray/40 bg-lumot/20 px-2.5 py-1 rounded-full">
+                            {{ $registration->attachments->count() }} file(s)
+                        </span>
+                    </div>
 
-            <div class="bg-white rounded-xl shadow mb-6">
-                <div class="px-6 py-4 border-b flex justify-between items-center">
-                    <h3 class="font-bold text-gray-800">Supporting Documents</h3>
-                    <span class="text-xs text-gray-400">{{ $registration->attachments->count() }} file(s) attached</span>
-                </div>
-                <div class="p-0">
                     @if($registration->attachments->isEmpty())
-                        <div class="p-8 text-center text-gray-400 italic text-sm">
-                            No documents were uploaded during intake.
+                        <div class="p-10 text-center">
+                            <div class="w-12 h-12 bg-lumot/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <svg class="w-6 h-6 text-gray/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <p class="text-sm font-bold text-gray">No documents attached</p>
+                            <p class="text-xs text-gray/50 mt-1">No supporting documents were uploaded during intake.</p>
                         </div>
                     @else
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
                             @foreach($registration->attachments as $file)
-                                <div class="border rounded-lg p-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
-                                    <div class="w-10 h-10 rounded bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
-                                        @php
-                                            $ext = pathinfo($file->file_path, PATHINFO_EXTENSION);
-                                            $icon = match($ext) {
-                                                'pdf' => 'fa-file-pdf',
-                                                'jpg', 'jpeg', 'png' => 'fa-file-image',
-                                                default => 'fa-file'
-                                            };
-                                        @endphp
-                                        <i class="fas {{ $icon }} text-xl"></i>
+                                @php
+                                    $ext  = strtolower(pathinfo($file->file_path, PATHINFO_EXTENSION));
+                                    $isPdf = $ext === 'pdf';
+                                    $isImg = in_array($ext, ['jpg','jpeg','png','webp']);
+                                @endphp
+                                <div class="border border-lumot/20 rounded-xl p-3 flex items-start gap-3 hover:bg-bluebody/40 hover:border-logo-teal/30 transition-all duration-150">
+                                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0
+                                        {{ $isPdf ? 'bg-red-50' : ($isImg ? 'bg-blue-50' : 'bg-lumot/30') }}">
+                                        @if($isPdf)
+                                            <svg class="w-4.5 h-4.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                            </svg>
+                                        @elseif($isImg)
+                                            <svg class="w-4.5 h-4.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        @else
+                                            <svg class="w-4.5 h-4.5 text-gray/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        @endif
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <div class="text-xs font-bold text-gray-500 uppercase tracking-tight">{{ str_replace('_', ' ', $file->type) }}</div>
-                                        <div class="text-sm font-medium text-gray-800 truncate" title="{{ $file->label ?: $file->original_filename }}">
+                                        <p class="text-[10px] font-extrabold text-gray/50 uppercase tracking-wider">
+                                            {{ str_replace('_', ' ', $file->type) }}
+                                        </p>
+                                        <p class="text-xs font-bold text-green truncate mt-0.5"
+                                            title="{{ $file->label ?: $file->original_filename }}">
                                             {{ $file->label ?: $file->original_filename }}
-                                        </div>
-                                        <div class="flex items-center gap-2 mt-2">
-                                            <a href="{{ asset('storage/' . $file->file_path) }}" target="_blank" class="text-xs text-blue-600 hover:underline font-bold">
-                                                <i class="fas fa-external-link-alt mr-0.5"></i> Open
+                                        </p>
+                                        <div class="flex items-center gap-2 mt-1.5">
+                                            <a href="{{ asset('storage/' . $file->file_path) }}" target="_blank"
+                                                class="text-[10px] font-bold text-logo-teal hover:underline flex items-center gap-0.5">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                </svg>
+                                                Open
                                             </a>
-                                            <span class="text-[10px] text-gray-400">•</span>
-                                            <span class="text-[10px] text-gray-400">By {{ $file->uploadedBy?->name ?? 'System' }}</span>
+                                            <span class="text-[10px] text-gray/30">•</span>
+                                            <span class="text-[10px] text-gray/40">{{ $file->uploadedBy?->name ?? 'System' }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -128,85 +289,168 @@
                         </div>
                     @endif
                 </div>
-            </div>
 
-            <div class="bg-white rounded-xl shadow">
-                <div class="px-6 py-4 border-b">
-                    <h3 class="font-bold text-gray-800">Associated FAAS Records</h3>
-                </div>
-                <div class="p-0">
+                {{-- ── Associated FAAS Records ── --}}
+                <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
+                    <div class="px-5 py-3.5 border-b border-lumot/20 flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-logo-teal/10 flex items-center justify-center shrink-0">
+                            <svg class="w-3.5 h-3.5 text-logo-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xs font-extrabold text-gray/70 uppercase tracking-widest">Associated FAAS Records</h3>
+                    </div>
+
                     @if($registration->faasProperties->isEmpty())
-                        <div class="p-8 text-center text-gray-500 border-b">
-                            <i class="fas fa-file-invoice text-3xl mb-3 text-gray-300"></i>
-                            <p>No FAAS records have been drafted for this registration yet.</p>
-                            <p class="text-xs text-gray-400 mt-2">Use the <strong>Appraise</strong> buttons above to begin the appraisal process.</p>
+                        <div class="p-10 text-center">
+                            <div class="w-12 h-12 bg-lumot/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <svg class="w-6 h-6 text-gray/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <p class="text-sm font-bold text-gray">No FAAS records yet</p>
+                            <p class="text-xs text-gray/50 mt-1">Use the <strong>Start Appraisal</strong> button above to begin the appraisal process.</p>
                         </div>
                     @else
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
-                                <tr>
-                                    <th class="px-6 py-3 font-medium">ARP No.</th>
-                                    <th class="px-6 py-3 font-medium">Type</th>
-                                    <th class="px-6 py-3 font-medium">Effectivity</th>
-                                    <th class="px-6 py-3 font-medium">Revision Type</th>
-                                    <th class="px-6 py-3 font-medium">Status</th>
-                                    <th class="px-6 py-3 font-medium text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                @foreach($registration->faasProperties as $faas)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 font-medium text-blue-600">
-                                            <a href="{{ route('rpt.faas.show', $faas) }}">{{ $faas->arp_no ?? '(Draft)' }}</a>
-                                        </td>
-                                        <td class="px-6 py-4 uppercase text-xs font-bold text-gray-500">
-                                            {{ $faas->property_type }}
-                                        </td>
-                                        <td class="px-6 py-4">{{ $faas->effectivity_date ? $faas->effectivity_date->format('M Y') : '-' }}</td>
-                                        <td class="px-6 py-4">{{ $faas->revision_type }}</td>
-                                        <td class="px-6 py-4">
-                                            @include('components.rpt.status-badge', ['status' => $faas->status])
-                                        </td>
-                                        <td class="px-6 py-4 text-right">
-                                            <a href="{{ route('rpt.faas.show', $faas) }}" class="text-blue-500 hover:text-blue-700"><i class="fas fa-eye"></i> View</a>
-                                        </td>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="bg-bluebody/60 border-b border-lumot/20">
+                                        <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-5 py-3">ARP No.</th>
+                                        <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-5 py-3">Type</th>
+                                        <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-5 py-3">Effectivity</th>
+                                        <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-5 py-3">Revision Type</th>
+                                        <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-5 py-3">Status</th>
+                                        <th class="text-right text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-5 py-3">Action</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-lumot/10">
+                                    @foreach($registration->faasProperties as $faas)
+                                        <tr class="hover:bg-bluebody/30 transition-colors">
+                                            <td class="px-5 py-3">
+                                                <a href="{{ route('rpt.faas.show', $faas) }}"
+                                                    class="text-xs font-extrabold text-logo-teal hover:text-green hover:underline font-mono">
+                                                    {{ $faas->arp_no ?? '(Draft)' }}
+                                                </a>
+                                            </td>
+                                            <td class="px-5 py-3">
+                                                <span class="text-[10px] font-extrabold text-gray/60 uppercase tracking-wider">
+                                                    {{ $faas->property_type }}
+                                                </span>
+                                            </td>
+                                            <td class="px-5 py-3 text-xs text-gray">
+                                                {{ $faas->effectivity_date ? $faas->effectivity_date->format('M Y') : '—' }}
+                                            </td>
+                                            <td class="px-5 py-3 text-xs text-gray">{{ $faas->revision_type ?? '—' }}</td>
+                                            <td class="px-5 py-3">
+                                                @include('components.rpt.status-badge', ['status' => $faas->status])
+                                            </td>
+                                            <td class="px-5 py-3 text-right">
+                                                <a href="{{ route('rpt.faas.show', $faas) }}"
+                                                    class="flex items-center justify-end gap-1 text-xs font-bold text-logo-blue hover:text-green transition-colors">
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                    View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     @endif
                 </div>
-            </div>
 
-            @if($registration->remarks)
-                <div class="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                    <h4 class="text-xs font-bold text-yellow-800 uppercase tracking-widest mb-2">History / Remarks</h4>
-                    <div class="text-sm text-yellow-900 whitespace-pre-wrap font-mono leading-relaxed">{{ $registration->remarks }}</div>
-                </div>
-            @endif
-            
+                {{-- ── Remarks / History ── --}}
+                @if($registration->remarks)
+                    <div class="bg-white rounded-2xl border border-yellow-200 shadow-sm overflow-hidden mb-4">
+                        <div class="px-5 py-3.5 border-b border-yellow-100 flex items-center gap-2 bg-yellow-50">
+                            <div class="w-7 h-7 rounded-lg bg-yellow-100 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xs font-extrabold text-yellow-800 uppercase tracking-widest">History / Remarks</h3>
+                        </div>
+                        <div class="p-5">
+                            <pre class="text-sm text-yellow-900 font-mono leading-relaxed whitespace-pre-wrap">{{ $registration->remarks }}</pre>
+                        </div>
+                    </div>
+                @endif
+
+            </div>{{-- end main wrapper --}}
         </div>
     </div>
 
-    {{-- Archive Modal --}}
-    <div id="archiveModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
-            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 class="font-bold text-gray-800">Archive Registration #{{ $registration->id }}</h3>
-                <button onclick="closeArchiveModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-            </div>
-            <form action="{{ route('rpt.registration.archive', $registration) }}" method="POST" class="p-6">
-                @csrf
-                <p class="text-sm text-gray-600 mb-4">
-                    Archiving will mark this record as inactive. This is typically done for erroneous, duplicate, or cancelled registrations.
-                </p>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Archiving <span class="text-red-500">*</span></label>
-                    <textarea name="remarks" rows="3" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-300" placeholder="Describe why this registration is being archived..."></textarea>
+    {{-- ══════════════════════════════════════════════════════════ --}}
+    {{-- ARCHIVE MODAL (single, clean, no duplicate IDs)          --}}
+    {{-- ══════════════════════════════════════════════════════════ --}}
+    <div id="archiveModal"
+        class="fixed inset-0 z-50 items-center justify-center p-4 hidden"
+        onclick="if(event.target===this) closeArchiveModal()">
+        <div class="absolute inset-0 bg-green/40 backdrop-blur-sm"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-md">
+            {{-- Header --}}
+            <div class="flex items-center justify-between px-5 py-4 border-b border-lumot/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8m-9 4v4m4-4v4" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-green">Archive Registration</h3>
+                        <p class="text-[11px] text-gray">#{{ $registration->id }} — {{ Str::limit($registration->owner_name, 30) }}</p>
+                    </div>
                 </div>
-                <div class="flex justify-end gap-3">
-                    <button type="button" onclick="closeArchiveModal()" class="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg text-sm font-medium shadow-sm">
+                <button onclick="closeArchiveModal()"
+                    class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            {{-- Body --}}
+            <form action="{{ route('rpt.registration.archive', $registration) }}" method="POST">
+                @csrf
+                <div class="p-5 space-y-4">
+                    <div class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                        <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <p class="text-[11px] text-orange-700 font-semibold">
+                            Archiving marks this record as inactive. Typically used for erroneous, duplicate, or cancelled registrations.
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray mb-1.5">
+                            Reason for Archiving <span class="text-red-400">*</span>
+                        </label>
+                        <textarea name="remarks" rows="3" required
+                            placeholder="Describe why this registration is being archived..."
+                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
+                    </div>
+                </div>
+                {{-- Footer --}}
+                <div class="flex gap-2 px-5 py-4 border-t border-lumot/20">
+                    <button type="button" onclick="closeArchiveModal()"
+                        class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="flex-1 px-4 py-2 bg-red-500 text-white text-sm font-bold rounded-xl hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8m-9 4v4m4-4v4" />
+                        </svg>
                         Confirm Archive
                     </button>
                 </div>
@@ -214,14 +458,18 @@
         </div>
     </div>
 
+    @push('scripts')
     <script>
         function openArchiveModal() {
-            document.getElementById('archiveModal').classList.remove('hidden');
-            document.getElementById('archiveModal').classList.add('flex');
+            const m = document.getElementById('archiveModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
         }
         function closeArchiveModal() {
-            document.getElementById('archiveModal').classList.remove('flex');
-            document.getElementById('archiveModal').classList.add('hidden');
+            const m = document.getElementById('archiveModal');
+            m.classList.remove('flex');
+            m.classList.add('hidden');
         }
     </script>
+    @endpush
 </x-admin.app>

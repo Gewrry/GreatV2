@@ -1,12 +1,9 @@
 {{-- resources/views/client/applications/create.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
+@extends('client.layouts.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Business Application — BPLS Online Portal</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+@section('title', $renewal ? 'Renew Business Permit' : 'New Business Application')
+
+@push('styles')
     <style>
         /* Subtle dot-grid background */
         body {
@@ -28,13 +25,10 @@
             opacity: 0.4;
         }
     </style>
-</head>
+@endpush
 
-<body class="min-h-screen font-main antialiased">
-
-    @include('client.partials.navbar')
-
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12" x-data="{
+@section('content')
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8" x-data="{
         step: 1,
         maxReached: 1,
         loading: false,
@@ -1666,7 +1660,6 @@
                 }
             };
         }
+        }
     </script>
-</body>
-
-</html>
+@endpush

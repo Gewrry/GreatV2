@@ -92,31 +92,46 @@ class PaymentController extends Controller
         }
 
         try {
+            // Map the payment method to PayMongo types
+            $pmTypes = match($request->payment_method) {
+                'gcash' => ['gcash'],
+                'maya'  => ['paymaya'], // PayMongo uses 'paymaya' for Maya in CS
+                'card'  => ['card'],
+                default => ['gcash', 'paymaya', 'card']
+            };
+
             $response = Http::withBasicAuth($secretKey, '')
-                ->post('https://api.paymongo.com/v1/links', [
+                ->post('https://api.paymongo.com/v1/checkout_sessions', [
                     'data' => [
                         'attributes' => [
-                            'amount'      => (int) round($installmentAmount * 100),
-                            'description' => 'Business Permit — ' . $application->application_number
-                                . ($application->installment_count > 1
-                                    ? ' (Installment ' . $installmentNumber . ' of ' . $application->installment_count . ')'
-                                    : ''),
-                            'remarks'  => $payment->reference_number,
-                            'redirect' => [
-                                'success' => route('client.payment.success', $application->id),
-                                'failed'  => route('client.payment.show', $application->id),
+                            'payment_method_types' => $pmTypes,
+                            'line_items' => [
+                                [
+                                    'currency'    => 'PHP',
+                                    'amount'      => (int) round($installmentAmount * 100),
+                                    'description' => 'Business Permit — ' . $application->application_number
+                                        . ($application->installment_count > 1
+                                            ? ' (Installment ' . $installmentNumber . ' of ' . $application->installment_count . ')'
+                                            : ''),
+                                    'name'        => 'Business Permit Payment',
+                                    'quantity'    => 1,
+                                ]
                             ],
+                            'description'      => 'Business Permit Payment — ' . $application->application_number,
+                            'reference_number' => $payment->reference_number,
+                            'success_url'      => route('client.payment.success', $application->id) . '?id={CHECKOUT_SESSION_ID}',
+                            'cancel_url'       => route('client.payment.show', $application->id),
                         ],
                     ],
                 ]);
 
             if ($response->successful()) {
                 $data   = $response->json('data');
-                $linkId = $data['id'];
+                $sessionId = $data['id'];
 
                 $payment->update([
-                    'gateway_transaction_id'     => $linkId,
-                    'paymongo_payment_intent_id' => $linkId,
+                    'gateway_transaction_id'     => $sessionId,
+                    'paymongo_payment_intent_id' => $data['attributes']['payment_intent']['id'] ?? null,
                     'paymongo_checkout_url'      => $data['attributes']['checkout_url'],
                     'gateway_response'           => $data,
                     'status'                     => 'pending',
@@ -164,13 +179,15 @@ class PaymentController extends Controller
 
         try {
             $response = Http::withBasicAuth(config('services.paymongo.secret_key'), '')
-                ->get('https://api.paymongo.com/v1/links/' . $payment->gateway_transaction_id);
+                ->get('https://api.paymongo.com/v1/checkout_sessions/' . $payment->gateway_transaction_id);
 
             if ($response->successful()) {
                 $data   = $response->json('data');
-                $status = $data['attributes']['status'] ?? null;
+                // Check payment intent status inside the session
+                $status = $data['attributes']['payment_intent']['attributes.status'] 
+                       ?? $data['attributes']['status'] ?? null;
 
-                if ($status === 'paid') {
+                if ($status === 'paid' || $status === 'succeeded') {
                     $this->confirmPayment($payment, $application, $data);
                     return redirect()->route('client.applications.show', $application->id)
                         ->with('success', '✅ Payment confirmed! Reference No: ' . $payment->reference_number);
@@ -212,7 +229,7 @@ class PaymentController extends Controller
         $type = $request->input('data.attributes.type');
         $data = $request->input('data.attributes.data');
 
-        if ($type === 'link.payment.paid') {
+        if ($type === 'checkout_session.payment.paid') {
             $payment = BplsOnlinePayment::where('gateway_transaction_id', $data['id'] ?? null)
                 ->where('status', 'pending')->first();
 

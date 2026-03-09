@@ -171,12 +171,12 @@ class BusinessEntry extends Model
 
     public function isOnlineApplication(): bool
     {
-        return \App\Models\onlineBPLS\BplsApplication::where('business_entry_id', $this->id)->exists();
+        return \App\Models\onlineBPLS\BplsOnlineApplication::where('business_entry_id', $this->id)->exists();
     }
 
     public function bplsApplication()
     {
-        return $this->hasOne(\App\Models\onlineBPLS\BplsApplication::class, 'business_entry_id');
+        return $this->hasOne(\App\Models\onlineBPLS\BplsOnlineApplication::class, 'business_entry_id');
     }
     /**
      * Check if this business entry came from online registration.

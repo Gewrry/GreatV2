@@ -25,7 +25,7 @@ class FaasPropertyController extends Controller
 {
     // ─── PROPERTY REGISTRY ─────────────────────────────────────────────────────
 
-    public function index(Request $request)
+public function index(Request $request)
     {
         $properties = FaasProperty::with(['barangay', 'propertyRegistration'])
             ->when($request->filled('search'), fn($q) => $q->where(function ($q) use ($request) {
@@ -45,9 +45,49 @@ class FaasPropertyController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $barangays = \App\Models\Barangay::orderBy('brgy_name')->get();
-        return view('modules.rpt.faas.index', compact('properties', 'barangays'));
+        // Fetch all status counts in a single query
+        $statusCounts = FaasProperty::selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $barangays        = \App\Models\Barangay::orderBy('brgy_name')->get();
+        $totalCount       = FaasProperty::count();
+        $draftCount       = $statusCounts->get('draft', 0);
+        $forReviewCount   = $statusCounts->get('for_review', 0);
+        $recommendedCount = $statusCounts->get('recommended', 0);
+        $approvedCount    = $statusCounts->get('approved', 0);
+        $inactiveCount    = $statusCounts->get('inactive', 0);
+        $cancelledCount   = $statusCounts->get('cancelled', 0);
+
+        return view('modules.rpt.faas.index', compact(
+            'properties',
+            'barangays',
+            'totalCount',
+            'draftCount',
+            'forReviewCount',
+            'recommendedCount',
+            'approvedCount',
+            'inactiveCount',
+            'cancelledCount',
+        ));
     }
+    public function statusCounts()
+    {
+        $counts = FaasProperty::selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        return response()->json([
+            'total'       => FaasProperty::count(),
+            'draft'       => $counts->get('draft', 0),
+            'for_review'  => $counts->get('for_review', 0),
+            'recommended' => $counts->get('recommended', 0),
+            'approved'    => $counts->get('approved', 0),
+            'inactive'    => $counts->get('inactive', 0),
+            'cancelled'   => $counts->get('cancelled', 0),
+        ]);
+    }
+    
 
     public function createDraft(\App\Models\RPT\RptPropertyRegistration $registration)
     {

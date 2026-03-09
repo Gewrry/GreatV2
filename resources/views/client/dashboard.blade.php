@@ -1,23 +1,10 @@
 {{-- resources/views/client/dashboard.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
+@extends('client.layouts.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — BPLS Portal</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    @vite(['resources/css/app.css'])
+@section('title', 'Dashboard')
+
+@push('styles')
     <style>
-        body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-        }
-
         /* iOS-style glassmorphism */
         .glass {
             background: rgba(255, 255, 255, 0.72);
@@ -51,15 +38,8 @@
         }
 
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0px) scale(1);
-            }
-
-            50% {
-                transform: translateY(-24px) scale(1.04);
-            }
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-24px) scale(1.04); }
         }
 
         /* Card press effect */
@@ -67,9 +47,7 @@
             transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
         }
 
-        .card-press:active {
-            transform: scale(0.97);
-        }
+        .card-press:active { transform: scale(0.97); }
 
         .card-press:hover {
             transform: translateY(-2px);
@@ -90,36 +68,15 @@
 
         /* Fade-up animation */
         @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(18px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .fade-up {
-            animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-        }
-
-        .delay-1 {
-            animation-delay: 0.08s;
-        }
-
-        .delay-2 {
-            animation-delay: 0.16s;
-        }
-
-        .delay-3 {
-            animation-delay: 0.24s;
-        }
-
-        .delay-4 {
-            animation-delay: 0.32s;
-        }
+        .fade-up { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .delay-1 { animation-delay: 0.08s; }
+        .delay-2 { animation-delay: 0.16s; }
+        .delay-3 { animation-delay: 0.24s; }
+        .delay-4 { animation-delay: 0.32s; }
 
         /* Green teal gradient for primary button */
         .btn-primary {
@@ -133,52 +90,28 @@
             transform: translateY(-1px) scale(1.02);
         }
 
-        .btn-primary:active {
-            transform: scale(0.97);
-        }
+        .btn-primary:active { transform: scale(0.97); }
 
         /* Notification dot */
         @keyframes pulse-dot {
-
-            0%,
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 0.6;
-                transform: scale(1.3);
-            }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.3); }
         }
 
-        .pulse-dot {
-            animation: pulse-dot 2s ease-in-out infinite;
-        }
+        .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
     </style>
-</head>
+@endpush
 
-<body class="min-h-screen overflow-x-hidden" style="background: #f0faf8;">
-
+@section('content')
     {{-- Animated Background --}}
     <div class="fixed inset-0 -z-10 overflow-hidden">
         <div class="blob absolute -top-32 -left-32 w-96 h-96 bg-teal-300"></div>
         <div class="blob blob-2 absolute top-1/3 -right-24 w-80 h-80 bg-emerald-300"></div>
         <div class="blob blob-3 absolute -bottom-24 left-1/4 w-72 h-72 bg-cyan-200"></div>
-        <div class="absolute inset-0"
-            style="background: radial-gradient(ellipse at 60% 0%, rgba(204,251,241,0.5) 0%, transparent 60%), radial-gradient(ellipse at 0% 80%, rgba(167,243,208,0.3) 0%, transparent 50%);">
+        <div class="absolute inset-0" style="background: radial-gradient(ellipse at 60% 0%, rgba(204,251,241,0.5) 0%, transparent 60%), radial-gradient(ellipse at 0% 80%, rgba(167,243,208,0.3) 0%, transparent 50%);">
         </div>
     </div>
-
-    @include('client.partials.navbar')
-
-    <div class="max-w-lg mx-auto px-4 pt-6 pb-12 space-y-4">
-@extends('client.layouts.app')
-
-@section('title', 'Dashboard')
-
-@section('content')
-    <div class="max-w-4xl mx-auto px-4">
+    <div class="max-w-4xl mx-auto px-4 pb-28 sm:pb-0">
 
         {{-- Success Flash --}}
         @if (session('success'))
@@ -403,9 +336,5 @@
             BPLS Portal · Business Permit & Licensing System
         </p>
 
-    </div>
-</body>
-
-</html>
     </div>
 @endsection

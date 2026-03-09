@@ -113,16 +113,6 @@
                         ₱ {{ number_format($installment['amount'], 2) }}
                     </p>
 
-                    @if ($instIsPaid)
-                        <span
-                            class="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold rounded-lg">
-                            ✓ Paid
-                        </span>
-                    @elseif($instIsPending)
-                        <span
-                            class="px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 text-[10px] font-bold rounded-lg">
-                            Verifying...
-                        </span>
                     @if($instIsPaid)
                         <div class="flex flex-col gap-1 items-end">
                             <span class="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold rounded-lg">

@@ -1,17 +1,10 @@
 {{-- resources/views/client/applications/show.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application {{ $application->application_number }} — BPLS Portal</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
-<body class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5">
+@extends('client.layouts.app')
 
-    @include('client.partials.navbar')
+@section('title', 'Application ' . $application->application_number)
 
-    <div class="max-w-5xl mx-auto px-4 py-6">
+@section('content')
+    <div class="max-w-5xl mx-auto px-4">
 
         @if(session('success'))
             <div class="mb-5 flex items-center gap-2.5 p-3.5 bg-logo-green/10 border border-logo-green/30 rounded-xl text-sm text-green font-semibold">
@@ -396,8 +389,5 @@
                     </div>
                 </div>
             </div>
-        </div>
     </div>
-
-</body>
-</html>
+@endsection
