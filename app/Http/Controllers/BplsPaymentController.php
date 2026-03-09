@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\BusinessEntry;
 use App\Models\BplsPayment;
 use App\Models\BplsSetting;
+use App\Models\BplsBenefit;
 use App\Models\OrAssignment;
 use Carbon\Carbon;
 
@@ -259,11 +260,18 @@ class BplsPaymentController extends Controller
             $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)->where('end_or', '>=', $orNumber)->first();
             return response()->json([
                 'valid' => false,
-                'message' => $anyAssignment ? "OR #{$orNumber} belongs to another cashier." : "OR #{$orNumber} is not within any assigned range.",
+                'message' => $anyAssignment
+                    ? "OR #{$orNumber} belongs to another cashier."
+                    : "OR #{$orNumber} is not within any assigned range.",
             ]);
         }
 
-        return response()->json(['valid' => true, 'message' => "OR #{$orNumber} is valid.", 'receipt_type' => $assignment->receipt_type, 'receipt_label' => $assignment->receipt_type]);
+        return response()->json([
+            'valid' => true,
+            'message' => "OR #{$orNumber} is valid.",
+            'receipt_type' => $assignment->receipt_type,
+            'receipt_label' => $assignment->receipt_type,
+        ]);
     }
 
     // =========================================================================
@@ -321,6 +329,10 @@ class BplsPaymentController extends Controller
     // =========================================================================
     public function show($unifiedId)
     {
+        $allowedStatuses = ['for_payment', 'for_renewal_payment', 'approved'];
+        if (!in_array($entry->status, $allowedStatuses)) {
+            return redirect()->route('bpls.business-list.index')
+                ->with('error', 'This business has not been assessed yet.');
         // 1. Resolve unified ID (e.g. "online_5" or "walkin_10")
         $isOnline = str_starts_with($unifiedId, 'online_');
         $id = str_replace(['online_', 'walkin_'], '', $unifiedId);
@@ -388,6 +400,9 @@ class BplsPaymentController extends Controller
             }
         }
 
+        // Load entry's currently applied benefits via pivot
+        $entry->load('benefits');
+
         $fees = $this->computeFees($entry);
         $activeTotalDue = $entry->active_total_due;
         $paidQuarters = $this->getPaidQuarters($entry);
@@ -423,6 +438,10 @@ class BplsPaymentController extends Controller
 
         $isRenewal = ($entry->renewal_cycle ?? 0) > 0;
 
+        // Dynamic active benefits list for the beneficiary editor UI
+        $benefits = BplsBenefit::active()->get();
+        $entryBenefitIds = $entry->benefits->pluck('id')->map(fn($id) => (string) $id)->toArray();
+
         return view('modules.bpls.payment', compact(
             'entry',
             'fees',
@@ -437,27 +456,18 @@ class BplsPaymentController extends Controller
             'activeTotalDue',
             'isRenewal',
             'advanceSettings',
-            'beneficiaryDiscount'
+            'beneficiaryDiscount',
+            'benefits',
+            'entryBenefitIds',
         ));
     }
 
     // =========================================================================
-    // UPDATE BENEFICIARY FLAGS  ← NEW
-    //
-    // PATCH /bpls/payment/{entry}/beneficiary
-    //
-    // Updates is_pwd, is_senior, is_solo_parent, is_4ps, discount_10, discount_5
-    // on the BusinessEntry flat snapshot (and syncs to bpls_owners if linked).
-    // Returns the re-computed beneficiary discount per installment as JSON so
-    // the payment page can update its discount preview in real-time.
-    //
-    // Route to register in routes/web.php:
-    //   Route::patch('bpls/payment/{entry}/beneficiary',
-    //       [BplsPaymentController::class, 'updateBeneficiary'])
-    //       ->name('bpls.payment.update-beneficiary');
+    // UPDATE BENEFICIARY — syncs bpls_entry_benefits pivot
     // =========================================================================
     public function updateBeneficiary(Request $request, $unifiedId)
     {
+        $benefitIds = array_map('intval', $request->input('benefit_ids', []));
         $entry = $this->resolveUnifiedEntry($unifiedId);
         
         // FormData sends "1" or "0" strings — cast explicitly
@@ -470,21 +480,12 @@ class BplsPaymentController extends Controller
             'discount_5' => $request->input('discount_5', '0') === '1',
         ]);
 
-        $entry = $entry->fresh();
+        // Sync the entry ↔ benefits pivot
+        $entry->benefits()->sync($benefitIds);
 
-        // Sync back to bpls_owners if the relationship exists
-        if (method_exists($entry, 'bplsOwner') && $entry->bplsOwner) {
-            $entry->bplsOwner->update([
-                'is_pwd' => $entry->is_pwd,
-                'is_senior' => $entry->is_senior,
-                'is_solo_parent' => $entry->is_solo_parent,
-                'is_4ps' => $entry->is_4ps,
-                'discount_10' => $entry->discount_10,
-                'discount_5' => $entry->discount_5,
-            ]);
-        }
+        $entry = $entry->fresh(['benefits']);
 
-        // Re-compute discount for 1 installment (frontend multiplies by qty selected)
+        // Re-compute discount per 1 installment (frontend multiplies by selected quarters)
         $modeCount = $this->modeInstallments($entry->mode_of_payment);
         $activeDue = $entry->active_total_due;
         $perQ = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
@@ -494,14 +495,7 @@ class BplsPaymentController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Beneficiary status updated.',
-            'entry' => [
-                'is_pwd' => (bool) $entry->is_pwd,
-                'is_senior' => (bool) $entry->is_senior,
-                'is_solo_parent' => (bool) $entry->is_solo_parent,
-                'is_4ps' => (bool) $entry->is_4ps,
-                'discount_10' => (bool) $entry->discount_10,
-                'discount_5' => (bool) $entry->discount_5,
-            ],
+            'entry_benefit_ids' => $entry->benefits->pluck('id'),
             'beneficiary' => [
                 'discount_per_installment' => $beneficiaryInfo['discount'],
                 'rate' => $beneficiaryInfo['rate'],
@@ -510,6 +504,7 @@ class BplsPaymentController extends Controller
             ],
         ]);
     }
+
     // =========================================================================
     // PAY
     // =========================================================================
@@ -549,9 +544,12 @@ class BplsPaymentController extends Controller
             ->first();
 
         if (!$assignment) {
-            $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)->where('end_or', '>=', $orNumber)->first();
+            $anyAssignment = OrAssignment::where('start_or', '<=', $orNumber)
+                ->where('end_or', '>=', $orNumber)->first();
             return back()->withInput()->withErrors([
-                'or_number' => $anyAssignment ? "OR #{$orNumber} belongs to another cashier." : "OR #{$orNumber} is not within any assigned range.",
+                'or_number' => $anyAssignment
+                    ? "OR #{$orNumber} belongs to another cashier."
+                    : "OR #{$orNumber} is not within any assigned range.",
             ]);
         }
 
@@ -560,7 +558,9 @@ class BplsPaymentController extends Controller
         $alreadyPaid = $this->getPaidQuarters($entry);
         $duplicate = array_intersect($quarters, $alreadyPaid);
         if (!empty($duplicate)) {
-            return back()->withInput()->withErrors(['quarters' => 'Quarter(s) ' . implode(', ', $duplicate) . ' already paid.']);
+            return back()->withInput()->withErrors([
+                'quarters' => 'Quarter(s) ' . implode(', ', $duplicate) . ' already paid.',
+            ]);
         }
 
         // ── Compute base amounts ──────────────────────────────────────────────
@@ -572,11 +572,9 @@ class BplsPaymentController extends Controller
         $backtaxes = (float) ($request->backtaxes ?? 0);
         $discount = (float) ($request->discount ?? 0);
 
-        // ── Discount computation (advance + beneficiary) ──────────────────────
+        // ── Discount computation ──────────────────────────────────────────────
         $discountRemarks = [];
-        $discountInfo = null;
 
-        // 1. Advance payment discount (only when no manual discount passed)
         if ($discount == 0) {
             $discountInfo = $this->computeAdvanceDiscount($entry, $quarters, $request->payment_date);
             $discount = $discountInfo['discount'];
@@ -585,7 +583,8 @@ class BplsPaymentController extends Controller
             }
         }
 
-        // 2. Beneficiary discount (PWD / Senior / Solo Parent / 4Ps)
+        // Load benefits for beneficiary discount computation
+        $entry->load('benefits');
         $beneficiaryInfo = $this->computeBeneficiaryDiscount($entry, $amountPaid, count($quarters));
         if ($beneficiaryInfo['discount'] > 0) {
             $discount += $beneficiaryInfo['discount'];
@@ -595,7 +594,6 @@ class BplsPaymentController extends Controller
         // ── Total ─────────────────────────────────────────────────────────────
         $total = round($amountPaid + $surcharges + $backtaxes - $discount, 2);
 
-        // Remarks assembly
         $baseRemarks = trim($request->remarks ?? '');
         $autoRemarks = implode('; ', array_filter($discountRemarks));
         $finalRemarks = trim(implode(' | ', array_filter([$baseRemarks, $autoRemarks])));
@@ -621,6 +619,16 @@ class BplsPaymentController extends Controller
             'received_by' => $assignment->cashier_name,
         ];
 
+        // Snapshot which benefits were active at time of payment
+        $payment->benefits()->sync($entry->benefits->pluck('id')->toArray());
+
+        // ── Update business status ────────────────────────────────────────────
+        $allPaidNow = $this->getPaidQuarters($entry);
+        $entry->update([
+            'status' => count(array_unique($allPaidNow)) >= $modeCount && $modeCount > 0
+                ? 'approved'
+                : (($entry->renewal_cycle ?? 0) > 0 ? 'for_renewal_payment' : 'for_payment'),
+        ]);
         if ($entry->is_online) {
             $paymentData['bpls_application_id'] = $entry->id;
             
@@ -723,7 +731,8 @@ class BplsPaymentController extends Controller
         };
 
         $cyclePayments = BplsPayment::where('business_entry_id', $entry->id)
-            ->where('payment_year', $currentYear)->where('renewal_cycle', $currentCycle)->get();
+            ->where('payment_year', $currentYear)
+            ->where('renewal_cycle', $currentCycle)->get();
 
         $paidQuarters = [];
         foreach ($cyclePayments as $p) {
@@ -737,12 +746,18 @@ class BplsPaymentController extends Controller
             $newCycle = $currentCycle + 1;
         } else {
             $newPermitYear = $currentYear;
-            $maxCycle = BplsPayment::where('business_entry_id', $entry->id)->where('payment_year', $currentYear)->max('renewal_cycle') ?? $currentCycle;
+            $maxCycle = BplsPayment::where('business_entry_id', $entry->id)
+                ->where('payment_year', $currentYear)->max('renewal_cycle') ?? $currentCycle;
             $newCycle = $maxCycle + 1;
         }
 
-        if (BplsPayment::where('business_entry_id', $entry->id)->where('payment_year', $newPermitYear)->where('renewal_cycle', $newCycle)->exists()) {
-            $maxCycle = BplsPayment::where('business_entry_id', $entry->id)->where('payment_year', $newPermitYear)->max('renewal_cycle') ?? 0;
+        if (
+            BplsPayment::where('business_entry_id', $entry->id)
+                ->where('payment_year', $newPermitYear)
+                ->where('renewal_cycle', $newCycle)->exists()
+        ) {
+            $maxCycle = BplsPayment::where('business_entry_id', $entry->id)
+                ->where('payment_year', $newPermitYear)->max('renewal_cycle') ?? 0;
             $newCycle = $maxCycle + 1;
         }
 
@@ -766,8 +781,9 @@ class BplsPaymentController extends Controller
     }
 
     // =========================================================================
-    // RECEIPT / PERMIT
+    // RECEIPT
     // =========================================================================
+    public function receipt(BusinessEntry $entry, BplsPayment $payment)
 
     public function receipt($unifiedId, BplsPayment $payment)
     {
@@ -778,7 +794,6 @@ class BplsPaymentController extends Controller
         $perInstallment = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
         $accountCodes = self::ACCOUNT_CODES;
 
-        // ── Advance discount rate label ───────────────────────────────────────
         $discountRate = 0;
         if ($payment->discount > 0) {
             $discountRate = match ($entry->mode_of_payment) {
@@ -788,25 +803,20 @@ class BplsPaymentController extends Controller
             };
         }
 
-        // ── Receipt settings (all keys keyed by setting key) ─────────────────
         $receiptSettings = \App\Models\BplsSetting::where('group', 'receipt')
-            ->get()
-            ->keyBy('key');
+            ->get()->keyBy('key');
 
-        // ── Beneficiary discount stored on the payment remarks or re-computed ─
-        // We store the total discount (advance + beneficiary) in payment->discount.
-        // To split them on the receipt, re-compute beneficiary portion from entry flags.
         $quartersPaid = is_array($payment->quarters_paid)
             ? $payment->quarters_paid
             : (is_string($payment->quarters_paid) ? json_decode($payment->quarters_paid, true) : []) ?? [];
         $qCount = count($quartersPaid);
         $perQ = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
 
+        // Use pivot snapshot on payment if available, fall back to entry's current benefits
+        $entry->load('benefits');
         $beneficiaryInfo = $this->computeBeneficiaryDiscount($entry, $perQ * $qCount, $qCount);
         $beneficiaryDiscount = $beneficiaryInfo['discount'];
         $beneficiaryLabel = $beneficiaryInfo['label'];
-
-        // Advance discount = total discount stored - beneficiary portion
         $advanceDiscount = max(0, round(($payment->discount ?? 0) - $beneficiaryDiscount, 2));
 
         // IF this is an online payment/application, use the new standalone view
@@ -823,6 +833,10 @@ class BplsPaymentController extends Controller
         ));
     }
 
+    // =========================================================================
+    // PERMIT
+    // =========================================================================
+    public function permit(BusinessEntry $entry, BplsPayment $payment)
     public function permit($unifiedId, BplsPayment $payment)
     {
         $entry = $this->resolveUnifiedEntry($unifiedId);
@@ -831,11 +845,9 @@ class BplsPaymentController extends Controller
         $activeDue = $entry->active_total_due;
         $perInstallment = $modeCount > 0 ? round($activeDue / $modeCount, 2) : 0;
 
-        // ── Pull mayor name and treasurer name from settings ──────────────────
         $mayorName = BplsSetting::get('mayor_name', 'HON. JUAN P. DELA CRUZ');
         $treasurerName = BplsSetting::get('treasurer_name', 'MARIA R. SANTOS');
 
-        // ── Permit number from settings format ────────────────────────────────
         $permitNumberFormat = BplsSetting::get('permit_number_format', 'BPLS-[YEAR]-[ID]');
         $permitNumber = str_replace(
             ['[YEAR]', '[ID]', '[QUARTER]', '[BARANGAY]'],
@@ -858,7 +870,6 @@ class BplsPaymentController extends Controller
             'permitNumber',
         ));
     }
-
 
     // =========================================================================
     // COMPUTE SURCHARGE
@@ -887,30 +898,21 @@ class BplsPaymentController extends Controller
             $q = (int) $q;
             $dueDate = $dueDates[$q] ?? $dueDates[1];
 
-            // ── For NEW businesses: skip quarters whose due date was before
-            //    the business was approved (they weren't liable yet).
-            // ── For RENEWALS: ALL quarters in the permit year are fair game —
-            //    the renewal approval means they owe for the full year.
-            //    Only skip if approved_at is actually after the due date AND
-            //    this is a new (non-renewal) application.
             if (!$isRenewal && $approvedAt && $dueDate->lt($approvedAt)) {
                 continue;
             }
 
-            // Apply surcharge if payment is made AFTER the due date
             if ($payDate->gt($dueDate)) {
                 $monthsLate = max(1, (int) $dueDate->diffInMonths($payDate));
-
-                // 2% per month, capped at max_surcharge_rate (default 72%)
                 $maxRate = (float) BplsSetting::get('max_surcharge_rate', '72') / 100;
                 $monthlyRate = (float) BplsSetting::get('monthly_surcharge_rate', '2') / 100;
                 $rate = min($monthsLate * $monthlyRate, $maxRate);
-
                 $totalSurcharge += round($perQ * $rate, 2);
             }
         }
 
         $advanceInfo = $this->computeAdvanceDiscount($entry, $request->quarters, $request->payment_date);
+        $entry->load('benefits');
         $beneficiaryInfo = $this->computeBeneficiaryDiscount(
             $entry,
             $perQ * count($request->quarters),
@@ -930,7 +932,6 @@ class BplsPaymentController extends Controller
             'beneficiary_rate' => $beneficiaryInfo['rate'],
         ]);
     }
-
 
     // =========================================================================
     // COMPUTE ADVANCE DISCOUNT
@@ -968,12 +969,10 @@ class BplsPaymentController extends Controller
             $q = (int) $q;
             $dueDate = $dueDates[$q] ?? $dueDates[1];
 
-            // For new businesses, skip if not yet liable
             if (!$isRenewal && $approvedAt && $dueDate->lt($approvedAt)) {
                 continue;
             }
 
-            // Advance discount: payment is made X days BEFORE the due date
             if ($payDate->lte($dueDate->copy()->subDays($daysBefore))) {
                 $qualifies = true;
                 $quartersQualified[] = $q;
@@ -988,8 +987,9 @@ class BplsPaymentController extends Controller
             'quarters_qualified' => $quartersQualified,
         ];
     }
+
     // =========================================================================
-    // COMPUTE BENEFICIARY DISCOUNT
+    // COMPUTE BENEFICIARY DISCOUNT — reads from bpls_entry_benefits pivot
     // =========================================================================
     public function computeBeneficiaryDiscount($entry, float $baseAmount, int $installmentCount = 1): array
     {
@@ -999,78 +999,36 @@ class BplsPaymentController extends Controller
             return $noDiscount;
         }
 
-        $groups = [];
-
-        if ($entry->is_pwd) {
-            $groups[] = [
-                'key' => 'pwd',
-                'label' => 'PWD',
-                'rate' => (float) BplsSetting::get('pwd_discount_rate', '20'),
-                'apply_to' => BplsSetting::get('pwd_discount_apply_to', 'total'),
-            ];
+        // Ensure benefits are loaded
+        if (!$entry->relationLoaded('benefits')) {
+            $entry->load('benefits');
         }
 
-        if ($entry->is_senior) {
-            $groups[] = [
-                'key' => 'senior',
-                'label' => 'Senior Citizen',
-                'rate' => (float) BplsSetting::get('senior_discount_rate', '20'),
-                'apply_to' => BplsSetting::get('senior_discount_apply_to', 'total'),
-            ];
-        }
+        // Only use active benefits attached to this entry
+        $activeBenefits = $entry->benefits->filter(fn($b) => $b->is_active);
 
-        if ($entry->is_solo_parent) {
-            $groups[] = [
-                'key' => 'solo_parent',
-                'label' => 'Solo Parent',
-                'rate' => (float) BplsSetting::get('solo_parent_discount_rate', '10'),
-                'apply_to' => BplsSetting::get('solo_parent_discount_apply_to', 'total'),
-            ];
-        }
-
-        if ($entry->is_4ps) {
-            $groups[] = [
-                'key' => 'fourps',
-                'label' => '4Ps',
-                'rate' => (float) BplsSetting::get('fourps_discount_rate', '10'),
-                'apply_to' => BplsSetting::get('fourps_discount_apply_to', 'total'),
-            ];
-        }
-
-        if (empty($groups)) {
+        if ($activeBenefits->isEmpty()) {
             return $noDiscount;
         }
 
         $stackRule = BplsSetting::get('beneficiary_discount_stack', 'stack');
 
-        $fees = $this->computeFees($entry);
-        $totalFees = collect($fees)->sum('amount');
-        $permitFee = collect($fees)->firstWhere('name', 'BUSINESS PERMIT (MAYORS PERMIT)')['amount'] ?? 0;
-        $permitRatio = $totalFees > 0 ? ($permitFee / $totalFees) : 1;
-
-        $computeGroupDiscount = function (array $group) use ($baseAmount, $permitRatio): float {
-            $effectiveBase = $group['apply_to'] === 'permit_only'
-                ? round($baseAmount * $permitRatio, 2)
-                : $baseAmount;
-
-            return round($effectiveBase * ($group['rate'] / 100), 2);
-        };
+        $computeAmount = fn($benefit) => round($baseAmount * ($benefit->discount_percent / 100), 2);
 
         $discount = 0.0;
         $effectiveRate = 0.0;
         $groupKeys = [];
 
         if ($stackRule === 'highest_only') {
-            usort($groups, fn($a, $b) => $computeGroupDiscount($b) <=> $computeGroupDiscount($a));
-            $best = $groups[0];
-            $discount = $computeGroupDiscount($best);
-            $effectiveRate = $best['rate'];
-            $groupKeys = [$best['label']];
+            $best = $activeBenefits->sortByDesc($computeAmount)->first();
+            $discount = $computeAmount($best);
+            $effectiveRate = $best->discount_percent;
+            $groupKeys = [$best->name];
         } else {
-            foreach ($groups as $group) {
-                $discount += $computeGroupDiscount($group);
-                $effectiveRate += $group['rate'];
-                $groupKeys[] = $group['label'];
+            foreach ($activeBenefits as $benefit) {
+                $discount += $computeAmount($benefit);
+                $effectiveRate += $benefit->discount_percent;
+                $groupKeys[] = $benefit->name;
             }
             $discount = min($discount, $baseAmount);
             $effectiveRate = min($effectiveRate, 100);
@@ -1118,26 +1076,17 @@ class BplsPaymentController extends Controller
 
         $dueDates = $this->quarterDueDates($year);
 
-        // For renewals, overdue is simply: today > due date
-        // For new, overdue is: today > due date AND approved_at <= due date
         $isOverdue = function (Carbon $dueDate) use ($now, $isRenewal, $approvedAt): bool {
             if (!$now->gt($dueDate))
-                return false;           // not past due yet
+                return false;
             if ($isRenewal)
-                return true;            // renewals: all past-due quarters are overdue
-            return $approvedAt->lte($dueDate);               // new: only if they were approved before due date
+                return true;
+            return $approvedAt->lte($dueDate);
         };
 
         if ($mode === 'annual') {
             $due = $dueDates[1];
-            return [
-                [
-                    'quarter' => 1,
-                    'date' => $due->format('F j, Y'),
-                    'amount' => $total,
-                    'overdue' => $isOverdue($due),
-                ]
-            ];
+            return [['quarter' => 1, 'date' => $due->format('F j, Y'), 'amount' => $total, 'overdue' => $isOverdue($due)]];
         }
 
         if ($mode === 'semi_annual') {
@@ -1148,7 +1097,6 @@ class BplsPaymentController extends Controller
             ];
         }
 
-        // Quarterly (default)
         $q = round($total / 4, 2);
         return [
             ['quarter' => 1, 'date' => $dueDates[1]->format('F j, Y'), 'amount' => $q, 'overdue' => $isOverdue($dueDates[1])],
@@ -1158,6 +1106,7 @@ class BplsPaymentController extends Controller
         ];
     }
 
+    public function getQuarterStatus(BusinessEntry $entry, array $paidQuarters, ?float $totalDue = null): array
 
     public function getQuarterStatus($entry, array $paidQuarters, ?float $totalDue = null): array
     {
@@ -1188,10 +1137,14 @@ class BplsPaymentController extends Controller
                     : (str_contains($scale, 'Large') ? 4 : 1)));
 
         $lbtRate = match (true) {
-            $gs <= 300000 => 0.018, $gs <= 1000000 => 0.0175,
-            $gs <= 2000000 => 0.016, $gs <= 3000000 => 0.015,
-            $gs <= 5000000 => 0.014, $gs <= 10000000 => 0.011,
-            $gs <= 20000000 => 0.009, $gs <= 50000000 => 0.006,
+            $gs <= 300000 => 0.018,
+            $gs <= 1000000 => 0.0175,
+            $gs <= 2000000 => 0.016,
+            $gs <= 3000000 => 0.015,
+            $gs <= 5000000 => 0.014,
+            $gs <= 10000000 => 0.011,
+            $gs <= 20000000 => 0.009,
+            $gs <= 50000000 => 0.006,
             default => 0.005,
         };
 

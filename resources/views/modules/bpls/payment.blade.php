@@ -145,7 +145,8 @@
                     const w = this.numToWords(pesos);
                     if (!w) return '';
                     return w.toUpperCase() + ' PESOS' +
-                        (cents > 0 ? ' AND ' + cents.toString().padStart(2, '0') + '/100 CENTAVOS' : '') + ' ONLY';
+                        (cents > 0 ? ' AND ' + cents.toString().padStart(2, '0') + '/100 CENTAVOS' : '') +
+                        ' ONLY';
                 },
                 numToWords(n) {
                     if (n === 0) return 'ZERO';
@@ -157,6 +158,7 @@
                     if (n < 1000000) return this.numToWords(Math.floor(n / 1000)) + ' THOUSAND' + (n % 1000 ? ' ' + this.numToWords(n % 1000) : '');
                     return this.numToWords(Math.floor(n / 1000000)) + ' MILLION' + (n % 1000000 ? ' ' + this.numToWords(n % 1000000) : '');
                 },
+            
                 async autoComputeSurcharge() {
                     if (!this.selectedQuarters.length || !this.paymentDate) return;
                     this.computing = true;
@@ -173,7 +175,8 @@
                         this.discountRate = data.advance_discount_rate || data.discount_rate || 0;
                         this.discountQualifies = data.advance_discount_qualifies || data.discount_qualifies || false;
                         if (data.beneficiary_discount !== undefined) {
-                            const perQ = this.selectedQuarters.length > 0 ? data.beneficiary_discount / this.selectedQuarters.length : 0;
+                            const perQ = this.selectedQuarters.length > 0 ?
+                                data.beneficiary_discount / this.selectedQuarters.length : 0;
                             this.beneficiaryDiscount = perQ;
                             this.beneficiaryLabel = data.beneficiary_label || '';
                             window._beneficiaryDiscountPerInstallment = perQ;
@@ -334,7 +337,8 @@
                             </div>
                             <p
                                 class="text-sm font-bold text-center {{ $sched['overdue'] && !$alreadyPaid ? 'text-red-500' : 'text-green' }}">
-                                ₱{{ number_format($sched['amount'], 2) }}</p>
+                                ₱{{ number_format($sched['amount'], 2) }}
+                            </p>
                         </div>
                     @endforeach
                 </div>
@@ -348,15 +352,18 @@
                         <div class="grid grid-cols-{{ count($quarterStatus) }}">
                             @foreach ($quarterStatus as $q => $qs)
                                 <div
-                                    class="text-center py-3 text-sm font-extrabold text-white {{ $qs['paid'] ? 'bg-logo-green' : 'bg-red-500' }} {{ !$loop->last ? 'border-r border-white/20' : '' }}">
-                                    Q{{ $q }}</div>
+                                    class="text-center py-3 text-sm font-extrabold text-white
+                                    {{ $qs['paid'] ? 'bg-logo-green' : 'bg-red-500' }}
+                                    {{ !$loop->last ? 'border-r border-white/20' : '' }}">
+                                    Q{{ $q }}
+                                </div>
                             @endforeach
                         </div>
                     </div>
                 @endif
 
                 {{-- ══════════════════════════════════════════════════════════════ --}}
-                {{-- ── BENEFICIARY / DISCOUNT STATUS (editable) ──               --}}
+                {{-- ── BENEFICIARY / DISCOUNT STATUS (dynamic) ──               --}}
                 {{-- ══════════════════════════════════════════════════════════════ --}}
                 <div x-data="beneficiaryEditor()" x-init="beInit()"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
@@ -390,48 +397,27 @@
                             and update the discount total.</p>
 
                         <div class="flex flex-wrap gap-2 mb-4">
-                            <label class="cursor-pointer select-none">
-                                <input type="checkbox" x-model="beFlags.is_pwd" @change="beSave()"
-                                    class="peer hidden">
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-purple-100 peer-checked:text-purple-800 peer-checked:border-purple-300 hover:border-purple-300">♿
-                                    PWD</span>
-                            </label>
-                            <label class="cursor-pointer select-none">
-                                <input type="checkbox" x-model="beFlags.is_senior" @change="beSave()"
-                                    class="peer hidden">
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-amber-100 peer-checked:text-amber-800 peer-checked:border-amber-300 hover:border-amber-300">👴
-                                    Senior Citizen</span>
-                            </label>
-                            <label class="cursor-pointer select-none">
-                                <input type="checkbox" x-model="beFlags.is_solo_parent" @change="beSave()"
-                                    class="peer hidden">
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-pink-100 peer-checked:text-pink-800 peer-checked:border-pink-300 hover:border-pink-300">👩‍👧
-                                    Solo Parent</span>
-                            </label>
-                            <label class="cursor-pointer select-none">
-                                <input type="checkbox" x-model="beFlags.is_4ps" @change="beSave()"
-                                    class="peer hidden">
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-green-100 peer-checked:text-green-800 peer-checked:border-green-300 hover:border-green-300">🏠
-                                    4Ps</span>
-                            </label>
-                            <label class="cursor-pointer select-none">
-                                <input type="checkbox" x-model="beFlags.discount_10" @change="beSave()"
-                                    class="peer hidden">
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-blue-100 peer-checked:text-blue-800 peer-checked:border-blue-300 hover:border-blue-300">💉
-                                    10% Fully Vaccinated</span>
-                            </label>
-                            <label class="cursor-pointer select-none">
-                                <input type="checkbox" x-model="beFlags.discount_5" @change="beSave()"
-                                    class="peer hidden">
-                                <span
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 border-lumot/40 text-gray/60 peer-checked:bg-sky-100 peer-checked:text-sky-800 peer-checked:border-sky-300 hover:border-sky-300">💉
-                                    5% 1st Dose</span>
-                            </label>
+                            @forelse ($benefits as $benefit)
+                                <label class="cursor-pointer select-none">
+                                    <input type="checkbox" x-model="beSelectedIds" value="{{ $benefit->id }}"
+                                        @change="beSave()" class="peer hidden">
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150
+                                                 border-lumot/40 text-gray/60
+                                                 peer-checked:bg-purple-100 peer-checked:text-purple-800 peer-checked:border-purple-300
+                                                 hover:border-purple-300">
+                                        {{ $benefit->name }}
+                                        <span
+                                            class="text-[9px] font-bold opacity-70">({{ $benefit->discount_percent }}%)</span>
+                                    </span>
+                                </label>
+                            @empty
+                                <p class="text-xs text-gray/50 italic">
+                                    No active benefits configured.
+                                    <a href="{{ route('bpls.benefits.index') }}"
+                                        class="text-logo-teal underline">Manage benefits →</a>
+                                </p>
+                            @endforelse
                         </div>
 
                         <div class="p-3 rounded-xl border transition-colors"
@@ -499,8 +485,7 @@
                                         @keydown="orKeydown($event)" @click.outside="orDropdownOpen = false"
                                         :class="{
                                             'border-logo-teal ring-2 ring-logo-teal/20 bg-green-50/40': selectedOr,
-                                            'border-lumot/30':
-                                                !selectedOr
+                                            'border-lumot/30': !selectedOr
                                         }"
                                         class="w-full text-sm border rounded-xl px-3 py-2.5 pr-20 focus:outline-none transition-all duration-150"
                                         placeholder="Search OR number…" autocomplete="off">
@@ -545,13 +530,11 @@
                                     <template x-for="(or, idx) in filteredOrs" :key="or.or_number">
                                         <button type="button" @click="selectOr(or)"
                                             :class="{
-                                                'bg-logo-teal text-white': orFocusIndex ===
-                                                    idx,
+                                                'bg-logo-teal text-white': orFocusIndex === idx,
                                                 'bg-logo-teal/10': selectedOr && selectedOr.or_number === or
-                                                    .or_number && orFocusIndex !==
-                                                    idx,
-                                                'hover:bg-lumot/20': orFocusIndex !== idx && !(selectedOr &&
-                                                    selectedOr.or_number === or.or_number)
+                                                    .or_number && orFocusIndex !== idx,
+                                                'hover:bg-lumot/20': orFocusIndex !== idx && !(selectedOr && selectedOr
+                                                    .or_number === or.or_number)
                                             }"
                                             class="w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors border-b border-lumot/10 last:border-0">
                                             <div class="flex items-center gap-2.5">
@@ -635,8 +618,8 @@
                     {{-- Quarter Selection --}}
                     <div class="px-5 py-4 border-b border-lumot/20">
                         <label class="block text-xs font-bold text-gray mb-3">
-                            Select Quarter(s) to Pay <span class="text-gray/50 font-normal ml-1">(click to select,
-                                green = already paid)</span>
+                            Select Quarter(s) to Pay
+                            <span class="text-gray/50 font-normal ml-1">(click to select, green = already paid)</span>
                         </label>
                         <div class="grid grid-cols-{{ count($quarterStatus) ?: 4 }} gap-3">
                             @foreach ($quarterStatus as $q => $qs)
@@ -690,8 +673,10 @@
 
                             {{-- Surcharges --}}
                             <div class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-orange-50/50">
-                                <p class="text-xs font-semibold text-orange-600">SURCHARGES <span x-show="computing"
-                                        class="ml-1 text-[9px] text-logo-teal animate-pulse">computing…</span></p>
+                                <p class="text-xs font-semibold text-orange-600">SURCHARGES
+                                    <span x-show="computing"
+                                        class="ml-1 text-[9px] text-logo-teal animate-pulse">computing…</span>
+                                </p>
                                 <p class="text-xs text-gray/60 text-center font-mono">631-008</p>
                                 <div class="flex items-center justify-end gap-1">
                                     <span class="text-xs text-gray/50">₱</span>
@@ -739,7 +724,7 @@
                             <input x-show="false" type="hidden" name="discount"
                                 x-bind:value="discountQualifies ? discount : 0">
 
-                            {{-- ── Beneficiary Discount row ── --}}
+                            {{-- Beneficiary Discount --}}
                             <div x-show="beneficiaryDiscount > 0 && selectedQuarters.length > 0"
                                 x-transition:enter="transition ease-out duration-200"
                                 x-transition:enter-start="opacity-0 -translate-y-1"
@@ -782,9 +767,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <p class="text-xs text-logo-green font-semibold">🎉 Advance discount of <span
-                                    class="font-extrabold" x-text="discountRate + '%'"></span> applied — <span
-                                    class="font-extrabold"
+                            <p class="text-xs text-logo-green font-semibold">🎉 Advance discount of
+                                <span class="font-extrabold" x-text="discountRate + '%'"></span> applied —
+                                <span class="font-extrabold"
                                     x-text="'₱' + parseFloat(discount).toLocaleString('en-PH',{minimumFractionDigits:2})"></span>!
                             </p>
                         </div>
@@ -817,10 +802,11 @@
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
-                            <p class="text-xs text-orange-600 font-semibold">⚠️ Overdue — surcharge of <span
-                                    class="font-extrabold"
+                            <p class="text-xs text-orange-600 font-semibold">⚠️ Overdue — surcharge of
+                                <span class="font-extrabold"
                                     x-text="'₱' + parseFloat(surcharges).toLocaleString('en-PH',{minimumFractionDigits:2})"></span>
-                                applied.</p>
+                                applied.
+                            </p>
                         </div>
                     </div>
 
@@ -1026,14 +1012,7 @@
         <script>
             function beneficiaryEditor() {
                 return {
-                    beFlags: {
-                        is_pwd: {{ $entry->is_pwd ? 'true' : 'false' }},
-                        is_senior: {{ $entry->is_senior ? 'true' : 'false' }},
-                        is_solo_parent: {{ $entry->is_solo_parent ? 'true' : 'false' }},
-                        is_4ps: {{ $entry->is_4ps ? 'true' : 'false' }},
-                        discount_10: {{ $entry->discount_10 ? 'true' : 'false' }},
-                        discount_5: {{ $entry->discount_5 ? 'true' : 'false' }},
-                    },
+                    beSelectedIds: @json($entryBenefitIds),
                     beAmount: {{ $beneficiaryDiscount['discount'] ?? 0 }},
                     beRate: {{ $beneficiaryDiscount['rate'] ?? 0 }},
                     beLabel: '{{ addslashes($beneficiaryDiscount['label'] ?? '') }}',
@@ -1043,13 +1022,8 @@
                     beTimer: null,
 
                     beInit() {
-                        // On page load: PHP already computed $beneficiaryDiscount from saved flags.
-                        // Push that value into the outer Alpine payment scope immediately.
                         window._beneficiaryDiscountPerInstallment = this.beAmount;
-
-                        this.$nextTick(() => {
-                            this._syncToParent(this.beAmount, this.beLabel);
-                        });
+                        this.$nextTick(() => this._syncToParent(this.beAmount, this.beLabel));
                     },
 
                     beSave() {
@@ -1061,24 +1035,18 @@
 
                     async _beSaveNow() {
                         this.beSaving = true;
-
                         const payload = new FormData();
-                        // !! NO _method:PATCH — route is POST only
                         payload.append('_token', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
-                        Object.entries(this.beFlags).forEach(([k, v]) =>
-                            payload.append(k, v ? '1' : '0')
-                        );
+                        this.beSelectedIds.forEach(id => payload.append('benefit_ids[]', id));
 
                         try {
-                            const res = await fetch(
-                                '{{ route('bpls.payment.update-beneficiary', $entry->id) }}', {
-                                    method: 'POST',
-                                    headers: {
-                                        'X-Requested-With': 'XMLHttpRequest'
-                                    },
-                                    body: payload,
-                                }
-                            );
+                            const res = await fetch('{{ route('bpls.payment.update-beneficiary', $entry->id) }}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                },
+                                body: payload,
+                            });
                             const data = await res.json();
 
                             if (!res.ok || !data.success) {
@@ -1106,17 +1074,14 @@
                         }
                     },
 
-                    // Finds the outer payment Alpine scope and syncs beneficiary values into it
                     _syncToParent(amount, label) {
                         this.$nextTick(() => {
                             document.querySelectorAll('[x-data]').forEach(el => {
                                 try {
                                     const scope = Alpine.$data(el);
-                                    // Identify the payment form scope by its unique 'selectedQuarters' property
                                     if (scope && 'selectedQuarters' in scope) {
                                         scope.beneficiaryDiscount = amount;
                                         scope.beneficiaryLabel = label;
-                                        // Re-trigger surcharge/total calculation if quarters already selected
                                         if (scope.selectedQuarters && scope.selectedQuarters.length > 0) {
                                             scope.autoComputeSurcharge();
                                         }
@@ -1129,15 +1094,4 @@
             }
         </script>
     @endpush
-
-
-
-
-
-
-
-
-
-
-
 </x-admin.app>
