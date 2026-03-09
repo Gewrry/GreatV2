@@ -7,7 +7,8 @@
         this.active = this.active === name ? null : name;
     },
     close() { this.active = null }
-}" @click.outside="close()" @scroll.window="close()" @keydown.escape.window="close()" class="relative">
+}" @click.outside="close()" @scroll.window="close()" @keydown.escape.window="close()"
+    class="relative">
     {{-- Top accent line --}}
     <div class="h-1 bg-gradient-to-r from-logo-blue via-logo-teal to-logo-green"></div>
 
@@ -34,7 +35,7 @@
             <div class="hidden md:flex items-center h-full flex-1 min-w-0">
 
                 {{-- Dashboard --}}
-                <a href="{{ route('dashboard') }}"
+                <a href="{{ route('bpls.index') }}"
                     class="flex items-center gap-1 px-2.5 h-full text-white/75 hover:text-white hover:bg-white/5 text-xs font-medium whitespace-nowrap transition-colors shrink-0 {{ request()->routeIs('dashboard') ? 'text-white border-b-2 border-logo-teal' : '' }}">
                     <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                         stroke-width="2">
@@ -70,10 +71,12 @@
                     </svg>
                     Business List
                 </a>
+
                 {{-- Online Application --}}
                 <a href="{{ route('bpls.online.application.index') }}"
-                    class="flex items-center gap-1 px-2.5 h-full text-white/75 hover:text-white hover:bg-white/5 text-xs font-medium whitespace-nowrap transition-colors shrink-0 {{ request()->routeIs('bpls.business-list.*') ? 'text-white border-b-2 border-logo-teal' : '' }}">
-                    <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    class="flex items-center gap-1 px-2.5 h-full text-white/75 hover:text-white hover:bg-white/5 text-xs font-medium whitespace-nowrap transition-colors shrink-0 {{ request()->routeIs('bpls.online.*') ? 'text-white border-b-2 border-logo-teal' : '' }}">
+                    <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
@@ -96,16 +99,18 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
-                    {{-- Reports dropdown panel --}}
+
                     <div x-show="active === 'reports'" x-cloak x-transition:enter="transition ease-out duration-150"
                         x-transition:enter-start="opacity-0 translate-y-1"
                         x-transition:enter-end="opacity-100 translate-y-0"
                         x-transition:leave="transition ease-in duration-100"
                         x-transition:leave-start="opacity-100 translate-y-0"
                         x-transition:leave-end="opacity-0 translate-y-1"
-                        class="absolute top-full left-0 mt-0 w-52 bg-white border border-lumot/20 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                        class="absolute top-full left-0 mt-0 w-60 bg-white border border-lumot/20 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+
                         <div class="px-3 py-1.5 border-b border-lumot/10">
-                            <p class="text-[9px] font-extrabold text-gray/40 uppercase tracking-widest">BPLS Reports</p>
+                            <p class="text-[9px] font-extrabold text-gray/40 uppercase tracking-widest">Business
+                                Registry</p>
                         </div>
                         <a href="{{ route('bpls.reports.masterlist.index') }}"
                             class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray hover:text-green hover:bg-bluebody/50 transition-colors {{ request()->routeIs('bpls.reports.masterlist.*') ? 'text-green bg-bluebody/50 font-bold' : '' }}">
@@ -116,10 +121,71 @@
                             </svg>
                             Business Masterlist
                         </a>
-                        {{-- Placeholder for future reports --}}
+                        <a href="{{ route('bpls.reports.scale.index') }}"
+                            class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray hover:text-green hover:bg-bluebody/50 transition-colors {{ request()->routeIs('bpls.reports.scale.*') ? 'text-green bg-bluebody/50 font-bold' : '' }}">
+                            <svg class="w-3.5 h-3.5 text-logo-blue shrink-0" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            Business Scale Count
+                        </a>
+
                         <div class="px-3 py-1.5 border-t border-lumot/10 mt-1">
-                            <p class="text-[9px] text-gray/30 italic">More reports coming soon…</p>
+                            <p class="text-[9px] font-extrabold text-gray/40 uppercase tracking-widest">Compliance
+                                Monitoring</p>
                         </div>
+                        <a href="{{ route('bpls.reports.compliance.quarter.index') }}"
+                            class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray hover:text-green hover:bg-bluebody/50 transition-colors {{ request()->routeIs('bpls.reports.compliance.quarter.*') ? 'text-green bg-bluebody/50 font-bold' : '' }}">
+                            <svg class="w-3.5 h-3.5 text-logo-teal shrink-0" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            By Quarter
+                        </a>
+                        <a href="{{ route('bpls.reports.compliance.daterange.index') }}"
+                            class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray hover:text-green hover:bg-bluebody/50 transition-colors {{ request()->routeIs('bpls.reports.compliance.daterange.*') ? 'text-green bg-bluebody/50 font-bold' : '' }}">
+                            <svg class="w-3.5 h-3.5 text-logo-teal shrink-0" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            By Date Range
+                        </a>
+
+                        <div class="px-3 py-1.5 border-t border-lumot/10 mt-1">
+                            <p class="text-[9px] font-extrabold text-gray/40 uppercase tracking-widest">Tax Enforcement
+                            </p>
+                        </div>
+                        <a href="{{ route('bpls.reports.delinquent.index') }}"
+                            class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray hover:text-green hover:bg-bluebody/50 transition-colors {{ request()->routeIs('bpls.reports.delinquent.*') ? 'text-green bg-bluebody/50 font-bold' : '' }}">
+                            <svg class="w-3.5 h-3.5 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span
+                                class="{{ request()->routeIs('bpls.reports.delinquent.*') ? '' : 'text-red-500' }} font-semibold">
+                                Individual Tax Delinquent
+                            </span>
+                        </a>
+
+                        {{-- ── OR Report ── --}}
+                        <div class="px-3 py-1.5 border-t border-lumot/10 mt-1">
+                            <p class="text-[9px] font-extrabold text-gray/40 uppercase tracking-widest">Cashier</p>
+                        </div>
+                        <a href="{{ route('bpls.reports.or-report.index') }}"
+                            class="flex items-center gap-2 px-3 py-2.5 text-xs text-gray hover:text-green hover:bg-bluebody/50 transition-colors {{ request()->routeIs('bpls.reports.or-report.*') ? 'text-green bg-bluebody/50 font-bold' : '' }}">
+                            <svg class="w-3.5 h-3.5 text-logo-teal shrink-0" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                                <rect x="9" y="3" width="6" height="4" rx="1" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6M9 16h4" />
+                            </svg>
+                            OR Report
+                        </a>
                     </div>
                 </div>
 
@@ -132,6 +198,17 @@
                             d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                     Fee Rules
+                </a>
+
+                {{-- ── Form Customization (NEW) ── --}}
+                <a href="{{ route('bpls.form-customization.index') }}"
+                    class="flex items-center gap-1 px-2.5 h-full text-white/75 hover:text-white hover:bg-white/5 text-xs font-medium whitespace-nowrap transition-colors shrink-0 {{ request()->routeIs('bpls.form-customization.*') ? 'text-white border-b-2 border-logo-teal' : '' }}">
+                    <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    Form Setup
                 </a>
 
                 {{-- Settings --}}
@@ -171,7 +248,8 @@
         x-transition:leave-end="opacity-0 -translate-y-2"
         class="md:hidden bg-blue border-t border-white/10 absolute w-full left-0 z-40">
         <div class="px-4 py-3 space-y-0.5 max-h-[80vh] overflow-y-auto">
-            <a href="{{ route('dashboard') }}"
+
+            <a href="{{ route('bpls.index') }}"
                 class="flex items-center gap-2 px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors {{ request()->routeIs('dashboard') ? 'text-white bg-white/10' : '' }}">
                 Dashboard
             </a>
@@ -183,8 +261,13 @@
                 class="flex items-center gap-2 px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors {{ request()->routeIs('bpls.business-list.*') ? 'text-white bg-white/10' : '' }}">
                 Business List
             </a>
-            {{-- Reports in mobile --}}
-            <div x-data="{ open: false }">
+            <a href="{{ route('bpls.online.application.index') }}"
+                class="flex items-center gap-2 px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors {{ request()->routeIs('bpls.online.*') ? 'text-white bg-white/10' : '' }}">
+                Online Application
+            </a>
+
+            {{-- Reports accordion in mobile --}}
+            <div x-data="{ open: {{ request()->routeIs('bpls.reports.*') ? 'true' : 'false' }} }">
                 <button @click="open = !open"
                     class="w-full flex items-center justify-between px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors {{ request()->routeIs('bpls.reports.*') ? 'text-white bg-white/10' : '' }}">
                     <span class="flex items-center gap-2">
@@ -200,21 +283,66 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
                 </button>
-                <div x-show="open" class="ml-4 pl-3 border-l border-logo-teal/30 space-y-0.5">
+                <div x-show="open" class="ml-4 pl-3 border-l border-logo-teal/30 space-y-0.5 mt-0.5">
+                    <p class="px-2 pt-2 pb-0.5 text-[9px] font-extrabold text-white/30 uppercase tracking-widest">
+                        Business Registry</p>
                     <a href="{{ route('bpls.reports.masterlist.index') }}"
-                        class="block py-2 px-2 text-xs text-white/60 hover:text-white transition-colors rounded {{ request()->routeIs('bpls.reports.masterlist.*') ? 'text-white font-bold' : '' }}">
+                        class="block py-2 px-2 text-xs rounded transition-colors hover:text-white hover:bg-white/10 {{ request()->routeIs('bpls.reports.masterlist.*') ? 'text-white font-bold bg-white/10' : 'text-white/60' }}">
                         Business Masterlist
+                    </a>
+                    <a href="{{ route('bpls.reports.scale.index') }}"
+                        class="block py-2 px-2 text-xs rounded transition-colors hover:text-white hover:bg-white/10 {{ request()->routeIs('bpls.reports.scale.*') ? 'text-white font-bold bg-white/10' : 'text-white/60' }}">
+                        Business Scale Count
+                    </a>
+
+                    <p class="px-2 pt-3 pb-0.5 text-[9px] font-extrabold text-white/30 uppercase tracking-widest">
+                        Compliance Monitoring</p>
+                    <a href="{{ route('bpls.reports.compliance.quarter.index') }}"
+                        class="block py-2 px-2 text-xs rounded transition-colors hover:text-white hover:bg-white/10 {{ request()->routeIs('bpls.reports.compliance.quarter.*') ? 'text-white font-bold bg-white/10' : 'text-white/60' }}">
+                        By Quarter
+                    </a>
+                    <a href="{{ route('bpls.reports.compliance.daterange.index') }}"
+                        class="block py-2 px-2 text-xs rounded transition-colors hover:text-white hover:bg-white/10 {{ request()->routeIs('bpls.reports.compliance.daterange.*') ? 'text-white font-bold bg-white/10' : 'text-white/60' }}">
+                        By Date Range
+                    </a>
+
+                    <p class="px-2 pt-3 pb-0.5 text-[9px] font-extrabold text-white/30 uppercase tracking-widest">Tax
+                        Enforcement</p>
+                    <a href="{{ route('bpls.reports.delinquent.index') }}"
+                        class="block py-2 px-2 text-xs rounded transition-colors hover:text-white hover:bg-white/10 {{ request()->routeIs('bpls.reports.delinquent.*') ? 'text-white font-bold bg-white/10' : 'text-red-400' }}">
+                        Individual Tax Delinquent
+                    </a>
+
+                    <p class="px-2 pt-3 pb-0.5 text-[9px] font-extrabold text-white/30 uppercase tracking-widest">
+                        Cashier</p>
+                    <a href="{{ route('bpls.reports.or-report.index') }}"
+                        class="block py-2 px-2 text-xs rounded transition-colors hover:text-white hover:bg-white/10 {{ request()->routeIs('bpls.reports.or-report.*') ? 'text-white font-bold bg-white/10' : 'text-white/60' }}">
+                        OR Report
                     </a>
                 </div>
             </div>
+
             <a href="{{ route('bpls.fee-rules.manage') }}"
                 class="flex items-center gap-2 px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors {{ request()->routeIs('bpls.fee-rules.*') ? 'text-white bg-white/10' : '' }}">
                 Fee Rules
             </a>
+
+            {{-- ── Form Customization (NEW – mobile) ── --}}
+            <a href="{{ route('bpls.form-customization.index') }}"
+                class="flex items-center gap-2 px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors {{ request()->routeIs('bpls.form-customization.*') ? 'text-white bg-white/10' : '' }}">
+                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                Form Setup
+            </a>
+
             <a href="{{ route('bpls.settings.index') }}"
                 class="flex items-center gap-2 px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors {{ request()->routeIs('bpls.settings.*') ? 'text-white bg-white/10' : '' }}">
                 Settings
             </a>
+
         </div>
     </div>
 

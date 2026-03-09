@@ -1,23 +1,23 @@
 {{-- resources/views/client/payments/_row.blade.php --}}
 @php
     use App\Http\Controllers\Client\PaymentController;
-    $ctrl         = new PaymentController();
+    $ctrl = new PaymentController();
     $installments = $application->installments ?? $ctrl->buildInstallments($application);
 
-    $statusColor = match($application->workflow_status) {
+    $statusColor = match ($application->workflow_status) {
         'approved' => 'bg-green-100 text-green-700 border-green-200',
-        'paid'     => 'bg-blue-100 text-blue-700 border-blue-200',
-        default    => 'bg-yellow-100 text-yellow-700 border-yellow-200',
+        'paid' => 'bg-blue-100 text-blue-700 border-blue-200',
+        default => 'bg-yellow-100 text-yellow-700 border-yellow-200',
     };
-    $statusLabel = match($application->workflow_status) {
+    $statusLabel = match ($application->workflow_status) {
         'approved' => 'Approved',
-        'paid'     => 'For Approval',
-        default    => 'Awaiting Payment',
+        'paid' => 'For Approval',
+        default => 'Awaiting Payment',
     };
-    $modeIcon = match($application->mode_of_payment) {
-        'quarterly'   => '4×',
+    $modeIcon = match ($application->mode_of_payment) {
+        'quarterly' => '4×',
         'semi_annual' => '2×',
-        default       => '1×',
+        default => '1×',
     };
 @endphp
 
@@ -35,10 +35,14 @@
                 </span>
             </div>
             <div class="flex items-center gap-3 flex-wrap">
-                <span class="text-[10px] text-gray">App No: <span class="font-bold text-green">{{ $application->application_number }}</span></span>
-                <span class="text-[10px] text-gray">Type: <span class="font-bold text-green">{{ ucfirst($application->application_type) }}</span></span>
-                <span class="text-[10px] text-gray">Mode: <span class="font-bold text-green">{{ $application->mode_of_payment_label }}</span></span>
-                <span class="text-[10px] text-gray">Year: <span class="font-bold text-green">{{ $application->permit_year }}</span></span>
+                <span class="text-[10px] text-gray">App No: <span
+                        class="font-bold text-green">{{ $application->application_number }}</span></span>
+                <span class="text-[10px] text-gray">Type: <span
+                        class="font-bold text-green">{{ ucfirst($application->application_type) }}</span></span>
+                <span class="text-[10px] text-gray">Mode: <span
+                        class="font-bold text-green">{{ $application->mode_of_payment_label }}</span></span>
+                <span class="text-[10px] text-gray">Year: <span
+                        class="font-bold text-green">{{ $application->permit_year }}</span></span>
             </div>
         </div>
         <div class="text-right shrink-0">
@@ -49,31 +53,31 @@
 
     {{-- Installment Rows --}}
     <div class="divide-y divide-lumot/10">
-        @foreach($installments as $installment)
+        @foreach ($installments as $installment)
             @php
-                $instStatus    = $installment['status'];
-                $instIsPaid    = $instStatus === 'paid';
+                $instStatus = $installment['status'];
+                $instIsPaid = $instStatus === 'paid';
                 $instIsPending = $instStatus === 'pending';
-                $instIsFailed  = $instStatus === 'failed';
-                $instIsUnpaid  = $instStatus === 'unpaid';
+                $instIsFailed = $instStatus === 'failed';
+                $instIsUnpaid = $instStatus === 'unpaid';
 
-                $dotColor = match($instStatus) {
-                    'paid'    => 'bg-logo-teal',
+                $dotColor = match ($instStatus) {
+                    'paid' => 'bg-logo-teal',
                     'pending' => 'bg-yellow-400',
-                    'failed'  => 'bg-red-400',
-                    default   => 'bg-gray/20',
+                    'failed' => 'bg-red-400',
+                    default => 'bg-gray/20',
                 };
-                $rowLabel = match($instStatus) {
-                    'paid'    => 'Paid',
+                $rowLabel = match ($instStatus) {
+                    'paid' => 'Paid',
                     'pending' => 'Verifying',
-                    'failed'  => 'Failed',
-                    default   => 'Unpaid',
+                    'failed' => 'Failed',
+                    default => 'Unpaid',
                 };
-                $rowColor = match($instStatus) {
-                    'paid'    => 'text-green-700',
+                $rowColor = match ($instStatus) {
+                    'paid' => 'text-green-700',
                     'pending' => 'text-yellow-600',
-                    'failed'  => 'text-red-600',
-                    default   => 'text-gray/50',
+                    'failed' => 'text-red-600',
+                    default => 'text-gray/50',
                 };
             @endphp
 
@@ -83,10 +87,10 @@
                     <div class="w-2.5 h-2.5 rounded-full shrink-0 {{ $dotColor }}"></div>
                     <div class="min-w-0">
                         <p class="text-xs font-bold text-green">{{ $installment['label'] }}</p>
-                        @if($instIsPaid && $installment['or_number'])
+                        @if ($instIsPaid && $installment['or_number'])
                             <p class="text-[10px] text-gray">
                                 OR No: <span class="font-bold">{{ $installment['or_number'] }}</span>
-                                @if($installment['paid_at'])
+                                @if ($installment['paid_at'])
                                     · {{ \Carbon\Carbon::parse($installment['paid_at'])->format('M d, Y') }}
                                 @endif
                             </p>
@@ -109,6 +113,16 @@
                         ₱ {{ number_format($installment['amount'], 2) }}
                     </p>
 
+                    @if ($instIsPaid)
+                        <span
+                            class="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold rounded-lg">
+                            ✓ Paid
+                        </span>
+                    @elseif($instIsPending)
+                        <span
+                            class="px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 text-[10px] font-bold rounded-lg">
+                            Verifying...
+                        </span>
                     @if($instIsPaid)
                         <div class="flex flex-col gap-1 items-end">
                             <span class="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold rounded-lg">
@@ -137,9 +151,11 @@
                     @elseif($instIsFailed || $instIsUnpaid)
                         {{-- PAY NOW BUTTON — shown for unpaid/failed on any active application --}}
                         <a href="{{ route('client.payment.show', $application->id) }}?installment={{ $installment['number'] }}"
-                           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-logo-teal text-white text-[10px] font-bold rounded-lg hover:bg-green transition-colors shadow-sm shadow-logo-teal/20">
-                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/>
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-logo-teal text-white text-[10px] font-bold rounded-lg hover:bg-green transition-colors shadow-sm shadow-logo-teal/20">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                             </svg>
                             Pay Now
                         </a>
@@ -152,7 +168,7 @@
     {{-- Footer --}}
     <div class="px-5 py-3 bg-lumot/5 border-t border-lumot/10 flex justify-end">
         <a href="{{ route('client.applications.show', $application->id) }}"
-           class="text-[10px] font-bold text-gray hover:text-logo-teal transition-colors">
+            class="text-[10px] font-bold text-gray hover:text-logo-teal transition-colors">
             View Application →
         </a>
     </div>
