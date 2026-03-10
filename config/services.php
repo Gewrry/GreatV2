@@ -33,13 +33,17 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
-        
+
+    ],
+    // ✅ Fix — pass the env variable NAME as a string
+    'groq' => [
+        'api_key' => env('GROQ_API_KEY'),
     ],
 
     'paymongo' => [
-    'public_key'     => env('PAYMONGO_PUBLIC_KEY'),
-    'secret_key'     => env('PAYMONGO_SECRET_KEY'),
-    'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
-],
+        'public_key' => env('PAYMONGO_PUBLIC_KEY'),
+        'secret_key' => env('PAYMONGO_SECRET_KEY'),
+        'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
+    ],
 
 ];

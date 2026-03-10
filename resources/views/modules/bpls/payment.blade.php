@@ -87,7 +87,9 @@
                     selectOr(or) {
                         this.selectedOr = or;
                         this.orSearch = or.or_number;
-                        this.orDropdownOpen = false;
+                        this.orDropdownOpen = false; <<
+                        <<
+                        << < HEAD
                         this.orFocusIndex = -1;
                     },
                 
@@ -187,767 +189,865 @@
                         return parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                     },
                 }">
+                =======
+                }
+                },
 
-                {{-- ── Header ── --}}
-                <div class="mb-5 flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-extrabold text-green tracking-tight">Payment</h1>
-                        <p class="text-gray text-sm mt-0.5">Business Permit — BPLS
-                            {{ $entry->permit_year ?? now()->year }}</p>
-                    </div>
-                    <a href="{{ route('bpls.business-list.index') }}"
-                        class="flex items-center gap-1.5 px-4 py-2 bg-white text-gray text-xs font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
-                        ← Back to List
-                    </a>
-                </div>
+                clearOr() {
+                this.selectedOr = null;
+                this.orSearch = '';
+                this.filteredOrs = this.availableOrs;
+                this.orDropdownOpen = false;
+                },
 
-                {{-- ── Flash ── --}}
-                @if (session('success'))
-                    <div
-                        class="mb-4 flex items-center gap-2 p-3 bg-logo-green/10 border border-logo-green/20 rounded-xl">
-                        <svg class="w-4 h-4 text-logo-green shrink-0" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span class="text-xs font-semibold text-logo-green">{{ session('success') }}</span>
-                    </div>
-                @endif
+                toggleQuarter(q) {
+                if (this.paidQuarters.includes(q)) return;
+                const i = this.selectedQuarters.indexOf(q);
+                if (i === -1) this.selectedQuarters.push(q);
+                else this.selectedQuarters.splice(i, 1);
+                this.autoComputeSurcharge();
+                },
+                isSelected(q) { return this.selectedQuarters.includes(q); },
+                isPaid(q) { return this.paidQuarters.includes(q); },
 
-                {{-- ── Payment success banner ── --}}
-                @if (session('payment_success') && session('payment_id'))
-                    <script>
-                        window.addEventListener('DOMContentLoaded', function() {
-                            window.open(
-                                '{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}',
-                                '_blank');
-                        });
-                    </script>
-                    <div class="mb-4 bg-white rounded-2xl border border-logo-green/30 shadow-sm overflow-hidden">
-                        <div class="h-1.5 w-full bg-logo-green"></div>
-                        <div class="p-5 flex items-center justify-between gap-4">
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="w-10 h-10 bg-logo-green/20 rounded-xl flex items-center justify-center shrink-0">
-                                    <svg class="w-5 h-5 text-logo-green" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-extrabold text-logo-green">Payment Successful!</p>
-                                    <p class="text-xs text-logo-green/70 mt-0.5">Payment recorded. You may now print the
-                                        receipt and/or permit.</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
-                                    target="_blank"
-                                    class="flex items-center gap-2 px-5 py-3 bg-logo-teal text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
-                                    Print Receipt
-                                </a>
-                                <a href="{{ route('bpls.payment.permit', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
-                                    target="_blank"
-                                    class="flex items-center gap-2 px-5 py-3 bg-logo-green text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
-                                    Print Permit
-                                </a>
-                            </div>
+                get subtotal() { return this.perInstallment * this.selectedQuarters.length; },
+                get totalBeneficiaryDiscount() {
+                return (this.beneficiaryDiscount || 0) * this.selectedQuarters.length;
+                },
+                get grandTotal() {
+                return this.subtotal +
+                parseFloat(this.surcharges || 0) +
+                parseFloat(this.backtaxes || 0) -
+                parseFloat(this.discount || 0) -
+                parseFloat(this.totalBeneficiaryDiscount || 0);
+                },
+                get amountInWords() {
+                const n = Math.round(this.grandTotal * 100);
+                const pesos = Math.floor(n / 100),
+                cents = n % 100;
+                const w = this.numToWords(pesos);
+                if (!w) return '';
+                return w.toUpperCase() + ' PESOS' +
+                (cents > 0 ? ' AND ' + cents.toString().padStart(2, '0') + '/100 CENTAVOS' : '') +
+                ' ONLY';
+                },
+                numToWords(n) {
+                if (n === 0) return 'ZERO';
+                const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN',
+                'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
+                const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
+                if (n < 20) return ones[n]; if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10]
+                    : '' ); if (n < 1000) return ones[Math.floor(n / 100)] + ' HUNDRED' + (n % 100 ? ' ' +
+                    this.numToWords(n % 100) : '' ); if (n < 1000000) return this.numToWords(Math.floor(n / 1000))
+                    + ' THOUSAND' + (n % 1000 ? ' ' + this.numToWords(n % 1000) : '' ); return
+                    this.numToWords(Math.floor(n / 1000000)) + ' MILLION' + (n % 1000000 ? ' ' + this.numToWords(n %
+                    1000000) : '' ); }, async autoComputeSurcharge() { if (!this.selectedQuarters.length ||
+                    !this.paymentDate) return; this.computing=true; try { const
+                    csrf=document.querySelector('meta[name=csrf-token]').content; const res=await
+                    fetch('{{ route('bpls.payment.compute-surcharge', $entry->unified_id ?? $entry->id) }}', {
+                    method: 'POST' , headers: { 'Content-Type' : 'application/json' , 'X-CSRF-TOKEN' : csrf, 'Accept'
+                    : 'application/json' }, body: JSON.stringify({ quarters: this.selectedQuarters, payment_date:
+                    this.paymentDate }), }); const data=await res.json(); this.surcharges=data.surcharge || 0;
+                    this.discount=data.advance_discount || data.discount || 0;
+                    this.discountRate=data.advance_discount_rate || data.discount_rate || 0;
+                    this.discountQualifies=data.advance_discount_qualifies || data.discount_qualifies || false; if
+                    (data.beneficiary_discount !==undefined) { const perQ=this.selectedQuarters.length> 0 ?
+                    data.beneficiary_discount / this.selectedQuarters.length : 0;
+                    this.beneficiaryDiscount = perQ;
+                    this.beneficiaryLabel = data.beneficiary_label || '';
+                    window._beneficiaryDiscountPerInstallment = perQ;
+                    }
+                    } catch (e) { console.error(e); }
+                    this.computing = false;
+                    },
+                    }">
+                    >>>>>>> origin/main4
+
+                    {{-- ── Header ── --}}
+                    <div class="mb-5 flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-extrabold text-green tracking-tight">Payment</h1>
+                            <p class="text-gray text-sm mt-0.5">Business Permit — BPLS
+                                {{ $entry->permit_year ?? now()->year }}</p>
                         </div>
+                        <a href="{{ route('bpls.business-list.index') }}"
+                            class="flex items-center gap-1.5 px-4 py-2 bg-white text-gray text-xs font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
+                            ← Back to List
+                        </a>
                     </div>
-                @endif
 
-                {{-- ── Business Info ── --}}
-                <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-5 mb-4">
-                    <div class="grid sm:grid-cols-2 gap-6">
-                        <div class="space-y-1.5">
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Business
-                                    Name</span><span
-                                    class="text-xs font-extrabold text-green">{{ $entry->business_name }}</span></div>
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Business
-                                    Address</span><span class="text-xs text-gray">{{ $entry->business_barangay }},
-                                    {{ $entry->business_municipality }}, {{ $entry->business_province }}</span></div>
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Owner's
-                                    Name</span><span
-                                    class="text-xs text-gray">{{ strtoupper($entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}</span>
-                            </div>
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Owner's
-                                    Address</span><span class="text-xs text-gray">{{ $entry->owner_barangay }},
-                                    {{ $entry->owner_municipality }}, {{ $entry->owner_province }}</span></div>
-                        </div>
-                        <div class="space-y-1.5">
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Application
-                                    Date</span><span
-                                    class="text-xs text-gray">{{ $entry->date_of_application?->format('Y-m-d') ?? '—' }}</span>
-                            </div>
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Payment
-                                    Mode</span><span
-                                    class="text-xs font-bold text-logo-teal capitalize">{{ str_replace('_', ' ', $entry->mode_of_payment ?? '—') }}</span>
-                            </div>
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Total
-                                    Due</span><span
-                                    class="text-xs font-extrabold text-logo-teal">₱{{ number_format($activeTotalDue, 2) }}</span>
-                            </div>
-                            <div class="flex gap-3"><span
-                                    class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Status</span>
-                                <span
-                                    class="text-[10px] font-bold px-2 py-0.5 rounded-full border {{ in_array($entry->status, ['approved']) ? 'bg-green-50 text-logo-green border-green-200' : 'bg-blue-50 text-logo-blue border-blue-200' }}">{{ ucwords(str_replace('_', ' ', $entry->status)) }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ── Payment Schedule ── --}}
-                <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
-                    <div class="bg-green text-white text-center py-2.5">
-                        <p class="text-xs font-extrabold tracking-wide uppercase">Payment Schedule —
-                            {{ $entry->permit_year ?? now()->year }}</p>
-                    </div>
-                    <div class="grid grid-cols-2 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
-                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Payment Date</p>
-                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Amount</p>
-                    </div>
-                    @foreach ($schedule as $sched)
-                        @php $alreadyPaid = isset($sched['quarter']) && in_array($sched['quarter'], $paidQuarters); @endphp
+                    {{-- ── Flash ── --}}
+                    @if (session('success'))
                         <div
-                            class="grid grid-cols-2 px-4 py-3 border-b border-lumot/10 {{ $sched['overdue'] ? 'bg-red-50' : '' }}">
-                            <div class="text-center">
-                                <p class="text-sm font-medium {{ $sched['overdue'] ? 'text-red-500' : 'text-gray' }}">
-                                    {{ $sched['date'] }}</p>
-                                @if ($sched['overdue'])
-                                    <p
-                                        class="text-[9px] font-bold mt-0.5 {{ $alreadyPaid ? 'text-logo-green' : 'text-red-400' }}">
-                                        {{ $alreadyPaid ? '✓ Paid' : '⚠ Overdue — surcharge applies' }}
-                                    </p>
-                                @endif
-                            </div>
-                            <p
-                                class="text-sm font-bold text-center {{ $sched['overdue'] && !$alreadyPaid ? 'text-red-500' : 'text-green' }}">
-                                ₱{{ number_format($sched['amount'], 2) }}
-                            </p>
+                            class="mb-4 flex items-center gap-2 p-3 bg-logo-green/10 border border-logo-green/20 rounded-xl">
+                            <svg class="w-4 h-4 text-logo-green shrink-0" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="text-xs font-semibold text-logo-green">{{ session('success') }}</span>
                         </div>
-                    @endforeach
-                </div>
+                    @endif
 
-                {{-- ── Quarter Status Bar ── --}}
-                @if (count($quarterStatus) > 1)
+                    {{-- ── Payment success banner ── --}}
+                    @if (session('payment_success') && session('payment_id'))
+                        <script>
+                            window.addEventListener('DOMContentLoaded', function() {
+                                window.open(
+                                    '{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}',
+                                    '_blank');
+                            });
+                        </script>
+                        <div class="mb-4 bg-white rounded-2xl border border-logo-green/30 shadow-sm overflow-hidden">
+                            <div class="h-1.5 w-full bg-logo-green"></div>
+                            <div class="p-5 flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-10 h-10 bg-logo-green/20 rounded-xl flex items-center justify-center shrink-0">
+                                        <svg class="w-5 h-5 text-logo-green" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-extrabold text-logo-green">Payment Successful!</p>
+                                        <p class="text-xs text-logo-green/70 mt-0.5">Payment recorded. You may now print
+                                            the
+                                            receipt and/or permit.</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
+                                        target="_blank"
+                                        class="flex items-center gap-2 px-5 py-3 bg-logo-teal text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
+                                        Print Receipt
+                                    </a>
+                                    <a href="{{ route('bpls.payment.permit', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
+                                        target="_blank"
+                                        class="flex items-center gap-2 px-5 py-3 bg-logo-green text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
+                                        Print Permit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- ── Business Info ── --}}
+                    <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-5 mb-4">
+                        <div class="grid sm:grid-cols-2 gap-6">
+                            <div class="space-y-1.5">
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Business
+                                        Name</span><span
+                                        class="text-xs font-extrabold text-green">{{ $entry->business_name }}</span>
+                                </div>
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Business
+                                        Address</span><span class="text-xs text-gray">{{ $entry->business_barangay }},
+                                        {{ $entry->business_municipality }}, {{ $entry->business_province }}</span>
+                                </div>
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Owner's
+                                        Name</span><span
+                                        class="text-xs text-gray">{{ strtoupper($entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}</span>
+                                </div>
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Owner's
+                                        Address</span><span class="text-xs text-gray">{{ $entry->owner_barangay }},
+                                        {{ $entry->owner_municipality }}, {{ $entry->owner_province }}</span></div>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Application
+                                        Date</span><span
+                                        class="text-xs text-gray">{{ $entry->date_of_application?->format('Y-m-d') ?? '—' }}</span>
+                                </div>
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Payment
+                                        Mode</span><span
+                                        class="text-xs font-bold text-logo-teal capitalize">{{ str_replace('_', ' ', $entry->mode_of_payment ?? '—') }}</span>
+                                </div>
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Total
+                                        Due</span><span
+                                        class="text-xs font-extrabold text-logo-teal">₱{{ number_format($activeTotalDue, 2) }}</span>
+                                </div>
+                                <div class="flex gap-3"><span
+                                        class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Status</span>
+                                    <span
+                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full border {{ in_array($entry->status, ['approved']) ? 'bg-green-50 text-logo-green border-green-200' : 'bg-blue-50 text-logo-blue border-blue-200' }}">{{ ucwords(str_replace('_', ' ', $entry->status)) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ── Payment Schedule ── --}}
                     <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
                         <div class="bg-green text-white text-center py-2.5">
-                            <p class="text-xs font-extrabold tracking-wide uppercase">Payment Status</p>
+                            <p class="text-xs font-extrabold tracking-wide uppercase">Payment Schedule —
+                                {{ $entry->permit_year ?? now()->year }}</p>
                         </div>
-                        <div class="grid grid-cols-{{ count($quarterStatus) }}">
-                            @foreach ($quarterStatus as $q => $qs)
-                                <div
-                                    class="text-center py-3 text-sm font-extrabold text-white
+                        <div class="grid grid-cols-2 bg-lumot/20 px-4 py-2 border-b border-lumot/20">
+                            <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Payment Date</p>
+                            <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Amount</p>
+                        </div>
+                        @foreach ($schedule as $sched)
+                            @php $alreadyPaid = isset($sched['quarter']) && in_array($sched['quarter'], $paidQuarters); @endphp
+                            <div
+                                class="grid grid-cols-2 px-4 py-3 border-b border-lumot/10 {{ $sched['overdue'] ? 'bg-red-50' : '' }}">
+                                <div class="text-center">
+                                    <p
+                                        class="text-sm font-medium {{ $sched['overdue'] ? 'text-red-500' : 'text-gray' }}">
+                                        {{ $sched['date'] }}</p>
+                                    @if ($sched['overdue'])
+                                        <p
+                                            class="text-[9px] font-bold mt-0.5 {{ $alreadyPaid ? 'text-logo-green' : 'text-red-400' }}">
+                                            {{ $alreadyPaid ? '✓ Paid' : '⚠ Overdue — surcharge applies' }}
+                                        </p>
+                                    @endif
+                                </div>
+                                <p
+                                    class="text-sm font-bold text-center {{ $sched['overdue'] && !$alreadyPaid ? 'text-red-500' : 'text-green' }}">
+                                    ₱{{ number_format($sched['amount'], 2) }}
+                                </p>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- ── Quarter Status Bar ── --}}
+                    @if (count($quarterStatus) > 1)
+                        <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
+                            <div class="bg-green text-white text-center py-2.5">
+                                <p class="text-xs font-extrabold tracking-wide uppercase">Payment Status</p>
+                            </div>
+                            <div class="grid grid-cols-{{ count($quarterStatus) }}">
+                                @foreach ($quarterStatus as $q => $qs)
+                                    <div
+                                        class="text-center py-3 text-sm font-extrabold text-white
                                     {{ $qs['paid'] ? 'bg-logo-green' : 'bg-red-500' }}
                                     {{ !$loop->last ? 'border-r border-white/20' : '' }}">
-                                    Q{{ $q }}</div>
-                            @endforeach
+                                        Q{{ $q }}</div>
+                                @endforeach
+                            </div>
                         </div>
-                    </div>
-                @endif
+                    @endif
 
-                {{-- ══════════════════════════════════════════════════════════════ --}}
-                {{-- ── BENEFICIARY / DISCOUNT STATUS ──                           --}}
-                {{-- ══════════════════════════════════════════════════════════════ --}}
-                <div x-data="beneficiaryEditor()" x-init="beInit()"
-                    class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
+                    {{-- ══════════════════════════════════════════════════════════════ --}}
+                    {{-- ── BENEFICIARY / DISCOUNT STATUS ──                           --}}
+                    {{-- ══════════════════════════════════════════════════════════════ --}}
+                    <div x-data="beneficiaryEditor()" x-init="beInit()"
+                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
 
-                    <div class="bg-purple-600 text-white py-2.5 px-4 flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <p class="text-xs font-extrabold tracking-wide uppercase">Beneficiary / Discount Status</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span x-show="beSaving"
-                                class="flex items-center gap-1 text-[10px] font-semibold text-white/80">
-                                <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4" />
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        <div class="bg-purple-600 text-white py-2.5 px-4 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
-                                Saving…
-                            </span>
-                            <span x-show="beSaved" x-transition.duration.500ms
-                                class="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">✓ Saved</span>
+                                <p class="text-xs font-extrabold tracking-wide uppercase">Beneficiary / Discount Status
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span x-show="beSaving"
+                                    class="flex items-center gap-1 text-[10px] font-semibold text-white/80">
+                                    <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4" />
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                    </svg>
+                                    Saving…
+                                </span>
+                                <span x-show="beSaved" x-transition.duration.500ms
+                                    class="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">✓ Saved</span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="p-4">
-                        <p class="text-xs text-gray/60 mb-3">Toggle the owner's classification. Changes save instantly.
-                        </p>
+                        <div class="p-4">
+                            <p class="text-xs text-gray/60 mb-3">Toggle the owner's classification. Changes save
+                                instantly.
+                            </p>
 
-                        {{-- Benefit toggles --}}
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            @forelse ($benefits as $benefit)
-                                <label class="cursor-pointer select-none">
-                                    <input type="checkbox" x-model="beSelectedIds" value="{{ $benefit->id }}"
-                                        @change="beSave()" class="peer hidden">
-                                    <span
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150
+                            {{-- Benefit toggles --}}
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                @forelse ($benefits as $benefit)
+                                    <label class="cursor-pointer select-none">
+                                        <input type="checkbox" x-model="beSelectedIds" value="{{ $benefit->id }}"
+                                            @change="beSave()" class="peer hidden">
+                                        <span
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150
                                                  border-lumot/40 text-gray/60
                                                  peer-checked:bg-purple-100 peer-checked:text-purple-800 peer-checked:border-purple-300
                                                  hover:border-purple-300">
-                                        {{ $benefit->name }}
-                                        <span
-                                            class="text-[9px] font-bold opacity-70">({{ $benefit->discount_percent }}%)</span>
-                                    </span>
-                                </label>
-                            @empty
-                                <p class="text-xs text-gray/50 italic">No active benefits configured.
-                                    <a href="{{ route('bpls.benefits.index') }}"
-                                        class="text-logo-teal underline">Manage benefits →</a>
-                                </p>
-                            @endforelse
-                        </div>
-
-                        {{-- Computation Breakdown --}}
-                        <div class="rounded-xl border border-purple-200 bg-purple-50/40 overflow-hidden">
-                            <div class="px-4 py-2 bg-purple-100/60 border-b border-purple-200">
-                                <p class="text-[10px] font-extrabold text-purple-700 uppercase tracking-wide">Benefit
-                                    Computation</p>
+                                            {{ $benefit->name }}
+                                            <span
+                                                class="text-[9px] font-bold opacity-70">({{ $benefit->discount_percent }}%)</span>
+                                        </span>
+                                    </label>
+                                @empty
+                                    <p class="text-xs text-gray/50 italic">No active benefits configured.
+                                        <a href="{{ route('bpls.benefits.index') }}"
+                                            class="text-logo-teal underline">Manage benefits →</a>
+                                    </p>
+                                @endforelse
                             </div>
-                            <div class="px-4 py-3 space-y-2 text-xs">
 
-                                {{-- Total Due row --}}
-                                <div class="flex items-center justify-between">
-                                    <span class="text-gray/70">Total Due (assessed)</span>
-                                    <span class="font-bold text-gray" x-text="'₱' + fmt(totalDue)"></span>
+                            {{-- Computation Breakdown --}}
+                            <div class="rounded-xl border border-purple-200 bg-purple-50/40 overflow-hidden">
+                                <div class="px-4 py-2 bg-purple-100/60 border-b border-purple-200">
+                                    <p class="text-[10px] font-extrabold text-purple-700 uppercase tracking-wide">
+                                        Benefit
+                                        Computation</p>
                                 </div>
+                                <div class="px-4 py-3 space-y-2 text-xs">
 
-                                {{-- Benefit discount row --}}
-                                <div class="flex items-center justify-between" x-show="beneficiary.discount > 0">
-                                    <span class="text-purple-700 flex items-center gap-1">
-                                        <span x-text="beneficiary.label"></span>
-                                        <span
-                                            class="text-[9px] font-extrabold bg-purple-600 text-white px-1.5 py-0.5 rounded-full"
-                                            x-text="beneficiary.rate + '%'"></span>
-                                    </span>
-                                    <span class="font-bold text-purple-700"
-                                        x-text="'− ₱' + fmt(beneficiary.discount)"></span>
-                                </div>
+                                    {{-- Total Due row --}}
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray/70">Total Due (assessed)</span>
+                                        <span class="font-bold text-gray" x-text="'₱' + fmt(totalDue)"></span>
+                                    </div>
 
-                                {{-- Divider --}}
-                                <div class="border-t border-purple-200" x-show="beneficiary.discount > 0"></div>
+                                    {{-- Benefit discount row --}}
+                                    <div class="flex items-center justify-between" x-show="beneficiary.discount > 0">
+                                        <span class="text-purple-700 flex items-center gap-1">
+                                            <span x-text="beneficiary.label"></span>
+                                            <span
+                                                class="text-[9px] font-extrabold bg-purple-600 text-white px-1.5 py-0.5 rounded-full"
+                                                x-text="beneficiary.rate + '%'"></span>
+                                        </span>
+                                        <span class="font-bold text-purple-700"
+                                            x-text="'− ₱' + fmt(beneficiary.discount)"></span>
+                                    </div>
 
-                                {{-- After benefit --}}
-                                <div class="flex items-center justify-between" x-show="beneficiary.discount > 0">
-                                    <span class="text-gray/70">After Benefit Discount</span>
-                                    <span class="font-bold text-green"
-                                        x-text="'₱' + fmt(totalDue - beneficiary.discount)"></span>
-                                </div>
+                                    {{-- Divider --}}
+                                    <div class="border-t border-purple-200" x-show="beneficiary.discount > 0"></div>
 
-                                {{-- ÷ installments --}}
-                                <div class="flex items-center justify-between">
-                                    <span class="text-gray/70">
-                                        ÷ <span x-text="modeCount"></span> installment<span
-                                            x-show="modeCount > 1">s</span>
-                                    </span>
-                                    <span class="font-extrabold text-logo-teal"
-                                        x-text="'= ₱' + fmt(perInstallment) + ' / installment'"></span>
-                                </div>
+                                    {{-- After benefit --}}
+                                    <div class="flex items-center justify-between" x-show="beneficiary.discount > 0">
+                                        <span class="text-gray/70">After Benefit Discount</span>
+                                        <span class="font-bold text-green"
+                                            x-text="'₱' + fmt(totalDue - beneficiary.discount)"></span>
+                                    </div>
 
-                                {{-- No benefit note --}}
-                                <div x-show="beneficiary.discount === 0" class="text-gray/40 italic text-center py-1">
-                                    No benefit discount applied — standard rate applies.
+                                    {{-- ÷ installments --}}
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray/70">
+                                            ÷ <span x-text="modeCount"></span> installment<span
+                                                x-show="modeCount > 1">s</span>
+                                        </span>
+                                        <span class="font-extrabold text-logo-teal"
+                                            x-text="'= ₱' + fmt(perInstallment) + ' / installment'"></span>
+                                    </div>
+
+                                    {{-- No benefit note --}}
+                                    <div x-show="beneficiary.discount === 0"
+                                        class="text-gray/40 italic text-center py-1">
+                                        No benefit discount applied — standard rate applies.
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <p x-show="beError" x-text="beError" class="text-xs text-red-500 mt-2 font-semibold"></p>
+                            <p x-show="beError" x-text="beError" class="text-xs text-red-500 mt-2 font-semibold"></p>
+                        </div>
                     </div>
-                </div>
 
-                {{-- ══════════════════════════════════════════════════════════════ --}}
-                {{-- ── PAYMENT FORM ──                                            --}}
-                {{-- ══════════════════════════════════════════════════════════════ --}}
-                <form action="{{ route('bpls.payment.pay', $entry->unified_id ?? $entry->id) }}" method="POST"
-                    class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
-                    @csrf
+                    {{-- ══════════════════════════════════════════════════════════════ --}}
+                    {{-- ── PAYMENT FORM ──                                            --}}
+                    {{-- ══════════════════════════════════════════════════════════════ --}}
+                    <form action="{{ route('bpls.payment.pay', $entry->unified_id ?? $entry->id) }}" method="POST"
+                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
+                        @csrf
 
-                    {{-- OR + Date --}}
-                    <div class="grid grid-cols-2 gap-4 p-5 border-b border-lumot/20">
-                        <div>
-                            <label class="block text-xs font-bold text-gray mb-1.5">O.R. / Control No. <span
-                                    class="text-red-400">*</span></label>
-                            <input type="hidden" name="or_number" :value="selectedOr ? selectedOr.or_number : ''">
+                        {{-- OR + Date --}}
+                        <div class="grid grid-cols-2 gap-4 p-5 border-b border-lumot/20">
+                            <div>
+                                <label class="block text-xs font-bold text-gray mb-1.5">O.R. / Control No. <span
+                                        class="text-red-400">*</span></label>
+                                <input type="hidden" name="or_number"
+                                    :value="selectedOr ? selectedOr.or_number : ''">
 
-                            <div x-show="orLoading"
-                                class="w-full h-10 bg-lumot/20 rounded-xl animate-pulse flex items-center px-3 gap-2">
-                                <svg class="w-4 h-4 text-logo-teal animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                        stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                                </svg>
-                                <span class="text-xs text-gray/50">Loading available OR numbers…</span>
-                            </div>
-
-                            <div x-show="!orLoading && orError && availableOrs.length === 0"
-                                class="w-full border-2 border-red-200 bg-red-50 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                                <span class="text-xs text-red-500 font-semibold" x-text="orError"></span>
-                            </div>
-
-                            <div x-show="!orLoading && availableOrs.length > 0" class="relative">
-                                <div class="relative">
-                                    <input type="text" x-model="orSearch"
-                                        @input="filterOrs(); orDropdownOpen = true;"
-                                        @focus="orDropdownOpen = true; filterOrs();" @click="orDropdownOpen = true;"
-                                        @keydown="orKeydown($event)" @click.outside="orDropdownOpen = false"
-                                        :class="{
-                                            'border-logo-teal ring-2 ring-logo-teal/20 bg-green-50/40': selectedOr,
-                                            'border-lumot/30':
-                                                !selectedOr
-                                        }"
-                                        class="w-full text-sm border rounded-xl px-3 py-2.5 pr-20 focus:outline-none transition-all duration-150"
-                                        placeholder="Search OR number…" autocomplete="off">
-                                    <div class="absolute inset-y-0 right-2 flex items-center gap-1.5">
-                                        <span x-show="selectedOr"
-                                            class="text-[9px] font-extrabold px-1.5 py-0.5 bg-logo-teal text-white rounded-md"
-                                            x-text="selectedOr ? selectedOr.receipt_type : ''"></span>
-                                        <button type="button" x-show="selectedOr || orSearch" @click="clearOr()"
-                                            class="text-gray/40 hover:text-red-400 transition-colors p-0.5">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                                stroke="currentColor" stroke-width="2.5">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                        <button type="button" @click="orDropdownOpen = !orDropdownOpen"
-                                            class="text-gray/40 hover:text-gray transition-colors p-0.5">
-                                            <svg class="w-4 h-4 transition-transform"
-                                                :class="orDropdownOpen ? 'rotate-180' : ''" fill="none"
-                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                                <div x-show="orLoading"
+                                    class="w-full h-10 bg-lumot/20 rounded-xl animate-pulse flex items-center px-3 gap-2">
+                                    <svg class="w-4 h-4 text-logo-teal animate-spin" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z">
+                                        </path>
+                                    </svg>
+                                    <span class="text-xs text-gray/50">Loading available OR numbers…</span>
                                 </div>
 
-                                <div x-show="orDropdownOpen && filteredOrs.length > 0"
-                                    x-transition:enter="transition ease-out duration-100"
-                                    x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
-                                    x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                                    x-transition:leave="transition ease-in duration-75"
-                                    x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0 scale-95"
-                                    class="absolute z-50 left-0 right-0 mt-1 bg-white border border-lumot/30 rounded-xl shadow-xl overflow-hidden"
-                                    style="max-height: 240px; overflow-y: auto;">
-                                    <div
-                                        class="sticky top-0 bg-lumot/10 border-b border-lumot/20 px-3 py-1.5 flex items-center justify-between">
-                                        <span class="text-[10px] font-bold text-gray/60 uppercase">Available ORs</span>
-                                        <span class="text-[10px] font-extrabold text-logo-teal"
-                                            x-text="filteredOrs.length + ' of ' + availableOrs.length + ' available'"></span>
-                                    </div>
-                                    <template x-for="(or, idx) in filteredOrs" :key="or.or_number">
-                                        <button type="button" @click="selectOr(or)"
+                                <div x-show="!orLoading && orError && availableOrs.length === 0"
+                                    class="w-full border-2 border-red-200 bg-red-50 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                                    <span class="text-xs text-red-500 font-semibold" x-text="orError"></span>
+                                </div>
+
+                                <div x-show="!orLoading && availableOrs.length > 0" class="relative">
+                                    <div class="relative">
+                                        <input type="text" x-model="orSearch"
+                                            @input="filterOrs(); orDropdownOpen = true;"
+                                            @focus="orDropdownOpen = true; filterOrs();"
+                                            @click="orDropdownOpen = true;" @keydown="orKeydown($event)"
+                                            @click.outside="orDropdownOpen = false"
                                             :class="{
-                                                'bg-logo-teal text-white': orFocusIndex === idx,
-                                                'bg-logo-teal/10': selectedOr && selectedOr.or_number === or
-                                                    .or_number && orFocusIndex !== idx,
-                                                'hover:bg-lumot/20': orFocusIndex !== idx && !(selectedOr && selectedOr
-                                                    .or_number === or.or_number)
+                                                'border-logo-teal ring-2 ring-logo-teal/20 bg-green-50/40': selectedOr,
+                                                'border-lumot/30':
+                                                    !selectedOr
                                             }"
-                                            class="w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors border-b border-lumot/10 last:border-0">
-                                            <span class="text-sm font-bold font-mono"
-                                                x-text="'#' + or.or_number"></span>
-                                            <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0"
-                                                :class="orFocusIndex === idx ? 'bg-white/20 text-white' :
-                                                    'bg-logo-teal/10 text-logo-teal'"
-                                                x-text="or.receipt_type"></span>
-                                        </button>
-                                    </template>
-                                </div>
-
-                                <div x-show="orDropdownOpen && filteredOrs.length === 0 && orSearch"
-                                    class="absolute z-50 left-0 right-0 mt-1 bg-white border border-lumot/30 rounded-xl shadow-xl p-4 text-center">
-                                    <p class="text-xs text-gray/50">No OR matching <strong x-text="orSearch"></strong>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div x-show="selectedOr" class="mt-1.5 flex items-center gap-1.5">
-                                <span class="text-[10px] font-bold text-logo-teal">OR <span class="font-mono"
-                                        x-text="'#' + (selectedOr ? selectedOr.or_number : '')"></span> selected</span>
-                                <span
-                                    class="text-[9px] font-extrabold px-1.5 py-0.5 bg-logo-teal/10 text-logo-teal rounded-full"
-                                    x-text="selectedOr ? selectedOr.receipt_type : ''"></span>
-                            </div>
-
-                            @error('or_number')
-                                <p class="mt-1.5 text-[10px] font-bold text-red-500">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-gray mb-1.5">Payment Date <span
-                                    class="text-red-400">*</span></label>
-                            <input type="date" name="payment_date" required x-model="paymentDate"
-                                @change="autoComputeSurcharge()"
-                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
-                        </div>
-                    </div>
-
-                    {{-- Payor + Fund Code --}}
-                    <div class="grid grid-cols-2 gap-4 px-5 py-4 border-b border-lumot/20 bg-bluebody/20">
-                        <div>
-                            <label class="block text-xs font-bold text-gray mb-1.5">Payor</label>
-                            <input type="text" name="payor"
-                                value="{{ strtoupper($entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}"
-                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 font-semibold text-green">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray mb-1.5">Fund Code</label>
-                            <select name="fund_code"
-                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white">
-                                <option value="100">100 | General Fund</option>
-                                <option value="101">101 | Special Education Fund</option>
-                                <option value="102">102 | Trust Fund</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {{-- Quarter Selection --}}
-                    <div class="px-5 py-4 border-b border-lumot/20">
-                        <label class="block text-xs font-bold text-gray mb-3">
-                            Select Quarter(s) to Pay
-                            <span class="text-gray/50 font-normal ml-1">(click to select, green = already paid)</span>
-                        </label>
-                        <div class="grid grid-cols-{{ count($quarterStatus) ?: 4 }} gap-3">
-                            @foreach ($quarterStatus as $q => $qs)
-                                <button type="button" @click="toggleQuarter({{ $q }})"
-                                    :disabled="{{ json_encode($qs['paid']) }}"
-                                    :class="{
-                                        'bg-logo-teal text-white border-logo-teal shadow': isSelected(
-                                            {{ $q }}) && !isPaid({{ $q }}),
-                                        'bg-logo-green/20 text-logo-green border-logo-green/30 cursor-not-allowed': isPaid(
-                                            {{ $q }}),
-                                        'bg-red-50 border-red-300 text-red-600': !isSelected({{ $q }}) && !
-                                            isPaid({{ $q }}) && {{ json_encode($qs['overdue']) }},
-                                        'bg-white text-gray border-lumot/30 hover:border-logo-teal/40': !isSelected(
-                                                {{ $q }}) && !isPaid({{ $q }}) && !
-                                            {{ json_encode($qs['overdue']) }},
-                                    }"
-                                    class="border-2 rounded-xl p-3 text-center transition-all duration-150">
-                                    <p class="text-lg font-extrabold">Q{{ $q }}</p>
-                                    <p class="text-[10px] font-semibold mt-0.5">{{ $qs['date'] }}</p>
-                                    <p class="text-xs font-bold mt-1" x-text="'₱' + fmt(perInstallment)"></p>
-                                    @if ($qs['overdue'] && !$qs['paid'])
-                                        <p class="text-[9px] font-extrabold text-red-400 mt-1 uppercase">⚠ Overdue</p>
-                                    @endif
-                                    <p x-show="isPaid({{ $q }})"
-                                        class="text-[9px] font-extrabold text-logo-green mt-1 uppercase">✓ Paid</p>
-                                </button>
-                                <input type="checkbox" name="quarters[]" value="{{ $q }}"
-                                    :checked="isSelected({{ $q }})" class="hidden">
-                            @endforeach
-                        </div>
-                    </div>
-
-                    {{-- Fee Breakdown --}}
-                    <div class="px-5 py-4 border-b border-lumot/20">
-                        <p class="text-xs font-bold text-gray mb-3">Fee Breakdown</p>
-                        <div class="border border-lumot/20 rounded-xl overflow-hidden">
-                            <div class="grid grid-cols-3 bg-green text-white px-4 py-2.5">
-                                <p class="text-xs font-extrabold uppercase">Nature of Collection</p>
-                                <p class="text-xs font-extrabold uppercase text-center">Account Code</p>
-                                <p class="text-xs font-extrabold uppercase text-right">Amount</p>
-                            </div>
-                            @foreach ($fees as $fee)
-                                <div
-                                    class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/20">
-                                    <p class="text-xs font-semibold text-gray">{{ $fee['name'] }}</p>
-                                    <p class="text-xs text-gray/60 text-center font-mono">{{ $fee['code'] }}</p>
-                                    <p class="text-xs font-bold text-green text-right">
-                                        {{ $fee['amount'] > 0 ? '₱' . number_format($fee['amount'], 2) : '—' }}</p>
-                                </div>
-                            @endforeach
-
-                            {{-- Surcharges --}}
-                            <div class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-orange-50/50">
-                                <p class="text-xs font-semibold text-orange-600">SURCHARGES
-                                    <span x-show="computing"
-                                        class="ml-1 text-[9px] text-logo-teal animate-pulse">computing…</span>
-                                </p>
-                                <p class="text-xs text-gray/60 text-center font-mono">631-008</p>
-                                <div class="flex items-center justify-end gap-1">
-                                    <span class="text-xs text-gray/50">₱</span>
-                                    <input type="number" name="surcharges" x-model="surcharges" step="0.01"
-                                        min="0" placeholder="0.00"
-                                        class="w-24 text-xs text-right border border-lumot/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-logo-teal/40 font-bold text-orange-600">
-                                </div>
-                            </div>
-
-                            {{-- Backtaxes --}}
-                            <div class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-red-50/30">
-                                <p class="text-xs font-semibold text-red-500">BACKTAXES</p>
-                                <p class="text-xs text-gray/60 text-center font-mono">631-009</p>
-                                <div class="flex items-center justify-end gap-1">
-                                    <span class="text-xs text-gray/50">₱</span>
-                                    <input type="number" name="backtaxes" x-model="backtaxes" step="0.01"
-                                        min="0" placeholder="0.00"
-                                        class="w-24 text-xs text-right border border-lumot/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-logo-teal/40 font-bold text-red-500">
-                                </div>
-                            </div>
-
-                            {{-- Advance Discount --}}
-                            <div x-show="advanceDiscountQualifies"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 -translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-green-50/60">
-                                <div>
-                                    <p class="text-xs font-semibold text-logo-green flex items-center gap-1.5">
-                                        ADVANCE DISCOUNT
-                                        <span
-                                            class="text-[9px] font-extrabold bg-logo-green text-white px-1.5 py-0.5 rounded-full"
-                                            x-text="advanceDiscountRate + '%'"></span>
-                                    </p>
-                                    <p class="text-[9px] text-logo-green/60 mt-0.5">Early payment incentive</p>
-                                </div>
-                                <p class="text-xs text-gray/60 text-center font-mono self-center">—</p>
-                                <div class="flex items-center justify-end gap-1">
-                                    <span class="text-xs font-bold text-logo-green">−</span>
-                                    <span class="text-xs text-gray/50">₱</span>
-                                    <input type="number" name="discount" x-model="advanceDiscount" step="0.01"
-                                        min="0" placeholder="0.00"
-                                        class="w-24 text-xs text-right border border-logo-green/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-logo-green/40 font-bold text-logo-green bg-green-50">
-                                </div>
-                            </div>
-                            <input x-show="false" type="hidden" name="discount"
-                                x-bind:value="advanceDiscountQualifies ? advanceDiscount : 0">
-
-                            {{-- Total --}}
-                            <div class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
-                                <div class="col-span-2">
-                                    <p class="text-sm font-extrabold text-green">TOTAL</p>
-                                    <p class="text-[10px] text-gray/50 mt-0.5" x-show="selectedQuarters.length > 0">
-                                        <span x-text="selectedQuarters.length"></span> quarter(s) × ₱<span
-                                            x-text="fmt(perInstallment)"></span>
-                                        <span x-show="surcharges > 0"> + ₱<span x-text="fmt(surcharges)"></span>
-                                            surcharge</span>
-                                        <span x-show="advanceDiscountQualifies"> − ₱<span
-                                                x-text="fmt(advanceDiscount)"></span> adv. disc.</span>
-                                    </p>
-                                </div>
-                                <p class="text-lg font-extrabold text-logo-teal text-right"
-                                    x-text="'₱' + fmt(grandTotal)"></p>
-                            </div>
-                        </div>
-
-                        {{-- Advance discount banner --}}
-                        <div x-show="advanceDiscountQualifies" x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 translate-y-1"
-                            x-transition:enter-end="opacity-100 translate-y-0"
-                            class="mt-3 flex items-center gap-2.5 p-3 bg-logo-green/10 border border-logo-green/20 rounded-xl">
-                            <p class="text-xs text-logo-green font-semibold">🎉 Advance discount of
-                                <span class="font-extrabold" x-text="advanceDiscountRate + '%'"></span> applied —
-                                <span class="font-extrabold" x-text="'₱' + fmt(advanceDiscount)"></span>!
-                            </p>
-                        </div>
-
-                        {{-- Surcharge banner --}}
-                        <div x-show="surcharges > 0" x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 translate-y-1"
-                            x-transition:enter-end="opacity-100 translate-y-0"
-                            class="mt-3 flex items-center gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                            <p class="text-xs text-orange-600 font-semibold">⚠️ Overdue — surcharge of
-                                <span class="font-extrabold" x-text="'₱' + fmt(surcharges)"></span> applied.
-                            </p>
-                        </div>
-                    </div>
-
-                    {{-- Amount in Words --}}
-                    <div class="px-5 py-4 border-b border-lumot/20">
-                        <label class="block text-xs font-bold text-gray mb-1.5">Amount in Words</label>
-                        <div class="w-full text-sm border border-lumot/20 rounded-xl px-3 py-2.5 bg-lumot/10 font-semibold text-green min-h-[42px]"
-                            x-text="amountInWords || '—'"></div>
-                        <input type="hidden" name="amount_in_words" :value="amountInWords">
-                    </div>
-
-                    {{-- Remarks --}}
-                    <div class="px-5 py-4 border-b border-lumot/20">
-                        <label class="block text-xs font-bold text-gray mb-1.5">Remarks</label>
-                        <textarea name="remarks" rows="2" placeholder="Optional remarks…"
-                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
-                    </div>
-
-                    {{-- Payment Method --}}
-                    <div class="px-5 py-4 border-b border-lumot/20">
-                        <label class="block text-xs font-bold text-gray mb-3">Payment Method</label>
-                        <div class="grid grid-cols-3 gap-3">
-                            @foreach (['cash' => 'Cash', 'check' => 'Check', 'money_order' => 'Money Order'] as $val => $label)
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="payment_method" value="{{ $val }}"
-                                        x-model="paymentMethod" class="peer hidden"
-                                        {{ $val === 'cash' ? 'checked' : '' }}>
-                                    <div
-                                        class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal border-2 border-lumot/30 rounded-xl p-3 text-center transition-all hover:border-logo-teal/50">
-                                        <p class="text-xs font-bold">{{ $label }}</p>
+                                            class="w-full text-sm border rounded-xl px-3 py-2.5 pr-20 focus:outline-none transition-all duration-150"
+                                            placeholder="Search OR number…" autocomplete="off">
+                                        <div class="absolute inset-y-0 right-2 flex items-center gap-1.5">
+                                            <span x-show="selectedOr"
+                                                class="text-[9px] font-extrabold px-1.5 py-0.5 bg-logo-teal text-white rounded-md"
+                                                x-text="selectedOr ? selectedOr.receipt_type : ''"></span>
+                                            <button type="button" x-show="selectedOr || orSearch" @click="clearOr()"
+                                                class="text-gray/40 hover:text-red-400 transition-colors p-0.5">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" @click="orDropdownOpen = !orDropdownOpen"
+                                                class="text-gray/40 hover:text-gray transition-colors p-0.5">
+                                                <svg class="w-4 h-4 transition-transform"
+                                                    :class="orDropdownOpen ? 'rotate-180' : ''" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
 
-                    {{-- Check / MO Details --}}
-                    <div x-show="paymentMethod === 'check' || paymentMethod === 'money_order'"
-                        class="px-5 py-4 border-b border-lumot/20 bg-bluebody/20">
-                        <div class="grid grid-cols-3 gap-3">
+                                    <div x-show="orDropdownOpen && filteredOrs.length > 0"
+                                        x-transition:enter="transition ease-out duration-100"
+                                        x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                                        x-transition:leave="transition ease-in duration-75"
+                                        x-transition:leave-start="opacity-100"
+                                        x-transition:leave-end="opacity-0 scale-95"
+                                        class="absolute z-50 left-0 right-0 mt-1 bg-white border border-lumot/30 rounded-xl shadow-xl overflow-hidden"
+                                        style="max-height: 240px; overflow-y: auto;">
+                                        <div
+                                            class="sticky top-0 bg-lumot/10 border-b border-lumot/20 px-3 py-1.5 flex items-center justify-between">
+                                            <span class="text-[10px] font-bold text-gray/60 uppercase">Available
+                                                ORs</span>
+                                            <span class="text-[10px] font-extrabold text-logo-teal"
+                                                x-text="filteredOrs.length + ' of ' + availableOrs.length + ' available'"></span>
+                                        </div>
+                                        <template x-for="(or, idx) in filteredOrs" :key="or.or_number">
+                                            <button type="button" @click="selectOr(or)"
+                                                :class="{
+                                                    'bg-logo-teal text-white': orFocusIndex === idx,
+                                                    'bg-logo-teal/10': selectedOr && selectedOr.or_number === or
+                                                        .or_number && orFocusIndex !== idx,
+                                                    'hover:bg-lumot/20': orFocusIndex !== idx && !(selectedOr &&
+                                                        selectedOr
+                                                        .or_number === or.or_number)
+                                                }"
+                                                class="w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors border-b border-lumot/10 last:border-0">
+                                                <span class="text-sm font-bold font-mono"
+                                                    x-text="'#' + or.or_number"></span>
+                                                <span
+                                                    class="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0"
+                                                    :class="orFocusIndex === idx ? 'bg-white/20 text-white' :
+                                                        'bg-logo-teal/10 text-logo-teal'"
+                                                    x-text="or.receipt_type"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+
+                                    <div x-show="orDropdownOpen && filteredOrs.length === 0 && orSearch"
+                                        class="absolute z-50 left-0 right-0 mt-1 bg-white border border-lumot/30 rounded-xl shadow-xl p-4 text-center">
+                                        <p class="text-xs text-gray/50">No OR matching <strong
+                                                x-text="orSearch"></strong>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div x-show="selectedOr" class="mt-1.5 flex items-center gap-1.5">
+                                    <span class="text-[10px] font-bold text-logo-teal">OR <span class="font-mono"
+                                            x-text="'#' + (selectedOr ? selectedOr.or_number : '')"></span>
+                                        selected</span>
+                                    <span
+                                        class="text-[9px] font-extrabold px-1.5 py-0.5 bg-logo-teal/10 text-logo-teal rounded-full"
+                                        x-text="selectedOr ? selectedOr.receipt_type : ''"></span>
+                                </div>
+
+                                @error('or_number')
+                                    <p class="mt-1.5 text-[10px] font-bold text-red-500">{{ $message }}</p>
+                                @enderror
+                            </div>
+
                             <div>
-                                <label class="block text-[10px] font-bold text-gray/70 uppercase mb-1">Drawee
-                                    Bank</label>
-                                <input type="text" name="drawee_bank" placeholder="Bank name"
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                <label class="block text-xs font-bold text-gray mb-1.5">Payment Date <span
+                                        class="text-red-400">*</span></label>
+                                <input type="date" name="payment_date" required x-model="paymentDate"
+                                    @change="autoComputeSurcharge()"
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                            </div>
+                        </div>
+
+                        {{-- Payor + Fund Code --}}
+                        <div class="grid grid-cols-2 gap-4 px-5 py-4 border-b border-lumot/20 bg-bluebody/20">
+                            <div>
+                                <label class="block text-xs font-bold text-gray mb-1.5">Payor</label>
+                                <input type="text" name="payor"
+                                    value="{{ strtoupper($entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}"
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 font-semibold text-green">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-gray/70 uppercase mb-1">Number</label>
-                                <input type="text" name="check_number" placeholder="Check / MO No."
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                <label class="block text-xs font-bold text-gray mb-1.5">Fund Code</label>
+                                <select name="fund_code"
+                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white">
+                                    <option value="100">100 | General Fund</option>
+                                    <option value="101">101 | Special Education Fund</option>
+                                    <option value="102">102 | Trust Fund</option>
+                                </select>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-gray/70 uppercase mb-1">Date</label>
-                                <input type="date" name="check_date"
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                        </div>
+
+                        {{-- Quarter Selection --}}
+                        <div class="px-5 py-4 border-b border-lumot/20">
+                            <label class="block text-xs font-bold text-gray mb-3">
+                                Select Quarter(s) to Pay
+                                <span class="text-gray/50 font-normal ml-1">(click to select, green = already
+                                    paid)</span>
+                            </label>
+                            <div class="grid grid-cols-{{ count($quarterStatus) ?: 4 }} gap-3">
+                                @foreach ($quarterStatus as $q => $qs)
+                                    <button type="button" @click="toggleQuarter({{ $q }})"
+                                        :disabled="{{ json_encode($qs['paid']) }}"
+                                        :class="{
+                                            'bg-logo-teal text-white border-logo-teal shadow': isSelected(
+                                                {{ $q }}) && !isPaid({{ $q }}),
+                                            'bg-logo-green/20 text-logo-green border-logo-green/30 cursor-not-allowed': isPaid(
+                                                {{ $q }}),
+                                            'bg-red-50 border-red-300 text-red-600': !isSelected(
+                                                    {{ $q }}) && !
+                                                isPaid({{ $q }}) && {{ json_encode($qs['overdue']) }},
+                                            'bg-white text-gray border-lumot/30 hover:border-logo-teal/40': !isSelected(
+                                                    {{ $q }}) && !isPaid({{ $q }}) && !
+                                                {{ json_encode($qs['overdue']) }},
+                                        }"
+                                        class="border-2 rounded-xl p-3 text-center transition-all duration-150">
+                                        <p class="text-lg font-extrabold">Q{{ $q }}</p>
+                                        <p class="text-[10px] font-semibold mt-0.5">{{ $qs['date'] }}</p>
+                                        <p class="text-xs font-bold mt-1" x-text="'₱' + fmt(perInstallment)"></p>
+                                        @if ($qs['overdue'] && !$qs['paid'])
+                                            <p class="text-[9px] font-extrabold text-red-400 mt-1 uppercase">⚠ Overdue
+                                            </p>
+                                        @endif
+                                        <p x-show="isPaid({{ $q }})"
+                                            class="text-[9px] font-extrabold text-logo-green mt-1 uppercase">✓ Paid</p>
+                                    </button>
+                                    <input type="checkbox" name="quarters[]" value="{{ $q }}"
+                                        :checked="isSelected({{ $q }})" class="hidden">
+                                @endforeach
                             </div>
                         </div>
-                    </div>
 
-                    {{-- Submit Footer --}}
-                    <div class="flex items-center justify-between px-5 py-4 bg-lumot/10">
-                        <a href="{{ route('bpls.business-list.index') }}"
-                            class="px-5 py-2.5 bg-yellow-500 text-white text-sm font-bold rounded-xl hover:bg-yellow-600 transition-colors">Cancel</a>
-                        <div x-show="selectedQuarters.length > 0"
-                            class="flex items-center gap-2 text-xs text-gray/70">
-                            <span x-text="selectedQuarters.length + ' quarter(s)'"></span>
-                            <span class="text-gray/30">|</span>
-                            <span class="font-bold text-logo-teal" x-text="'₱' + fmt(grandTotal)"></span>
-                            <span x-show="advanceDiscountQualifies"
-                                class="text-[10px] font-bold text-logo-green bg-logo-green/10 px-2 py-0.5 rounded-full border border-logo-green/20"
-                                x-text="advanceDiscountRate + '% ADV'"></span>
-                            <span x-show="beneficiary.discount > 0"
-                                class="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200"
-                                x-text="beneficiary.label"></span>
-                        </div>
-                        <button type="submit" :disabled="selectedQuarters.length === 0 || !selectedOr"
-                            class="flex items-center gap-2 px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 disabled:opacity-40 disabled:cursor-not-allowed">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                            Process Payment
-                        </button>
-                    </div>
-                </form>
+                        {{-- Fee Breakdown --}}
+                        <div class="px-5 py-4 border-b border-lumot/20">
+                            <p class="text-xs font-bold text-gray mb-3">Fee Breakdown</p>
+                            <div class="border border-lumot/20 rounded-xl overflow-hidden">
+                                <div class="grid grid-cols-3 bg-green text-white px-4 py-2.5">
+                                    <p class="text-xs font-extrabold uppercase">Nature of Collection</p>
+                                    <p class="text-xs font-extrabold uppercase text-center">Account Code</p>
+                                    <p class="text-xs font-extrabold uppercase text-right">Amount</p>
+                                </div>
+                                @foreach ($fees as $fee)
+                                    <div
+                                        class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 hover:bg-bluebody/20">
+                                        <p class="text-xs font-semibold text-gray">{{ $fee['name'] }}</p>
+                                        <p class="text-xs text-gray/60 text-center font-mono">{{ $fee['code'] }}</p>
+                                        <p class="text-xs font-bold text-green text-right">
+                                            {{ $fee['amount'] > 0 ? '₱' . number_format($fee['amount'], 2) : '—' }}</p>
+                                    </div>
+                                @endforeach
 
-                {{-- Payments History --}}
-                @if ($payments->count() > 0)
-                    <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
-                        <div class="bg-green text-white text-center py-2.5">
-                            <p class="text-xs font-extrabold tracking-wide uppercase">Payments History</p>
+                                {{-- Surcharges --}}
+                                <div class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-orange-50/50">
+                                    <p class="text-xs font-semibold text-orange-600">SURCHARGES
+                                        <span x-show="computing"
+                                            class="ml-1 text-[9px] text-logo-teal animate-pulse">computing…</span>
+                                    </p>
+                                    <p class="text-xs text-gray/60 text-center font-mono">631-008</p>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <span class="text-xs text-gray/50">₱</span>
+                                        <input type="number" name="surcharges" x-model="surcharges" step="0.01"
+                                            min="0" placeholder="0.00"
+                                            class="w-24 text-xs text-right border border-lumot/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-logo-teal/40 font-bold text-orange-600">
+                                    </div>
+                                </div>
+
+                                {{-- Backtaxes --}}
+                                <div class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-red-50/30">
+                                    <p class="text-xs font-semibold text-red-500">BACKTAXES</p>
+                                    <p class="text-xs text-gray/60 text-center font-mono">631-009</p>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <span class="text-xs text-gray/50">₱</span>
+                                        <input type="number" name="backtaxes" x-model="backtaxes" step="0.01"
+                                            min="0" placeholder="0.00"
+                                            class="w-24 text-xs text-right border border-lumot/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-logo-teal/40 font-bold text-red-500">
+                                    </div>
+                                </div>
+
+                                {{-- Advance Discount --}}
+                                <div x-show="advanceDiscountQualifies"
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 -translate-y-1"
+                                    x-transition:enter-end="opacity-100 translate-y-0"
+                                    class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-green-50/60">
+                                    <div>
+                                        <p class="text-xs font-semibold text-logo-green flex items-center gap-1.5">
+                                            ADVANCE DISCOUNT
+                                            <span
+                                                class="text-[9px] font-extrabold bg-logo-green text-white px-1.5 py-0.5 rounded-full"
+                                                x-text="advanceDiscountRate + '%'"></span>
+                                        </p>
+                                        <p class="text-[9px] text-logo-green/60 mt-0.5">Early payment incentive</p>
+                                    </div>
+                                    <p class="text-xs text-gray/60 text-center font-mono self-center">—</p>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <span class="text-xs font-bold text-logo-green">−</span>
+                                        <span class="text-xs text-gray/50">₱</span>
+                                        <input type="number" name="discount" x-model="advanceDiscount"
+                                            step="0.01" min="0" placeholder="0.00"
+                                            class="w-24 text-xs text-right border border-logo-green/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-logo-green/40 font-bold text-logo-green bg-green-50">
+                                    </div>
+                                </div>
+                                <input x-show="false" type="hidden" name="discount"
+                                    x-bind:value="advanceDiscountQualifies ? advanceDiscount : 0">
+
+                                {{-- Total --}}
+                                <div class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
+                                    <div class="col-span-2">
+                                        <p class="text-sm font-extrabold text-green">TOTAL</p>
+                                        <p class="text-[10px] text-gray/50 mt-0.5"
+                                            x-show="selectedQuarters.length > 0">
+                                            <span x-text="selectedQuarters.length"></span> quarter(s) × ₱<span
+                                                x-text="fmt(perInstallment)"></span>
+                                            <span x-show="surcharges > 0"> + ₱<span x-text="fmt(surcharges)"></span>
+                                                surcharge</span>
+                                            <span x-show="advanceDiscountQualifies"> − ₱<span
+                                                    x-text="fmt(advanceDiscount)"></span> adv. disc.</span>
+                                        </p>
+                                    </div>
+                                    <p class="text-lg font-extrabold text-logo-teal text-right"
+                                        x-text="'₱' + fmt(grandTotal)"></p>
+                                </div>
+                            </div>
+
+                            {{-- Advance discount banner --}}
+                            <div x-show="advanceDiscountQualifies"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="mt-3 flex items-center gap-2.5 p-3 bg-logo-green/10 border border-logo-green/20 rounded-xl">
+                                <p class="text-xs text-logo-green font-semibold">🎉 Advance discount of
+                                    <span class="font-extrabold" x-text="advanceDiscountRate + '%'"></span> applied —
+                                    <span class="font-extrabold" x-text="'₱' + fmt(advanceDiscount)"></span>!
+                                </p>
+                            </div>
+
+                            {{-- Surcharge banner --}}
+                            <div x-show="surcharges > 0" x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0 translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="mt-3 flex items-center gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                                <p class="text-xs text-orange-600 font-semibold">⚠️ Overdue — surcharge of
+                                    <span class="font-extrabold" x-text="'₱' + fmt(surcharges)"></span> applied.
+                                </p>
+                            </div>
                         </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <thead>
-                                    <tr class="bg-lumot/20 border-b border-lumot/20">
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
-                                            Date</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
-                                            OR No.</th>
-                                        <th
-                                            class="text-left text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
-                                            Quarter(s)</th>
-                                        <th
-                                            class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
-                                            Surcharge</th>
-                                        <th
-                                            class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
-                                            Discount</th>
-                                        <th
-                                            class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
-                                            Amount</th>
-                                        <th
-                                            class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
-                                            Cumulative</th>
-                                        <th class="text-center text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5"
-                                            colspan="2">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-lumot/10">
-                                    @php $cum = 0; @endphp
-                                    @foreach ($payments->sortBy('payment_date') as $p)
-                                        @php
-                                            $cum += $p->total_collected;
-                                            $qPaid = is_array($p->quarters_paid)
-                                                ? $p->quarters_paid
-                                                : json_decode($p->quarters_paid, true) ?? [];
-                                        @endphp
-                                        <tr class="hover:bg-bluebody/30 transition-colors">
-                                            <td class="px-4 py-3 text-xs text-gray">
-                                                {{ $p->payment_date->format('Y-m-d') }}</td>
-                                            <td class="px-4 py-3 text-xs font-bold text-logo-teal font-mono">
-                                                {{ $p->or_number }}</td>
-                                            <td class="px-4 py-3">
-                                                @foreach ($qPaid as $q)
-                                                    <span
-                                                        class="inline-block text-[10px] font-bold px-1.5 py-0.5 bg-logo-teal/10 text-logo-teal rounded mr-0.5">Q{{ $q }}</span>
-                                                @endforeach
-                                            </td>
-                                            <td class="px-4 py-3 text-xs text-right">
-                                                {{ $p->surcharges > 0 ? '₱' . number_format($p->surcharges, 2) : '—' }}
-                                            </td>
-                                            <td class="px-4 py-3 text-xs text-right text-logo-green">
-                                                {{ $p->discount > 0 ? '(' . number_format($p->discount, 2) . ')' : '—' }}
-                                            </td>
-                                            <td class="px-4 py-3 text-xs font-bold text-green text-right">
-                                                ₱{{ number_format($p->total_collected, 2) }}</td>
-                                            <td class="px-4 py-3 text-xs font-extrabold text-logo-teal text-right">
-                                                ₱{{ number_format($cum, 2) }}</td>
-                                            <td class="px-2 py-3 text-center">
-                                                <a href="{{ route('bpls.payment.permit', ['entry' => $entry->id, 'payment' => $p->id]) }}"
-                                                    target="_blank"
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-green bg-logo-green/10 hover:bg-logo-green hover:text-white transition-colors whitespace-nowrap">
-                                                    Permit
-                                                </a>
-                                            </td>
-                                            <td class="px-2 py-3 text-center">
-                                                <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->id, 'payment' => $p->id]) }}"
-                                                    target="_blank"
-                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
-                                                    Receipt
-                                                </a>
-                                            </td>
+
+                        {{-- Amount in Words --}}
+                        <div class="px-5 py-4 border-b border-lumot/20">
+                            <label class="block text-xs font-bold text-gray mb-1.5">Amount in Words</label>
+                            <div class="w-full text-sm border border-lumot/20 rounded-xl px-3 py-2.5 bg-lumot/10 font-semibold text-green min-h-[42px]"
+                                x-text="amountInWords || '—'"></div>
+                            <input type="hidden" name="amount_in_words" :value="amountInWords">
+                        </div>
+
+                        {{-- Remarks --}}
+                        <div class="px-5 py-4 border-b border-lumot/20">
+                            <label class="block text-xs font-bold text-gray mb-1.5">Remarks</label>
+                            <textarea name="remarks" rows="2" placeholder="Optional remarks…"
+                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30 resize-none"></textarea>
+                        </div>
+
+                        {{-- Payment Method --}}
+                        <div class="px-5 py-4 border-b border-lumot/20">
+                            <label class="block text-xs font-bold text-gray mb-3">Payment Method</label>
+                            <div class="grid grid-cols-3 gap-3">
+                                @foreach (['cash' => 'Cash', 'check' => 'Check', 'money_order' => 'Money Order'] as $val => $label)
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="payment_method" value="{{ $val }}"
+                                            x-model="paymentMethod" class="peer hidden"
+                                            {{ $val === 'cash' ? 'checked' : '' }}>
+                                        <div
+                                            class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal border-2 border-lumot/30 rounded-xl p-3 text-center transition-all hover:border-logo-teal/50">
+                                            <p class="text-xs font-bold">{{ $label }}</p>
+                                        </div>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- Check / MO Details --}}
+                        <div x-show="paymentMethod === 'check' || paymentMethod === 'money_order'"
+                            class="px-5 py-4 border-b border-lumot/20 bg-bluebody/20">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray/70 uppercase mb-1">Drawee
+                                        Bank</label>
+                                    <input type="text" name="drawee_bank" placeholder="Bank name"
+                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-[10px] font-bold text-gray/70 uppercase mb-1">Number</label>
+                                    <input type="text" name="check_number" placeholder="Check / MO No."
+                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray/70 uppercase mb-1">Date</label>
+                                    <input type="date" name="check_date"
+                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Submit Footer --}}
+                        <div class="flex items-center justify-between px-5 py-4 bg-lumot/10">
+                            <a href="{{ route('bpls.business-list.index') }}"
+                                class="px-5 py-2.5 bg-yellow-500 text-white text-sm font-bold rounded-xl hover:bg-yellow-600 transition-colors">Cancel</a>
+                            <div x-show="selectedQuarters.length > 0"
+                                class="flex items-center gap-2 text-xs text-gray/70">
+                                <span x-text="selectedQuarters.length + ' quarter(s)'"></span>
+                                <span class="text-gray/30">|</span>
+                                <span class="font-bold text-logo-teal" x-text="'₱' + fmt(grandTotal)"></span>
+                                <span x-show="advanceDiscountQualifies"
+                                    class="text-[10px] font-bold text-logo-green bg-logo-green/10 px-2 py-0.5 rounded-full border border-logo-green/20"
+                                    x-text="advanceDiscountRate + '% ADV'"></span>
+                                <span x-show="beneficiary.discount > 0"
+                                    class="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200"
+                                    x-text="beneficiary.label"></span>
+                            </div>
+                            <button type="submit" :disabled="selectedQuarters.length === 0 || !selectedOr"
+                                class="flex items-center gap-2 px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Process Payment
+                            </button>
+                        </div>
+                    </form>
+
+                    {{-- Payments History --}}
+                    @if ($payments->count() > 0)
+                        <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
+                            <div class="bg-green text-white text-center py-2.5">
+                                <p class="text-xs font-extrabold tracking-wide uppercase">Payments History</p>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="bg-lumot/20 border-b border-lumot/20">
+                                            <th
+                                                class="text-left text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
+                                                Date</th>
+                                            <th
+                                                class="text-left text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
+                                                OR No.</th>
+                                            <th
+                                                class="text-left text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
+                                                Quarter(s)</th>
+                                            <th
+                                                class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
+                                                Surcharge</th>
+                                            <th
+                                                class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
+                                                Discount</th>
+                                            <th
+                                                class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
+                                                Amount</th>
+                                            <th
+                                                class="text-right text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5">
+                                                Cumulative</th>
+                                            <th class="text-center text-[10px] font-extrabold text-gray/70 uppercase px-4 py-2.5"
+                                                colspan="2">Actions</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                                <tfoot>
-                                    <tr class="bg-logo-teal/5 border-t-2 border-logo-teal/20">
-                                        <td colspan="3" class="px-4 py-3 text-xs font-extrabold text-green">TOTALS
-                                        </td>
-                                        <td class="px-4 py-3 text-xs font-bold text-orange-600 text-right">
-                                            ₱{{ number_format($payments->sum('surcharges'), 2) }}</td>
-                                        <td class="px-4 py-3 text-xs font-bold text-logo-green text-right">
-                                            (₱{{ number_format($payments->sum('discount'), 2) }})</td>
-                                        <td class="px-4 py-3 text-xs font-extrabold text-logo-teal text-right">
-                                            ₱{{ number_format($payments->sum('total_collected'), 2) }}</td>
-                                        <td colspan="3"></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                    </thead>
+                                    <tbody class="divide-y divide-lumot/10">
+                                        @php $cum = 0; @endphp
+                                        @foreach ($payments->sortBy('payment_date') as $p)
+                                            @php
+                                                $cum += $p->total_collected;
+                                                $qPaid = is_array($p->quarters_paid)
+                                                    ? $p->quarters_paid
+                                                    : json_decode($p->quarters_paid, true) ?? [];
+                                            @endphp
+                                            <tr class="hover:bg-bluebody/30 transition-colors">
+                                                <td class="px-4 py-3 text-xs text-gray">
+                                                    {{ $p->payment_date->format('Y-m-d') }}</td>
+                                                <td class="px-4 py-3 text-xs font-bold text-logo-teal font-mono">
+                                                    {{ $p->or_number }}</td>
+                                                <td class="px-4 py-3">
+                                                    @foreach ($qPaid as $q)
+                                                        <span
+                                                            class="inline-block text-[10px] font-bold px-1.5 py-0.5 bg-logo-teal/10 text-logo-teal rounded mr-0.5">Q{{ $q }}</span>
+                                                    @endforeach
+                                                </td>
+                                                <td class="px-4 py-3 text-xs text-right">
+                                                    {{ $p->surcharges > 0 ? '₱' . number_format($p->surcharges, 2) : '—' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-xs text-right text-logo-green">
+                                                    {{ $p->discount > 0 ? '(' . number_format($p->discount, 2) . ')' : '—' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-xs font-bold text-green text-right">
+                                                    ₱{{ number_format($p->total_collected, 2) }}</td>
+                                                <td class="px-4 py-3 text-xs font-extrabold text-logo-teal text-right">
+                                                    ₱{{ number_format($cum, 2) }}</td>
+                                                <td class="px-2 py-3 text-center">
+                                                    <a href="{{ route('bpls.payment.permit', ['entry' => $entry->id, 'payment' => $p->id]) }}"
+                                                        target="_blank"
+                                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-green bg-logo-green/10 hover:bg-logo-green hover:text-white transition-colors whitespace-nowrap">
+                                                        Permit
+                                                    </a>
+                                                </td>
+                                                <td class="px-2 py-3 text-center">
+                                                    <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->id, 'payment' => $p->id]) }}"
+                                                        target="_blank"
+                                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
+                                                        Receipt
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="bg-logo-teal/5 border-t-2 border-logo-teal/20">
+                                            <td colspan="3" class="px-4 py-3 text-xs font-extrabold text-green">
+                                                TOTALS
+                                            </td>
+                                            <td class="px-4 py-3 text-xs font-bold text-orange-600 text-right">
+                                                ₱{{ number_format($payments->sum('surcharges'), 2) }}</td>
+                                            <td class="px-4 py-3 text-xs font-bold text-logo-green text-right">
+                                                (₱{{ number_format($payments->sum('discount'), 2) }})</td>
+                                            <td class="px-4 py-3 text-xs font-extrabold text-logo-teal text-right">
+                                                ₱{{ number_format($payments->sum('total_collected'), 2) }}</td>
+                                            <td colspan="3"></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                @endif
+                    @endif
 
             </div>{{-- end x-data --}}
         </div>
