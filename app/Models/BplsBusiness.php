@@ -42,6 +42,7 @@ class BplsBusiness extends Model
         'barangay',
         'street',
         'status',
+        'capital_investment',
     ];
 
     protected $casts = [
@@ -49,10 +50,23 @@ class BplsBusiness extends Model
         'dti_sec_cda_date' => 'date',
         'tax_incentive' => 'boolean',
         'business_area_sqm' => 'decimal:2',
+        'capital_investment' => 'decimal:2',
     ];
 
     public function owner()
     {
         return $this->belongsTo(BplsOwner::class, 'owner_id');
+    }
+
+    public function amendments()
+    {
+        return $this->hasManyThrough(
+            BusinessAmendment::class,
+            BusinessEntry::class,
+            'business_id',
+            'business_entry_id',
+            'id',
+            'id'
+        );
     }
 }

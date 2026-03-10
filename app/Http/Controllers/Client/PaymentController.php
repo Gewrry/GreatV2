@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\BusinessEntry;
 use App\Models\BplsPayment;
 use App\Models\BplsSetting;
+use App\Models\bpls\onlineBPLS\BplsApplicationOr;
 
 class PaymentController extends Controller
 {
@@ -119,7 +120,7 @@ class PaymentController extends Controller
                             ],
                             'description'      => 'Business Permit Payment — ' . $application->application_number,
                             'reference_number' => $payment->reference_number,
-                            'success_url'      => route('client.payment.success', $application->id) . '?id={CHECKOUT_SESSION_ID}',
+                            'success_url'      => route('client.payment.success', $application->id) . '?ref=' . $payment->reference_number . '&id={CHECKOUT_SESSION_ID}',
                             'cancel_url'       => route('client.payment.show', $application->id),
                         ],
                     ],
@@ -159,16 +160,33 @@ class PaymentController extends Controller
             abort(403);
         }
 
-        $linkId = $request->query('link_id') ?? $request->query('id') ?? null;
+        $id  = $request->input('id');
+        $ref = $request->input('ref');
 
-        $payment = $linkId
-            ? BplsOnlinePayment::where('bpls_application_id', $application->id)
-                ->where('gateway_transaction_id', $linkId)->first()
-            : BplsOnlinePayment::where('bpls_application_id', $application->id)
-                ->where('status', 'pending')->whereNotNull('gateway_transaction_id')->latest()->first();
+        // Try lookup by ID first (ignoring unreplaced placeholders)
+        $payment = null;
+        if ($id && !str_contains($id, '{')) {
+            $payment = BplsOnlinePayment::where('bpls_application_id', $application->id)
+                ->where('gateway_transaction_id', $id)->first();
+        }
+
+        // Try lookup by Ref second
+        if (!$payment && $ref) {
+            $payment = BplsOnlinePayment::where('bpls_application_id', $application->id)
+                ->where('reference_number', $ref)->first();
+        }
+
+        // Final fallback: latest pending online payment for this application
+        if (!$payment) {
+            $payment = BplsOnlinePayment::where('bpls_application_id', $application->id)
+                ->where('status', 'pending')
+                ->whereNotNull('gateway_transaction_id')
+                ->latest()
+                ->first();
+        }
 
         if (!$payment) {
-            return redirect()->route('client.applications.show', $application->id)
+            return redirect()->route('client.payment.show', $application->id)
                 ->with('error', 'Payment record not found. If you were charged, please contact the office.');
         }
 
@@ -184,17 +202,17 @@ class PaymentController extends Controller
             if ($response->successful()) {
                 $data   = $response->json('data');
                 // Check payment intent status inside the session
-                $status = $data['attributes']['payment_intent']['attributes.status'] 
-                       ?? $data['attributes']['status'] ?? null;
+                $status = data_get($data, 'attributes.payment_intent.attributes.status') 
+                       ?? data_get($data, 'attributes.status');
 
                 if ($status === 'paid' || $status === 'succeeded') {
                     $this->confirmPayment($payment, $application, $data);
-                    return redirect()->route('client.applications.show', $application->id)
+                    return redirect()->route('client.payment.show', $application->id)
                         ->with('success', '✅ Payment confirmed! Reference No: ' . $payment->reference_number);
                 }
 
                 if ($status === 'pending') {
-                    return redirect()->route('client.applications.show', $application->id)
+                    return redirect()->route('client.payment.show', $application->id)
                         ->with('success', '⏳ Payment is being processed. Please refresh in a minute.');
                 }
             }
@@ -202,7 +220,7 @@ class PaymentController extends Controller
             Log::error('PayMongo success verify error', ['error' => $e->getMessage()]);
         }
 
-        return redirect()->route('client.applications.show', $application->id)
+        return redirect()->route('client.payment.show', $application->id)
             ->with('success', '⏳ Payment submitted and being verified. Please refresh in a few minutes.');
     }
 
@@ -258,6 +276,83 @@ class PaymentController extends Controller
 
         return redirect()->route('client.payments.index')
             ->with('success', 'OR Number ' . $request->or_number . ' submitted. Treasury will verify shortly.');
+    }
+
+    /**
+     * Handle malformed success URLs (e.g., from old sessions with '&' instead of '?')
+     */
+    public function successMalformed(Request $request, BplsOnlineApplication $application, $any)
+    {
+        // $any will contain everything after the ampersand
+        // Example: portal/bpls-payments/45/success&ref=BPLS-2024-XXXX&id={CHECKOUT_SESSION_ID}
+        
+        // Ensure the application belongs to the client
+        if ($application->client_id !== Auth::guard('client')->id()) {
+            abort(403);
+        }
+
+        // Parse the 'any' part as query parameters
+        parse_str($any, $query);
+        
+        // Merge with existing request query if needed
+        $request->query->add($query);
+
+        return $this->success($request, $application);
+    }
+
+    /**
+     * Manual verification of a payment status
+     */
+    public function verify(BplsOnlinePayment $payment)
+    {
+        $application = $payment->application;
+
+        // Check ownership
+        if ($application->client_id !== Auth::guard('client')->id()) {
+            // For staff verification, we might need a different check, 
+            // but usually staff uses a different controller or we check guard
+            if (!Auth::guard('web')->check()) {
+                abort(403);
+            }
+        }
+
+        if ($payment->isPaid()) {
+            return back()->with('success', '✅ Payment already confirmed!');
+        }
+
+        if (!$payment->gateway_transaction_id) {
+            return back()->with('error', 'No checkout session found for this payment.');
+        }
+
+        try {
+            $response = Http::withBasicAuth(config('services.paymongo.secret_key'), '')
+                ->get('https://api.paymongo.com/v1/checkout_sessions/' . $payment->gateway_transaction_id);
+
+            if ($response->successful()) {
+                $data = $response->json('data');
+                // Extract status from payment_intent if available, else from session
+                $status = data_get($data, 'attributes.payment_intent.attributes.status') 
+                       ?? data_get($data, 'attributes.status');
+
+                if ($status === 'paid' || $status === 'succeeded') {
+                    $this->confirmPayment($payment, $application, $data);
+                    return back()->with('success', '✅ Payment confirmed! Reference No: ' . $payment->reference_number);
+                }
+
+                if ($status === 'expired') {
+                    $payment->update(['status' => 'failed']);
+                    return back()->with('error', '❌ Payment session has expired.');
+                }
+
+                return back()->with('success', '⏳ Payment status is still "' . $status . '". If you were charged, please wait a few minutes.');
+            }
+
+            return back()->with('error', 'Could not fetch status from PayMongo.');
+
+        } catch (\Exception $e) {
+            Log::error('BPLS verification error', ['error' => $e->getMessage()]);
+            return back()->with('error', 'An error occurred during verification.');
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -534,7 +629,8 @@ class PaymentController extends Controller
         $stackRule   = BplsSetting::get('beneficiary_discount_stack', 'highest_only');
         $fees        = $this->computeFees($entry);
         $totalFees   = collect($fees)->sum('amount');
-        $permitFee   = collect($fees)->firstWhere('name', 'BUSINESS PERMIT (MAYORS PERMIT)')['amount'] ?? 0;
+        $permitFeeItem = collect($fees)->firstWhere('name', 'BUSINESS PERMIT (MAYORS PERMIT)');
+        $permitFee   = data_get($permitFeeItem, 'amount', 0);
         $permitRatio = $totalFees > 0 ? ($permitFee / $totalFees) : 1;
 
         $computeGroupDiscount = fn(array $g): float =>

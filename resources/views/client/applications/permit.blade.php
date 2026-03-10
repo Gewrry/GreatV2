@@ -1,11 +1,17 @@
+{{-- resources/views/client/applications/permit.blade.php --}}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Business Permit — {{ $application->application_number }}</title>
+    <title>Business Permit — {{ $entry->application_number }}</title>
     <style>
+        @page {
+            size: legal;
+            margin: 0.5in;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,555 +19,349 @@
         }
 
         body {
-            font-family: 'DejaVu Sans', Arial, sans-serif;
-            font-size: 11px;
-            color: #1a2e1a;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 11pt;
+            color: #000;
             background: #fff;
-            padding: 0;
+            line-height: 1.4;
         }
 
-        /* ── Outer border frame ── */
-        .permit-frame {
-            border: 6px double #2d6a2d;
-            margin: 18px;
-            padding: 0;
-            min-height: 920px;
+        /*
+           Fixed width of 7.5in ensures we stay within the printable area
+           of an 8.5in wide page with 0.5in margins on each side.
+        */
+        .permit-container {
+            width: 7.5in;
+            margin: 0 auto;
             position: relative;
+            padding-bottom: 50px;
         }
 
-        .permit-inner {
-            border: 1.5px solid #4a9a4a;
-            margin: 6px;
-            padding: 20px 28px;
-            min-height: 900px;
+        /* Borders with safe offsets */
+        .border-double {
+            position: absolute;
+            top: -0.1in;
+            left: -0.1in;
+            right: -0.1in;
+            bottom: -0.1in;
+            border: 4px double #1a3a5c;
+            pointer-events: none;
         }
 
-        /* ── Header ── */
+        .border-single {
+            position: absolute;
+            top: 0in;
+            left: 0in;
+            right: 0in;
+            bottom: 0in;
+            border: 0.5px solid #1a3a5c;
+            pointer-events: none;
+        }
+
         .header {
-            text-align: center;
-            border-bottom: 2px solid #2d6a2d;
-            padding-bottom: 14px;
-            margin-bottom: 16px;
-        }
-
-        .lgu-name {
-            font-size: 13px;
-            font-weight: bold;
-            color: #2d6a2d;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .lgu-address {
-            font-size: 9.5px;
-            color: #555;
-            margin-top: 2px;
-        }
-
-        .permit-title {
-            font-size: 22px;
-            font-weight: bold;
-            color: #1a2e1a;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            margin-top: 10px;
-        }
-
-        .permit-subtitle {
-            font-size: 10px;
-            color: #555;
-            letter-spacing: 1px;
-            margin-top: 3px;
-        }
-
-        .permit-year-badge {
-            display: inline-block;
-            background: #2d6a2d;
-            color: #fff;
-            font-size: 13px;
-            font-weight: bold;
-            padding: 3px 18px;
-            border-radius: 20px;
-            margin-top: 8px;
-            letter-spacing: 2px;
-        }
-
-        /* ── Permit number row ── */
-        .permit-number-row {
-            display: table;
             width: 100%;
-            margin-bottom: 16px;
+            margin-bottom: 70px;
+            padding-top: 30px;
         }
 
-        .permit-number-cell {
-            display: table-cell;
-            width: 50%;
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .seal-cell {
+            width: 0.8in;
+            text-align: center;
             vertical-align: middle;
         }
 
-        .permit-number-cell.right {
-            text-align: right;
-        }
-
-        .field-label {
-            font-size: 8.5px;
-            font-weight: bold;
-            color: #888;
+        .seal-circle {
+            width: 70px;
+            height: 70px;
+            border: 1px solid #1a3a5c;
+            border-radius: 50%;
+            display: inline-block;
+            font-size: 7.5pt;
+            padding-top: 18px;
+            color: #1a3a5c;
             text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .field-value {
-            font-size: 12px;
             font-weight: bold;
-            color: #1a2e1a;
-            margin-top: 2px;
+            line-height: 1.1;
         }
 
-        .field-value.large {
-            font-size: 15px;
-            color: #2d6a2d;
-        }
-
-        /* ── Divider ── */
-        .divider {
-            border: none;
-            border-top: 1px solid #c8e6c8;
-            margin: 12px 0;
-        }
-
-        .divider-bold {
-            border: none;
-            border-top: 2px solid #2d6a2d;
-            margin: 14px 0;
-        }
-
-        /* ── Preamble text ── */
-        .preamble {
+        .header-text {
             text-align: center;
-            font-size: 9.5px;
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 14px;
+            vertical-align: middle;
+        }
+
+        .republic { font-size: 10pt; font-style: italic; }
+        .province { font-size: 11pt; font-weight: bold; text-transform: uppercase; }
+        .municipality { font-size: 18pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .office { font-size: 10pt; font-style: italic; margin-top: 4px; }
+
+        .permit-title {
+            font-size: 32pt;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin: 40px 0 15px;
+            border-bottom: 3.5px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .granted-to {
+            text-align: center;
+            font-size: 13pt;
             font-style: italic;
+            margin-bottom: 30px;
         }
 
-        /* ── Business name highlighted ── */
-        .business-name-block {
+        .business-name {
+            font-size: 36pt;
+            font-weight: bold;
             text-align: center;
-            margin: 12px 0;
-            padding: 10px 20px;
-            background: #f0f8f0;
-            border: 1px solid #c8e6c8;
-            border-radius: 4px;
-        }
-
-        .business-name-main {
-            font-size: 18px;
-            font-weight: bold;
-            color: #1a2e1a;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            text-decoration: underline;
+            margin-bottom: 12px;
+            color: #1a3a5c;
         }
 
-        .business-tradename {
-            font-size: 11px;
-            color: #555;
-            margin-top: 2px;
-        }
-
-        /* ── Info grid ── */
-        .info-grid {
-            display: table;
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .info-row {
-            display: table-row;
-        }
-
-        .info-cell-label {
-            display: table-cell;
-            width: 32%;
-            padding: 5px 8px 5px 0;
-            font-size: 8.5px;
-            font-weight: bold;
-            color: #777;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px dotted #e0e0e0;
-            vertical-align: top;
-        }
-
-        .info-cell-value {
-            display: table-cell;
-            width: 68%;
-            padding: 5px 0;
-            font-size: 10.5px;
-            font-weight: bold;
-            color: #1a2e1a;
-            border-bottom: 1px dotted #e0e0e0;
-            vertical-align: top;
-        }
-
-        /* ── Two column layout ── */
-        .two-col {
-            display: table;
-            width: 100%;
-            margin: 8px 0;
-        }
-
-        .col-left {
-            display: table-cell;
-            width: 50%;
-            padding-right: 20px;
-            vertical-align: top;
-        }
-
-        .col-right {
-            display: table-cell;
-            width: 50%;
-            padding-left: 20px;
-            border-left: 1px solid #c8e6c8;
-            vertical-align: top;
-        }
-
-        /* ── Section heading ── */
-        .section-heading {
-            font-size: 8px;
-            font-weight: bold;
-            color: #2d6a2d;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            border-bottom: 1px solid #c8e6c8;
-            padding-bottom: 3px;
-            margin-bottom: 8px;
-        }
-
-        /* ── Conditions box ── */
-        .conditions-box {
-            background: #f9fdf9;
-            border: 1px solid #c8e6c8;
-            border-radius: 4px;
-            padding: 10px 14px;
-            margin: 12px 0;
-            font-size: 8.5px;
-            color: #444;
-            line-height: 1.7;
-        }
-
-        .conditions-box strong {
-            display: block;
-            font-size: 9px;
-            color: #2d6a2d;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-
-        /* ── Signature section ── */
-        .signatures {
-            display: table;
-            width: 100%;
-            margin-top: 24px;
-        }
-
-        .sig-cell {
-            display: table-cell;
-            width: 33.33%;
+        .business-address {
+            font-size: 12pt;
+            font-style: italic;
             text-align: center;
-            padding: 0 10px;
+            text-transform: uppercase;
+            margin-bottom: 60px;
+            padding: 0 0.5in;
+        }
+
+        .pursuant {
+            font-size: 11.5pt;
+            text-align: center;
+            margin: 0 auto 40px;
+            max-width: 5.5in;
+            line-height: 1.6;
+        }
+
+        .permit-number-box {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .permit-number {
+            font-size: 26pt;
+            font-weight: bold;
+            display: inline-block;
+            border: 2px solid #1a3a5c;
+            padding: 8px 35px;
+            font-family: 'Courier New', Courier, monospace;
+            background: #fdfdfd;
+        }
+
+        .detail-item {
+            text-align: center;
+            margin-bottom: 45px;
+        }
+
+        .detail-label { font-size: 10pt; font-style: italic; color: #555; margin-bottom: 4px; }
+        .detail-value { font-size: 20pt; font-weight: bold; text-transform: uppercase; margin: 4px 0; }
+        .detail-sub { font-size: 12pt; font-style: italic; text-transform: uppercase; }
+
+        .hr-divider {
+            width: 75%;
+            margin: 12px auto;
+            border-top: 0.7px solid #aaa;
+        }
+
+        .given-at {
+            font-size: 13pt;
+            font-style: italic;
+            text-align: center;
+            margin: 100px 0 160px;
+            color: #333;
+        }
+
+        .approval-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 100px;
+        }
+
+        .sig-box {
+            width: 50%;
+            text-align: center;
             vertical-align: bottom;
         }
 
         .sig-line {
-            border-top: 1.5px solid #1a2e1a;
-            margin: 0 10px;
-            padding-top: 4px;
+            border-top: 2.5px solid #000;
+            width: 2.8in;
+            margin: 0 auto 6px;
         }
 
-        .sig-name {
-            font-size: 10px;
-            font-weight: bold;
-            color: #1a2e1a;
-            text-transform: uppercase;
-        }
+        .sig-name { font-size: 15pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sig-title { font-size: 11pt; font-style: italic; }
 
-        .sig-title {
-            font-size: 8.5px;
-            color: #666;
-            margin-top: 2px;
-        }
-
-        /* ── QR / Control number ── */
-        .control-row {
-            display: table;
+        .footer-table {
             width: 100%;
-            margin-top: 18px;
-            border-top: 1px solid #c8e6c8;
-            padding-top: 10px;
+            border-collapse: collapse;
+            font-size: 12pt;
+            border-top: 1.5px solid #000;
+            padding-top: 20px;
+            margin-top: 40px;
         }
 
-        .control-left {
-            display: table-cell;
-            width: 70%;
-            vertical-align: middle;
+        .footer-table td {
+            padding: 10px 0;
         }
 
-        .control-right {
-            display: table-cell;
-            width: 30%;
-            text-align: right;
-            vertical-align: middle;
-        }
+        .f-label { color: #444; font-weight: normal; }
+        .f-value { font-weight: 900; text-transform: uppercase; }
 
-        .control-text {
-            font-size: 8px;
-            color: #aaa;
-            line-height: 1.6;
-        }
-
-        .validity-badge {
-            display: inline-block;
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            color: #856404;
-            font-size: 8.5px;
-            font-weight: bold;
-            padding: 3px 10px;
-            border-radius: 12px;
+        .valid-until-bar {
+            width: 100%;
+            background: #f0f0f0;
+            text-align: center;
+            font-size: 16pt;
+            font-weight: 900;
+            padding: 15px 0;
+            margin-top: 40px;
+            border: 1.5px solid #000;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 2px;
         }
 
-        /* ── Watermark ── */
         .watermark {
-            position: fixed;
-            top: 50%;
+            position: absolute;
+            top: 55%;
             left: 50%;
-            transform: translate(-50%, -50%) rotate(-35deg);
-            font-size: 72px;
-            font-weight: bold;
-            color: rgba(45, 106, 45, 0.04);
-            text-transform: uppercase;
-            letter-spacing: 8px;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 130pt;
+            font-weight: 950;
+            color: rgba(0, 0, 0, 0.025);
             white-space: nowrap;
+            z-index: -1;
             pointer-events: none;
-            z-index: 0;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="watermark">OFFICIAL</div>
+    <div class="permit-container">
+        <div class="border-double"></div>
+        <div class="border-single"></div>
+        <div class="watermark">OFFICIAL</div>
 
-    <div class="permit-frame">
-        <div class="permit-inner">
+        {{-- Header --}}
+        <div class="header">
+            <table class="header-table">
+                <tr>
+                    <td class="seal-cell">
+                        <div class="seal-circle">REPUBLIC<br>OF THE<br>PHILIPPINES</div>
+                    </td>
+                    <td class="header-text">
+                        <p class="republic">Republic of the Philippines</p>
+                        <p class="province">Province of {{ $entry->business?->province ?? 'Cebu' }}</p>
+                        <p class="municipality">Municipality of {{ $entry->business?->municipality ?? 'Liloan' }}</p>
+                        <p class="office">Office of the Municipal Mayor</p>
+                    </td>
+                    <td class="seal-cell">
+                        <div class="seal-circle">LGU<br>SEAL<br>HERE</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
-            {{-- ── Header ── --}}
-            <div class="header">
-                <div class="lgu-name">Republic of the Philippines</div>
-                <div class="lgu-name" style="font-size:15px; margin-top:2px;">
-                    Local Government Unit
-                </div>
-                <div class="lgu-address">Office of the Mayor · Business Permit and Licensing Office</div>
-                <div class="permit-title">Business Permit</div>
-                <div class="permit-subtitle">Mayor's Permit to Operate</div>
-                <div class="permit-year-badge">Year {{ $application->permit_year }}</div>
+        <div class="permit-title">Business/Mayor's Permit</div>
+        <p class="granted-to">is hereby granted to</p>
+
+        <div class="business-name">{{ $entry->business?->business_name }}</div>
+        <div class="business-address">
+            {{ collect([$entry->business?->street, $entry->business?->barangay, $entry->business?->municipality, $entry->business?->province])->filter()->join(', ') }}
+        </div>
+
+        <p class="pursuant">
+            to conduct / operate / engage / maintain business pursuant to the Revised
+            Revenue Code of the Municipality of {{ $entry->business?->municipality ?? 'Liloan' }} described below:
+        </p>
+
+        <div class="permit-number-box">
+            <span class="permit-number">{{ $permitNumber }}</span>
+        </div>
+
+        <div class="details">
+            <div class="detail-item">
+                <p class="detail-label">Owner / Taxpayer</p>
+                <p class="detail-value">
+                    {{ strtoupper($entry->owner?->last_name . ', ' . $entry->owner?->first_name . ' ' . ($entry->owner?->middle_name ? $entry->owner->middle_name[0] . '.' : '')) }}
+                </p>
+                <p class="detail-sub">
+                    {{ collect([$entry->owner?->barangay, $entry->owner?->municipality, $entry->owner?->province])->filter()->join(', ') }}
+                </p>
             </div>
 
-            {{-- ── Permit No. & Date ── --}}
-            <div class="permit-number-row">
-                <div class="permit-number-cell">
-                    <div class="field-label">Permit No.</div>
-                    <div class="field-value large">{{ $application->application_number }}</div>
-                </div>
-                <div class="permit-number-cell right">
-                    <div class="field-label">Date Issued</div>
-                    <div class="field-value">
-                        {{ $application->approved_at?->format('F d, Y') ?? now()->format('F d, Y') }}</div>
-                    <div class="field-label" style="margin-top:8px;">Valid Until</div>
-                    <div class="field-value">December 31, {{ $application->permit_year }}</div>
-                </div>
+            <hr class="hr-divider">
+
+            <div class="detail-item">
+                <p class="detail-label">Nature of Business</p>
+                <p class="detail-value">{{ strtoupper($entry->business?->business_nature ?? 'N/A') }}</p>
             </div>
 
-            <hr class="divider-bold">
+            <hr class="hr-divider">
 
-            {{-- ── Preamble ── --}}
-            <div class="preamble">
-                This is to certify that, having complied with the requirements of existing laws, ordinances, rules and
-                regulations,
-                authority is hereby granted to operate the following business:
+            <div class="detail-item">
+                <p class="detail-label">Status of Business</p>
+                <p class="detail-value">{{ $entry->status_of_business }}</p>
             </div>
+        </div>
 
-            {{-- ── Business Name ── --}}
-            <div class="business-name-block">
-                <div class="business-name-main">{{ $application->business->business_name ?? '—' }}</div>
-                @if($application->business->trade_name)
-                    <div class="business-tradename">Trading as: {{ $application->business->trade_name }}</div>
-                @endif
-            </div>
+        <p class="given-at">
+            Given this {{ $payment->payment_date?->format('jS') ?? now()->format('jS') }}
+            day of {{ $payment->payment_date?->format('F, Y') ?? now()->format('F, Y') }}
+            at {{ $entry->business?->municipality ?? 'the Municipal Hall' }}, Philippines.
+        </p>
 
-            <hr class="divider">
+        <table class="approval-table">
+            <tr>
+                <td style="width: 50%; font-size: 12pt; font-style: italic; vertical-align: bottom; padding-bottom: 30px; text-align: left;">
+                    Approved:
+                </td>
+                <td class="sig-box">
+                    <div style="height: 70px;"></div>
+                    <div class="sig-line"></div>
+                    <p class="sig-name">{{ strtoupper($mayorName) }}</p>
+                    <p class="sig-title">Municipal Mayor</p>
+                </td>
+            </tr>
+        </table>
 
-            {{-- ── Two-column info ── --}}
-            <div class="two-col">
-                <div class="col-left">
-                    <div class="section-heading">Business Information</div>
-                    <div class="info-grid">
-                        <div class="info-row">
-                            <div class="info-cell-label">Owner / Proprietor</div>
-                            <div class="info-cell-value">
-                                {{ $application->owner->last_name ?? '' }}, {{ $application->owner->first_name ?? '' }}
-                                {{ $application->owner->middle_name ? $application->owner->middle_name[0] . '.' : '' }}
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">Business Address</div>
-                            <div class="info-cell-value">
-                                {{ collect([
-    $application->business->street,
-    $application->business->barangay,
-    $application->business->municipality,
-    $application->business->province,
-])->filter()->join(', ') ?: '—' }}
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">Business Activity</div>
-                            <div class="info-cell-value">{{ $application->business->type_of_business ?? '—' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">Business Sector</div>
-                            <div class="info-cell-value">{{ $application->business->business_sector ?? '—' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">Organization Type</div>
-                            <div class="info-cell-value">{{ $application->business->business_organization ?? '—' }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <table class="footer-table">
+            <tr>
+                <td style="width: 53%;">
+                    <span class="f-label">O.R. Number:</span>
+                    <span class="f-value">{{ $payment->or_number }}</span>
+                </td>
+                <td style="width: 47%; text-align: right;">
+                    <span class="f-label">Amount Paid:</span>
+                    <span class="f-value">PHP {{ number_format($payment->total_collected, 2) }}</span>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <span class="f-label">Payment Mode:</span>
+                    <span class="f-value">{{ ucwords(str_replace('_', ' ', $entry->mode_of_payment)) }}</span>
+                </td>
+                <td style="text-align: right;">
+                    <span class="f-label">Series of:</span>
+                    <span class="f-value">{{ $entry->permit_year }}</span>
+                </td>
+            </tr>
+        </table>
 
-                <div class="col-right">
-                    <div class="section-heading">Registration Details</div>
-                    <div class="info-grid">
-                        <div class="info-row">
-                            <div class="info-cell-label">TIN No.</div>
-                            <div class="info-cell-value">{{ $application->business->tin_no ?? '—' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">DTI / SEC / CDA No.</div>
-                            <div class="info-cell-value">{{ $application->business->dti_sec_cda_no ?? '—' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">Business Scale</div>
-                            <div class="info-cell-value">{{ $application->business->business_scale ?? '—' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">Business Area</div>
-                            <div class="info-cell-value">
-                                {{ $application->business->business_area_sqm
-    ? number_format($application->business->business_area_sqm, 2) . ' sqm'
-    : '—' }}
-                            </div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-cell-label">OR Number</div>
-                            <div class="info-cell-value">{{ $application->or_number ?? '—' }}</div>
-                        </div>
-                        @if($application->assessment_amount)
-                            <div class="info-row">
-                                <div class="info-cell-label">Amount Paid</div>
-                                <div class="info-cell-value">&#8369;{{ number_format($application->assessment_amount, 2) }}
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            <hr class="divider">
-
-            {{-- ── Conditions ── --}}
-            <div class="conditions-box">
-                <strong>Terms and Conditions</strong>
-                This permit is granted subject to the following conditions: (1) The holder shall comply with all
-                applicable
-                laws, ordinances, rules and regulations; (2) This permit is non-transferable and valid only for the
-                above-named
-                business at the stated address; (3) This permit shall be prominently displayed at the place of business
-                at all times;
-                (4) Any change in business activity, location, or ownership requires a new application; (5) This permit
-                expires on
-                December 31, {{ $application->permit_year }} and must be renewed annually; (6) Failure to comply with
-                any condition
-                hereof shall be sufficient cause for revocation of this permit.
-            </div>
-
-            @if($application->permit_notes)
-                <div
-                    style="font-size:9px; color:#666; font-style:italic; margin-top:6px; padding:6px 10px; background:#fffbf0; border:1px solid #ffe082; border-radius:3px;">
-                    <strong>Notes:</strong> {{ $application->permit_notes }}
-                </div>
-            @endif
-
-            {{-- ── Signatures ── --}}
-            <div class="signatures">
-                <div class="sig-cell">
-                    <div style="height:36px;"></div>
-                    <div class="sig-line">
-                        <div class="sig-name">Business Owner</div>
-                        <div class="sig-title">Proprietor / Authorized Representative</div>
-                    </div>
-                </div>
-                <div class="sig-cell">
-                    <div style="height:36px;"></div>
-                    <div class="sig-line">
-                        <div class="sig-name">BPLO Officer</div>
-                        <div class="sig-title">Business Permit and Licensing Office</div>
-                    </div>
-                </div>
-                <div class="sig-cell">
-                    <div style="height:36px;"></div>
-                    <div class="sig-line">
-                        <div class="sig-name">Local Chief Executive</div>
-                        <div class="sig-title">Mayor</div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ── Control / QR row ── --}}
-            <div class="control-row">
-                <div class="control-left">
-                    <div class="control-text">
-                        This document was generated electronically by the BPLS Online Portal.<br>
-                        Generated: {{ now()->format('F d, Y \a\t h:i A') }} &nbsp;·&nbsp;
-                        Permit No.: {{ $application->application_number }} &nbsp;·&nbsp;
-                        Permit Year: {{ $application->permit_year }}
-                    </div>
-                    <div style="margin-top:6px;">
-                        <span class="validity-badge">Valid Until December 31, {{ $application->permit_year }}</span>
-                    </div>
-                </div>
-                <div class="control-right">
-                    {{-- Simple control number box as QR placeholder --}}
-                    <div
-                        style="border:1px solid #ccc; padding:6px; display:inline-block; text-align:center; background:#f9f9f9;">
-                        <div
-                            style="font-size:7px; color:#aaa; margin-bottom:4px; text-transform:uppercase; letter-spacing:1px;">
-                            Control No.</div>
-                        <div style="font-size:11px; font-weight:bold; color:#333; letter-spacing:2px;">
-                            {{ str_pad($application->id, 8, '0', STR_PAD_LEFT) }}
-                        </div>
-                        <div style="font-size:7px; color:#aaa; margin-top:3px;">{{ $application->permit_year }}-BPLS
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+        <div class="valid-until-bar">
+            VALID UNTIL DECEMBER 31, {{ $entry->permit_year }}
         </div>
     </div>
 

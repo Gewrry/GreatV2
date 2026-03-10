@@ -519,10 +519,23 @@
                                                     <span class="text-sm font-extrabold text-green">
                                                         ₱{{ number_format((float)($application->assessment_amount / ($application->orAssignments->count() ?: 1)), 2) }}
                                                     </span>
-                                                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border capitalize
-                                                        {{ $orItem->isPaid() ? 'bg-logo-green/10 text-logo-green border-logo-green/30' : 'bg-yellow/20 text-green border-yellow/40' }}">
-                                                        {{ $orItem->status }}
-                                                    </span>
+                                                    @php
+                                                        $onlinePending = \App\Models\onlineBPLS\BplsOnlinePayment::where('bpls_application_id', $application->id)
+                                                            ->where('installment_number', $orItem->installment_number)
+                                                            ->where('status', 'pending')
+                                                            ->first();
+                                                    @endphp
+                                                    @if($onlinePending)
+                                                        <a href="{{ route('client.payment.verify', $onlinePending->id) }}" 
+                                                           class="text-[9px] font-black bg-yellow-400 text-white px-2 py-1 rounded-full hover:bg-yellow-500 transition-colors shadow-sm">
+                                                            Verify Status
+                                                        </a>
+                                                    @else
+                                                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border capitalize
+                                                            {{ $orItem->isPaid() ? 'bg-logo-green/10 text-logo-green border-logo-green/30' : 'bg-yellow/20 text-green border-yellow/40' }}">
+                                                            {{ $orItem->status }}
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         @endforeach
@@ -878,15 +891,25 @@
             perInstallment: 0,
             businessName: @js($b?->business_name ?? ''),
             businessNature: @js($application->business?->business_nature ?? ''),
-            capitalInvestment: {{ $application->business?->capital_investment ?? ($application->assessment_amount ?? 0) }},
+            capitalInvestment: {{ $application->business?->capital_investment ?? 0 }},
             businessScale: @js($application->business?->business_scale ?? ''),
             isRenewal: {{ $application->application_type === 'renewal' ? 'true' : 'false' }},
-            isSenior: {{ $application->owner?->is_senior ? 'true' : 'false' }},
-            isPwd: {{ $application->owner?->is_pwd ? 'true' : 'false' }},
-            isSoloParent: {{ $application->owner?->is_solo_parent ? 'true' : 'false' }},
-            is4ps: {{ $application->owner?->is_4ps ? 'true' : 'false' }},
-            isBmbe: {{ $application->owner?->is_bmbe ? 'true' : 'false' }},
-            isCooperative: {{ $application->owner?->is_cooperative ? 'true' : 'false' }},
+            discountAmount: 0,
+            discountLabel: '',
+            baseAmount: 0,
+
+            // Dynamic benefits from DB — keyed by field_key
+            benefits: @js(isset($benefits) ? $benefits->map(fn($b) => [
+                'id'               => $b->id,
+                'label'            => $b->label,
+                'field_key'        => $b->field_key,
+                'discount_percent' => (float) $b->discount_percent,
+            ])->values() : []),
+
+            // Owner's current flags as the initial state
+            benefitFlags: @js(collect(isset($benefits) ? $benefits : [])->mapWithKeys(fn($b) => [
+                $b->field_key => (bool) ($application->owner?->{$b->field_key} ?? false)
+            ])->toArray()),
             discountAmount: 0,
             discountLabel: '',
             baseAmount: 0,
@@ -914,12 +937,7 @@
                             mode_of_payment:    this.modeOfPayment,
                             permit_year:        this.permitYear,
                             is_renewal:         this.isRenewal,
-                            is_senior:          this.isSenior,
-                            is_pwd:             this.isPwd,
-                            is_solo_parent:     this.isSoloParent,
-                            is_4ps:             this.is4ps,
-                            is_bmbe:            this.isBmbe,
-                            is_cooperative:     this.isCooperative,
+                            benefit_flags:      this.benefitFlags,
                         }),
                     });
                     const data = await res.json();
@@ -998,11 +1016,7 @@
                 <div class="flex items-center justify-between px-4 py-3 bg-bluebody/40 border border-lumot/10 rounded-2xl">
                     <div>
                         <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Capital / Gross Sales</p>
-                        <p class="text-sm font-black text-green mt-0.5">
-                            {{ $application->assessment_amount
-    ? '₱' . number_format((float) $application->assessment_amount, 2)
-    : '—' }}
-                        </p>
+                        <p class="text-sm font-black text-green mt-0.5" x-text="'₱' + capitalInvestment.toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
                     </div>
                     <div class="text-right">
                         <p class="text-[9px] font-black text-gray/40 uppercase tracking-widest">Business Nature</p>
@@ -1096,34 +1110,26 @@
                     </div>
                 </div>
 
-                {{-- Beneficiary Discounts --}}
+                {{-- Beneficiary Discounts — Dynamic from DB --}}
                 <div>
                     <label class="block text-[10px] font-black text-gray/40 uppercase tracking-widest mb-3 ml-1">Beneficiary Discounts</label>
+                    <template x-if="benefits.length === 0">
+                        <p class="text-xs text-gray/40 italic">No benefits configured in the system.</p>
+                    </template>
                     <div class="grid grid-cols-2 gap-3">
-                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isSenior ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
-                            <input type="checkbox" x-model="isSenior" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="text-[11px] font-black text-green uppercase tracking-tight">Senior Citizen</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isPwd ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
-                            <input type="checkbox" x-model="isPwd" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="text-[11px] font-black text-green uppercase tracking-tight">PWD</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isSoloParent ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
-                            <input type="checkbox" x-model="isSoloParent" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="text-[11px] font-black text-green uppercase tracking-tight">Solo Parent</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="is4ps ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
-                            <input type="checkbox" x-model="is4ps" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="text-[11px] font-black text-green uppercase tracking-tight">4Ps</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isBmbe ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
-                            <input type="checkbox" x-model="isBmbe" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="text-[11px] font-black text-green uppercase tracking-tight">BMBE</span>
-                        </label>
-                        <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all" :class="isCooperative ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
-                            <input type="checkbox" x-model="isCooperative" @change="computeFees()" class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
-                            <span class="text-[11px] font-black text-green uppercase tracking-tight">Cooperative</span>
-                        </label>
+                        <template x-for="benefit in benefits" :key="benefit.field_key">
+                            <label class="flex items-center gap-3 p-3.5 border border-lumot/30 rounded-2xl cursor-pointer hover:bg-purple-50 transition-all"
+                                :class="benefitFlags[benefit.field_key] ? 'bg-purple-500/10 border-purple-500/40' : 'bg-white'">
+                                <input type="checkbox"
+                                    :checked="benefitFlags[benefit.field_key]"
+                                    @change="benefitFlags[benefit.field_key] = $event.target.checked; computeFees()"
+                                    class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                                <div>
+                                    <span class="text-[11px] font-black text-green uppercase tracking-tight" x-text="benefit.label"></span>
+                                    <span class="block text-[9px] font-bold text-purple-500 mt-0.5" x-text="benefit.discount_percent + '% discount'"></span>
+                                </div>
+                            </label>
+                        </template>
                     </div>
                 </div>
 
@@ -1334,24 +1340,23 @@
                     }
                     document.getElementById('assess-notes-hidden').value = notes;
                     
-                    document.getElementById('is-senior-hidden').value = isSenior ? 1 : 0;
-                    document.getElementById('is-pwd-hidden').value = isPwd ? 1 : 0;
-                    document.getElementById('is-solo-parent-hidden').value = isSoloParent ? 1 : 0;
-                    document.getElementById('is-4ps-hidden').value = is4ps ? 1 : 0;
-                    document.getElementById('is-bmbe-hidden').value = isBmbe ? 1 : 0;
-                    document.getElementById('is-cooperative-hidden').value = isCooperative ? 1 : 0;
+                    // Dynamically inject benefit flag hidden inputs
+                    const form = $el;
+                    form.querySelectorAll('.benefit-flag-input').forEach(el => el.remove());
+                    Object.entries(benefitFlags).forEach(([key, val]) => {
+                        const inp = document.createElement('input');
+                        inp.type = 'hidden';
+                        inp.name = key;
+                        inp.value = val ? 1 : 0;
+                        inp.className = 'benefit-flag-input';
+                        form.appendChild(inp);
+                    });
                     $el.submit();
                 ">
                 @csrf
                 <input type="hidden" id="assess-amount-hidden" name="assessment_amount">
                 <input type="hidden" id="assess-mode-hidden" name="mode_of_payment">
                 <input type="hidden" id="assess-notes-hidden" name="assessment_notes">
-                <input type="hidden" id="is-senior-hidden" name="is_senior">
-                <input type="hidden" id="is-pwd-hidden" name="is_pwd">
-                <input type="hidden" id="is-solo-parent-hidden" name="is_solo_parent">
-                <input type="hidden" id="is-4ps-hidden" name="is_4ps">
-                <input type="hidden" id="is-bmbe-hidden" name="is_bmbe">
-                <input type="hidden" id="is-cooperative-hidden" name="is_cooperative">
                 <button type="submit"
                     :disabled="computing || assessmentAmount <= 0"
                     class="px-5 py-2.5 text-xs font-black bg-purple-600 text-white uppercase tracking-widest rounded-2xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
@@ -1360,6 +1365,7 @@
                     </svg>
                     Submit Assessment
                 </button>
+
             </form>
         </div>
     </div>

@@ -98,6 +98,12 @@
                             <div class="flex items-center gap-3">
                                 <span class="text-xs font-extrabold text-green">₱{{ number_format($inst['amount'], 2) }}</span>
                                 <span class="text-[10px] font-bold {{ $rowColor }}">{{ $rowLabel }}</span>
+                                @if($instIsPending && $inst['payment'])
+                                    <a href="{{ route('client.payment.verify', $inst['payment']->id) }}" 
+                                       class="text-[9px] font-black bg-yellow-400 text-white px-2 py-0.5 rounded-full hover:bg-yellow-500 transition-colors">
+                                        Verify Status
+                                    </a>
+                                @endif
                             </div>
                         </div>
                     @endforeach

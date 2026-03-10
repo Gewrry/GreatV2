@@ -735,8 +735,11 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::post('/', [PaymentController::class, 'initiate'])->name('initiate');
             Route::post('/confirm', [PaymentController::class, 'confirm'])->name('confirm');
             Route::get('/success', [PaymentController::class, 'success'])->name('success');
+            Route::get('/success&{any}', [PaymentController::class, 'successMalformed'])->where('any', '.*');
             Route::get('/receipt/{payment}', [PaymentController::class, 'receipt'])->name('receipt');
         });
+
+        Route::get('bpls-payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payment.verify');
 
         Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('/walkin-payments', [WalkInPaymentsController::class, 'index'])->name('walkin-payments');
@@ -758,7 +761,11 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::get('/', [RptOnlinePaymentController::class, 'search'])->name('search');
             Route::get('/{td}/soa', [RptOnlinePaymentController::class, 'soa'])->name('soa');
             Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
+            Route::post('/{payment}/verify', [RptOnlinePaymentController::class, 'verify'])->name('verify');
+            
+            // Fallback for sessions started before the fix (malformed URL with & instead of ?)
             Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');
+            Route::get('/{billing}/success&{any}', [RptOnlinePaymentController::class, 'successMalformed'])->where('any', '.*');
         });
 
         // Client search

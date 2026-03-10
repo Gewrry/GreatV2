@@ -87,7 +87,8 @@ class BplsApplicationReviewController extends Controller
         $application->load(['business', 'owner', 'documents', 'client', 'activityLogs', 'orAssignments', 'signatory', 'masterPayments']);
 
         $docs = $application->documents->keyBy('document_type');
-        $requiredMet = collect(BplsDocument::REQUIRED_TYPES)
+        $dynamicReqs = $application->getDynamicRequiredDocumentTypes();
+        $requiredMet = collect($dynamicReqs)
             ->every(fn($t) => isset($docs[$t]) && $docs[$t]->isVerified());
 
         $signatories = BplsPermitSignatory::activeOrdered();
@@ -103,12 +104,15 @@ class BplsApplicationReviewController extends Controller
                 ];
             });
 
+        $benefits = \App\Models\BplsBenefit::active()->get();
+
         return view('modules.bpls.onlineBPLS.application.show', compact(
             'application',
             'docs',
             'requiredMet',
             'signatories',
-            'userAssignments'
+            'userAssignments',
+            'benefits'
         ));
     }
 
@@ -163,11 +167,13 @@ class BplsApplicationReviewController extends Controller
         }
 
         $docs = $application->documents->keyBy('document_type');
-        $unverified = collect(BplsDocument::REQUIRED_TYPES)
+        $dynamicReqs = $application->getDynamicRequiredDocumentTypes();
+        
+        $unverified = collect($dynamicReqs)
             ->filter(fn($t) => !isset($docs[$t]) || !$docs[$t]->isVerified());
 
         if ($unverified->isNotEmpty()) {
-            $labels = $unverified->map(fn($t) => BplsDocument::TYPES[$t])->join(', ');
+            $labels = $unverified->map(fn($t) => BplsDocument::TYPES[$t] ?? str_replace('_', ' ', $t))->join(', ');
             return back()->with('error', "Verify all required documents first. Pending: {$labels}");
         }
 
@@ -225,14 +231,8 @@ class BplsApplicationReviewController extends Controller
     {
         $request->validate([
             'assessment_amount' => 'required|numeric|min:0.01',
-            'mode_of_payment' => 'required|in:quarterly,semi_annual,annual',
-            'assessment_notes' => 'nullable|string|max:1000',
-            'is_senior' => 'nullable|boolean',
-            'is_pwd' => 'nullable|boolean',
-            'is_solo_parent' => 'nullable|boolean',
-            'is_4ps' => 'nullable|boolean',
-            'is_bmbe' => 'nullable|boolean',
-            'is_cooperative' => 'nullable|boolean',
+            'mode_of_payment'   => 'required|in:quarterly,semi_annual,annual',
+            'assessment_notes'  => 'nullable|string|max:1000',
         ]);
 
         if ($application->workflow_status !== 'verified') {
@@ -243,19 +243,32 @@ class BplsApplicationReviewController extends Controller
         $year = now()->year;
 
         $count = match ($mode) {
-            'quarterly' => 4,
+            'quarterly'   => 4,
             'semi_annual' => 2,
-            'annual' => 1,
+            'annual'      => 1,
         };
 
         $periodLabels = match ($mode) {
-            'quarterly' => ["Q1 {$year}", "Q2 {$year}", "Q3 {$year}", "Q4 {$year}"],
+            'quarterly'   => ["Q1 {$year}", "Q2 {$year}", "Q3 {$year}", "Q4 {$year}"],
             'semi_annual' => ["1st Half {$year}", "2nd Half {$year}"],
-            'annual' => ["{$year}"],
+            'annual'      => ["{$year}"],
         };
 
         try {
             DB::transaction(function () use ($request, $application, $count, $periodLabels, $mode) {
+                // Dynamically update owner flags from active bpls_benefits field_keys
+                if ($application->owner) {
+                    $activeBenefits = \App\Models\BplsBenefit::active()->get(['field_key']);
+                    $ownerData = [];
+                    foreach ($activeBenefits as $benefit) {
+                        $key = $benefit->field_key;
+                        $ownerData[$key] = $request->has($key) ? (bool) $request->input($key) : false;
+                    }
+                    if (!empty($ownerData)) {
+                        $application->owner->update($ownerData);
+                    }
+                }
+
                 // Remove any previously un-paid OR pre-assignments if re-assessing
                 $application->orAssignments()->where('status', 'unpaid')->delete();
 
@@ -278,6 +291,7 @@ class BplsApplicationReviewController extends Controller
                     'assessment_notes'  => $request->assessment_notes,
                     'ors_confirmed'     => false,
                     'workflow_status'   => 'assessed',
+                    'assessed_by'       => Auth::id(),
                 ]);
             });
 
@@ -354,7 +368,8 @@ class BplsApplicationReviewController extends Controller
 
                 $application->update([
                     'ors_confirmed' => true,
-                    'assessed_at' => now(),
+                    'assessed_at'   => now(),
+                    'assessed_by'   => Auth::id(),
                 ]);
             });
 

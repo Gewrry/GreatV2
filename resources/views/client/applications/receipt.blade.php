@@ -35,7 +35,9 @@
         $sig1Name = $rGet('receipt_signatory1_name', null);
         $sig1Title = $rGet('receipt_signatory1_title', 'Cashier Officer');
         if (empty($sig1Name)) {
-            $sig1Name = $payment->received_by ?? (auth()->user()->name ?? 'CASHIER OFFICER');
+            // Priority: Assessor name (requested by user) > Payment receiver > Auth user > Fallback
+            $sig1Name = $entry->assessor->employee->full_name 
+                ?? ($payment->received_by ?? (auth()->user()->name ?? 'CASHIER OFFICER'));
         }
 
         $sig2Enabled = $rGet('receipt_signatory2_enabled', '0') === '1';
