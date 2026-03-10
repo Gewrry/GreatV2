@@ -1,12 +1,4 @@
 {{-- resources/views/modules/bpls/receipt.blade.php --}}
-{{--
-    Variables from controller:
-    $payment, $entry, $fees, $discountRate
-    $receiptSettings        ← BplsSetting keyed by key
-    $beneficiaryDiscount    ← float: beneficiary portion of discount
-    $beneficiaryLabel       ← string: e.g. "Solo Parent"
-    $advanceDiscount        ← float: advance payment portion of discount
---}}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -20,45 +12,36 @@
         $rs = $receiptSettings ?? collect();
         $rGet = fn($key, $default) => $rs[$key]->value ?? $default;
 
-        // Header
         $headerLine1 = $rGet('receipt_header_line1', 'Official Receipt of the Republic of the Philippines');
         $officeName = $rGet('receipt_office_name', 'Office of the Treasurer');
         $headerLine3 = $rGet('receipt_header_line3', 'Province of Laguna');
         $agencyName = $rGet('receipt_agency_name', 'MTO-Majayjay');
         $afLabel = $rGet('receipt_af_label', 'Accountable form No. 51');
 
-        // Body / Footer
         $receivedText = $rGet('receipt_received_text', 'Received the amount stated above');
         $footerNote = $rGet('receipt_footer_note', '');
+        $showDiscountBadge = $rGet('receipt_show_discount_badge', '1') === '1';
+        $showAmountInWords = $rGet('receipt_show_amount_in_words', '1') === '1';
+        $showRemarks = $rGet('receipt_show_remarks', '1') === '1';
+        $surchargeCode = $rGet('receipt_surcharge_code', '631-008');
+        $backtaxCode = $rGet('receipt_backtax_code', '631-009');
+        $defaultFundCode = $rGet('receipt_default_fund_code', '101');
+        $receiptWidth = (int) $rGet('receipt_width_px', '360');
+        $minFeeRows = (int) $rGet('receipt_min_fee_rows', '8');
 
-        // Signatories
         $sig1Name = $rGet('receipt_signatory1_name', null);
         $sig1Title = $rGet('receipt_signatory1_title', 'Cashier Officer');
         if (empty($sig1Name)) {
             $sig1Name = $payment->received_by ?? (auth()->user()->name ?? 'CASHIER OFFICER');
         }
-
         $sig2Enabled = $rGet('receipt_signatory2_enabled', '0') === '1';
         $sig2Name = $rGet('receipt_signatory2_name', '');
         $sig2Title = $rGet('receipt_signatory2_title', '');
-
         $sig3Enabled = $rGet('receipt_signatory3_enabled', '0') === '1';
         $sig3Name = $rGet('receipt_signatory3_name', '');
         $sig3Title = $rGet('receipt_signatory3_title', '');
 
-        // Layout options
-        $receiptWidth = (int) $rGet('receipt_width_px', '360');
-        $minFeeRows = (int) $rGet('receipt_min_fee_rows', '8');
-        $showDiscountBadge = $rGet('receipt_show_discount_badge', '1') === '1';
-        $showAmountInWords = $rGet('receipt_show_amount_in_words', '1') === '1';
-        $showRemarks = $rGet('receipt_show_remarks', '1') === '1';
-
-        // Account / Fund codes
-        $surchargeCode = $rGet('receipt_surcharge_code', '631-008');
-        $backtaxCode = $rGet('receipt_backtax_code', '631-009');
-        $defaultFundCode = $rGet('receipt_default_fund_code', '101');
-
-        // ── Fee calculation ──────────────────────────────────────────────────
+        // ── Quarter / mode ratio ──────────────────────────────────────────────
         $quartersPaid = is_array($payment->quarters_paid)
             ? $payment->quarters_paid
             : json_decode($payment->quarters_paid, true) ?? [];
@@ -68,10 +51,43 @@
             'semi_annual' => 2,
             default => 4,
         };
+
+        // ── Benefit info ──────────────────────────────────────────────────────
+        // $beneficiaryInfo is passed from controller: ['discount'=>float,'rate'=>float,'label'=>string,'groups'=>[]]
+        // $advanceDiscount is the advance payment discount portion
+        $beneficiaryInfo = $beneficiaryInfo ?? ['discount' => 0, 'rate' => 0, 'label' => '', 'groups' => []];
+        $benefitTotalDiscount = (float) ($beneficiaryInfo['discount'] ?? 0);
+        $benefitLabel = $beneficiaryInfo['label'] ?? '';
+        $benefitRate = $beneficiaryInfo['rate'] ?? 0;
+        $advanceDiscount = (float) ($advanceDiscount ?? 0);
+
+        // ── Fee computation using the NEW formula ─────────────────────────────
+        // Formula: (totalDue - benefitDiscount) ÷ modeCount × qCount
+        // So on the receipt we show:
+        //   - each fee prorated by (qCount/modeCount)  ← gross per-installment fees
+        //   - then benefit discount deduction           ← totalDiscount ÷ modeCount × qCount
+        //   - then advance discount deduction
         $ratio = $modeCount > 0 ? $qCount / $modeCount : 1;
 
-        // Count non-zero fee rows + extras to compute filler rows
-        $nonEmptyRows = collect($fees)->filter(fn($f) => round($f['amount'] * $ratio, 2) > 0)->count();
+        // Gross fees for the quarters being paid (before any discount)
+        $grossFeeRows = collect($fees)
+            ->map(
+                fn($f) => [
+                    'name' => $f['name'],
+                    'code' => $f['code'],
+                    'amount' => round($f['amount'] * $ratio, 2),
+                ],
+            )
+            ->filter(fn($f) => $f['amount'] > 0)
+            ->values();
+
+        $grossSubtotal = $grossFeeRows->sum('amount');
+
+        // Benefit discount for these quarters = benefitTotalDiscount ÷ modeCount × qCount
+        // (benefitTotalDiscount from controller is already the FULL year discount)
+        $benefitForQuarters = $modeCount > 0 ? round(($benefitTotalDiscount / $modeCount) * $qCount, 2) : 0;
+
+        // Count rows for filler
         $extraRows = 0;
         if (($payment->surcharges ?? 0) > 0) {
             $extraRows++;
@@ -79,13 +95,13 @@
         if (($payment->backtaxes ?? 0) > 0) {
             $extraRows++;
         }
-        if (($advanceDiscount ?? 0) > 0) {
+        if ($advanceDiscount > 0) {
             $extraRows++;
         }
-        if (($beneficiaryDiscount ?? 0) > 0) {
+        if ($benefitForQuarters > 0) {
             $extraRows++;
         }
-        $fillerRows = max(0, $minFeeRows - $nonEmptyRows - $extraRows);
+        $fillerRows = max(0, $minFeeRows - $grossFeeRows->count() - $extraRows);
     @endphp
 
     <style>
@@ -106,7 +122,6 @@
             width: {{ $receiptWidth }}px;
             margin: 20px auto;
             border: 2px solid #000;
-            padding: 0;
         }
 
         .header-top {
@@ -115,14 +130,14 @@
             border-bottom: 1px solid #000;
         }
 
-        .header-top .logos {
+        .logos {
             display: flex;
             align-items: center;
             justify-content: space-between;
             margin-bottom: 4px;
         }
 
-        .header-top .logo-box {
+        .logo-box {
             width: 40px;
             height: 40px;
             border: 1px solid #999;
@@ -134,18 +149,18 @@
             text-align: center;
         }
 
-        .header-top .title-block {
+        .title-block {
             flex: 1;
             padding: 0 8px;
         }
 
-        .header-top .title-block p {
+        .title-block p {
             font-size: 9px;
             font-weight: bold;
             line-height: 1.4;
         }
 
-        .header-top .title-block .main {
+        .title-block .main {
             font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
@@ -207,6 +222,50 @@
             text-transform: uppercase;
         }
 
+        /* ── Benefit Computation Box ─────────────────────────────────── */
+        .benefit-computation {
+            border-bottom: 1px solid #000;
+            background: #faf5ff;
+            padding: 6px 8px;
+        }
+
+        .benefit-computation .bc-title {
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #6b21a8;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .benefit-computation table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+
+        .benefit-computation table td {
+            padding: 2px 0;
+            color: #4a1d96;
+        }
+
+        .benefit-computation table td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .benefit-computation .bc-divider {
+            border-top: 1px dashed #c4b5fd;
+            margin: 3px 0;
+        }
+
+        .benefit-computation .bc-result td {
+            font-weight: 900;
+            color: #15803d;
+            font-size: 10px;
+        }
+
+        /* ── Fee Table ───────────────────────────────────────────────── */
         .fee-table {
             width: 100%;
             border-collapse: collapse;
@@ -254,10 +313,6 @@
             border-bottom: 1px solid #bbf7d0;
         }
 
-        .fee-table tbody tr.discount-row td.code {
-            color: #16a34a;
-        }
-
         .fee-table tbody tr.beneficiary-row td {
             background: #faf5ff;
             color: #7e22ce;
@@ -277,6 +332,15 @@
         .fee-table tbody tr.backtax-row td {
             background: #fef2f2;
             color: #dc2626;
+        }
+
+        .fee-table tbody tr.subtotal-row td {
+            background: #f8fafc;
+            font-weight: bold;
+            font-size: 10px;
+            border-top: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            color: #475569;
         }
 
         .fee-table tfoot tr td {
@@ -329,7 +393,7 @@
             padding: 5px 8px;
         }
 
-        .payment-method-row .method-item {
+        .method-item {
             display: flex;
             align-items: center;
             gap: 5px;
@@ -353,7 +417,7 @@
             font-weight: 900;
         }
 
-        .payment-method-row .drawee-table {
+        .drawee-table {
             border-left: 1px solid #000;
         }
 
@@ -520,17 +584,18 @@
         </div>
 
         {{-- ── Advance Discount Badge ── --}}
-        @if ($showDiscountBadge && ($advanceDiscount ?? 0) > 0)
+        @if ($showDiscountBadge && $advanceDiscount > 0)
             <div class="discount-badge">
                 ✓ ADVANCE PAYMENT DISCOUNT APPLIED ({{ $discountRate ?? 0 }}% OFF)
             </div>
         @endif
 
-        {{-- ── Beneficiary Discount Badge ── --}}
-        @if (($beneficiaryDiscount ?? 0) > 0)
+        {{-- ── Beneficiary Badge ── --}}
+        @if ($benefitForQuarters > 0)
             <div class="beneficiary-badge">
-                ✓ BENEFICIARY DISCOUNT APPLIED — {{ strtoupper($beneficiaryLabel ?? '') }}
-                (₱{{ number_format($beneficiaryDiscount, 2) }})
+                ✓ BENEFICIARY DISCOUNT — {{ strtoupper($benefitLabel) }}
+                ({{ $benefitRate }}% of ₱{{ number_format($grossSubtotal, 2) }} =
+                −₱{{ number_format($benefitForQuarters, 2) }})
             </div>
         @endif
 
@@ -540,7 +605,7 @@
             <div>Revised January 1992</div>
         </div>
 
-        {{-- ── Date / OR Number ── --}}
+        {{-- ── Date / OR ── --}}
         <div class="date-or-row">
             <div>Date: {{ $payment->payment_date->format('M d, Y') }}</div>
             <div>PGL N.: {{ $payment->or_number }}</div>
@@ -557,6 +622,43 @@
             {{ strtoupper($payment->payor ?? $entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}
         </div>
 
+        {{-- ── Benefit Computation Box ── --}}
+        @if ($benefitForQuarters > 0)
+            <div class="benefit-computation">
+                <p class="bc-title">Benefit Discount Computation</p>
+                <table>
+                    <tr>
+                        <td>Total Due ({{ $entry->permit_year ?? now()->year }})</td>
+                        <td>₱{{ number_format($entry->active_total_due, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td>{{ $benefitLabel }} ({{ $benefitRate }}%)</td>
+                        <td>− ₱{{ number_format($benefitTotalDiscount, 2) }}</td>
+                    </tr>
+                    <tr class="bc-divider">
+                        <td colspan="2">
+                            <div class="bc-divider"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>After Discount</td>
+                        <td>₱{{ number_format($entry->active_total_due - $benefitTotalDiscount, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td>÷ {{ $modeCount }} installment{{ $modeCount > 1 ? 's' : '' }}</td>
+                        <td>₱{{ number_format(($entry->active_total_due - $benefitTotalDiscount) / $modeCount, 2) }} /
+                            installment</td>
+                    </tr>
+                    @if ($qCount > 1)
+                        <tr>
+                            <td>× {{ $qCount }} quarter(s) paid</td>
+                            <td>₱{{ number_format($payment->amount_paid, 2) }}</td>
+                        </tr>
+                    @endif
+                </table>
+            </div>
+        @endif
+
         {{-- ── Fee Table ── --}}
         <table class="fee-table">
             <thead>
@@ -567,17 +669,23 @@
                 </tr>
             </thead>
             <tbody>
-                {{-- Regular fees --}}
-                @foreach ($fees as $fee)
-                    @php $feeAmt = round($fee['amount'] * $ratio, 2); @endphp
-                    @if ($feeAmt > 0)
-                        <tr>
-                            <td>{{ $fee['name'] }}</td>
-                            <td class="code">{{ $fee['code'] }}</td>
-                            <td>{{ number_format($feeAmt, 2) }}</td>
-                        </tr>
-                    @endif
+
+                {{-- Regular fees (gross, prorated by quarters) --}}
+                @foreach ($grossFeeRows as $fee)
+                    <tr>
+                        <td>{{ $fee['name'] }}</td>
+                        <td class="code">{{ $fee['code'] }}</td>
+                        <td>{{ number_format($fee['amount'], 2) }}</td>
+                    </tr>
                 @endforeach
+
+                {{-- Gross subtotal row (only when benefit discount applies) --}}
+                @if ($benefitForQuarters > 0)
+                    <tr class="subtotal-row">
+                        <td colspan="2">Subtotal (before benefit discount)</td>
+                        <td>{{ number_format($grossSubtotal, 2) }}</td>
+                    </tr>
+                @endif
 
                 {{-- Surcharges --}}
                 @if (($payment->surcharges ?? 0) > 0)
@@ -597,21 +705,26 @@
                     </tr>
                 @endif
 
-                {{-- Advance Discount --}}
-                @if (($advanceDiscount ?? 0) > 0)
+                {{-- Benefit Discount deduction ── NEW ── --}}
+                @if ($benefitForQuarters > 0)
+                    <tr class="beneficiary-row">
+                        <td>
+                            BENEFIT DISCOUNT — {{ strtoupper($benefitLabel) }}
+                            <span style="font-size:8px;font-weight:normal;">
+                                ({{ $benefitRate }}% × ₱{{ number_format($entry->active_total_due, 2) }})
+                            </span>
+                        </td>
+                        <td class="code">—</td>
+                        <td>({{ number_format($benefitForQuarters, 2) }})</td>
+                    </tr>
+                @endif
+
+                {{-- Advance Discount deduction --}}
+                @if ($advanceDiscount > 0)
                     <tr class="discount-row">
                         <td>ADVANCE DISCOUNT ({{ $discountRate ?? 0 }}%)</td>
                         <td class="code">—</td>
                         <td>({{ number_format($advanceDiscount, 2) }})</td>
-                    </tr>
-                @endif
-
-                {{-- Beneficiary Discount ← NEW --}}
-                @if (($beneficiaryDiscount ?? 0) > 0)
-                    <tr class="beneficiary-row">
-                        <td>BENEFICIARY DISCOUNT — {{ strtoupper($beneficiaryLabel ?? '') }}</td>
-                        <td class="code">—</td>
-                        <td>({{ number_format($beneficiaryDiscount, 2) }})</td>
                     </tr>
                 @endif
 
@@ -623,6 +736,7 @@
                         <td></td>
                     </tr>
                 @endfor
+
             </tbody>
             <tfoot>
                 <tr>
@@ -643,7 +757,7 @@
                             {
                                 $n = (int) round($amount * 100);
                                 $pesos = intdiv($n, 100);
-                                $centavos = $n % 100;
+                                $cents = $n % 100;
                                 $ones = [
                                     '',
                                     'One',
@@ -700,8 +814,8 @@
                                         ($num % 1000000 ? ' ' . $hw($num % 1000000) : '');
                                 };
                                 $words = $pesos > 0 ? $hw($pesos) . ' Pesos' : 'Zero Pesos';
-                                if ($centavos > 0) {
-                                    $words .= ' and ' . str_pad($centavos, 2, '0', STR_PAD_LEFT) . '/100';
+                                if ($cents > 0) {
+                                    $words .= ' and ' . str_pad($cents, 2, '0', STR_PAD_LEFT) . '/100';
                                 }
                                 return $words . ' Only';
                             }
@@ -715,8 +829,7 @@
         {{-- ── Remarks ── --}}
         @if ($showRemarks)
             <div class="remarks-row">
-                <span class="label">Remarks: </span>
-                {{ $payment->remarks ?? '' }}
+                <span class="label">Remarks: </span>{{ $payment->remarks ?? '' }}
             </div>
         @endif
 

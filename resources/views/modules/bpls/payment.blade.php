@@ -1,7 +1,7 @@
 {{-- resources/views/modules/bpls/payment.blade.php --}}
 <x-admin.app>
     <div class="py-2">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full mx-auto sm:px-6 lg:px-8">
             @include('layouts.bpls.navbar')
 
             <script>
@@ -9,182 +9,184 @@
                 window.__bplsPaidQuarters = @json(array_values($paidQuarters));
                 window.__bplsPerInstallment = {{ $perInstallment }};
                 window.__bplsModeCount = {{ $modeCount }};
-                window.__bplsAvailableOrsUrl = '{{ route('bpls.payment.available-ors', $entry->unified_id ?? $entry->id) }}';
-                window.__bplsCsrf = document.querySelector ? document.querySelector('meta[name=csrf-token]')?.content : '';
-                window.__bplsBeneficiaryDiscountPerInstallment = {{ $beneficiaryDiscount['discount'] ?? 0 }};
+                window.__bplsTotalDue = {{ $activeTotalDue }};
+                window.__bplsBeneficiary = @json($beneficiaryInfo);
+                window.__bplsAvailableOrsUrl = '{{ route('bpls.payment.available-ors', $entry->id) }}';
             </script>
 
-            <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4" x-data="{
-                selectedQuarters: [],
-                paymentMethod: 'cash',
-                paymentDate: '{{ now()->format('Y-m-d') }}',
-                surcharges: 0,
-                backtaxes: 0,
-                discount: 0,
-                discountRate: 0,
-                discountQualifies: false,
-                beneficiaryDiscount: window.__bplsBeneficiaryDiscountPerInstallment || 0,
-                beneficiaryLabel: '{{ addslashes($beneficiaryDiscount['label'] ?? '') }}',
-                paidQuarters: window.__bplsPaidQuarters || [],
-                perInstallment: window.__bplsPerInstallment || 0,
-                modeCount: window.__bplsModeCount || 4,
-                computing: false,
-                availableOrs: [],
-                filteredOrs: [],
-                orSearch: '',
-                selectedOr: null,
-                orDropdownOpen: false,
-                orLoading: true,
-                orError: '',
-                orFocusIndex: -1,
-            
-                init() {
-                    const schedule = window.__bplsSchedule || [];
-                    const autoSelect = [];
-                    for (const row of schedule) {
-                        if (row.overdue && !this.paidQuarters.includes(row.quarter)) {
-                            autoSelect.push(row.quarter);
+            <div class="min-h-screen w-full  bg-gradient-to-br from-bluebody via-white to-blue/5 p-4"
+                x-data="{
+                    selectedQuarters: [],
+                    paymentMethod: 'cash',
+                    paymentDate: '{{ now()->format('Y-m-d') }}',
+                    surcharges: 0,
+                    backtaxes: 0,
+                    advanceDiscount: 0,
+                    advanceDiscountRate: 0,
+                    advanceDiscountQualifies: false,
+                    paidQuarters: window.__bplsPaidQuarters || [],
+                    perInstallment: window.__bplsPerInstallment || 0,
+                    modeCount: window.__bplsModeCount || 4,
+                    totalDue: window.__bplsTotalDue || 0,
+                    beneficiary: window.__bplsBeneficiary || { discount: 0, rate: 0, label: '', groups: [] },
+                    computing: false,
+                    availableOrs: [],
+                    filteredOrs: [],
+                    orSearch: '',
+                    selectedOr: null,
+                    orDropdownOpen: false,
+                    orLoading: true,
+                    orError: '',
+                    orFocusIndex: -1,
+                
+                    init() {
+                        const schedule = window.__bplsSchedule || [];
+                        const autoSelect = [];
+                        for (const row of schedule) {
+                            if (row.overdue && !this.paidQuarters.includes(row.quarter)) {
+                                autoSelect.push(row.quarter);
+                            }
                         }
-                    }
-                    if (autoSelect.length > 0) {
-                        this.selectedQuarters = autoSelect;
-                        this.$nextTick(() => this.autoComputeSurcharge());
-                    }
-                    this.loadAvailableOrs();
-                    window.recalcPaymentTotals = () => {
-                        this.beneficiaryDiscount = window._beneficiaryDiscountPerInstallment ?? 0;
-                        if (this.selectedQuarters.length > 0) this.autoComputeSurcharge();
-                    };
-                },
-            
-                async loadAvailableOrs() {
-                    this.orLoading = true;
-                    this.orError = '';
-                    try {
-                        const csrf = document.querySelector('meta[name=csrf-token]').content;
-                        const res = await fetch(window.__bplsAvailableOrsUrl, {
-                            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-                        });
-                        const data = await res.json();
-                        this.availableOrs = data.available || [];
-                        this.filteredOrs = this.availableOrs;
-                        if (this.availableOrs.length === 0) {
-                            this.orError = data.message || 'No available OR numbers found for your account.';
+                        if (autoSelect.length > 0) {
+                            this.selectedQuarters = autoSelect;
+                            this.$nextTick(() => this.autoComputeSurcharge());
                         }
-                    } catch (e) {
-                        this.orError = 'Failed to load OR numbers. Please refresh the page.';
-                    }
-                    this.orLoading = false;
-                },
-            
-                filterOrs() {
-                    const q = this.orSearch.toLowerCase().trim();
-                    this.filteredOrs = q ?
-                        this.availableOrs.filter(o =>
-                            o.or_number.toLowerCase().includes(q) ||
-                            o.receipt_type.toLowerCase().includes(q)) :
-                        this.availableOrs;
-                    this.orFocusIndex = -1;
-                },
-            
-                selectOr(or) {
-                    this.selectedOr = or;
-                    this.orSearch = or.or_number;
-                    this.orDropdownOpen = false;
-                    this.orFocusIndex = -1;
-                },
-            
-                orKeydown(e) {
-                    if (!this.orDropdownOpen) { this.orDropdownOpen = true; return; }
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        this.orFocusIndex = Math.min(this.orFocusIndex + 1, this.filteredOrs.length - 1);
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        this.orFocusIndex = Math.max(this.orFocusIndex - 1, 0);
-                    } else if (e.key === 'Enter' && this.orFocusIndex >= 0) {
-                        e.preventDefault();
-                        this.selectOr(this.filteredOrs[this.orFocusIndex]);
-                    } else if (e.key === 'Escape') {
+                        this.loadAvailableOrs();
+                    },
+                
+                    async loadAvailableOrs() {
+                        this.orLoading = true;
+                        this.orError = '';
+                        try {
+                            const csrf = document.querySelector('meta[name=csrf-token]').content;
+                            const res = await fetch(window.__bplsAvailableOrsUrl, {
+                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                            });
+                            const data = await res.json();
+                            this.availableOrs = data.available || [];
+                            this.filteredOrs = this.availableOrs;
+                            if (this.availableOrs.length === 0) {
+                                this.orError = data.message || 'No available OR numbers found for your account.';
+                            }
+                        } catch (e) {
+                            this.orError = 'Failed to load OR numbers. Please refresh the page.';
+                        }
+                        this.orLoading = false;
+                    },
+                
+                    filterOrs() {
+                        const q = this.orSearch.toLowerCase().trim();
+                        this.filteredOrs = q ?
+                            this.availableOrs.filter(o =>
+                                o.or_number.toLowerCase().includes(q) ||
+                                o.receipt_type.toLowerCase().includes(q)) :
+                            this.availableOrs;
+                        this.orFocusIndex = -1;
+                    },
+                
+                    selectOr(or) {
+                        this.selectedOr = or;
+                        this.orSearch = or.or_number;
                         this.orDropdownOpen = false;
-                    }
-                },
-            
-                clearOr() {
-                    this.selectedOr = null;
-                    this.orSearch = '';
-                    this.filteredOrs = this.availableOrs;
-                    this.orDropdownOpen = false;
-                },
-            
-                toggleQuarter(q) {
-                    if (this.paidQuarters.includes(q)) return;
-                    const i = this.selectedQuarters.indexOf(q);
-                    if (i === -1) this.selectedQuarters.push(q);
-                    else this.selectedQuarters.splice(i, 1);
-                    this.autoComputeSurcharge();
-                },
-                isSelected(q) { return this.selectedQuarters.includes(q); },
-                isPaid(q) { return this.paidQuarters.includes(q); },
-            
-                get subtotal() { return this.perInstallment * this.selectedQuarters.length; },
-                get totalBeneficiaryDiscount() {
-                    return (this.beneficiaryDiscount || 0) * this.selectedQuarters.length;
-                },
-                get grandTotal() {
-                    return this.subtotal +
-                        parseFloat(this.surcharges || 0) +
-                        parseFloat(this.backtaxes || 0) -
-                        parseFloat(this.discount || 0) -
-                        parseFloat(this.totalBeneficiaryDiscount || 0);
-                },
-                get amountInWords() {
-                    const n = Math.round(this.grandTotal * 100);
-                    const pesos = Math.floor(n / 100),
-                        cents = n % 100;
-                    const w = this.numToWords(pesos);
-                    if (!w) return '';
-                    return w.toUpperCase() + ' PESOS' +
-                        (cents > 0 ? ' AND ' + cents.toString().padStart(2, '0') + '/100 CENTAVOS' : '') +
-                        ' ONLY';
-                },
-                numToWords(n) {
-                    if (n === 0) return 'ZERO';
-                    const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
-                    const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
-                    if (n < 20) return ones[n];
-                    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
-                    if (n < 1000) return ones[Math.floor(n / 100)] + ' HUNDRED' + (n % 100 ? ' ' + this.numToWords(n % 100) : '');
-                    if (n < 1000000) return this.numToWords(Math.floor(n / 1000)) + ' THOUSAND' + (n % 1000 ? ' ' + this.numToWords(n % 1000) : '');
-                    return this.numToWords(Math.floor(n / 1000000)) + ' MILLION' + (n % 1000000 ? ' ' + this.numToWords(n % 1000000) : '');
-                },
-            
-                async autoComputeSurcharge() {
-                    if (!this.selectedQuarters.length || !this.paymentDate) return;
-                    this.computing = true;
-                    try {
-                        const csrf = document.querySelector('meta[name=csrf-token]').content;
-                        const res = await fetch('{{ route('bpls.payment.compute-surcharge', $entry->unified_id ?? $entry->id) }}', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                            body: JSON.stringify({ quarters: this.selectedQuarters, payment_date: this.paymentDate }),
-                        });
-                        const data = await res.json();
-                        this.surcharges = data.surcharge || 0;
-                        this.discount = data.advance_discount || data.discount || 0;
-                        this.discountRate = data.advance_discount_rate || data.discount_rate || 0;
-                        this.discountQualifies = data.advance_discount_qualifies || data.discount_qualifies || false;
-                        if (data.beneficiary_discount !== undefined) {
-                            const perQ = this.selectedQuarters.length > 0 ?
-                                data.beneficiary_discount / this.selectedQuarters.length : 0;
-                            this.beneficiaryDiscount = perQ;
-                            this.beneficiaryLabel = data.beneficiary_label || '';
-                            window._beneficiaryDiscountPerInstallment = perQ;
-                        }
-                    } catch (e) { console.error(e); }
-                    this.computing = false;
-                },
-            }">
+                        this.orFocusIndex = -1;
+                    },
+                
+                    orKeydown(e) {
+                        if (!this.orDropdownOpen) { this.orDropdownOpen = true; return; }
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            this.orFocusIndex = Math.min(this.orFocusIndex + 1, this.filteredOrs.length - 1);
+                        } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            this.orFocusIndex = Math.max(this.orFocusIndex - 1, 0);
+                        } else if (e.key === 'Enter' && this.orFocusIndex >= 0) {
+                            e.preventDefault();
+                            this.selectOr(this.filteredOrs[this.orFocusIndex]);
+                        } else if (e.key === 'Escape') { this.orDropdownOpen = false; }
+                    },
+                
+                    clearOr() {
+                        this.selectedOr = null;
+                        this.orSearch = '';
+                        this.filteredOrs = this.availableOrs;
+                        this.orDropdownOpen = false;
+                    },
+                
+                    toggleQuarter(q) {
+                        if (this.paidQuarters.includes(q)) return;
+                        const i = this.selectedQuarters.indexOf(q);
+                        if (i === -1) this.selectedQuarters.push(q);
+                        else this.selectedQuarters.splice(i, 1);
+                        this.autoComputeSurcharge();
+                    },
+                    isSelected(q) { return this.selectedQuarters.includes(q); },
+                    isPaid(q) { return this.paidQuarters.includes(q); },
+                
+                    get subtotal() {
+                        return this.perInstallment * this.selectedQuarters.length;
+                    },
+                    get grandTotal() {
+                        return this.subtotal +
+                            parseFloat(this.surcharges || 0) +
+                            parseFloat(this.backtaxes || 0) -
+                            parseFloat(this.advanceDiscount || 0);
+                    },
+                    get amountInWords() {
+                        const n = Math.round(this.grandTotal * 100);
+                        const pesos = Math.floor(n / 100),
+                            cents = n % 100;
+                        const w = this.numToWords(pesos);
+                        if (!w) return '';
+                        return w.toUpperCase() + ' PESOS' +
+                            (cents > 0 ? ' AND ' + cents.toString().padStart(2, '0') + '/100 CENTAVOS' : '') +
+                            ' ONLY';
+                    },
+                    numToWords(n) {
+                        if (n === 0) return 'ZERO';
+                        const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
+                        const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
+                        if (n < 20) return ones[n];
+                        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+                        if (n < 1000) return ones[Math.floor(n / 100)] + ' HUNDRED' + (n % 100 ? ' ' + this.numToWords(n % 100) : '');
+                        if (n < 1000000) return this.numToWords(Math.floor(n / 1000)) + ' THOUSAND' + (n % 1000 ? ' ' + this.numToWords(n % 1000) : '');
+                        return this.numToWords(Math.floor(n / 1000000)) + ' MILLION' + (n % 1000000 ? ' ' + this.numToWords(n % 1000000) : '');
+                    },
+                
+                    async autoComputeSurcharge() {
+                        if (!this.selectedQuarters.length || !this.paymentDate) return;
+                        this.computing = true;
+                        try {
+                            const csrf = document.querySelector('meta[name=csrf-token]').content;
+                            const res = await fetch('{{ route('bpls.payment.compute-surcharge', $entry->id) }}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                                body: JSON.stringify({ quarters: this.selectedQuarters, payment_date: this.paymentDate }),
+                            });
+                            const data = await res.json();
+                            this.surcharges = data.surcharge || 0;
+                            this.advanceDiscount = data.advance_discount || 0;
+                            this.advanceDiscountRate = data.advance_discount_rate || 0;
+                            this.advanceDiscountQualifies = data.advance_discount_qualifies || false;
+                            // Update per installment from server (benefit-adjusted)
+                            if (data.per_quarter) this.perInstallment = data.per_quarter;
+                            // Update beneficiary info
+                            if (data.beneficiary_discount !== undefined) {
+                                this.beneficiary = {
+                                    discount: data.beneficiary_discount,
+                                    rate: data.beneficiary_rate || 0,
+                                    label: data.beneficiary_label || '',
+                                    groups: data.beneficiary_groups || [],
+                                };
+                                this.totalDue = data.total_due || this.totalDue;
+                            }
+                        } catch (e) { console.error(e); }
+                        this.computing = false;
+                    },
+                
+                    fmt(n) {
+                        return parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    },
+                }">
 
                 {{-- ── Header ── --}}
                 <div class="mb-5 flex items-center justify-between">
@@ -242,21 +244,11 @@
                                 <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
                                     target="_blank"
                                     class="flex items-center gap-2 px-5 py-3 bg-logo-teal text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2z" />
-                                    </svg>
                                     Print Receipt
                                 </a>
                                 <a href="{{ route('bpls.payment.permit', ['entry' => $entry->unified_id ?? $entry->id, 'payment' => session('payment_id')]) }}"
                                     target="_blank"
                                     class="flex items-center gap-2 px-5 py-3 bg-logo-green text-white text-sm font-extrabold rounded-xl hover:bg-green transition-colors shadow-md whitespace-nowrap">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
                                     Print Permit
                                 </a>
                             </div>
@@ -266,7 +258,7 @@
 
                 {{-- ── Business Info ── --}}
                 <div class="bg-white rounded-2xl border border-lumot/20 shadow-sm p-5 mb-4">
-                    <div class="grid grid-cols-2 gap-6">
+                    <div class="grid sm:grid-cols-2 gap-6">
                         <div class="space-y-1.5">
                             <div class="flex gap-3"><span
                                     class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Business
@@ -300,7 +292,7 @@
                             <div class="flex gap-3"><span
                                     class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Total
                                     Due</span><span
-                                    class="text-xs font-extrabold text-logo-teal">₱{{ number_format($activeTotalDue ?? ($entry->total_due ?? 0), 2) }}</span>
+                                    class="text-xs font-extrabold text-logo-teal">₱{{ number_format($activeTotalDue, 2) }}</span>
                             </div>
                             <div class="flex gap-3"><span
                                     class="text-[10px] font-bold text-gray/50 uppercase w-28 shrink-0">Status</span>
@@ -355,15 +347,14 @@
                                     class="text-center py-3 text-sm font-extrabold text-white
                                     {{ $qs['paid'] ? 'bg-logo-green' : 'bg-red-500' }}
                                     {{ !$loop->last ? 'border-r border-white/20' : '' }}">
-                                    Q{{ $q }}
-                                </div>
+                                    Q{{ $q }}</div>
                             @endforeach
                         </div>
                     </div>
                 @endif
 
                 {{-- ══════════════════════════════════════════════════════════════ --}}
-                {{-- ── BENEFICIARY / DISCOUNT STATUS (dynamic) ──               --}}
+                {{-- ── BENEFICIARY / DISCOUNT STATUS ──                           --}}
                 {{-- ══════════════════════════════════════════════════════════════ --}}
                 <div x-data="beneficiaryEditor()" x-init="beInit()"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
@@ -393,9 +384,10 @@
                     </div>
 
                     <div class="p-4">
-                        <p class="text-xs text-gray/60 mb-4">Toggle the owner's classification. Changes save instantly
-                            and update the discount total.</p>
+                        <p class="text-xs text-gray/60 mb-3">Toggle the owner's classification. Changes save instantly.
+                        </p>
 
+                        {{-- Benefit toggles --}}
                         <div class="flex flex-wrap gap-2 mb-4">
                             @forelse ($benefits as $benefit)
                                 <label class="cursor-pointer select-none">
@@ -412,29 +404,62 @@
                                     </span>
                                 </label>
                             @empty
-                                <p class="text-xs text-gray/50 italic">
-                                    No active benefits configured.
+                                <p class="text-xs text-gray/50 italic">No active benefits configured.
                                     <a href="{{ route('bpls.benefits.index') }}"
                                         class="text-logo-teal underline">Manage benefits →</a>
                                 </p>
                             @endforelse
                         </div>
 
-                        <div class="p-3 rounded-xl border transition-colors"
-                            :class="beAmount > 0 ? 'bg-green-50 border-green-200' : 'bg-lumot/5 border-lumot/20'">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-xs font-bold text-gray"
-                                        x-text="beLabel || 'No beneficiary discount applies'"></p>
-                                    <p class="text-[11px] text-gray/50 mt-0.5" x-show="beRate > 0"
-                                        x-text="beRate + '% discount rate — multiplied by quarters selected'"></p>
+                        {{-- Computation Breakdown --}}
+                        <div class="rounded-xl border border-purple-200 bg-purple-50/40 overflow-hidden">
+                            <div class="px-4 py-2 bg-purple-100/60 border-b border-purple-200">
+                                <p class="text-[10px] font-extrabold text-purple-700 uppercase tracking-wide">Benefit
+                                    Computation</p>
+                            </div>
+                            <div class="px-4 py-3 space-y-2 text-xs">
+
+                                {{-- Total Due row --}}
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray/70">Total Due (assessed)</span>
+                                    <span class="font-bold text-gray" x-text="'₱' + fmt(totalDue)"></span>
                                 </div>
-                                <div class="text-right">
-                                    <p class="text-sm font-extrabold"
-                                        :class="beAmount > 0 ? 'text-green-700' : 'text-gray/40'"
-                                        x-text="beAmount > 0 ? '- ₱' + beAmount.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2}) : '₱0.00'">
-                                    </p>
-                                    <p class="text-[10px] text-gray/40" x-show="beAmount > 0">per installment</p>
+
+                                {{-- Benefit discount row --}}
+                                <div class="flex items-center justify-between" x-show="beneficiary.discount > 0">
+                                    <span class="text-purple-700 flex items-center gap-1">
+                                        <span x-text="beneficiary.label"></span>
+                                        <span
+                                            class="text-[9px] font-extrabold bg-purple-600 text-white px-1.5 py-0.5 rounded-full"
+                                            x-text="beneficiary.rate + '%'"></span>
+                                    </span>
+                                    <span class="font-bold text-purple-700"
+                                        x-text="'− ₱' + fmt(beneficiary.discount)"></span>
+                                </div>
+
+                                {{-- Divider --}}
+                                <div class="border-t border-purple-200" x-show="beneficiary.discount > 0"></div>
+
+                                {{-- After benefit --}}
+                                <div class="flex items-center justify-between" x-show="beneficiary.discount > 0">
+                                    <span class="text-gray/70">After Benefit Discount</span>
+                                    <span class="font-bold text-green"
+                                        x-text="'₱' + fmt(totalDue - beneficiary.discount)"></span>
+                                </div>
+
+                                {{-- ÷ installments --}}
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray/70">
+                                        ÷ <span x-text="modeCount"></span> installment<span
+                                            x-show="modeCount > 1">s</span>
+                                    </span>
+                                    <span class="font-extrabold text-logo-teal"
+                                        x-text="'= ₱' + fmt(perInstallment) + ' / installment'"></span>
+                                </div>
+
+                                {{-- No benefit note --}}
+                                <div x-show="beneficiary.discount === 0" class="text-gray/40 italic text-center py-1">
+                                    No benefit discount applied — standard rate applies.
                                 </div>
                             </div>
                         </div>
@@ -444,7 +469,7 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════════════════════════ --}}
-                {{-- ── PAYMENT FORM ── --}}
+                {{-- ── PAYMENT FORM ──                                            --}}
                 {{-- ══════════════════════════════════════════════════════════════ --}}
                 <form action="{{ route('bpls.payment.pay', $entry->unified_id ?? $entry->id) }}" method="POST"
                     class="bg-white rounded-2xl border border-lumot/20 shadow-sm overflow-hidden mb-4">
@@ -469,11 +494,6 @@
 
                             <div x-show="!orLoading && orError && availableOrs.length === 0"
                                 class="w-full border-2 border-red-200 bg-red-50 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" />
-                                </svg>
                                 <span class="text-xs text-red-500 font-semibold" x-text="orError"></span>
                             </div>
 
@@ -485,7 +505,8 @@
                                         @keydown="orKeydown($event)" @click.outside="orDropdownOpen = false"
                                         :class="{
                                             'border-logo-teal ring-2 ring-logo-teal/20 bg-green-50/40': selectedOr,
-                                            'border-lumot/30': !selectedOr
+                                            'border-lumot/30':
+                                                !selectedOr
                                         }"
                                         class="w-full text-sm border rounded-xl px-3 py-2.5 pr-20 focus:outline-none transition-all duration-150"
                                         placeholder="Search OR number…" autocomplete="off">
@@ -537,24 +558,8 @@
                                                     .or_number === or.or_number)
                                             }"
                                             class="w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors border-b border-lumot/10 last:border-0">
-                                            <div class="flex items-center gap-2.5">
-                                                <svg x-show="selectedOr && selectedOr.or_number === or.or_number"
-                                                    class="w-3.5 h-3.5 shrink-0"
-                                                    :class="orFocusIndex === idx ? 'text-white' : 'text-logo-teal'"
-                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                    stroke-width="3">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                <svg x-show="!(selectedOr && selectedOr.or_number === or.or_number)"
-                                                    class="w-3.5 h-3.5 text-gray/30 shrink-0" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        d="M9 12h6" />
-                                                </svg>
-                                                <span class="text-sm font-bold font-mono"
-                                                    x-text="'#' + or.or_number"></span>
-                                            </div>
+                                            <span class="text-sm font-bold font-mono"
+                                                x-text="'#' + or.or_number"></span>
                                             <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shrink-0"
                                                 :class="orFocusIndex === idx ? 'bg-white/20 text-white' :
                                                     'bg-logo-teal/10 text-logo-teal'"
@@ -571,10 +576,6 @@
                             </div>
 
                             <div x-show="selectedOr" class="mt-1.5 flex items-center gap-1.5">
-                                <svg class="w-3 h-3 text-logo-teal" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="3">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
                                 <span class="text-[10px] font-bold text-logo-teal">OR <span class="font-mono"
                                         x-text="'#' + (selectedOr ? selectedOr.or_number : '')"></span> selected</span>
                                 <span
@@ -639,7 +640,7 @@
                                     class="border-2 rounded-xl p-3 text-center transition-all duration-150">
                                     <p class="text-lg font-extrabold">Q{{ $q }}</p>
                                     <p class="text-[10px] font-semibold mt-0.5">{{ $qs['date'] }}</p>
-                                    <p class="text-xs font-bold mt-1">₱{{ number_format($qs['amount'], 2) }}</p>
+                                    <p class="text-xs font-bold mt-1" x-text="'₱' + fmt(perInstallment)"></p>
                                     @if ($qs['overdue'] && !$qs['paid'])
                                         <p class="text-[9px] font-extrabold text-red-400 mt-1 uppercase">⚠ Overdue</p>
                                     @endif
@@ -699,7 +700,8 @@
                             </div>
 
                             {{-- Advance Discount --}}
-                            <div x-show="discountQualifies" x-transition:enter="transition ease-out duration-200"
+                            <div x-show="advanceDiscountQualifies"
+                                x-transition:enter="transition ease-out duration-200"
                                 x-transition:enter-start="opacity-0 -translate-y-1"
                                 x-transition:enter-end="opacity-100 translate-y-0"
                                 class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-green-50/60">
@@ -708,7 +710,7 @@
                                         ADVANCE DISCOUNT
                                         <span
                                             class="text-[9px] font-extrabold bg-logo-green text-white px-1.5 py-0.5 rounded-full"
-                                            x-text="discountRate + '%'"></span>
+                                            x-text="advanceDiscountRate + '%'"></span>
                                     </p>
                                     <p class="text-[9px] text-logo-green/60 mt-0.5">Early payment incentive</p>
                                 </div>
@@ -716,79 +718,40 @@
                                 <div class="flex items-center justify-end gap-1">
                                     <span class="text-xs font-bold text-logo-green">−</span>
                                     <span class="text-xs text-gray/50">₱</span>
-                                    <input type="number" name="discount" x-model="discount" step="0.01"
+                                    <input type="number" name="discount" x-model="advanceDiscount" step="0.01"
                                         min="0" placeholder="0.00"
                                         class="w-24 text-xs text-right border border-logo-green/30 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-logo-green/40 font-bold text-logo-green bg-green-50">
                                 </div>
                             </div>
                             <input x-show="false" type="hidden" name="discount"
-                                x-bind:value="discountQualifies ? discount : 0">
-
-                            {{-- Beneficiary Discount --}}
-                            <div x-show="beneficiaryDiscount > 0 && selectedQuarters.length > 0"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 -translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                class="grid grid-cols-3 px-4 py-2.5 border-b border-lumot/10 bg-purple-50/60">
-                                <div>
-                                    <p class="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
-                                        BENEFICIARY DISCOUNT
-                                        <span
-                                            class="text-[9px] font-extrabold bg-purple-600 text-white px-1.5 py-0.5 rounded-full"
-                                            x-text="beneficiaryLabel || 'Special'"></span>
-                                    </p>
-                                    <p class="text-[9px] text-purple-500/70 mt-0.5">Auto-applied from owner
-                                        classification</p>
-                                </div>
-                                <p class="text-xs text-gray/60 text-center font-mono self-center">—</p>
-                                <div class="flex items-center justify-end gap-1">
-                                    <span class="text-xs font-bold text-purple-700">−</span>
-                                    <span class="text-xs font-bold text-purple-700"
-                                        x-text="'₱' + totalBeneficiaryDiscount.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})"></span>
-                                </div>
-                            </div>
+                                x-bind:value="advanceDiscountQualifies ? advanceDiscount : 0">
 
                             {{-- Total --}}
                             <div class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
-                                <p class="text-sm font-extrabold text-green col-span-2">TOTAL</p>
+                                <div class="col-span-2">
+                                    <p class="text-sm font-extrabold text-green">TOTAL</p>
+                                    <p class="text-[10px] text-gray/50 mt-0.5" x-show="selectedQuarters.length > 0">
+                                        <span x-text="selectedQuarters.length"></span> quarter(s) × ₱<span
+                                            x-text="fmt(perInstallment)"></span>
+                                        <span x-show="surcharges > 0"> + ₱<span x-text="fmt(surcharges)"></span>
+                                            surcharge</span>
+                                        <span x-show="advanceDiscountQualifies"> − ₱<span
+                                                x-text="fmt(advanceDiscount)"></span> adv. disc.</span>
+                                    </p>
+                                </div>
                                 <p class="text-lg font-extrabold text-logo-teal text-right"
-                                    x-text="'₱' + grandTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })">
-                                </p>
+                                    x-text="'₱' + fmt(grandTotal)"></p>
                             </div>
                         </div>
 
                         {{-- Advance discount banner --}}
-                        <div x-show="discountQualifies" x-transition:enter="transition ease-out duration-300"
+                        <div x-show="advanceDiscountQualifies" x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 translate-y-1"
                             x-transition:enter-end="opacity-100 translate-y-0"
                             class="mt-3 flex items-center gap-2.5 p-3 bg-logo-green/10 border border-logo-green/20 rounded-xl">
-                            <svg class="w-4 h-4 text-logo-green shrink-0" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
                             <p class="text-xs text-logo-green font-semibold">🎉 Advance discount of
-                                <span class="font-extrabold" x-text="discountRate + '%'"></span> applied —
-                                <span class="font-extrabold"
-                                    x-text="'₱' + parseFloat(discount).toLocaleString('en-PH',{minimumFractionDigits:2})"></span>!
-                            </p>
-                        </div>
-
-                        {{-- Beneficiary discount banner --}}
-                        <div x-show="beneficiaryDiscount > 0 && selectedQuarters.length > 0"
-                            x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 translate-y-1"
-                            x-transition:enter-end="opacity-100 translate-y-0"
-                            class="mt-3 flex items-center gap-2.5 p-3 bg-purple-50 border border-purple-200 rounded-xl">
-                            <svg class="w-4 h-4 text-purple-600 shrink-0" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <p class="text-xs text-purple-700 font-semibold">
-                                <span class="font-extrabold" x-text="beneficiaryLabel"></span> discount applied —
-                                <span class="font-extrabold"
-                                    x-text="'₱' + totalBeneficiaryDiscount.toLocaleString('en-PH',{minimumFractionDigits:2})"></span>!
+                                <span class="font-extrabold" x-text="advanceDiscountRate + '%'"></span> applied —
+                                <span class="font-extrabold" x-text="'₱' + fmt(advanceDiscount)"></span>!
                             </p>
                         </div>
 
@@ -797,15 +760,8 @@
                             x-transition:enter-start="opacity-0 translate-y-1"
                             x-transition:enter-end="opacity-100 translate-y-0"
                             class="mt-3 flex items-center gap-2.5 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                            <svg class="w-4 h-4 text-orange-500 shrink-0" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2.5">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
                             <p class="text-xs text-orange-600 font-semibold">⚠️ Overdue — surcharge of
-                                <span class="font-extrabold"
-                                    x-text="'₱' + parseFloat(surcharges).toLocaleString('en-PH',{minimumFractionDigits:2})"></span>
-                                applied.
+                                <span class="font-extrabold" x-text="'₱' + fmt(surcharges)"></span> applied.
                             </p>
                         </div>
                     </div>
@@ -872,16 +828,15 @@
                             class="px-5 py-2.5 bg-yellow-500 text-white text-sm font-bold rounded-xl hover:bg-yellow-600 transition-colors">Cancel</a>
                         <div x-show="selectedQuarters.length > 0"
                             class="flex items-center gap-2 text-xs text-gray/70">
-                            <span x-text="selectedQuarters.length + ' quarter(s) selected'"></span>
+                            <span x-text="selectedQuarters.length + ' quarter(s)'"></span>
                             <span class="text-gray/30">|</span>
-                            <span class="font-bold text-logo-teal"
-                                x-text="'₱' + grandTotal.toLocaleString('en-PH',{minimumFractionDigits:2})"></span>
-                            <span x-show="discountQualifies"
+                            <span class="font-bold text-logo-teal" x-text="'₱' + fmt(grandTotal)"></span>
+                            <span x-show="advanceDiscountQualifies"
                                 class="text-[10px] font-bold text-logo-green bg-logo-green/10 px-2 py-0.5 rounded-full border border-logo-green/20"
-                                x-text="discountRate + '% ADV DISC'"></span>
-                            <span x-show="beneficiaryDiscount > 0"
+                                x-text="advanceDiscountRate + '% ADV'"></span>
+                            <span x-show="beneficiary.discount > 0"
                                 class="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full border border-purple-200"
-                                x-text="beneficiaryLabel + ' DISC'"></span>
+                                x-text="beneficiary.label"></span>
                         </div>
                         <button type="submit" :disabled="selectedQuarters.length === 0 || !selectedOr"
                             class="flex items-center gap-2 px-6 py-2.5 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-teal/20 disabled:opacity-40 disabled:cursor-not-allowed">
@@ -963,11 +918,6 @@
                                                 <a href="{{ route('bpls.payment.permit', ['entry' => $entry->id, 'payment' => $p->id]) }}"
                                                     target="_blank"
                                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-green bg-logo-green/10 hover:bg-logo-green hover:text-white transition-colors whitespace-nowrap">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                        stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    </svg>
                                                     Permit
                                                 </a>
                                             </td>
@@ -975,11 +925,6 @@
                                                 <a href="{{ route('bpls.payment.receipt', ['entry' => $entry->id, 'payment' => $p->id]) }}"
                                                     target="_blank"
                                                     class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-logo-teal bg-logo-teal/10 hover:bg-logo-teal hover:text-white transition-colors whitespace-nowrap">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
-                                                        stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2z" />
-                                                    </svg>
                                                     Receipt
                                                 </a>
                                             </td>
@@ -1013,17 +958,13 @@
             function beneficiaryEditor() {
                 return {
                     beSelectedIds: @json($entryBenefitIds),
-                    beAmount: {{ $beneficiaryDiscount['discount'] ?? 0 }},
-                    beRate: {{ $beneficiaryDiscount['rate'] ?? 0 }},
-                    beLabel: '{{ addslashes($beneficiaryDiscount['label'] ?? '') }}',
                     beSaving: false,
                     beSaved: false,
                     beError: '',
                     beTimer: null,
 
                     beInit() {
-                        window._beneficiaryDiscountPerInstallment = this.beAmount;
-                        this.$nextTick(() => this._syncToParent(this.beAmount, this.beLabel));
+                        // nothing — parent already has beneficiary from PHP window.__bplsBeneficiary
                     },
 
                     beSave() {
@@ -1050,16 +991,28 @@
                             const data = await res.json();
 
                             if (!res.ok || !data.success) {
-                                this.beError = data.message ?? 'Failed to save. Please try again.';
+                                this.beError = data.message ?? 'Failed to save.';
                                 return;
                             }
 
-                            this.beAmount = data.beneficiary.discount_per_installment ?? 0;
-                            this.beRate = data.beneficiary.rate ?? 0;
-                            this.beLabel = data.beneficiary.label ?? '';
-
-                            window._beneficiaryDiscountPerInstallment = this.beAmount;
-                            this._syncToParent(this.beAmount, this.beLabel);
+                            // ── Push updated values into the parent payment Alpine scope ──
+                            document.querySelectorAll('[x-data]').forEach(el => {
+                                try {
+                                    const scope = Alpine.$data(el);
+                                    if (scope && 'selectedQuarters' in scope) {
+                                        // Update beneficiary object shown in computation box
+                                        scope.beneficiary = {
+                                            discount: data.beneficiary.total_discount,
+                                            rate: data.beneficiary.rate,
+                                            label: data.beneficiary.label,
+                                            groups: data.beneficiary.groups,
+                                        };
+                                        // Update perInstallment so quarter buttons + grandTotal reflect new discount
+                                        scope.perInstallment = data.beneficiary.per_installment;
+                                        scope.totalDue = data.beneficiary.total_due;
+                                    }
+                                } catch (_) {}
+                            });
 
                             this.beSaved = true;
                             setTimeout(() => {
@@ -1072,23 +1025,6 @@
                         } finally {
                             this.beSaving = false;
                         }
-                    },
-
-                    _syncToParent(amount, label) {
-                        this.$nextTick(() => {
-                            document.querySelectorAll('[x-data]').forEach(el => {
-                                try {
-                                    const scope = Alpine.$data(el);
-                                    if (scope && 'selectedQuarters' in scope) {
-                                        scope.beneficiaryDiscount = amount;
-                                        scope.beneficiaryLabel = label;
-                                        if (scope.selectedQuarters && scope.selectedQuarters.length > 0) {
-                                            scope.autoComputeSurcharge();
-                                        }
-                                    }
-                                } catch (_) {}
-                            });
-                        });
                     },
                 };
             }
