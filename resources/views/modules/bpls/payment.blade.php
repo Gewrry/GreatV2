@@ -602,7 +602,7 @@
                         <div>
                             <label class="block text-xs font-bold text-gray mb-1.5">Payor</label>
                             <input type="text" name="payor"
-                                value="{{ strtoupper($entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}"
+                                value="{{ strtoupper(trim($entry->last_name . ', ' . $entry->first_name . ' ' . ($entry->middle_name ?? ''))) }}"
                                 class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 font-semibold text-green">
                         </div>
                         <div>

@@ -110,6 +110,15 @@ class BplsOnlineApplication extends Model
         return $this->hasMany(BplsActivityLog::class, 'bpls_application_id');
     }
 
+    /**
+     * Benefits/Discounts applied to this application via the owner.
+     * This aligns online applications with the Treasury payment logic.
+     */
+    public function benefits()
+    {
+        return $this->belongsToMany(\App\Models\BplsBenefit::class, 'bpls_owner_benefits', 'owner_id', 'benefit_id', 'bpls_owner_id');
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
     public function isEditable(): bool
@@ -158,6 +167,11 @@ class BplsOnlineApplication extends Model
             'annual' => 'Annual (1×)',
             default => '—',
         };
+    }
+
+    public function getActiveTotalDueAttribute(): float
+    {
+        return (float) ($this->assessment_amount ?? 0);
     }
 
     public function getInstallmentAmountAttribute(): float

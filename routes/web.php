@@ -462,6 +462,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/application/{application}/mark-paid', [BplsApplicationReviewController::class, 'markPaid'])->name('application.mark-paid');
             Route::post('/application/{application}/final-approve', [BplsApplicationReviewController::class, 'finalApprove'])->name('application.final-approve');
             Route::post('/application/{application}/confirm-ors', [BplsApplicationReviewController::class, 'confirmOrs'])->name('application.confirm-ors');
+            Route::get('/application/{application}/permit', [BplsApplicationReviewController::class, 'permitDownload'])->name('application.permit-download');
+            Route::post('/application/{application}/send-reminder', [BplsApplicationReviewController::class, 'sendReminder'])->name('application.send-reminder');
         });
 
         // 4g-x. Permit Signatories
@@ -706,6 +708,12 @@ Route::prefix('portal')->name('client.')->group(function () {
     Route::middleware([\App\Http\Middleware\ClientAuthenticated::class])->group(function () {
 
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+        
+        // Email Verification
+        Route::get('/verify', [AuthController::class, 'showVerify'])->name('verify.show');
+        Route::post('/verify', [AuthController::class, 'verify'])->name('verify.submit');
+        Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->name('verify.resend');
+
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::prefix('applications')->name('applications.')->group(function () {

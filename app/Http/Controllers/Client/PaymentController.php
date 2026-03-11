@@ -186,7 +186,7 @@ class PaymentController extends Controller
         }
 
         if (!$payment) {
-            return redirect()->route('client.payment.show', $application->id)
+            return redirect()->route('client.applications.show', $application->id)
                 ->with('error', 'Payment record not found. If you were charged, please contact the office.');
         }
 
@@ -207,12 +207,12 @@ class PaymentController extends Controller
 
                 if ($status === 'paid' || $status === 'succeeded') {
                     $this->confirmPayment($payment, $application, $data);
-                    return redirect()->route('client.payment.show', $application->id)
+                    return redirect()->route('client.applications.show', $application->id)
                         ->with('success', '✅ Payment confirmed! Reference No: ' . $payment->reference_number);
                 }
 
                 if ($status === 'pending') {
-                    return redirect()->route('client.payment.show', $application->id)
+                    return redirect()->route('client.applications.show', $application->id)
                         ->with('success', '⏳ Payment is being processed. Please refresh in a minute.');
                 }
             }
@@ -220,7 +220,7 @@ class PaymentController extends Controller
             Log::error('PayMongo success verify error', ['error' => $e->getMessage()]);
         }
 
-        return redirect()->route('client.payment.show', $application->id)
+        return redirect()->route('client.applications.show', $application->id)
             ->with('success', '⏳ Payment submitted and being verified. Please refresh in a few minutes.');
     }
 
@@ -451,8 +451,12 @@ class PaymentController extends Controller
         $orAssignment = $application->orAssignments()
             ->where('installment_number', $payment->installment_number)->first();
 
+        $finalOrNumber = $orAssignment instanceof \App\Models\bpls\onlineBPLS\BplsApplicationOr 
+            ? $orAssignment->or_number 
+            : $payment->reference_number;
+
         if ($orAssignment) {
-            $orAssignment->update(['status' => 'paid', 'paid_at' => now(), 'or_number' => $payment->reference_number]);
+            $orAssignment->update(['status' => 'paid', 'paid_at' => now()]);
         }
 
         $installmentAmount = (float) ($application->assessment_amount / ($application->orAssignments->count() ?: 1));
@@ -467,7 +471,7 @@ class PaymentController extends Controller
             'bpls_application_id' => $application->id,
             'payment_year'      => $application->permit_year ?? now()->year,
             'renewal_cycle'     => $application->businessEntry->renewal_cycle ?? 0,
-            'or_number'         => $payment->reference_number,
+            'or_number'         => $finalOrNumber,
             'payment_date'      => now(),
             'quarters_paid'     => $quarters,
             'amount_paid'       => $installmentAmount,
@@ -489,6 +493,9 @@ class PaymentController extends Controller
                 'to_status'           => 'paid',
                 'remarks'             => 'Payment automatically confirmed via PayMongo. Ref: ' . $payment->reference_number,
             ]);
+
+            // AUTOMATION: Auto-issue permit if 1st installment is paid
+            app(\App\Http\Controllers\Bpls\Online\BplsApplicationReviewController::class)->autoIssuePermitInternal($application);
         }
     }
 

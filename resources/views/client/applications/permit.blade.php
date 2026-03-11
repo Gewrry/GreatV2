@@ -8,8 +8,8 @@
     <title>Business Permit — {{ $entry->application_number }}</title>
     <style>
         @page {
-            size: legal;
-            margin: 0.5in;
+            size: letter;
+            margin: 0.35in 0.4in;
         }
 
         * {
@@ -20,48 +20,43 @@
 
         body {
             font-family: 'Times New Roman', Times, serif;
-            font-size: 11pt;
+            font-size: 10pt;
             color: #000;
             background: #fff;
-            line-height: 1.4;
+            line-height: 1.3;
         }
 
-        /*
-           Fixed width of 7.5in ensures we stay within the printable area
-           of an 8.5in wide page with 0.5in margins on each side.
-        */
         .permit-container {
-            width: 7.5in;
+            width: 7.7in;
             margin: 0 auto;
             position: relative;
-            padding-bottom: 50px;
+            padding: 8px 10px 10px;
         }
 
-        /* Borders with safe offsets */
         .border-double {
             position: absolute;
-            top: -0.1in;
-            left: -0.1in;
-            right: -0.1in;
-            bottom: -0.1in;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             border: 4px double #1a3a5c;
             pointer-events: none;
         }
 
         .border-single {
             position: absolute;
-            top: 0in;
-            left: 0in;
-            right: 0in;
-            bottom: 0in;
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
             border: 0.5px solid #1a3a5c;
             pointer-events: none;
         }
 
         .header {
             width: 100%;
-            margin-bottom: 70px;
-            padding-top: 30px;
+            margin-bottom: 6px;
+            padding-top: 10px;
         }
 
         .header-table {
@@ -70,23 +65,25 @@
         }
 
         .seal-cell {
-            width: 0.8in;
+            width: 0.75in;
             text-align: center;
             vertical-align: middle;
         }
 
         .seal-circle {
-            width: 70px;
-            height: 70px;
+            width: 60px;
+            height: 60px;
             border: 1px solid #1a3a5c;
             border-radius: 50%;
-            display: inline-block;
-            font-size: 7.5pt;
-            padding-top: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6.5pt;
             color: #1a3a5c;
             text-transform: uppercase;
             font-weight: bold;
-            line-height: 1.1;
+            line-height: 1.2;
+            text-align: center;
         }
 
         .header-text {
@@ -94,98 +91,104 @@
             vertical-align: middle;
         }
 
-        .republic { font-size: 10pt; font-style: italic; }
-        .province { font-size: 11pt; font-weight: bold; text-transform: uppercase; }
-        .municipality { font-size: 18pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
-        .office { font-size: 10pt; font-style: italic; margin-top: 4px; }
+        .republic  { font-size: 9pt;  font-style: italic; }
+        .province  { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
+        .municipality { font-size: 16pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .office    { font-size: 9pt;  font-style: italic; margin-top: 2px; }
 
         .permit-title {
-            font-size: 32pt;
+            font-size: 22pt;
             font-weight: 900;
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 3px;
-            margin: 40px 0 15px;
-            border-bottom: 3.5px solid #000;
-            padding-bottom: 10px;
+            letter-spacing: 2px;
+            margin: 6px 0 4px;
+            border-bottom: 3px solid #000;
+            padding-bottom: 5px;
         }
 
         .granted-to {
             text-align: center;
-            font-size: 13pt;
+            font-size: 10pt;
             font-style: italic;
-            margin-bottom: 30px;
+            margin-bottom: 4px;
         }
 
         .business-name {
-            font-size: 36pt;
+            font-size: 22pt;
             font-weight: bold;
             text-align: center;
             text-transform: uppercase;
             text-decoration: underline;
-            margin-bottom: 12px;
+            margin-bottom: 3px;
             color: #1a3a5c;
         }
 
         .business-address {
-            font-size: 12pt;
+            font-size: 10pt;
             font-style: italic;
             text-align: center;
             text-transform: uppercase;
-            margin-bottom: 60px;
+            margin-bottom: 6px;
             padding: 0 0.5in;
         }
 
         .pursuant {
-            font-size: 11.5pt;
+            font-size: 10pt;
             text-align: center;
-            margin: 0 auto 40px;
+            margin: 0 auto 6px;
             max-width: 5.5in;
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         .permit-number-box {
             text-align: center;
-            margin-bottom: 60px;
+            margin-bottom: 6px;
         }
 
         .permit-number {
-            font-size: 26pt;
+            font-size: 20pt;
             font-weight: bold;
             display: inline-block;
             border: 2px solid #1a3a5c;
-            padding: 8px 35px;
+            padding: 4px 28px;
             font-family: 'Courier New', Courier, monospace;
             background: #fdfdfd;
         }
 
-        .detail-item {
-            text-align: center;
-            margin-bottom: 45px;
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 4px;
         }
 
-        .detail-label { font-size: 10pt; font-style: italic; color: #555; margin-bottom: 4px; }
-        .detail-value { font-size: 20pt; font-weight: bold; text-transform: uppercase; margin: 4px 0; }
-        .detail-sub { font-size: 12pt; font-style: italic; text-transform: uppercase; }
+        .details-table td {
+            width: 33.33%;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 6px;
+        }
 
-        .hr-divider {
-            width: 75%;
-            margin: 12px auto;
-            border-top: 0.7px solid #aaa;
+        .detail-label { font-size: 8.5pt; font-style: italic; color: #555; margin-bottom: 2px; }
+        .detail-value { font-size: 13pt; font-weight: bold; text-transform: uppercase; margin: 2px 0; line-height: 1.2; }
+        .detail-sub   { font-size: 9pt;  font-style: italic; text-transform: uppercase; }
+
+        .v-divider {
+            border-left: 0.7px solid #aaa;
         }
 
         .given-at {
-            font-size: 13pt;
+            font-size: 10.5pt;
             font-style: italic;
             text-align: center;
-            margin: 100px 0 160px;
+            margin: 8px 0 6px;
             color: #333;
         }
 
         .approval-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 100px;
+            margin-bottom: 6px;
         }
 
         .sig-box {
@@ -195,25 +198,25 @@
         }
 
         .sig-line {
-            border-top: 2.5px solid #000;
-            width: 2.8in;
-            margin: 0 auto 6px;
+            border-top: 2px solid #000;
+            width: 2.6in;
+            margin: 0 auto 4px;
         }
 
-        .sig-name { font-size: 15pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-        .sig-title { font-size: 11pt; font-style: italic; }
+        .sig-name  { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sig-title { font-size: 10pt; font-style: italic; }
 
         .footer-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12pt;
+            font-size: 10.5pt;
             border-top: 1.5px solid #000;
-            padding-top: 20px;
-            margin-top: 40px;
+            padding-top: 0;
+            margin-top: 4px;
         }
 
         .footer-table td {
-            padding: 10px 0;
+            padding: 4px 0;
         }
 
         .f-label { color: #444; font-weight: normal; }
@@ -223,10 +226,10 @@
             width: 100%;
             background: #f0f0f0;
             text-align: center;
-            font-size: 16pt;
+            font-size: 13pt;
             font-weight: 900;
-            padding: 15px 0;
-            margin-top: 40px;
+            padding: 7px 0;
+            margin-top: 6px;
             border: 1.5px solid #000;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -234,15 +237,21 @@
 
         .watermark {
             position: absolute;
-            top: 55%;
+            top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 130pt;
+            font-size: 110pt;
             font-weight: 950;
             color: rgba(0, 0, 0, 0.025);
             white-space: nowrap;
             z-index: -1;
             pointer-events: none;
+        }
+
+        .hr-divider {
+            width: 75%;
+            margin: 4px auto;
+            border-top: 0.7px solid #aaa;
         }
     </style>
 </head>
@@ -274,7 +283,7 @@
             </table>
         </div>
 
-        <div class="permit-title">Business/Mayor's Permit</div>
+        <div class="permit-title">Business / Mayor's Permit</div>
         <p class="granted-to">is hereby granted to</p>
 
         <div class="business-name">{{ $entry->business?->business_name }}</div>
@@ -291,31 +300,28 @@
             <span class="permit-number">{{ $permitNumber }}</span>
         </div>
 
-        <div class="details">
-            <div class="detail-item">
-                <p class="detail-label">Owner / Taxpayer</p>
-                <p class="detail-value">
-                    {{ strtoupper($entry->owner?->last_name . ', ' . $entry->owner?->first_name . ' ' . ($entry->owner?->middle_name ? $entry->owner->middle_name[0] . '.' : '')) }}
-                </p>
-                <p class="detail-sub">
-                    {{ collect([$entry->owner?->barangay, $entry->owner?->municipality, $entry->owner?->province])->filter()->join(', ') }}
-                </p>
-            </div>
-
-            <hr class="hr-divider">
-
-            <div class="detail-item">
-                <p class="detail-label">Nature of Business</p>
-                <p class="detail-value">{{ strtoupper($entry->business?->business_nature ?? 'N/A') }}</p>
-            </div>
-
-            <hr class="hr-divider">
-
-            <div class="detail-item">
-                <p class="detail-label">Status of Business</p>
-                <p class="detail-value">{{ $entry->status_of_business }}</p>
-            </div>
-        </div>
+        {{-- Details in 3-column layout to save vertical space --}}
+        <table class="details-table">
+            <tr>
+                <td>
+                    <p class="detail-label">Owner / Taxpayer</p>
+                    <p class="detail-value">
+                        {{ strtoupper($entry->owner?->last_name . ', ' . $entry->owner?->first_name . ' ' . ($entry->owner?->middle_name ? $entry->owner->middle_name[0] . '.' : '')) }}
+                    </p>
+                    <p class="detail-sub">
+                        {{ collect([$entry->owner?->barangay, $entry->owner?->municipality, $entry->owner?->province])->filter()->join(', ') }}
+                    </p>
+                </td>
+                <td class="v-divider">
+                    <p class="detail-label">Nature of Business</p>
+                    <p class="detail-value">{{ strtoupper($entry->business?->business_nature ?? 'N/A') }}</p>
+                </td>
+                <td class="v-divider">
+                    <p class="detail-label">Status of Business</p>
+                    <p class="detail-value">{{ $entry->status_of_business }}</p>
+                </td>
+            </tr>
+        </table>
 
         <p class="given-at">
             Given this {{ $payment->payment_date?->format('jS') ?? now()->format('jS') }}
@@ -325,11 +331,11 @@
 
         <table class="approval-table">
             <tr>
-                <td style="width: 50%; font-size: 12pt; font-style: italic; vertical-align: bottom; padding-bottom: 30px; text-align: left;">
+                <td style="width: 50%; font-size: 10.5pt; font-style: italic; vertical-align: bottom; padding-bottom: 6px; text-align: left; padding-left: 0.2in;">
                     Approved:
                 </td>
                 <td class="sig-box">
-                    <div style="height: 70px;"></div>
+                    <div style="height: 40px;"></div>
                     <div class="sig-line"></div>
                     <p class="sig-name">{{ strtoupper($mayorName) }}</p>
                     <p class="sig-title">Municipal Mayor</p>

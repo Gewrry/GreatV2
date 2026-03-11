@@ -339,7 +339,7 @@
             align-items: center;
             gap: 5px;
             margin-bottom: 3px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
         }
 
@@ -546,10 +546,10 @@
         @endif
 
         {{-- ── Beneficiary Discount Badge ── --}}
-        @if (($beneficiaryDiscount ?? 0) > 0)
+        @if (($beneficiaryInfo['discount'] ?? 0) > 0)
             <div class="beneficiary-badge">
                 ✓ BENEFICIARY DISCOUNT APPLIED — {{ strtoupper($beneficiaryLabel ?? '') }}
-                (₱{{ number_format($beneficiaryDiscount, 2) }})
+                (₱{{ number_format($beneficiaryInfo['discount'], 2) }})
             </div>
         @endif
 
@@ -573,7 +573,7 @@
 
         {{-- ── Payor ── --}}
         <div class="payor-row">
-            {{ strtoupper($payment->payor ?? ($entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name)) }}
+            {{ strtoupper($payment->payor ?? trim($entry->last_name . ', ' . $entry->first_name . ' ' . ($entry->middle_name ?? ''))) }}
         </div>
 
         {{-- ── Fee Table ── --}}
@@ -700,14 +700,7 @@
         <div class="payment-method-row">
             <div class="methods">
                 <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'cash' ? 'checked' : '' }}"></span> Cash
-                </div>
-                <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'check' ? 'checked' : '' }}"></span> Check
-                </div>
-                <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'money_order' ? 'checked' : '' }}"></span> Money
-                    Order
+                    <span class="cb {{ in_array($payment->payment_method, ['online', 'gcash', 'maya', 'card', 'landbank']) ? 'checked' : '' }}"></span> Electronic Payment
                 </div>
             </div>
             <div class="drawee-table">
