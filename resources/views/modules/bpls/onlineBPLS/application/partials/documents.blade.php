@@ -41,7 +41,7 @@
     @forelse ($application->documents as $doc)
         @php
             $isPDF = str_contains($doc->mime_type, 'pdf');
-            $isReq = in_array($doc->document_type, \App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES);
+            $isReq = in_array($doc->document_type, $application->getDynamicRequiredDocumentTypes());
         @endphp
         <div class="bg-white rounded-2xl shadow-sm border border-lumot/20 overflow-hidden"
             :class="{

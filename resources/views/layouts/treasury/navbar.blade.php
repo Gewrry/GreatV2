@@ -246,6 +246,9 @@
                         x-transition:leave-start="opacity-100 translate-y-0"
                         x-transition:leave-end="opacity-0 translate-y-1"
                         class="absolute top-full left-0 w-44 bg-white rounded-b-xl shadow-2xl border-t-2 border-logo-teal py-1.5 z-50">
+                        <a href="{{ route('treasury.bpls_online') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-slate-50 hover:text-blue-700 transition-colors"><span
+                                class="w-1.5 h-1.5 rounded-full bg-logo-teal shrink-0"></span> Online Registration</a>
                         <a href="{{ route('treasury.bpls_payment') }}"
                             class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-slate-50 hover:text-blue-700 transition-colors"><span
                                 class="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0"></span> BPLS payment Zone</a>

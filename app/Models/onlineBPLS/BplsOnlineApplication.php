@@ -110,6 +110,11 @@ class BplsOnlineApplication extends Model
         return $this->hasMany(BplsActivityLog::class, 'bpls_application_id');
     }
 
+    public function latestLog()
+    {
+        return $this->hasOne(BplsActivityLog::class, 'bpls_application_id')->latestOfMany();
+    }
+
     /**
      * Benefits/Discounts applied to this application via the owner.
      * This aligns online applications with the Treasury payment logic.
@@ -242,18 +247,20 @@ class BplsOnlineApplication extends Model
     public function getDynamicRequiredDocumentTypes(): array
     {
         $types = \App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES;
-        
+
         if ($this->discount_claimed && $this->owner) {
-            if ($this->owner->is_senior) $types[] = 'beneficiary_senior';
-            if ($this->owner->is_pwd) $types[] = 'beneficiary_pwd';
-            if ($this->owner->is_solo_parent) $types[] = 'beneficiary_solo_parent';
-            if ($this->owner->is_4ps) $types[] = 'beneficiary_4ps';
-            if ($this->owner->is_bmbe) $types[] = 'beneficiary_bmbe';
-            if ($this->owner->is_cooperative) $types[] = 'beneficiary_cooperative';
-            
+            $activeBenefits = \App\Models\BplsBenefit::active()->get();
+            foreach ($activeBenefits as $benefit) {
+                // If the field_key (e.g., 'is_senior') is true on the owner
+                if ($this->owner->{$benefit->field_key}) {
+                    $docType = 'beneficiary_' . str_replace('is_', '', $benefit->field_key);
+                    $types[] = $docType;
+                }
+            }
+
             $types = array_values(array_unique($types));
         }
-        
+
         return $types;
     }
 }

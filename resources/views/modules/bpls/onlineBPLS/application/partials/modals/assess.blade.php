@@ -27,7 +27,7 @@
                 'discount_percent' => (float) $b->discount_percent,
             ])->values()),
             benefitFlags: @js(collect($benefits)->mapWithKeys(fn($b) => [
-                $b->field_key => (bool) ($application->owner?->{$b->field_key} ?? false)
+                $b->field_key => (bool) ($application->owner?->hasBenefit($b->field_key) ?? ($application->owner?->{$b->field_key} ?? false))
             ])->toArray()),
 
             formatCurrency(value) {

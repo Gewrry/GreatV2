@@ -324,6 +324,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('treasury')->name('treasury.')->middleware('module:treasury')->group(function () {
         Route::get('/', fn() => view('modules.treasury.index'))->name('index');
         Route::get('/bpls-payment', [BplsPaymentController::class, 'index'])->name('bpls_payment');
+        Route::get('/bpls-online', [BplsPaymentController::class, 'onlineIndex'])->name('bpls_online');
+        Route::get('/bpls-online/{entry}', [BplsPaymentController::class, 'show'])->name('bpls_online.show');
 
         // RPT Payments
         Route::prefix('rpt-payments')->name('rpt.payments.')->group(function () {

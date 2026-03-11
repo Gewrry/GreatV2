@@ -21,7 +21,7 @@
             docs: @js($application->documents->mapWithKeys(fn($d) => [$d->id => ['status' => $d->status, 'rejection_reason' => $d->rejection_reason, 'type' => $d->document_type]])),
             verifiedCount: {{ $application->documents->where('status', 'verified')->count() }},
             totalCount: {{ $application->documents->count() }},
-            requiredTypes: @js(\App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES),
+            requiredTypes: @js($application->getDynamicRequiredDocumentTypes()),
             orNumbers: @js($application->orAssignments->pluck('or_number', 'installment_number')->toArray()),
             userAssignments: @js($userAssignments ?? []),
             

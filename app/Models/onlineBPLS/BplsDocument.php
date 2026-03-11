@@ -53,7 +53,19 @@ class BplsDocument extends Model
 
     public function getTypeLabelAttribute(): string
     {
-        return self::TYPES[$this->document_type] ?? ucfirst(str_replace('_', ' ', $this->document_type));
+        if (isset(self::TYPES[$this->document_type])) {
+            return self::TYPES[$this->document_type];
+        }
+
+        if (str_starts_with($this->document_type, 'beneficiary_')) {
+            $key = 'is_' . str_replace('beneficiary_', '', $this->document_type);
+            $benefit = \App\Models\BplsBenefit::where('field_key', $key)->first();
+            if ($benefit) {
+                return $benefit->label . ' Proof';
+            }
+        }
+
+        return ucfirst(str_replace('_', ' ', $this->document_type));
     }
 
     public function getUrlAttribute(): string

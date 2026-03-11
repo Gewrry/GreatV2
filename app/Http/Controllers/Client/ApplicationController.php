@@ -114,7 +114,7 @@ class ApplicationController extends Controller
     // ── STORE ──────────────────────────────────────────────────────────────
     public function store(Request $request)
     {
-        $request->validate([
+        $rules = [
             'last_name' => 'required|string|max:100',
             'first_name' => 'required|string|max:100',
             'business_name' => 'required|string|max:255',
@@ -123,12 +123,14 @@ class ApplicationController extends Controller
             'documents.dti_sec_cda' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'documents.barangay_clearance' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'documents.community_tax' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'documents.beneficiary_senior' => 'required_if:is_senior,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'documents.beneficiary_pwd' => 'required_if:is_pwd,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'documents.beneficiary_solo_parent' => 'required_if:is_solo_parent,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'documents.beneficiary_bmbe' => 'required_if:is_bmbe,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'documents.beneficiary_cooperative' => 'required_if:is_cooperative,1|file|mimes:pdf,jpg,jpeg,png|max:5120',
-        ], [
+        ];
+
+        $activeBenefits = \App\Models\BplsBenefit::active()->get();
+        foreach ($activeBenefits as $benefit) {
+            $rules["documents.beneficiary_{$benefit->field_key}"] = "required_if:{$benefit->field_key},1|file|mimes:pdf,jpg,jpeg,png|max:5120";
+        }
+
+        $request->validate($rules, [
             'documents.dti_sec_cda.required' => 'DTI/SEC/CDA Certificate is required.',
             'documents.barangay_clearance.required' => 'Barangay Clearance is required.',
             'documents.community_tax.required' => 'Community Tax Certificate is required.',
@@ -140,13 +142,13 @@ class ApplicationController extends Controller
         $isCooperative = ($request->business_organization === 'Cooperative');
         $isBmbe = ($request->business_organization === 'BMBE');
 
-        return DB::transaction(function () use ($request, $client, $isCooperative, $isBmbe) {
+        return DB::transaction(function () use ($request, $client, $isCooperative, $isBmbe, $activeBenefits) {
 
             // ── TABLE 1: bpls_owners ──────────────────────────────────────
             if ($request->filled('owner_id')) {
                 $owner = BplsOwner::findOrFail($request->owner_id);
             } else {
-                $owner = BplsOwner::create([
+                $ownerData = [
                     'last_name' => $request->last_name,
                     'first_name' => $request->first_name,
                     'middle_name' => $request->middle_name,
@@ -156,10 +158,6 @@ class ApplicationController extends Controller
                     'birthdate' => $request->filled('birthdate') ? $request->birthdate : null,
                     'mobile_no' => $request->mobile_no,
                     'email' => $request->email,
-                    'is_pwd' => $request->boolean('is_pwd'),
-                    'is_4ps' => $request->boolean('is_4ps'),
-                    'is_solo_parent' => $request->boolean('is_solo_parent'),
-                    'is_senior' => $request->boolean('is_senior'),
                     'is_bmbe' => $isBmbe,
                     'is_cooperative' => $isCooperative,
                     'discount_10' => $request->boolean('discount_10'),
@@ -172,8 +170,23 @@ class ApplicationController extends Controller
                     'emergency_contact_person' => $request->emergency_contact_person,
                     'emergency_mobile' => $request->emergency_mobile,
                     'emergency_email' => $request->emergency_email,
-                ]);
+                ];
+
+                foreach ($activeBenefits as $benefit) {
+                    $ownerData[$benefit->field_key] = $request->boolean($benefit->field_key);
+                }
+
+                $owner = BplsOwner::create($ownerData);
             }
+
+            // Sync benefits to pivot table for dynamic support
+            $selectedBenefitKeys = [];
+            foreach ($activeBenefits as $benefit) {
+                if ($request->boolean($benefit->field_key)) {
+                    $selectedBenefitKeys[] = $benefit->field_key;
+                }
+            }
+            $owner->syncBenefits($selectedBenefitKeys);
 
             // ── TABLE 2: bpls_businesses ──────────────────────────────────
             if ($request->filled('bpls_business_id')) {
@@ -233,7 +246,7 @@ class ApplicationController extends Controller
                 'bpls_business_id' => $business->id,
                 'bpls_owner_id' => $owner->id,
                 'application_type' => $request->input('application_type', 'new'),
-                'discount_claimed' => ($owner->is_senior || $owner->is_pwd || $owner->is_solo_parent || $owner->is_4ps || $isBmbe || $isCooperative),
+                'discount_claimed' => $activeBenefits->contains(fn($b) => $request->boolean($b->field_key)),
                 'permit_year' => $permitYear,
                 'workflow_status' => 'submitted',
                 'submitted_at' => $now,
@@ -242,7 +255,8 @@ class ApplicationController extends Controller
             // ── TABLE 4: bpls_documents ───────────────────────────────────
             if ($request->hasFile('documents')) {
                 foreach ($request->file('documents') as $type => $file) {
-                    if (!array_key_exists($type, BplsDocument::TYPES))
+                    $isBeneficiary = str_starts_with($type, 'beneficiary_');
+                    if (!array_key_exists($type, BplsDocument::TYPES) && !$isBeneficiary)
                         continue;
                     if (!$file || !$file->isValid())
                         continue;
@@ -294,10 +308,19 @@ class ApplicationController extends Controller
                 ->with('error', 'This application can no longer be edited.');
         }
 
-        $application->load(['business', 'owner']);
-        $options = $this->options;
+        $application->load(['business', 'owner', 'latestLog', 'documents']);
+        
+        $amendments = collect();
+        if ($application->business) {
+            $amendments = $application->business->amendments()->latest()->get();
+        }
 
-        return view('client.applications.edit', compact('application', 'options'));
+        return view('client.applications.edit', [
+            'application' => $application,
+            'options'     => \App\Http\Controllers\FormCustomizationController::getOptions(),
+            'benefits'    => \App\Models\BplsBenefit::active()->get(),
+            'amendments'  => $amendments,
+        ]);
     }
 
     // ── UPDATE ─────────────────────────────────────────────────────────────
@@ -311,7 +334,9 @@ class ApplicationController extends Controller
                 ->with('error', 'This application can no longer be edited.');
         }
 
-        $request->validate([
+        $activeBenefits = \App\Models\BplsBenefit::active()->get();
+
+        $rules = [
             'last_name' => 'required|string|max:100',
             'first_name' => 'required|string|max:100',
             'middle_name' => 'nullable|string|max:100',
@@ -321,14 +346,6 @@ class ApplicationController extends Controller
             'birthdate' => 'nullable|date',
             'mobile_no' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:150',
-            'is_pwd' => 'nullable',
-            'is_4ps' => 'nullable',
-            'is_solo_parent' => 'nullable',
-            'is_senior' => 'nullable',
-            'is_bmbe' => 'nullable',
-            'is_cooperative' => 'nullable',
-            'discount_10' => 'nullable',
-            'discount_5' => 'nullable',
             'owner_region' => 'nullable|string|max:100',
             'owner_province' => 'nullable|string|max:100',
             'owner_municipality' => 'nullable|string|max:100',
@@ -366,13 +383,19 @@ class ApplicationController extends Controller
             'business_street' => 'nullable|string|max:255',
             'documents' => 'nullable|array',
             'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
-        ]);
+        ];
+
+        foreach ($activeBenefits as $benefit) {
+            $rules[$benefit->field_key] = 'nullable';
+        }
+
+        $request->validate($rules);
 
         $isCooperative = ($request->business_organization === 'Cooperative');
         $isBmbe = ($request->business_organization === 'BMBE');
 
         // ── Update Owner ──────────────────────────────────────────────────
-        $application->owner->update([
+        $ownerData = [
             'last_name' => $request->last_name,
             'first_name' => $request->first_name,
             'middle_name' => $request->middle_name,
@@ -382,14 +405,8 @@ class ApplicationController extends Controller
             'birthdate' => $request->birthdate,
             'mobile_no' => $request->mobile_no,
             'email' => $request->email,
-            'is_pwd' => $request->boolean('is_pwd'),
-            'is_4ps' => $request->boolean('is_4ps'),
-            'is_solo_parent' => $request->boolean('is_solo_parent'),
-            'is_senior' => $request->boolean('is_senior'),
             'is_bmbe' => $isBmbe,
             'is_cooperative' => $isCooperative,
-            'discount_10' => $request->boolean('discount_10'),
-            'discount_5' => $request->boolean('discount_5'),
             'region' => $request->owner_region,
             'province' => $request->owner_province,
             'municipality' => $request->owner_municipality,
@@ -398,7 +415,22 @@ class ApplicationController extends Controller
             'emergency_contact_person' => $request->emergency_contact_person,
             'emergency_mobile' => $request->emergency_mobile,
             'emergency_email' => $request->emergency_email,
-        ]);
+        ];
+
+        foreach ($activeBenefits as $benefit) {
+            $ownerData[$benefit->field_key] = $request->boolean($benefit->field_key);
+        }
+
+        $application->owner->update($ownerData);
+
+        // ── Sync with pivot table if needed ──────────────────────────────
+        $selectedBenefitKeys = [];
+        foreach ($activeBenefits as $benefit) {
+            if ($request->boolean($benefit->field_key)) {
+                $selectedBenefitKeys[] = $benefit->field_key;
+            }
+        }
+        $application->owner->syncBenefits($selectedBenefitKeys);
 
         // ── Update Business ───────────────────────────────────────────────
         $application->business->update([
@@ -431,14 +463,18 @@ class ApplicationController extends Controller
             'street' => $request->business_street,
         ]);
 
+        $hasClaimedDiscount = $isBmbe || $isCooperative || 
+            $activeBenefits->pluck('field_key')->some(fn($key) => $request->boolean($key));
+
         $application->update([
-            'discount_claimed' => ($request->boolean('is_senior') || $request->boolean('is_pwd') || $request->boolean('is_solo_parent') || $request->boolean('is_4ps') || $isBmbe || $isCooperative),
+            'discount_claimed' => $hasClaimedDiscount,
         ]);
 
         // ── Upsert documents ──────────────────────────────────────────────
         if ($request->hasFile('documents')) {
             foreach ($request->file('documents') as $type => $file) {
-                if (!array_key_exists($type, BplsDocument::TYPES) || !$file || !$file->isValid()) {
+                $isBeneficiary = str_starts_with($type, 'beneficiary_');
+                if ((!array_key_exists($type, BplsDocument::TYPES) && !$isBeneficiary) || !$file || !$file->isValid()) {
                     continue;
                 }
 
