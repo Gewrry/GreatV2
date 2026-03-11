@@ -167,6 +167,7 @@ class RptPaymentController extends Controller
                 'payment_date'   => $request->payment_date ?: now(),
                 'collected_by'   => Auth::id(),
                 'remarks'        => $request->remarks,
+                'status'         => 'completed',
             ]);
             $paymentId = $payment->id;
 

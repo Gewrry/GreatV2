@@ -198,11 +198,26 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach($payments as $pmt)
-                            <tr class="hover:bg-green-50/50 transition">
-                                <td class="px-4 sm:px-6 py-3 font-medium text-gray-800">{{ $pmt->or_no }}</td>
+                            <tr class="hover:bg-green-50/50 transition {{ $pmt->status === 'pending' ? 'bg-amber-50/30' : '' }}">
+                                <td class="px-4 sm:px-6 py-3 font-medium text-gray-800">
+                                    {{ $pmt->or_no }}
+                                    @if($pmt->status === 'pending')
+                                        <span class="ml-1 text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Pending</span>
+                                    @endif
+                                </td>
                                 <td class="px-3 sm:px-4 py-3 text-gray-600">{{ $pmt->billing->tax_year ?? '' }} Q{{ $pmt->billing->quarter ?? '' }}</td>
-                                <td class="px-3 sm:px-4 py-3 text-right font-semibold text-green-700">₱{{ number_format($pmt->amount, 2) }}</td>
-                                <td class="px-3 sm:px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{{ ucfirst(str_replace('_', ' ', $pmt->payment_mode)) }}</td>
+                                <td class="px-3 sm:px-4 py-3 text-right font-semibold {{ $pmt->status === 'pending' ? 'text-amber-600' : 'text-green-700' }}">₱{{ number_format($pmt->amount, 2) }}</td>
+                                <td class="px-3 sm:px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">
+                                    {{ ucfirst(str_replace('_', ' ', $pmt->payment_mode)) }}
+                                    @if($pmt->status === 'pending')
+                                        <form action="{{ route('client.rpt-pay.verify', $pmt->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" class="ml-2 text-[10px] text-teal-600 hover:text-teal-800 font-bold underline" title="Click to manually verify status from PayMongo">
+                                                Verify
+                                            </button>
+                                        </form>
+                                    @endif
+                                </td>
                                 <td class="px-3 sm:px-4 py-3 text-gray-500 text-xs">{{ $pmt->payment_date?->format('M d, Y') }}</td>
                             </tr>
                         @endforeach

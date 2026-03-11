@@ -12,7 +12,7 @@ class RptPayment extends Model
 
     protected $fillable = [
         'rpt_billing_id', 'or_no', 'amount', 'basic_tax', 'sef_tax', 'discount', 'penalty',
-        'payment_mode', 'check_no', 'bank_name', 'payment_date', 'collected_by', 'remarks',
+        'payment_mode', 'check_no', 'bank_name', 'payment_date', 'collected_by', 'remarks', 'status',
     ];
 
     protected $casts = [

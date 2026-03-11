@@ -174,7 +174,7 @@ class RptOnlinePaymentController extends Controller
                             ],
                             'description'      => "RPT Payment for TD #{$td->td_no}",
                             'reference_number' => $refNo,
-                            'success_url'      => route('client.rpt-pay.success', ['billing' => $billing->id]) . '&ref=' . $refNo . '&id={CHECKOUT_SESSION_ID}',
+                            'success_url'      => route('client.rpt-pay.success', ['billing' => $billing->id, 'ref' => $refNo]) . '&id={CHECKOUT_SESSION_ID}',
                             'cancel_url'       => route('client.rpt-pay.soa', $td->id),
                         ],
                     ],
@@ -197,6 +197,7 @@ class RptOnlinePaymentController extends Controller
                     'payment_date'   => now(),
                     'collected_by'   => null, // Online — no staff collector
                     'remarks'        => "PayMongo CS: {$sessionId}",
+                    'status'         => 'pending',
                 ]);
 
                 return redirect($data['attributes']['checkout_url']);
@@ -258,6 +259,51 @@ class RptOnlinePaymentController extends Controller
             ->with('success', '⏳ Payment is being verified. Please refresh in a moment. Reference: ' . $refNo);
     }
 
+    /**
+     * Handle malformed success URLs (from sessions started before the fix)
+     * e.g. /portal/rpt-payments/45/success&ref=RPT-...&id=cs_...
+     */
+    public function successMalformed(Request $request, RptBilling $billing, $any)
+    {
+        // $any will contain everything after success&
+        parse_str($any, $params);
+        $request->merge($params);
+        return $this->success($request, $billing);
+    }
+
+    // ─── MANUAL VERIFY ──────────────────────────────────────────────────────────
+    public function verify(RptPayment $payment)
+    {
+        // Only allow verifying pending online payments
+        if ($payment->status !== 'pending' || !str_contains($payment->remarks ?? '', 'PayMongo CS:')) {
+            return back()->with('error', 'This payment is already processed or not an online payment.');
+        }
+
+        $sessionId = trim(str_replace('PayMongo CS:', '', $payment->remarks));
+        
+        try {
+            $response = Http::withBasicAuth(config('services.paymongo.secret_key'), '')
+                ->get('https://api.paymongo.com/v1/checkout_sessions/' . $sessionId);
+
+            if ($response->successful()) {
+                $status = $response->json('data.attributes.payment_intent.attributes.status') 
+                       ?? $response->json('data.attributes.status');
+
+                if ($status === 'paid' || $status === 'succeeded') {
+                    $this->confirmRptPayment($payment, $payment->billing);
+                    return back()->with('success', '✅ Payment verified successfully!');
+                } else {
+                    return back()->with('info', 'Payment status is currently: ' . ucfirst($status));
+                }
+            }
+            
+            return back()->with('error', 'Could not fetch status from PayMongo. Please try again later.');
+        } catch (\Exception $e) {
+            Log::error('PayMongo manual verify error', ['error' => $e->getMessage()]);
+            return back()->with('error', 'Verification failed due to a connection error.');
+        }
+    }
+
     // ─── WEBHOOK (PayMongo server-to-server) ────────────────────────────────────
     public function webhook(Request $request)
     {
@@ -302,6 +348,7 @@ class RptOnlinePaymentController extends Controller
 
         DB::transaction(function () use ($payment, $billing) {
             $billing->recordPayment((float) $payment->amount);
+            $payment->update(['status' => 'completed']);
         });
     }
 }

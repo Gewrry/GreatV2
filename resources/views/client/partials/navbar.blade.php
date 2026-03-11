@@ -3,7 +3,7 @@
 {{-- ═══════════════════════════════════════════
      DESKTOP NAVBAR
 ════════════════════════════════════════════ --}}
-<nav class="hidden sm:block bg-white border-b border-lumot/20 shadow-sm sticky top-0 z-40 relative">
+<nav class="hidden sm:block bg-white border-b border-lumot/20 shadow-sm sticky top-0 z-50">
     <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <div class="flex items-center gap-6">
             <a href="{{ route('client.dashboard') }}" class="flex items-center gap-2.5">

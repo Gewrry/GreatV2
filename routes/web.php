@@ -74,6 +74,8 @@ use App\Http\Controllers\Bpls\BplsSettingsController;
 use App\Http\Controllers\Bpls\MasterlistController;
 use App\Http\Controllers\FormCustomizationController;
 use App\Http\Controllers\BplsBenefitController;
+use App\Http\Controllers\Bpls\BusinessRecordsController;
+use App\Http\Controllers\BusinessEntryEditController;
 
 // BPLS Report Controllers
 use App\Http\Controllers\Bpls\ComplianceQuarterController;
@@ -113,6 +115,10 @@ use App\Http\Controllers\RPT\PropertyRegistrationController;
 use App\Http\Controllers\RPT\OnlineApplicationController;
 use App\Http\Controllers\RPT\RptDashboardController;
 use App\Http\Controllers\RPT\RPTSettingsController;
+
+
+
+
 
 // =============================================================================
 // 2. STANDALONE ROUTES (outside any prefix/middleware group)
@@ -385,6 +391,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
             Route::post('/{entry}/retire', [BusinessListController::class, 'retire'])->name('retire');
             Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
+
+            // 👇 ADD THESE — edit routes
+            Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])->name('edit-data');
+            Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])->name('edit');
+            Route::get('/{entry}/amendments', [BusinessEntryEditController::class, 'history'])->name('amendments');
         });
 
         // 4g-v. Payments
@@ -451,6 +462,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/application/{application}/mark-paid', [BplsApplicationReviewController::class, 'markPaid'])->name('application.mark-paid');
             Route::post('/application/{application}/final-approve', [BplsApplicationReviewController::class, 'finalApprove'])->name('application.final-approve');
             Route::post('/application/{application}/confirm-ors', [BplsApplicationReviewController::class, 'confirmOrs'])->name('application.confirm-ors');
+            Route::get('/application/{application}/permit', [BplsApplicationReviewController::class, 'permitDownload'])->name('application.permit-download');
+            Route::post('/application/{application}/send-reminder', [BplsApplicationReviewController::class, 'sendReminder'])->name('application.send-reminder');
         });
 
         // 4g-x. Permit Signatories
@@ -468,13 +481,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('rpt')->name('rpt.')->middleware('module:rpt')->group(function () {
 
         Route::get('/', [RptDashboardController::class, 'index'])->name('index');
-        
+
         // Property Registration (Intake)
         Route::prefix('registration')->name('registration.')->group(function () {
             Route::get('/', [PropertyRegistrationController::class, 'index'])->name('index');
             Route::get('/create', [PropertyRegistrationController::class, 'create'])->name('create');
             Route::get('/pending', [PropertyRegistrationController::class, 'pending'])->name('pending');
-                Route::get('/search', [PropertyRegistrationController::class, 'search'])->name('search');
+            Route::get('/search', [PropertyRegistrationController::class, 'search'])->name('search');
             Route::post('/', [PropertyRegistrationController::class, 'store'])->name('store');
             Route::get('/{registration}', [PropertyRegistrationController::class, 'show'])->name('show');
             Route::post('/{registration}/archive', [PropertyRegistrationController::class, 'archive'])->name('archive');
@@ -581,22 +594,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/', [ReportController::class, 'index'])->name('index');
 
             $reports = [
-                'parcel-list'            => 'parcelList',
-                'rpu-list'               => 'rpuList',
-                'cancelled-list'         => 'cancelledList',
-                'faas-summary'           => 'faasSummary',
-                'td-summary'             => 'tdSummary',
-                'taxable-properties'     => 'taxableProperties',
-                'ownership-history'      => 'ownershipHistory',
-                'transfer-summary'       => 'transferSummary',
-                'multiple-owners'        => 'multipleOwners',
-                'td-audit-log'           => 'tdAuditLog',
+                'parcel-list' => 'parcelList',
+                'rpu-list' => 'rpuList',
+                'cancelled-list' => 'cancelledList',
+                'faas-summary' => 'faasSummary',
+                'td-summary' => 'tdSummary',
+                'taxable-properties' => 'taxableProperties',
+                'ownership-history' => 'ownershipHistory',
+                'transfer-summary' => 'transferSummary',
+                'multiple-owners' => 'multipleOwners',
+                'td-audit-log' => 'tdAuditLog',
                 'global-transaction-log' => 'globalTransactionLog',
-                'user-activity-audit'    => 'userActivityAudit',
+                'user-activity-audit' => 'userActivityAudit',
             ];
 
             foreach ($reports as $slug => $method) {
-                $name     = str_replace('-', '_', $slug);
+                $name = str_replace('-', '_', $slug);
                 $ucMethod = ucfirst(lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $slug)))));
                 Route::get("/{$slug}", [ReportController::class, $method])->name($name);
                 Route::get("/{$slug}/export/pdf", [ReportController::class, 'export' . $ucMethod . 'PDF'])->name("{$name}.export.pdf");
@@ -695,6 +708,12 @@ Route::prefix('portal')->name('client.')->group(function () {
     Route::middleware([\App\Http\Middleware\ClientAuthenticated::class])->group(function () {
 
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+        
+        // Email Verification
+        Route::get('/verify', [AuthController::class, 'showVerify'])->name('verify.show');
+        Route::post('/verify', [AuthController::class, 'verify'])->name('verify.submit');
+        Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->name('verify.resend');
+
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::prefix('applications')->name('applications.')->group(function () {
@@ -724,8 +743,11 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::post('/', [PaymentController::class, 'initiate'])->name('initiate');
             Route::post('/confirm', [PaymentController::class, 'confirm'])->name('confirm');
             Route::get('/success', [PaymentController::class, 'success'])->name('success');
+            Route::get('/success&{any}', [PaymentController::class, 'successMalformed'])->where('any', '.*');
             Route::get('/receipt/{payment}', [PaymentController::class, 'receipt'])->name('receipt');
         });
+
+        Route::get('bpls-payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payment.verify');
 
         Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('/walkin-payments', [WalkInPaymentsController::class, 'index'])->name('walkin-payments');
@@ -747,7 +769,11 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::get('/', [RptOnlinePaymentController::class, 'search'])->name('search');
             Route::get('/{td}/soa', [RptOnlinePaymentController::class, 'soa'])->name('soa');
             Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
+            Route::post('/{payment}/verify', [RptOnlinePaymentController::class, 'verify'])->name('verify');
+            
+            // Fallback for sessions started before the fix (malformed URL with & instead of ?)
             Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');
+            Route::get('/{billing}/success&{any}', [RptOnlinePaymentController::class, 'successMalformed'])->where('any', '.*');
         });
 
         // Client search
@@ -772,4 +798,37 @@ Route::post('/portal/webhook/paymongo-rpt', [RptOnlinePaymentController::class, 
 // =============================================================================
 // 7. LGU/STAFF AUTH ROUTES
 // =============================================================================
+
+
+
+
+// =============================================================================
+// 8. BPLS Record Viewing
+// =============================================================================
+
+Route::get('/bpls/records', [BusinessRecordsController::class, 'index'])->name('bpls.records.index');
+Route::get('/bpls/records/{id}', [BusinessRecordsController::class, 'show'])->name('bpls.records.show');
+Route::get('/bpls/records/payments/search', [BusinessRecordsController::class, 'searchPayments'])->name('bpls.records.payments');
+
+
+
+
+// =============================================================================
+// 8. BPLS Business details Editing
+// =============================================================================
+
+// Route::prefix('bpls/business-list')->name('bpls.business-list.')->group(function () {
+//     // ... existing routes ...
+
+//     Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])
+//         ->name('edit-data');
+
+//     Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])
+//         ->name('edit');
+
+//     Route::get('/{entry}/amendments', [BusinessEntryEditController::class, 'history'])
+//         ->name('amendments');
+// });
+
+
 require __DIR__ . '/auth.php';

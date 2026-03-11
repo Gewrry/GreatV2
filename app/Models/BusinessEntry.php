@@ -41,6 +41,7 @@ class BusinessEntry extends Model
         'owner_street',
 
         // Business info
+        'business_id',
         'business_name',
         'trade_name',
         'date_of_application',
@@ -178,8 +179,4 @@ class BusinessEntry extends Model
     {
         return $this->hasOne(\App\Models\onlineBPLS\BplsOnlineApplication::class, 'business_entry_id');
     }
-    /**
-     * Check if this business entry came from online registration.
-     * Returns true if there's a related BplsOnlineApplication record.
-     */
 }

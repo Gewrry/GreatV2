@@ -33,6 +33,7 @@ class BplsDocument extends Model
         'sanitary_permit' => 'Sanitary Permit',
         'beneficiary_senior' => 'Senior Citizen Proof (ID/OSCA)',
         'beneficiary_pwd' => 'PWD Proof (ID/PDAO)',
+        'beneficiary_4ps' => '4PS ID / Certification',
         'beneficiary_bmbe' => 'BMBE Certification',
         'beneficiary_cooperative' => 'CDA Registration / Certificate of Good Standing',
         'beneficiary_solo_parent' => 'Solo Parent ID',
