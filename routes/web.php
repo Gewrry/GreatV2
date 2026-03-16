@@ -282,7 +282,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/generate', [\App\Http\Controllers\HR\AttendanceController::class, 'processDtr'])->name('generate.process');
             Route::get('/dtr', [\App\Http\Controllers\HR\AttendanceController::class, 'viewDtr'])->name('dtr');
         });
-
         // Payroll
         Route::prefix('payroll')->name('payroll.')->group(function () {
             Route::get('/deductions', [\App\Http\Controllers\HR\PayrollController::class, 'deductions'])->name('deductions');
@@ -294,20 +293,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/payslip/{record}', [\App\Http\Controllers\HR\PayrollController::class, 'payslip'])->name('payslip');
             Route::post('/finalize/{period}', [\App\Http\Controllers\HR\PayrollController::class, 'finalize'])->name('finalize');
         });
+    }); // end hr management module
 
-        // Employee Portal (Self-Service)
-        Route::prefix('portal')->name('portal.')->middleware('module:employee_portal')->group(function () {
-            Route::get('/dashboard', [\App\Http\Controllers\HR\EmployeePortalController::class, 'dashboard'])->name('dashboard');
-            Route::get('/my-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myLeave'])->name('my-leave');
-            Route::get('/file-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'fileLeave'])->name('file-leave');
-            Route::post('/file-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'storeLeave'])->name('file-leave.store');
-            Route::get('/my-dtr', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myDtr'])->name('my-dtr');
-            Route::get('/my-payslips', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myPayslips'])->name('my-payslips');
-            Route::get('/payslip/{record}', [\App\Http\Controllers\HR\EmployeePortalController::class, 'viewPayslip'])->name('payslip.view');
-            Route::get('/my-service-record', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myServiceRecord'])->name('service-record');
-        });
-
-    }); // end hr module
+    // Employee Portal (Self-Service) - Accessible via 'employee_portal' permission only
+    Route::prefix('hr/portal')->name('hr.portal.')->middleware('module:employee_portal')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\HR\EmployeePortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/my-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myLeave'])->name('my-leave');
+        Route::get('/file-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'fileLeave'])->name('file-leave');
+        Route::post('/file-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'storeLeave'])->name('file-leave.store');
+        Route::get('/my-dtr', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myDtr'])->name('my-dtr');
+        Route::get('/my-payslips', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myPayslips'])->name('my-payslips');
+        Route::get('/payslip/{record}', [\App\Http\Controllers\HR\EmployeePortalController::class, 'viewPayslip'])->name('payslip.view');
+        Route::get('/my-service-record', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myServiceRecord'])->name('service-record');
+    });
 
     // =========================================================================
     // 4d. ADMIN MODULE  [module gate: admin]

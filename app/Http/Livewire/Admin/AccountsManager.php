@@ -112,8 +112,16 @@ class AccountsManager extends Component
             ]);
 
             // Assign roles
-            if (!empty($this->selectedRoles)) {
-                $user->roles()->sync($this->selectedRoles);
+            $roleIds = is_array($this->selectedRoles) ? $this->selectedRoles : [];
+            
+            // Automatically add 'employee' role if it exists
+            $employeeRole = Role::where('slug', 'employee')->first();
+            if ($employeeRole && !in_array($employeeRole->id, $roleIds)) {
+                $roleIds[] = (string) $employeeRole->id;
+            }
+
+            if (!empty($roleIds)) {
+                $user->roles()->sync($roleIds);
             }
 
             // Clear form
