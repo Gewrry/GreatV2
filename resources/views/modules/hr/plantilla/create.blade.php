@@ -29,8 +29,19 @@
                             </div>
 
                             <div>
-                                <x-input-label for="office_id" :value="__('Office / Department')" />
-                                <select id="office_id" name="office_id" class="w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1" required>
+                                <x-input-label for="department_id" :value="__('Department')" />
+                                <select id="department_id" name="department_id" class="w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1" required>
+                                    <option value="">Select Department</option>
+                                    @foreach($departments as $dept)
+                                        <option value="{{ $dept->id }}" {{ old('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->department_name }}</option>
+                                    @endforeach
+                                </select>
+                                <x-input-error :messages="$errors->get('department_id')" class="mt-2" />
+                            </div>
+
+                            <div>
+                                <x-input-label for="office_id" :value="__('Office (Optional)')" />
+                                <select id="office_id" name="office_id" class="w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1">
                                     <option value="">Select Office</option>
                                     @foreach($offices as $office)
                                         <option value="{{ $office->id }}" {{ old('office_id') == $office->id ? 'selected' : '' }}>{{ $office->office_name }}</option>

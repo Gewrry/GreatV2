@@ -35,17 +35,20 @@ class PlantillaController extends Controller
 
         $plantillas = $query->orderBy('office_id')->orderBy('item_number')->paginate(15);
         $offices = Office::orderBy('office_name')->get();
+        $departments = Department::orderBy('department_name')->get();
 
-        return view('modules.hr.plantilla.index', compact('plantillas', 'offices'));
+        return view('modules.hr.plantilla.index', compact('plantillas', 'offices', 'departments'));
     }
 
     public function create()
     {
         $offices = Office::orderBy('office_name')->get();
+        $departments = Department::orderBy('department_name')->get();
         $salaryGrades = SalaryGrade::orderBy('grade')->get();
         
         return view('modules.hr.plantilla.create', compact(
             'offices',
+            'departments',
             'salaryGrades'
         ));
     }
@@ -55,7 +58,8 @@ class PlantillaController extends Controller
         $validated = $request->validate([
             'item_number' => 'required|string|unique:hr_plantilla_positions,item_number|max:50',
             'position_title' => 'required|string|max:255',
-            'office_id' => 'required|exists:offices,id',
+            'department_id' => 'required|exists:departments,id',
+            'office_id' => 'nullable|exists:offices,id',
             'salary_grade_id' => 'required|exists:hr_salary_grades,id',
             'employment_status' => 'required|string|max:50',
             'is_filled' => 'boolean',
@@ -69,18 +73,20 @@ class PlantillaController extends Controller
 
     public function show(Plantilla $plantilla)
     {
-        $plantilla->load(['office', 'salaryGrade']);
+        $plantilla->load(['office', 'salaryGrade', 'department']);
         return view('modules.hr.plantilla.show', compact('plantilla'));
     }
 
     public function edit(Plantilla $plantilla)
     {
         $offices = Office::orderBy('office_name')->get();
+        $departments = Department::orderBy('department_name')->get();
         $salaryGrades = SalaryGrade::orderBy('grade')->get();
 
         return view('modules.hr.plantilla.edit', compact(
             'plantilla',
             'offices',
+            'departments',
             'salaryGrades'
         ));
     }
@@ -90,7 +96,8 @@ class PlantillaController extends Controller
         $validated = $request->validate([
             'item_number' => 'required|string|unique:hr_plantilla_positions,item_number,' . $plantilla->id . '|max:50',
             'position_title' => 'required|string|max:255',
-            'office_id' => 'required|exists:offices,id',
+            'department_id' => 'required|exists:departments,id',
+            'office_id' => 'nullable|exists:offices,id',
             'salary_grade_id' => 'required|exists:hr_salary_grades,id',
             'employment_status' => 'required|string|max:50',
             'is_filled' => 'boolean',

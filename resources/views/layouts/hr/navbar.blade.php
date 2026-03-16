@@ -29,13 +29,22 @@
             <div class="hidden md:flex items-center h-full flex-1">
                 
                 {{-- 201 Management --}}
-                <a href="{{ route('hr.employees.index') }}"
-                    class="flex items-center gap-2 px-4 h-full text-white/80 hover:text-white hover:bg-white/10 text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('hr.employees.*') ? 'text-white bg-white/15 border-b-2 border-white' : '' }}">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm5 3h.01M15 10h.01M11 10h.01" />
-                    </svg>
-                    201 Management
-                </a>
+                <div class="relative h-full flex items-center">
+                    <button @click.stop="toggle('employees')" 
+                        class="flex items-center gap-2 px-4 h-full text-white/80 hover:text-white hover:bg-white/10 text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('hr.employees.*') ? 'text-white bg-white/15 border-b-2 border-white' : '' }}">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm5 3h.01M15 10h.01M11 10h.01" />
+                        </svg>
+                        201 Management
+                        <svg class="w-3 h-3 transition-transform duration-200" :class="active === 'employees' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="active === 'employees'" x-cloak x-transition class="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-200 rounded-b-xl shadow-xl z-50 py-2 overflow-hidden">
+                        <a href="{{ route('hr.employees.index') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Employee List</a>
+                        <a href="{{ route('hr.employees.create') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Add Employee</a>
+                    </div>
+                </div>
 
                 {{-- Recruitment --}}
                 <div class="relative h-full flex items-center">

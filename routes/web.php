@@ -174,13 +174,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // =========================================================================
-    // 4c. HR MODULE  [module gate: hr]
-    // =========================================================================
-    Route::group(['prefix' => 'employee-info', 'as' => 'employee-info.', 'middleware' => 'module:hr'], function () {
-        Route::get('/create', [HumanResourcesController::class, 'create'])->name('create');
-        Route::post('/', [HumanResourcesController::class, 'store'])->name('store');
-    });
 
     Route::prefix('hr')->name('hr.')->middleware('module:hr')->group(function () {
         // Plantilla

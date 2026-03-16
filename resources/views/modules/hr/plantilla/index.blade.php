@@ -70,9 +70,12 @@
                                             <div class="text-sm font-bold text-gray-900">{{ $pos->position_title }}</div>
                                             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{{ $pos->employment_status }}</div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $pos->office->office_name ?? 'N/A' }}
-                                        </td>
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                             <div class="font-bold text-gray-700">{{ $pos->department->department_name ?? 'N/A' }}</div>
+                                             @if($pos->office)
+                                                 <div class="text-[10px] text-gray-400 italic">Office: {{ $pos->office->office_name }}</div>
+                                             @endif
+                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-center font-bold">
                                             {{ $pos->salaryGrade->grade ?? '??' }}
                                         </td>
