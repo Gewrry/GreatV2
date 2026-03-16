@@ -32,6 +32,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Livewire\Admin\AdminDashboard;
 use App\Http\Livewire\Admin\AccountsManager;
 
+// VF
+use App\Http\Controllers\VF\CollectionNatureController;
+
 // Admin Controllers
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\BarangayController;
@@ -83,6 +86,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\VF\VehicleFranchisingController;
 use App\Http\Controllers\VF\VfPrintController;
 use App\Http\Controllers\VF\VfReportController;
+use App\Http\Controllers\VF\PaymentController as VfPaymentController;
 
 // Client Portal Controllers
 use App\Http\Controllers\Client\AuthController;
@@ -444,8 +448,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
             Route::post('/{entry}/retire', [BusinessListController::class, 'retire'])->name('retire');
             Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
-
-            // 👇 ADD THESE — edit routes
             Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])->name('edit-data');
             Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])->name('edit');
             Route::get('/{entry}/amendments', [BusinessEntryEditController::class, 'history'])->name('amendments');
@@ -634,17 +636,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/classes/{class}', [RPTSettingsController::class, 'updateClass'])->name('classes.update');
             Route::post('/actual-uses', [RPTSettingsController::class, 'storeActualUse'])->name('actual-uses.store');
             Route::put('/actual-uses/{actualUse}', [RPTSettingsController::class, 'updateActualUse'])->name('actual-uses.update');
-
-            // Assessment Levels
             Route::get('/assessment-levels', fn() => redirect()->route('rpt.settings.index'));
             Route::post('/assessment-levels', [RPTSettingsController::class, 'storeAssessmentLevel'])->name('assessment-levels.store');
             Route::delete('/assessment-levels/{level}', [RPTSettingsController::class, 'destroyAssessmentLevel'])->name('assessment-levels.destroy');
-
-            // Unit Values
             Route::get('/unit-values', fn() => redirect()->route('rpt.settings.index'));
             Route::post('/unit-values', [RPTSettingsController::class, 'storeUnitValue'])->name('unit-values.store');
             Route::delete('/unit-values/{unitValue}', [RPTSettingsController::class, 'destroyUnitValue'])->name('unit-values.destroy');
-
             Route::post('/bldg-types', [RPTSettingsController::class, 'storeBldgType'])->name('bldg-types.store');
             Route::delete('/bldg-types/{bldgType}', [RPTSettingsController::class, 'destroyBldgType'])->name('bldg-types.destroy');
             Route::post('/revision-years', [RPTSettingsController::class, 'storeRevisionYear'])->name('revision-years.store');
@@ -653,8 +650,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('/signatories/{id}', [RPTSettingsController::class, 'updateSignatory'])->name('signatories.update');
             Route::post('/global', [RPTSettingsController::class, 'updateGlobalSettings'])->name('global.update');
             Route::post('/barangay-codes', [RPTSettingsController::class, 'updateBarangayCodes'])->name('barangay-codes.update');
-
-            // Fallbacks
             Route::get('/classes', fn() => redirect()->route('rpt.settings.index'));
             Route::get('/actual-uses', fn() => redirect()->route('rpt.settings.index'));
             Route::get('/bldg-types', fn() => redirect()->route('rpt.settings.index'));
@@ -669,7 +664,74 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
     Route::prefix('vf')->name('vf.')->middleware('module:vehicle-franchising')->group(function () {
 
-        // 4i-i. Franchise Index / CRUD
+        Route::resource('collection-natures', CollectionNatureController::class)
+            ->except(['show'])
+            ->parameters(['collection-natures' => 'nature']);
+
+        Route::get('collection-natures-list', [CollectionNatureController::class, 'apiList'])
+            ->name('collection-natures.list');
+
+        // 4i-i. Franchise Live Search
+        // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
+        Route::get('/search-franchise', function (\Illuminate\Http\Request $request) {
+            $q = $request->input('q', '');
+            return \App\Models\VF\Franchise::with('owner')
+                ->where(function ($query) use ($q) {
+                    $query->where('fn_number', 'like', "%{$q}%")
+                        ->orWhereHas(
+                            'owner',
+                            fn($o) => $o
+                                ->where('first_name', 'like', "%{$q}%")
+                                ->orWhere('last_name', 'like', "%{$q}%")
+                        );
+                })
+                ->limit(10)
+                ->get()
+                ->map(fn($f) => [
+                    'id' => $f->id,
+                    'fn_number' => $f->fn_number,
+                    'owner_name' => $f->owner_name,
+                    'barangay' => $f->owner->barangay ?? '',
+                ]);
+        })->name('franchise.search');
+
+        // 4i-ii. Payments (AF51 Official Receipts)
+        // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
+        // ⚠️ SOA route must be BEFORE /{id} wildcard inside this group
+        Route::prefix('payments')->name('payments.')->group(function () {
+            Route::get('/', [VfPaymentController::class, 'index'])->name('index');
+            Route::get('/create', [VfPaymentController::class, 'create'])->name('create');
+            Route::post('/', [VfPaymentController::class, 'store'])->name('store');
+            Route::get('/{franchise}/soa', [VfPaymentController::class, 'soa'])->name('soa');
+            // ── NEW: Renewal ─────────────────────────────────────────────────
+            // ⚠️ Must be declared BEFORE /{id} and /{id}/print wildcards
+            Route::post('/{franchiseId}/renew', [VfPaymentController::class, 'renew'])->name('renew');
+            // ─────────────────────────────────────────────────────────────────
+            Route::get('/{id}', [VfPaymentController::class, 'show'])->name('show');
+            Route::get('/{id}/print', [VfPaymentController::class, 'printReceipt'])->name('print');
+            Route::patch('/{id}/void', [VfPaymentController::class, 'void'])->name('void');
+        });
+
+        // 4i-iii. Prints
+        // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
+        Route::prefix('print')->name('print.')->group(function () {
+            Route::get('/{franchise}/permit', [VfPrintController::class, 'permit'])->name('permit');
+            Route::get('/{franchise}/sticker', [VfPrintController::class, 'sticker'])->name('sticker');
+            Route::get('/{franchise}/orcr', [VfPrintController::class, 'orcr'])->name('orcr');
+        });
+
+        // 4i-iv. Reports
+        // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
+        Route::prefix('reports')->name('reports.')->group(function () {
+            Route::get('/', [VfReportController::class, 'index'])->name('index');
+            Route::get('/masterlist', [VfReportController::class, 'masterlist'])->name('masterlist');
+            Route::get('/masterlist/data', [VfReportController::class, 'masterlistData'])->name('masterlist.data');
+            Route::get('/toda-summary', [VfReportController::class, 'todaSummary'])->name('toda-summary');
+            Route::get('/collection', [VfReportController::class, 'collection'])->name('collection');
+        });
+
+        // 4i-v. Franchise CRUD
+        // ⚠️ Wildcard routes LAST so they don't swallow named segments above
         Route::get('/', [VehicleFranchisingController::class, 'index'])->name('index');
         Route::get('/create', [VehicleFranchisingController::class, 'create'])->name('create');
         Route::post('/', [VehicleFranchisingController::class, 'store'])->name('store');
@@ -679,22 +741,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{franchise}', [VehicleFranchisingController::class, 'destroy'])->name('destroy');
         Route::get('/{franchise}/renew', [VehicleFranchisingController::class, 'renew'])->name('renew');
         Route::post('/{franchise}/renew', [VehicleFranchisingController::class, 'storeRenewal'])->name('renew.store');
-
-        // 4i-ii. Prints
-        Route::prefix('print')->name('print.')->group(function () {
-            Route::get('/{franchise}/permit', [VfPrintController::class, 'permit'])->name('permit');
-            Route::get('/{franchise}/sticker', [VfPrintController::class, 'sticker'])->name('sticker');
-            Route::get('/{franchise}/orcr', [VfPrintController::class, 'orcr'])->name('orcr');
-        });
-
-        // 4i-iii. Reports
-        Route::prefix('reports')->name('reports.')->group(function () {
-            Route::get('/', [VfReportController::class, 'index'])->name('index');
-            Route::get('/masterlist', [VfReportController::class, 'masterlist'])->name('masterlist');
-            Route::get('/masterlist/data', [VfReportController::class, 'masterlistData'])->name('masterlist.data');
-            Route::get('/toda-summary', [VfReportController::class, 'todaSummary'])->name('toda-summary');
-            Route::get('/collection', [VfReportController::class, 'collection'])->name('collection');
-        });
 
     }); // end vehicle-franchising module
 
@@ -811,42 +857,17 @@ Route::post('/portal/webhook/paymongo-rpt', [RptOnlinePaymentController::class, 
 // 7. LGU/STAFF AUTH ROUTES
 // =============================================================================
 
-
-
-
 // =============================================================================
 // 8. BPLS Record Viewing
 // =============================================================================
-
 Route::get('/bpls/records', [BusinessRecordsController::class, 'index'])->name('bpls.records.index');
 Route::get('/bpls/records/{id}', [BusinessRecordsController::class, 'show'])->name('bpls.records.show');
 Route::get('/bpls/records/payments/search', [BusinessRecordsController::class, 'searchPayments'])->name('bpls.records.payments');
 
-
-
 // =============================================================================
-// 9. chat bot
+// 9. CHATBOT
 // =============================================================================
-
 Route::post('/chatbot/message', [App\Http\Controllers\ChatbotController::class, 'message'])
     ->name('chatbot.message');
-
-// =============================================================================
-// 8. BPLS Business details Editing
-// =============================================================================
-
-// Route::prefix('bpls/business-list')->name('bpls.business-list.')->group(function () {
-//     // ... existing routes ...
-
-//     Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])
-//         ->name('edit-data');
-
-//     Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])
-//         ->name('edit');
-
-//     Route::get('/{entry}/amendments', [BusinessEntryEditController::class, 'history'])
-//         ->name('amendments');
-// });
-
 
 require __DIR__ . '/auth.php';

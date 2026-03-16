@@ -152,6 +152,13 @@
                             'icon' =>
                                 'M8 17a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4zM3 4h2l2.5 8h9L19 7H7M3 4H1m2 0l1 3',
                         ],
+                        // Audit Logs — routes live under prefix('audit-logs')->name('audit-logs.')
+                        'audit-logs' => [
+                            'route' => 'audit-logs.index',
+                            'routeMatch' => 'audit-logs.*',
+                            'icon' =>
+                                'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                        ],
                     ];
                 @endphp
 

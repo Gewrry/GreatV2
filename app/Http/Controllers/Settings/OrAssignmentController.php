@@ -22,7 +22,7 @@ class OrAssignmentController extends Controller
         $request->validate([
             'start_or' => 'required|string|max:20',
             'end_or' => 'required|string|max:20',
-            'receipt_type' => 'required|in:51C,RPTA,CTC',
+            'receipt_type' => 'required|in:51C,RPTA,CTC,AF51',
         ]);
 
         $exists = OrAssignment::where('receipt_type', $request->receipt_type)
@@ -63,7 +63,7 @@ class OrAssignmentController extends Controller
         $request->validate([
             'start_or' => 'required|string|max:20',
             'end_or' => 'required|string|max:20',
-            'receipt_type' => 'required|in:51C,RPTA,CTC',
+            'receipt_type' => 'required|in:51C,RPTA,CTC,AF51',
         ]);
 
         $orAssignment->update([

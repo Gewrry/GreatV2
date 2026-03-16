@@ -4,12 +4,16 @@
 namespace App\Http\Controllers\VF;
 
 use App\Http\Controllers\Controller;
+use App\Models\OrAssignment;
+use App\Models\VF\CollectionNature;
 use App\Models\VF\Franchise;
 use App\Models\VF\FranchiseOwner;
 use App\Models\VF\FranchiseVehicle;
 use App\Models\VF\FranchiseHistory;
+use App\Models\VF\Payment;
 use App\Models\VF\Toda;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class VehicleFranchisingController extends Controller
@@ -308,52 +312,157 @@ class VehicleFranchisingController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // RENEW
+    // RENEW  (GET)
     // ─────────────────────────────────────────────────────────────────────────
     public function renew($id)
     {
         $franchise = Franchise::with(['owner', 'toda', 'vehicle'])->findOrFail($id);
         $todas = Toda::where('is_active', 1)->orderBy('id')->get();
         $nextPermitNumber = Franchise::nextPermitNumber();
+        $collectionNatures = CollectionNature::active()->orderBy('sort_order')->get();
 
-        return view('modules.vf.renew', compact('franchise', 'todas', 'nextPermitNumber'));
+        $assignedOrBooks = OrAssignment::where('user_id', (int) Auth::id())
+            ->where('receipt_type', 'AF51')
+            ->whereNull('deleted_at')
+            ->get()
+            ->map(function ($book) {
+                $book->usedOrNumbers = Payment::whereBetween('or_number', [
+                    $book->start_or,
+                    $book->end_or,
+                ])->pluck('or_number');
+                return $book;
+            });
+
+        return view('modules.vf.renew', compact(
+            'franchise',
+            'todas',
+            'nextPermitNumber',
+            'collectionNatures',
+            'assignedOrBooks',
+        ));
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // STORE RENEWAL  (POST)
+    // ─────────────────────────────────────────────────────────────────────────
     public function storeRenewal(Request $request, $id)
     {
-        $franchise = Franchise::findOrFail($id);
+        $franchise = Franchise::with(['owner', 'vehicle'])->findOrFail($id);
 
         $validated = $request->validate([
+            // Permit fields
             'permit_number' => 'required|string|unique:vf_franchises,permit_number',
             'permit_date' => 'required|date',
-            'remarks' => 'nullable|string',
+            'toda_id' => 'nullable|exists:vf_todas,id',
             'sticker_number' => 'nullable|string|max:100',
+            'driver_name' => 'nullable|string|max:255',
+            'driver_contact' => 'nullable|string|max:50',
+            'license_number' => 'nullable|string|max:100',
+            'remarks' => 'nullable|string',
+            // Payment fields
+            'or_number' => 'required|string|unique:vf_payments,or_number',
+            'or_date' => 'required|date',
+            'agency' => 'nullable|string|max:255',
+            'fund' => 'nullable|string|max:100',
+            'payor' => 'required|string|max:255',
+            'payment_method' => 'required|in:cash,check,money_order',
+            'drawee_bank' => 'nullable|string|max:255',
+            'check_mo_number' => 'nullable|string|max:100',
+            'check_mo_date' => 'nullable|date',
+            'payment_remarks' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.nature' => 'required|string|max:255',
+            'items.*.account_code' => 'nullable|string|max:50',
+            'items.*.amount' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($validated, $franchise) {
+        // Verify OR number belongs to user's assigned AF51 booklet
+        $orNumber = $validated['or_number'];
+        $validBook = OrAssignment::where('user_id', (int) Auth::id())
+            ->where('receipt_type', 'AF51')
+            ->whereNull('deleted_at')
+            ->where('start_or', '<=', $orNumber)
+            ->where('end_or', '>=', $orNumber)
+            ->exists();
+
+        if (!$validBook) {
+            return back()
+                ->withErrors(['or_number' => 'That OR number is not in your assigned AF51 booklet.'])
+                ->withInput();
+        }
+
+        // Filter out zero-amount items
+        $items = collect($validated['items'])
+            ->filter(fn($i) => (float) $i['amount'] > 0)
+            ->values()
+            ->toArray();
+
+        if (empty($items)) {
+            return back()
+                ->withErrors(['items' => 'At least one collection item must have an amount.'])
+                ->withInput();
+        }
+
+        $total = (float) collect($items)->sum('amount');
+        $amountInWords = Payment::numberToWords($total);
+        $collectedBy = Auth::id();
+
+        DB::transaction(function () use ($validated, $items, $total, $amountInWords, $collectedBy, $franchise) {
+
+            // 1. Create the payment record
+            Payment::create([
+                'or_number' => $validated['or_number'],
+                'or_date' => $validated['or_date'],
+                'agency' => $validated['agency'] ?? 'LGU – Municipality/City',
+                'fund' => $validated['fund'] ?? 'General Fund',
+                'payor' => $validated['payor'],
+                'franchise_id' => $franchise->id,
+                'collection_items' => $items,
+                'total_amount' => $total,
+                'amount_in_words' => $amountInWords,
+                'payment_method' => $validated['payment_method'],
+                'drawee_bank' => $validated['drawee_bank'] ?? null,
+                'check_mo_number' => $validated['check_mo_number'] ?? null,
+                'check_mo_date' => $validated['check_mo_date'] ?? null,
+                'remarks' => $validated['payment_remarks'] ?? null,
+                'status' => 'paid',
+                'collected_by' => $collectedBy,
+            ]);
+
+            // 2. Update franchise permit info
             $franchise->update([
                 'permit_number' => $validated['permit_number'],
                 'permit_date' => $validated['permit_date'],
                 'permit_type' => 'renewal',
+                'toda_id' => $validated['toda_id'] ?? $franchise->toda_id,
+                'driver_name' => $validated['driver_name'] ?? $franchise->driver_name,
+                'driver_contact' => $validated['driver_contact'] ?? $franchise->driver_contact,
+                'license_number' => $validated['license_number'] ?? $franchise->license_number,
                 'remarks' => $validated['remarks'] ?? $franchise->remarks,
                 'status' => 'active',
             ]);
 
+            // 3. Update sticker number if a new one was provided
             if (!empty($validated['sticker_number'])) {
                 $franchise->vehicle()->update(['sticker_number' => $validated['sticker_number']]);
             }
 
+            // 4. Log to franchise history
             FranchiseHistory::create([
                 'franchise_id' => $franchise->id,
                 'action' => 'renewed',
                 'permit_number' => $validated['permit_number'],
                 'action_date' => $validated['permit_date'],
-                'notes' => 'Franchise renewed.',
-                'performed_by' => auth()->id(),
+                'notes' => "Franchise renewed. OR #{$validated['or_number']}."
+                    . ($validated['remarks'] ? ' Remarks: ' . $validated['remarks'] : ''),
+                'performed_by' => Auth::id(),
             ]);
         });
 
-        return redirect()->route('vf.index')
-            ->with('success', "Franchise #{$franchise->fn_number} renewed successfully.");
+        // Redirect to print the new OR receipt
+        $payment = Payment::where('or_number', $validated['or_number'])->firstOrFail();
+
+        return redirect()->route('vf.payments.print', $payment->id)
+            ->with('success', "Franchise FN #{$franchise->fn_number} renewed. OR #{$validated['or_number']} recorded.");
     }
 }
