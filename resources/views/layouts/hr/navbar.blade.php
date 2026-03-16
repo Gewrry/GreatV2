@@ -10,7 +10,7 @@
     {{-- Top accent line --}}
     <div class="h-1 bg-gradient-to-r from-logo-blue via-logo-teal to-logo-green rounded-t-xl"></div>
 
-    <div class="bg-logo-teal shadow-lg rounded-b-xl overflow-hidden">
+    <div class="bg-logo-teal shadow-lg rounded-b-xl">
         <div class="flex items-center h-12 px-4 shadow-inner">
 
             {{-- Brand/Module Name --}}
@@ -83,14 +83,62 @@
                     Appointments
                 </a>
 
-                {{-- Payroll (Placeholder) --}}
-                <a href="#"
-                    class="flex items-center gap-2 px-4 h-full text-white/50 cursor-not-allowed text-xs font-bold uppercase tracking-wider transition-all duration-200">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Payroll
-                </a>
+                {{-- Leave Management --}}
+                <div class="relative h-full flex items-center">
+                    <button @click.stop="toggle('leaves')" 
+                        class="flex items-center gap-2 px-4 h-full text-white/80 hover:text-white hover:bg-white/10 text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('hr.leaves.*') ? 'text-white bg-white/15 border-b-2 border-white' : '' }}">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Leave Mgmt
+                        <svg class="w-3 h-3 transition-transform duration-200" :class="active === 'leaves' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="active === 'leaves'" x-cloak x-transition class="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-200 rounded-b-xl shadow-xl z-50 py-2 overflow-hidden">
+                        <a href="{{ route('hr.leaves.index') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Applications</a>
+                        <a href="{{ route('hr.leaves.create') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">File Leave</a>
+                        <a href="{{ route('hr.leaves.balances') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Leave Balances</a>
+                    </div>
+                </div>
+
+                {{-- Attendance --}}
+                <div class="relative h-full flex items-center">
+                    <button @click.stop="toggle('attendance')" 
+                        class="flex items-center gap-2 px-4 h-full text-white/80 hover:text-white hover:bg-white/10 text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('hr.attendance.*') ? 'text-white bg-white/15 border-b-2 border-white' : '' }}">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Attendance
+                        <svg class="w-3 h-3 transition-transform duration-200" :class="active === 'attendance' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="active === 'attendance'" x-cloak x-transition class="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-200 rounded-b-xl shadow-xl z-50 py-2 overflow-hidden">
+                        <a href="{{ route('hr.attendance.schedules') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Schedules</a>
+                        <a href="{{ route('hr.attendance.import') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Import Logs</a>
+                        <a href="{{ route('hr.attendance.time-logs') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Time Logs</a>
+                        <a href="{{ route('hr.attendance.generate') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Generate DTR</a>
+                    </div>
+                </div>
+
+                {{-- Payroll --}}
+                <div class="relative h-full flex items-center">
+                    <button @click.stop="toggle('payroll')" 
+                        class="flex items-center gap-2 px-4 h-full text-white/80 hover:text-white hover:bg-white/10 text-xs font-bold uppercase tracking-wider transition-all duration-200 {{ request()->routeIs('hr.payroll.*') ? 'text-white bg-white/15 border-b-2 border-white' : '' }}">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Payroll
+                        <svg class="w-3 h-3 transition-transform duration-200" :class="active === 'payroll' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="active === 'payroll'" x-cloak x-transition class="absolute top-full left-0 mt-0 w-48 bg-white border border-gray-200 rounded-b-xl shadow-xl z-50 py-2 overflow-hidden">
+                        <a href="{{ route('hr.payroll.deductions') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Deductions</a>
+                        <a href="{{ route('hr.payroll.periods') }}" class="block px-4 py-2 text-xs font-bold text-gray-700 hover:bg-logo-teal hover:text-white transition-colors">Pay Periods</a>
+                    </div>
+                </div>
 
             </div>
 

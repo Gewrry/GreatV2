@@ -77,9 +77,20 @@
                         <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Title No.:</span> {{ $application->title_no ?? '—' }}</div>
                     </div>
                     @if($application->property_description)
-                        <div class="col-span-2">
+                        <div class="col-span-1 md:col-span-2">
                             <h3 class="font-semibold text-gray-700 text-sm mb-2">Description</h3>
                             <p class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{{ $application->property_description }}</p>
+                        </div>
+                    @endif
+
+                    {{-- GIS Map Download / Review --}}
+                    @if($application->polygon_coordinates)
+                        <div class="col-span-1 md:col-span-2 mt-4">
+                            <h3 class="font-semibold text-gray-700 text-sm mb-2 flex items-center gap-2">
+                                <i class="fas fa-map text-indigo-500"></i> Property Boundary Map
+                            </h3>
+                            <div id="reviewMap" style="height: 350px; width: 100%; z-index: 10;" class="rounded-xl border border-gray-300"></div>
+                            <input type="hidden" id="drawn_coordinates" value="{{ json_encode($application->polygon_coordinates) }}">
                         </div>
                     @endif
                 </div>
@@ -174,4 +185,36 @@
             </div>
         </div>
     </div>
+    @push('scripts')
+    <!-- LEAFLET CSS & JS -->
+    @if($application->polygon_coordinates)
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const map = L.map('reviewMap').setView([12.8797, 121.7740], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        const coords = document.getElementById('drawn_coordinates').value;
+        if (coords) {
+            try {
+                const geojson = JSON.parse(coords);
+                const layer = L.geoJSON(geojson, {
+                    style: { color: '#059669', weight: 3, fillOpacity: 0.2 }
+                }).addTo(map);
+                map.fitBounds(layer.getBounds());
+                
+                // Add a little padding so the polygon isn't touching the borders
+                map.zoomOut(1);
+            } catch(e) {
+                console.error("Invalid GIS Data", e);
+            }
+        }
+    });
+    </script>
+    @endif
+    @endpush
 </x-admin.app>

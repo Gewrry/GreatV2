@@ -58,6 +58,45 @@ class PropertyRegistrationController extends Controller
         return response()->json($query);
     }
 
+    /**
+     * Search for approved Land FAAS records to link as parent.
+     */
+    public function searchLand(Request $request)
+    {
+        $results = \App\Models\RPT\FaasProperty::where('property_type', 'land')
+            ->where('status', 'approved')
+            ->select([
+                'id', 'arp_no', 'pin', 'owner_name', 'owner_tin', 'owner_address', 'owner_contact',
+                'administrator_name', 'administrator_address', 'barangay_id', 'street',
+                'municipality', 'province', 'title_no', 'lot_no', 'blk_no', 'survey_no',
+                'boundary_north', 'boundary_south', 'boundary_east', 'boundary_west',
+                'polygon_coordinates'
+            ])
+            ->with(['barangay:id,brgy_name', 'lands:id,faas_property_id,polygon_coordinates'])
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $q->where(function($q2) use ($request) {
+                    $q2->where('arp_no', 'like', '%' . $request->q . '%')
+                       ->orWhere('pin', 'like', '%' . $request->q . '%')
+                       ->orWhere('owner_name', 'like', '%' . $request->q . '%')
+                       ->orWhere('title_no', 'like', '%' . $request->q . '%');
+                });
+            }, function ($q) {
+                // If no query, return the latest registered/approved lands
+                $q->latest();
+            })
+            ->limit(10)
+            ->get();
+
+        // Fallback: If Property has no coords, pull from first Land parcel
+        $results->each(function ($prop) {
+            if (empty($prop->polygon_coordinates) && $prop->lands->isNotEmpty()) {
+                $prop->polygon_coordinates = $prop->lands->first()->polygon_coordinates;
+            }
+        });
+
+        return response()->json($results);
+    }
+
     public function pending(Request $request)
     {
         $barangays = Barangay::orderBy('brgy_name')->get();
@@ -102,47 +141,25 @@ class PropertyRegistrationController extends Controller
             'municipality'   => 'required|string|max:100',
             'province'       => 'required|string|max:100',
             'title_no'       => 'nullable|string|max:100',
-            'lot_no'         => 'nullable|string|max:100',
-            'blk_no'         => 'nullable|string|max:100',
             'survey_no'      => 'nullable|string|max:100',
-
-            'estimated_floor_area'  => 'nullable|numeric|min:0',
-            'machinery_description' => 'nullable|string|max:1000',
+            'boundary_north'  => 'nullable|string|max:255',
+            'boundary_south'  => 'nullable|string|max:255',
+            'boundary_east'   => 'nullable|string|max:255',
+            'boundary_west'   => 'nullable|string|max:255',
 
             'remarks'  => 'nullable|string|max:1000',
-
-            'documents'           => 'nullable|array',
-            'documents.*.type'    => 'required|string',
-            'documents.*.label'   => 'nullable|string|max:100',
-            'documents.*.file'    => 'required|file|max:10240',
+            'polygon_coordinates' => 'nullable|json',
+            'parent_land_faas_id' => 'nullable|exists:faas_properties,id',
         ]);
 
-        $regData = collect($data)->except(['documents'])->toArray();
+        $regData = $data;
+        if (isset($regData['polygon_coordinates'])) {
+            $regData['polygon_coordinates'] = json_decode($regData['polygon_coordinates'], true);
+        }
         $regData['created_by'] = Auth::id();
         $regData['status']     = 'registered';
 
-        $registration = DB::transaction(function () use ($regData, $request) {
-            $registration = RptPropertyRegistration::create($regData);
-
-            if ($request->hasFile('documents')) {
-                foreach ($request->file('documents') as $index => $docFile) {
-                    if (isset($docFile['file'])) {
-                        $file = $docFile['file'];
-                        $path = $file->store('rpt/registrations/' . $registration->id, 'public');
-
-                        $registration->attachments()->create([
-                            'type'              => $request->input("documents.$index.type"),
-                            'label'             => $request->input("documents.$index.label"),
-                            'file_path'         => $path,
-                            'original_filename' => $file->getClientOriginalName(),
-                            'uploaded_by'       => Auth::id(),
-                        ]);
-                    }
-                }
-            }
-
-            return $registration;
-        });
+        $registration = RptPropertyRegistration::create($regData);
 
         return redirect()
             ->route('rpt.registration.show', $registration)

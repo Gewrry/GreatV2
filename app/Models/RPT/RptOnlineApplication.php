@@ -18,15 +18,18 @@ class RptOnlineApplication extends Model
     protected $fillable = [
         'reference_no', 'client_id',
         'owner_name', 'owner_tin', 'owner_address', 'owner_contact', 'owner_email',
+        'administrator_name', 'administrator_address',
         'barangay_id', 'street', 'municipality', 'province',
         'property_type', 'lot_no', 'blk_no', 'survey_no', 'title_no', 'land_area',
+        'boundary_north', 'boundary_south', 'boundary_east', 'boundary_west',
         'property_description', 'status', 'staff_remarks', 'reviewed_by', 'reviewed_at',
-        'faas_property_id',
+        'faas_property_id', 'polygon_coordinates',
     ];
 
     protected $casts = [
         'land_area'   => 'decimal:4',
         'reviewed_at' => 'datetime',
+        'polygon_coordinates' => 'array',
     ];
 
     public function barangay(): BelongsTo

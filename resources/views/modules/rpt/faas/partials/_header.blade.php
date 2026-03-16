@@ -225,7 +225,7 @@
         </div>
     </div>
     
-    <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
         <div>
             <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Owner Address</div>
             <div class="text-sm text-gray-700 leading-relaxed">{{ $faas->propertyRegistration->owner_address ?? $faas->owner_address }}</div>
@@ -240,15 +240,23 @@
             <div class="text-sm text-gray-700">{{ $faas->propertyRegistration->street ?? $faas->street ?? 'Street/Sitio' }}</div>
             <div class="text-sm text-gray-700 mt-1">{{ $faas->propertyRegistration->municipality ?? $faas->municipality }}, {{ $faas->propertyRegistration->province ?? $faas->province }}</div>
         </div>
-        <div>
+        <div class="lg:col-span-1">
             <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Cadastral Details</div>
-            <div class="text-sm text-gray-700">Lot: {{ $faas->propertyRegistration->lot_no ?? $faas->lot_no ?? '—' }} | Blk: {{ $faas->propertyRegistration->blk_no ?? $faas->blk_no ?? '—' }}</div>
-            <div class="text-[11px] text-gray-400 mt-1">Survey: {{ $faas->propertyRegistration->survey_no ?? $faas->survey_no ?? '—' }}</div>
+            <div class="text-sm text-gray-700">Lot: {{ $faas->lot_no ?? $faas->parentLand->lot_no ?? $faas->propertyRegistration->lot_no ?? '—' }} | Blk: {{ $faas->blk_no ?? $faas->parentLand->blk_no ?? $faas->propertyRegistration->blk_no ?? '—' }}</div>
+            <div class="text-[11px] text-gray-400 mt-1">Survey: {{ $faas->survey_no ?? $faas->parentLand->survey_no ?? $faas->propertyRegistration->survey_no ?? '—' }}</div>
         </div>
         <div>
             <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Title Reference</div>
-            <div class="text-sm font-bold text-blue-700">{{ $faas->propertyRegistration->title_no ?? $faas->title_no ?? 'NO TITLE' }}</div>
+            <div class="text-sm font-bold text-blue-700">{{ $faas->propertyRegistration->title_no ?? $faas->title_no ?? 'No Title' }}</div>
             <div class="text-[11px] text-gray-400 mt-1">Property Type: <span class="capitalize">{{ $faas->propertyRegistration->property_type ?? $faas->property_type }}</span></div>
+        </div>
+        <div class="lg:col-span-1">
+            <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                <i class="fas fa-map-marked-alt"></i> Spatial Overview
+            </div>
+            <div id="headerSpatialMap" class="w-full h-16 rounded-lg border border-emerald-100 bg-gray-50 flex items-center justify-center overflow-hidden">
+                <span class="text-[10px] text-gray-400 italic">No coordinates</span>
+            </div>
         </div>
     </div>
 </div>

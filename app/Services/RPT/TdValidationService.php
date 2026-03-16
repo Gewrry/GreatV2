@@ -37,6 +37,21 @@ class TdValidationService extends ValidationService
         if (empty($td->tax_rate) || $td->tax_rate <= 0) {
             $this->fail('tax_rate', 'Cannot approve TD: Valid tax rate (Basic) is required.');
         }
+
+        // Effectivity year must be set
+        if (empty($td->effectivity_year) || $td->effectivity_year <= 0) {
+            $this->fail('effectivity_year', 'Cannot approve TD: Effectivity Year is required.');
+        }
+
+        // Exempt properties must state an exemption basis
+        if ($td->is_taxable === false && empty($td->exemption_basis)) {
+            $this->fail('exemption_basis', 'Cannot approve TD: Tax-exempt properties must specify an Exemption Basis (e.g., Government-owned, Religious, Charitable).');
+        }
+
+        // Assessed value must be positive
+        if ($td->total_assessed_value <= 0) {
+            $this->fail('total_assessed_value', 'Cannot approve TD: Assessed Value must be greater than zero.');
+        }
         
         // Ensure FAAS is still active
         if ($td->property->isInactive()) {

@@ -127,8 +127,8 @@ public function index(Request $request)
                 'municipality'          => $registration->municipality,
                 'province'              => $registration->province,
                 'title_no'              => $registration->title_no,
-                'lot_no'                => $registration->lot_no,
-                'blk_no'                => $registration->blk_no,
+                'lot_no'                => null, // Filled during appraisal
+                'blk_no'                => null, // Filled during appraisal
                 'survey_no'             => $registration->survey_no,
                 'property_type'         => $registration->property_type,
                 
@@ -136,6 +136,8 @@ public function index(Request $request)
                 'remarks'               => 'DRAFT FAAS based on Intake Registration #'.$registration->id,
                 'status'                => 'draft',
                 'created_by'            => Auth::id(),
+                'polygon_coordinates'   => $registration->polygon_coordinates,
+                'parent_land_faas_id'   => $registration->parent_land_faas_id,
             ]);
 
             FaasActivityLog::create([
@@ -204,15 +206,21 @@ public function index(Request $request)
                 'municipality'  => $registration->municipality,
                 'province'      => $registration->province,
                 'title_no'      => $registration->title_no,
-                'lot_no'        => $registration->lot_no,
-                'blk_no'        => $registration->blk_no,
+                'lot_no'        => null, // Filled during appraisal
+                'blk_no'        => null, // Filled during appraisal
                 'survey_no'     => $registration->survey_no,
+                'boundary_north' => $registration->boundary_north,
+                'boundary_south' => $registration->boundary_south,
+                'boundary_east'  => $registration->boundary_east,
+                'boundary_west'  => $registration->boundary_west,
                 'property_type' => $registration->property_type,
 
                 'revision_year_id' => $revision?->id,
                 'remarks'          => 'Auto-draft from Registration #' . $registration->id,
                 'status'           => 'draft',
                 'created_by'       => Auth::id(),
+                'polygon_coordinates' => $registration->polygon_coordinates,
+                'parent_land_faas_id' => $registration->parent_land_faas_id,
             ]);
 
             FaasActivityLog::create([
@@ -276,7 +284,12 @@ public function index(Request $request)
             'market_value_adjustments' => 'nullable|numeric',
             'latitude'                 => 'nullable|numeric|between:-90,90',
             'longitude'                => 'nullable|numeric|between:-180,180',
+            'polygon_coordinates'      => 'nullable|json',
         ]);
+
+        if (isset($data['polygon_coordinates'])) {
+            $data['polygon_coordinates'] = json_decode($data['polygon_coordinates'], true);
+        }
 
         // Auto-connect Assessment Level from System Settings
         $tempMV = (float) $request->area_sqm * (float) $request->unit_value + (float) $request->market_value_adjustments;
@@ -306,7 +319,12 @@ public function index(Request $request)
             'market_value_adjustments'  => 'nullable|numeric',
             'latitude'                  => 'nullable|numeric|between:-90,90',
             'longitude'                 => 'nullable|numeric|between:-180,180',
+            'polygon_coordinates'       => 'nullable|json',
         ]);
+
+        if (isset($data['polygon_coordinates'])) {
+            $data['polygon_coordinates'] = json_decode($data['polygon_coordinates'], true);
+        }
 
         // Auto-connect Assessment Level from System Settings
         $tempMV = (float) $request->area_sqm * (float) $request->unit_value + (float) $request->market_value_adjustments;
@@ -322,9 +340,9 @@ public function index(Request $request)
     {
         abort_if(!$faas->isEditable(), 403, 'Action Blocked: Property record is locked.');
         
-        // Deletion Guard: Block if improvements (buildings) are linked to this lot
-        if ($land->buildings()->exists()) {
-            return back()->with('error', 'Cannot remove land parcel: There are building improvements currently linked to this lot. Please unlink them first.');
+        // Deletion Guard: Block if improvements (buildings or machineries) are linked to this lot
+        if ($land->buildings()->exists() || $land->machineries()->exists()) {
+            return back()->with('error', 'Cannot remove land parcel: There are active improvements (buildings or machinery) currently linked to this lot. Please unlink or remove them first.');
         }
 
         $land->delete();
@@ -601,6 +619,7 @@ public function index(Request $request)
             $lockedFaas->update([
                 'status'      => 'approved',
                 'arp_no'      => FaasProperty::generateArpNo($lockedFaas), // Atomic within transaction
+                'pin'         => $lockedFaas->generateStructuredPin(),
                 'approved_by' => Auth::id(),
                 'approved_at' => now(),
             ]);
@@ -1402,14 +1421,23 @@ public function index(Request $request)
 
         $faas->update($data);
 
+        // Smart Sync: If there is exactly one land parcel, sync its Lot/Block to match the Master
+        if ($faas->lands()->count() === 1) {
+            $land = $faas->lands()->first();
+            $land->update([
+                'lot_no' => $faas->lot_no,
+                'blk_no' => $faas->blk_no,
+            ]);
+        }
+
         FaasActivityLog::create([
             'faas_property_id' => $faas->id,
             'user_id'          => Auth::id(),
             'action'           => 'master_update',
-            'description'      => 'Updated core FAAS details (Owner and/or Location).',
+            'description'      => 'Updated core FAAS details (Owner and/or Location).' . ($faas->lands()->count() === 1 ? ' Linked land parcel synchronized.' : ''),
         ]);
 
-        return back()->with('success', 'Property details updated successfully.');
+        return back()->with('success', 'Property details updated successfully.' . ($faas->lands()->count() === 1 ? ' Land parcel Lot/Block synchronized.' : ''));
     }
 
     /**

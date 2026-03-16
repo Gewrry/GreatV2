@@ -80,9 +80,8 @@ class RptOnlinePaymentController extends Controller
             );
         }
 
-        // Fetch all unpaid/partial billings and refresh totals
+        // Fetch ALL billings (paid and unpaid) for the comprehensive ledger
         $billings = RptBilling::where('tax_declaration_id', $td->id)
-            ->whereIn('status', ['unpaid', 'partial'])
             ->orderBy('tax_year', 'asc')
             ->orderBy('quarter', 'asc')
             ->get();
@@ -91,14 +90,50 @@ class RptOnlinePaymentController extends Controller
             $b->refreshTotals();
         }
 
-        // Also load payment history
+        // Fetch all successful payment history for the audit trail
         $payments = RptPayment::whereHas('billing', function ($q) use ($td) {
             $q->where('tax_declaration_id', $td->id);
-        })->with('billing')->latest()->get();
+        })
+        ->where('status', 'completed')
+        ->with('billing')
+        ->orderBy('payment_date', 'desc')
+        ->get();
 
-        $totalDue = $billings->sum('balance');
+        // Calculate totals
+        $totalPaid = $payments->sum('amount');
+        $totalDue  = $billings->sum('balance');
 
-        return view('client.rpt.payments.soa', compact('td', 'billings', 'payments', 'totalDue'));
+        return view('client.rpt.payments.soa', compact('td', 'billings', 'payments', 'totalPaid', 'totalDue'));
+    }
+
+    /**
+     * Generate the downloadable/printable SOA using the common template.
+     */
+    public function printSoa(TaxDeclaration $td)
+    {
+        abort_if($td->status !== 'forwarded', 404);
+
+        $billings = RptBilling::where('tax_declaration_id', $td->id)
+            ->orderBy('tax_year', 'asc')
+            ->orderBy('quarter', 'asc')
+            ->get();
+
+        foreach ($billings as $b) {
+            $b->refreshTotals();
+        }
+
+        $payments = RptPayment::whereHas('billing', function ($q) use ($td) {
+            $q->where('tax_declaration_id', $td->id);
+        })
+        ->where('status', 'completed')
+        ->with('billing')
+        ->orderBy('payment_date', 'asc')
+        ->get();
+
+        $totalDue  = $billings->sum('balance');
+        $totalPaid = $payments->sum('amount');
+
+        return view('modules.treasury.rpt_payments.soa', compact('td', 'billings', 'payments', 'totalDue', 'totalPaid'));
     }
 
     // ─── INITIATE PAYMONGO CHECKOUT ─────────────────────────────────────────────

@@ -8,9 +8,18 @@ class RptPropertyRegistration extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'polygon_coordinates' => 'array',
+    ];
+
     public function faasProperties()
     {
         return $this->hasMany(FaasProperty::class, 'property_registration_id');
+    }
+
+    public function parentLand()
+    {
+        return $this->belongsTo(FaasProperty::class, 'parent_land_faas_id');
     }
 
     public function attachments()

@@ -22,14 +22,17 @@ class FaasProperty extends Model
         'administrator_name', 'administrator_address', 'barangay_id', 'street',
         'municipality', 'province', 'status',
         'title_no', 'lot_no', 'blk_no', 'survey_no',
-        'previous_faas_property_id', 'revision_year_id',
+        'boundary_north', 'boundary_south', 'boundary_east', 'boundary_west',
+        'previous_faas_property_id', 'revision_year_id', 'parent_land_faas_id',
         'created_by', 'approved_by', 'approved_at', 'inactive_at', 'remarks',
+        'polygon_coordinates',
     ];
 
     protected $casts = [
         'approved_at' => 'datetime',
         'inactive_at' => 'datetime',
         'effectivity_date' => 'date',
+        'polygon_coordinates' => 'array',
     ];
 
     /**
@@ -134,6 +137,11 @@ class FaasProperty extends Model
     public function taxDeclarations(): HasMany
     {
         return $this->hasMany(TaxDeclaration::class, 'faas_property_id');
+    }
+
+    public function parentLand(): BelongsTo
+    {
+        return $this->belongsTo(FaasProperty::class, 'parent_land_faas_id');
     }
 
     public function activityLogs(): HasMany
@@ -399,21 +407,25 @@ class FaasProperty extends Model
     }
 
     /**
-     * Internal helper to generate the 14-digit Land PIN base.
+     * Generate structured PIN following Stage 3 requirements.
+     * Format: Prov-City-District-Brgy-Section-Parcel
      */
-    public function generateBasePin(): string
+    public function generateStructuredPin(): string
     {
         $prov = str_pad(RptaSetting::get('province_code', '000'), 3, '0', STR_PAD_LEFT);
         $mun  = str_pad(RptaSetting::get('municipality_code', '00'), 2, '0', STR_PAD_LEFT);
         
-        $brgyCode = '0000';
+        $dist = '000';
+        $brgy = '000';
         if ($this->barangay) {
-            $brgyCode = str_pad($this->barangay->brgy_code ?? '0000', 4, '0', STR_PAD_LEFT);
+            $dist = str_pad($this->barangay->brgy_district ?? '000', 3, '0', STR_PAD_LEFT);
+            $brgy = str_pad($this->barangay->brgy_code     ?? '000', 3, '0', STR_PAD_LEFT);
+            $brgy = substr($brgy, -3); 
         }
 
         $section = str_pad($this->section_no ?: '000', 3, '0', STR_PAD_LEFT);
-        $parcel  = str_pad($this->parcel_no  ?: '00',  2, '0', STR_PAD_LEFT);
+        $parcel  = str_pad($this->parcel_no  ?: '000', 3, '0', STR_PAD_LEFT);
 
-        return "{$prov}-{$mun}-{$brgyCode}-{$section}-{$parcel}";
+        return "{$prov}-{$mun}-{$dist}-{$brgy}-{$section}-{$parcel}";
     }
 }

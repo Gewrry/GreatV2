@@ -157,4 +157,427 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <!-- LEAFLET CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            console.log('FAAS Show Scripts Initializing...');
+        if(document.getElementById('headerSpatialMap')) {
+            const hasCoords = @json(
+                ($faas->lands && $faas->lands->first(fn($l) => !empty($l->polygon_coordinates))) || 
+                ($faas->parentLand && $faas->parentLand->lands && $faas->parentLand->lands->first(fn($l) => !empty($l->polygon_coordinates)))
+            );
+            
+            console.log('FAAS Header Map - hasCoords:', hasCoords);
+
+            if(hasCoords) {
+                document.getElementById('headerSpatialMap').innerHTML = '';
+                const headerMap = L.map('headerSpatialMap', { 
+                    zoomControl: false, 
+                    attributionControl: false, 
+                    dragging: false, 
+                    scrollWheelZoom: false 
+                }).setView([12.8797, 121.7740], 6);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(headerMap);
+                
+                const group = new L.FeatureGroup();
+                let addedCount = 0;
+
+                @foreach($faas->lands as $l)
+                    @if(!empty($l->polygon_coordinates))
+                        try {
+                            L.geoJSON({!! json_encode($l->polygon_coordinates) !!}, { style: { color: '#059669', weight: 2, fillOpacity: 0.3 } }).addTo(group);
+                            addedCount++;
+                        } catch(e) { console.error('Error adding FAAS land coords:', e); }
+                    @endif
+                @endforeach
+
+                @if($faas->lands->count() === 0 && $faas->parentLand)
+                    @foreach($faas->parentLand->lands as $pl)
+                        @if(!empty($pl->polygon_coordinates))
+                            try {
+                                L.geoJSON({!! json_encode($pl->polygon_coordinates) !!}, { style: { color: '#059669', weight: 2, fillOpacity: 0.3, dashArray: '5, 5' } }).addTo(group);
+                                addedCount++;
+                            } catch(e) { console.error('Error adding Parent land coords:', e); }
+                        @endif
+                    @endforeach
+                @endif
+
+                console.log('FAAS Header Map - Layers added:', addedCount);
+                if (addedCount > 0) {
+                    group.addTo(headerMap);
+                    setTimeout(() => {
+                        headerMap.invalidateSize();
+                        const bounds = group.getBounds();
+                        if (bounds.isValid()) {
+                            headerMap.fitBounds(bounds, { padding: [5, 5] });
+                        }
+                    }, 100);
+                }
+            }
+        }
+
+        // ═══════════ INLINE LAND MAP (Add Panel) ═══════════
+        if(document.getElementById('inlineLandMap')) {
+            const inlineMap = L.map('inlineLandMap').setView([12.8797, 121.7740], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(inlineMap);
+
+            const inlineDrawnItems = new L.FeatureGroup();
+            inlineMap.addLayer(inlineDrawnItems);
+            
+            const inlineDrawControl = new L.Control.Draw({
+                draw: { polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#059669' } }, polyline: false, circle: false, rectangle: false, circlemarker: false, marker: false },
+                edit: { featureGroup: inlineDrawnItems }
+            });
+            inlineMap.addControl(inlineDrawControl);
+
+            const importRegInlineBtn = document.getElementById('inlineImportRegBtn');
+            const calcAreaInlineBtn = document.getElementById('inlineCalcAreaBtn');
+
+            // Import Rough Sketch from Registration
+            if(importRegInlineBtn) {
+                importRegInlineBtn.addEventListener('click', function() {
+                    @if($faas->propertyRegistration && $faas->propertyRegistration->polygon_coordinates)
+                        const regCoords = {!! json_encode($faas->propertyRegistration->polygon_coordinates) !!};
+                        inlineDrawnItems.clearLayers();
+                        L.geoJSON(regCoords).eachLayer(l => inlineDrawnItems.addLayer(l));
+                        inlineMap.fitBounds(inlineDrawnItems.getBounds());
+                        updateInlineCoords();
+                    @endif
+                });
+            }
+
+            // Validate Area — compare drawn polygon area vs declared area
+            if(calcAreaInlineBtn) {
+                calcAreaInlineBtn.addEventListener('click', function() {
+                    const layers = inlineDrawnItems.getLayers();
+                    if(layers.length > 0) {
+                        const layer = layers[0];
+                        const latlngs = layer.getLatLngs();
+                        const area = L.GeometryUtil.geodesicArea(latlngs[0]);
+                        const declaredArea = parseFloat(document.querySelector('#land-form input[name="area_sqm"]').value) || 0;
+                        const diff = Math.abs(area - declaredArea);
+                        const pctDiff = declaredArea > 0 ? ((diff / declaredArea) * 100).toFixed(1) : '—';
+                        const msg = `Drawn Area: ${area.toFixed(2)} sqm\nDeclared Area: ${declaredArea.toFixed(2)} sqm\nDifference: ${diff.toFixed(2)} sqm (${pctDiff}%)\n\nUse the drawn area value?`;
+                        if(confirm(msg)) {
+                            document.querySelector('#land-form input[name="area_sqm"]').value = area.toFixed(2);
+                        }
+                    }
+                });
+            }
+
+            inlineMap.on(L.Draw.Event.CREATED, function (event) {
+                inlineDrawnItems.clearLayers();
+                inlineDrawnItems.addLayer(event.layer);
+                updateInlineCoords();
+                if(calcAreaInlineBtn) calcAreaInlineBtn.classList.remove('hidden');
+            });
+            inlineMap.on(L.Draw.Event.EDITED, updateInlineCoords);
+            inlineMap.on(L.Draw.Event.DELETED, function() {
+                updateInlineCoords();
+                if(calcAreaInlineBtn) calcAreaInlineBtn.classList.add('hidden');
+            });
+            
+            function updateInlineCoords() {
+                const data = inlineDrawnItems.toGeoJSON();
+                if(data.features.length > 0) {
+                    document.getElementById('inline_polygon_coordinates').value = JSON.stringify(data);
+                    document.getElementById('clearInlineLandMapBtn').classList.remove('hidden');
+                    if(calcAreaInlineBtn) calcAreaInlineBtn.classList.remove('hidden');
+                    const bounds = inlineDrawnItems.getBounds();
+                    const center = bounds.getCenter();
+                    document.getElementById('inline_latitude').value = center.lat.toFixed(8);
+                    document.getElementById('inline_longitude').value = center.lng.toFixed(8);
+                } else {
+                    document.getElementById('inline_polygon_coordinates').value = '';
+                    document.getElementById('inline_latitude').value = '';
+                    document.getElementById('inline_longitude').value = '';
+                    document.getElementById('clearInlineLandMapBtn').classList.add('hidden');
+                    if(calcAreaInlineBtn) calcAreaInlineBtn.classList.add('hidden');
+                }
+            }
+            const clearInlineBtn = document.getElementById('clearInlineLandMapBtn');
+            if (clearInlineBtn) {
+                clearInlineBtn.addEventListener('click', function() {
+                    inlineDrawnItems.clearLayers();
+                    updateInlineCoords();
+                });
+            }
+
+            // Handle toggle resize + auto-import from Registration
+            const landToggleBtn = document.getElementById('land-toggle-btn');
+            if (landToggleBtn) {
+                landToggleBtn.addEventListener('click', function() {
+                    setTimeout(() => { 
+                        inlineMap.invalidateSize(); 
+                        if (inlineDrawnItems.getLayers().length === 0) {
+                            @if($faas->propertyRegistration && $faas->propertyRegistration->polygon_coordinates)
+                                try {
+                                    const regCoords = {!! json_encode($faas->propertyRegistration->polygon_coordinates) !!};
+                                    L.geoJSON(regCoords).eachLayer(l => inlineDrawnItems.addLayer(l));
+                                    inlineMap.fitBounds(inlineDrawnItems.getBounds());
+                                    updateInlineCoords();
+                                } catch(e) {}
+                            @endif
+                        }
+                    }, 300);
+                });
+            }
+        }
+
+        // ═══════════ ADD LAND MAP (Modal) ═══════════
+        if(document.getElementById('addLandMap')) {
+            const addMap = L.map('addLandMap').setView([12.8797, 121.7740], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(addMap);
+            
+            // Auto-zoom to Registration boundary context
+            @if($faas->propertyRegistration && $faas->propertyRegistration->polygon_coordinates)
+                try {
+                    const regCoords = {!! json_encode($faas->propertyRegistration->polygon_coordinates) !!};
+                    const regLayer = L.geoJSON(regCoords);
+                    addMap.fitBounds(regLayer.getBounds());
+                    addMap.zoomOut(1);
+                } catch(e) {}
+            @endif
+
+            const addDrawnItems = new L.FeatureGroup();
+            addMap.addLayer(addDrawnItems);
+            
+            const addDrawControl = new L.Control.Draw({
+                draw: { polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#059669' } }, polyline: false, circle: false, rectangle: false, circlemarker: false, marker: false },
+                edit: { featureGroup: addDrawnItems }
+            });
+            addMap.addControl(addDrawControl);
+            
+            const importRegBtn = document.getElementById('importRegBoundaryBtn');
+            const calcAreaBtn = document.getElementById('calcAreaFromMapBtn');
+
+            if(importRegBtn) {
+                importRegBtn.addEventListener('click', function() {
+                    @if($faas->propertyRegistration && $faas->propertyRegistration->polygon_coordinates)
+                        const regCoords = {!! json_encode($faas->propertyRegistration->polygon_coordinates) !!};
+                        addDrawnItems.clearLayers();
+                        L.geoJSON(regCoords).eachLayer(l => addDrawnItems.addLayer(l));
+                        addMap.fitBounds(addDrawnItems.getBounds());
+                        updateAddCoords();
+                        calcAreaBtn.classList.remove('hidden');
+                    @endif
+                });
+            }
+
+            // Validate Area — compare drawn polygon area vs declared
+            if(calcAreaBtn) {
+                calcAreaBtn.addEventListener('click', function() {
+                    const layers = addDrawnItems.getLayers();
+                    if(layers.length > 0) {
+                        const layer = layers[0];
+                        const latlngs = layer.getLatLngs();
+                        const area = L.GeometryUtil.geodesicArea(latlngs[0]);
+                        const declaredArea = parseFloat(document.querySelector('#addLandModal input[name="area_sqm"]').value) || 0;
+                        const diff = Math.abs(area - declaredArea);
+                        const pctDiff = declaredArea > 0 ? ((diff / declaredArea) * 100).toFixed(1) : '—';
+                        const msg = `Drawn Area: ${area.toFixed(2)} sqm\nDeclared Area: ${declaredArea.toFixed(2)} sqm\nDifference: ${diff.toFixed(2)} sqm (${pctDiff}%)\n\nUse the drawn area value?`;
+                        if(confirm(msg)) {
+                            document.querySelector('#addLandModal input[name="area_sqm"]').value = area.toFixed(2);
+                        }
+                    }
+                });
+            }
+
+            addMap.on(L.Draw.Event.CREATED, function (event) {
+                addDrawnItems.clearLayers();
+                addDrawnItems.addLayer(event.layer);
+                updateAddCoords();
+                if(calcAreaBtn) calcAreaBtn.classList.remove('hidden');
+            });
+            addMap.on(L.Draw.Event.EDITED, updateAddCoords);
+            addMap.on(L.Draw.Event.DELETED, function() {
+                updateAddCoords();
+                if(calcAreaBtn) calcAreaBtn.classList.add('hidden');
+            });
+            
+            function updateAddCoords() {
+                const data = addDrawnItems.toGeoJSON();
+                if(data.features.length > 0) {
+                    document.getElementById('add_polygon_coordinates').value = JSON.stringify(data);
+                    document.getElementById('clearAddLandMapBtn').classList.remove('hidden');
+                    if(calcAreaBtn) calcAreaBtn.classList.remove('hidden');
+                    const bounds = addDrawnItems.getBounds();
+                    const center = bounds.getCenter();
+                    document.getElementById('add_latitude').value = center.lat.toFixed(8);
+                    document.getElementById('add_longitude').value = center.lng.toFixed(8);
+                } else {
+                    document.getElementById('add_polygon_coordinates').value = '';
+                    document.getElementById('add_latitude').value = '';
+                    document.getElementById('add_longitude').value = '';
+                    document.getElementById('clearAddLandMapBtn').classList.add('hidden');
+                    if(calcAreaBtn) calcAreaBtn.classList.add('hidden');
+                }
+            }
+            const clearAddBtn = document.getElementById('clearAddLandMapBtn');
+            if (clearAddBtn) {
+                clearAddBtn.addEventListener('click', function() {
+                    addDrawnItems.clearLayers();
+                    updateAddCoords();
+                });
+            }
+
+            // Re-render + auto-import when modal opens
+            const addModal = document.getElementById('addLandModal');
+            if (addModal) {
+                const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.attributeName === "class" && !addModal.classList.contains('hidden')) {
+                        setTimeout(() => { 
+                            addMap.invalidateSize(); 
+                            if (addDrawnItems.getLayers().length === 0) {
+                                @if($faas->propertyRegistration && $faas->propertyRegistration->polygon_coordinates)
+                                    try {
+                                        const regCoords = {!! json_encode($faas->propertyRegistration->polygon_coordinates) !!};
+                                        L.geoJSON(regCoords).eachLayer(l => addDrawnItems.addLayer(l));
+                                        addMap.fitBounds(addDrawnItems.getBounds());
+                                        updateAddCoords();
+                                    } catch(e) {}
+                                @endif
+                            }
+                        }, 100);
+                    }
+                });
+            });
+                observer.observe(addModal, { attributes: true });
+            }
+        }
+
+        // ═══════════ EDIT LAND MAP ═══════════
+        if(document.getElementById('editLandMap')) {
+            const editMap = L.map('editLandMap').setView([12.8797, 121.7740], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(editMap);
+
+            const editDrawnItems = new L.FeatureGroup();
+            editMap.addLayer(editDrawnItems);
+            
+            const editDrawControl = new L.Control.Draw({
+                draw: { polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#047857' } }, polyline: false, circle: false, rectangle: false, circlemarker: false, marker: false },
+                edit: { featureGroup: editDrawnItems }
+            });
+            editMap.addControl(editDrawControl);
+
+            const importRegEditBtn = document.getElementById('importRegBoundaryEditBtn');
+            const calcAreaEditBtn = document.getElementById('calcAreaFromEditMapBtn');
+
+            if(importRegEditBtn) {
+                importRegEditBtn.addEventListener('click', function() {
+                    @if($faas->propertyRegistration && $faas->propertyRegistration->polygon_coordinates)
+                        const regCoords = {!! json_encode($faas->propertyRegistration->polygon_coordinates) !!};
+                        editDrawnItems.clearLayers();
+                        L.geoJSON(regCoords).eachLayer(l => editDrawnItems.addLayer(l));
+                        editMap.fitBounds(editDrawnItems.getBounds());
+                        updateEditCoords();
+                    @endif
+                });
+            }
+
+            // Validate Area — compare drawn polygon area vs declared
+            if(calcAreaEditBtn) {
+                calcAreaEditBtn.addEventListener('click', function() {
+                    const layers = editDrawnItems.getLayers();
+                    if(layers.length > 0) {
+                        const layer = layers[0];
+                        const latlngs = layer.getLatLngs();
+                        const area = L.GeometryUtil.geodesicArea(latlngs[0]);
+                        const declaredArea = parseFloat(document.querySelector('#editLandModal input[name="area_sqm"]').value) || 0;
+                        const diff = Math.abs(area - declaredArea);
+                        const pctDiff = declaredArea > 0 ? ((diff / declaredArea) * 100).toFixed(1) : '—';
+                        const msg = `Drawn Area: ${area.toFixed(2)} sqm\nDeclared Area: ${declaredArea.toFixed(2)} sqm\nDifference: ${diff.toFixed(2)} sqm (${pctDiff}%)\n\nUse the drawn area value?`;
+                        if(confirm(msg)) {
+                            document.querySelector('#editLandModal input[name="area_sqm"]').value = area.toFixed(2);
+                        }
+                    }
+                });
+            }
+
+            editMap.on(L.Draw.Event.CREATED, function (event) {
+                editDrawnItems.clearLayers();
+                editDrawnItems.addLayer(event.layer);
+                updateEditCoords();
+                if(calcAreaEditBtn) calcAreaEditBtn.classList.remove('hidden');
+            });
+            editMap.on(L.Draw.Event.EDITED, updateEditCoords);
+            editMap.on(L.Draw.Event.DELETED, function() {
+                updateEditCoords();
+                if(calcAreaEditBtn) calcAreaEditBtn.classList.add('hidden');
+            });
+            
+            function updateEditCoords() {
+                const data = editDrawnItems.toGeoJSON();
+                if(data.features.length > 0) {
+                    document.getElementById('edit_polygon_coordinates').value = JSON.stringify(data);
+                    document.getElementById('clearEditLandMapBtn').classList.remove('hidden');
+                    if(calcAreaEditBtn) calcAreaEditBtn.classList.remove('hidden');
+                    const bounds = editDrawnItems.getBounds();
+                    const center = bounds.getCenter();
+                    document.getElementById('edit_latitude').value = center.lat.toFixed(8);
+                    document.getElementById('edit_longitude').value = center.lng.toFixed(8);
+                } else {
+                    document.getElementById('edit_polygon_coordinates').value = '';
+                    document.getElementById('edit_latitude').value = '';
+                    document.getElementById('edit_longitude').value = '';
+                    document.getElementById('clearEditLandMapBtn').classList.add('hidden');
+                    if(calcAreaEditBtn) calcAreaEditBtn.classList.add('hidden');
+                }
+            }
+            const clearEditBtn = document.getElementById('clearEditLandMapBtn');
+            if (clearEditBtn) {
+                clearEditBtn.addEventListener('click', function() {
+                    editDrawnItems.clearLayers();
+                    updateEditCoords();
+                });
+            }
+
+            // Re-render + load existing polygon when edit modal opens
+            const editModal = document.getElementById('editLandModal');
+            if (editModal) {
+                const editObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.attributeName === "class" && !editModal.classList.contains('hidden')) {
+                        setTimeout(() => { 
+                            editMap.invalidateSize(); 
+                            const existingCoords = document.getElementById('edit_polygon_coordinates').value;
+                            if (existingCoords && existingCoords !== 'null' && existingCoords !== '') {
+                                try {
+                                    editDrawnItems.clearLayers();
+                                    const geojson = JSON.parse(existingCoords);
+                                    const layer = L.geoJSON(geojson, { shapeOptions: { color: '#047857' } });
+                                    layer.eachLayer(l => editDrawnItems.addLayer(l));
+                                    editMap.fitBounds(editDrawnItems.getBounds());
+                                    editMap.zoomOut(1);
+                                    document.getElementById('clearEditLandMapBtn').classList.remove('hidden');
+                                    if(calcAreaEditBtn) calcAreaEditBtn.classList.remove('hidden');
+                                } catch(e) {}
+                            } else {
+                                editDrawnItems.clearLayers();
+                                document.getElementById('clearEditLandMapBtn').classList.add('hidden');
+                                if(calcAreaEditBtn) calcAreaEditBtn.classList.add('hidden');
+                            }
+                        }, 100);
+                    }
+                });
+            });
+                editObserver.observe(editModal, { attributes: true });
+            }
+        }
+        } catch(e) {
+            console.error('CRITICAL ERROR in FAAS Show Scripts:', e);
+        }
+    });
+    </script>
+    @endpush
 </x-admin.app>

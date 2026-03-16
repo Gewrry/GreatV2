@@ -208,6 +208,10 @@
                             class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-slate-50 hover:text-blue-700 transition-colors"><span
                                 class="w-1.5 h-1.5 rounded-full bg-logo-teal shrink-0"></span> RPT Payments &
                             Delinquents</a>
+                        <a href="{{ route('treasury.gis.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-slate-50 hover:text-blue-700 transition-colors">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span> GIS Spatial Map (Heatmap)
+                        </a>
                         <a href="#"
                             class="flex items-center gap-2 px-4 py-2 text-xs text-gray-700 hover:bg-slate-50 hover:text-blue-700 transition-colors"><span
                                 class="w-1.5 h-1.5 rounded-full bg-logo-teal shrink-0"></span> List of <b
@@ -382,6 +386,7 @@
         'CTC' => ['CTC Form – Individual', 'CTC Form – Corporation', 'List of PAID CTC Receipts', 'List of CANCELLED CTC Receipts'],
         'RPTA' => [
             ['label' => 'RPT Payments & Delinquents', 'url' => route('treasury.rpt.payments.index')],
+            ['label' => 'GIS Spatial Map (Heatmap)', 'url' => route('treasury.gis.index')],
             ['label' => 'List of RPT Collections from Provincial Treasury Office', 'url' => '#'],
             ['label' => 'List of PAID Form 56 Receipts', 'url' => '#'],
             ['label' => 'List of CANCELLED Form 56 Receipts', 'url' => '#']

@@ -80,6 +80,9 @@
                                 <i class="fas fa-exclamation-triangle text-amber-500"></i> Outstanding Unpaid Quarters
                             </h2>
                             <div class="flex items-center gap-2">
+                                <a href="{{ route('treasury.rpt.payments.soa', $td) }}" target="_blank" class="text-[10px] font-bold bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded transition-colors uppercase">
+                                    <i class="fas fa-file-invoice"></i> Print Statement of Account
+                                </a>
                                 <a href="{{ route('treasury.rpt.payments.nod', $td) }}" class="text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded transition-colors uppercase">
                                     <i class="fas fa-print"></i> Print Notice of Delinquency
                                 </a>
