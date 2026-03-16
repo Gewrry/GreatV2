@@ -548,7 +548,7 @@
                                         <span class="text-[10px] font-extrabold text-logo-teal"
                                             x-text="filteredOrs.length + ' of ' + availableOrs.length + ' available'"></span>
                                     </div>
-                                    <template x-for="(or, idx) in filteredOrs" :key="or.or_number">
+                                    <template x-for="(or, idx) in filteredOrs" :key="or.or_number + '-' + or.receipt_type">
                                         <button type="button" @click="selectOr(or)"
                                             :class="{
                                                 'bg-logo-teal text-white': orFocusIndex === idx,

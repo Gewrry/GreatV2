@@ -170,121 +170,42 @@ class BplsPaymentController extends Controller
                     ->orWhere('last_name', 'like', "%{$search}%"));
         }
 
-        $usedHash = BplsPayment::pluck('or_number')
-            ->map(fn($or) => ltrim(trim((string) $or), '0') ?: '0')
-            ->flip()->toArray();
-
-        $available = [];
-
-        // 1. First, include ORs specifically assigned to this application in the back-office
-        if ($entry instanceof BplsOnlineApplication) {
-            $assigned = BplsApplicationOr::where('bpls_application_id', $entry->id)
-                ->where('status', 'unpaid')
-                ->get();
-
-            foreach ($assigned as $a) {
-                $available[] = [
-                    'or_number' => $a->or_number,
-                    'receipt_type' => 'Prescribed (Assigned)',
-                    'is_assigned' => true
-                ];
-            }
-        }
-
-        // 2. Then include the general pool of available ORs for the cashier
-        foreach ($assignments as $assignment) {
-            $startRaw = trim((string) $assignment->start_or);
-            $endRaw = trim((string) $assignment->end_or);
-            $start = (int) $startRaw;
-            $end = (int) $endRaw;
-            $padLength = strlen($startRaw);
-            $receipt = $assignment->receipt_type;
-
-            $count = 0;
-            for ($i = $start; $i <= $end && $count < 500; $i++) {
-                $orStr = str_pad((string) $i, $padLength, '0', STR_PAD_LEFT);
-                $orNormal = ltrim($orStr, '0') ?: '0';
-                
-                // Skip if already in the assigned list above
-                if (collect($available)->contains('or_number', $orStr)) continue;
-
-                if (!isset($usedHash[$orNormal])) {
-                    $available[] = ['or_number' => $orStr, 'receipt_type' => $receipt, 'is_assigned' => false];
-                    $count++;
-                }
-            }
-        }
-
         return $q->get()->map(fn($app) => $this->mapOnlineEntry($app));
     }
 
     private function mapOnlineEntry($app): \stdClass
     {
-        $isOnline = str_starts_with($unifiedId, 'online_');
-        $id = str_replace(['online_', 'walkin_'], '', $unifiedId);
+        $app->is_online = true;
+        $app->business_name = $app->business?->business_name ?? 'N/A';
+        $app->trade_name = $app->business?->trade_name;
+        $app->unified_id = 'online_' . $app->id;
+        $app->display_status = $app->workflow_status;
+        $app->status = match ($app->workflow_status) {
+            'assessed' => 'for_payment',
+            'paid', 'approved' => 'approved',
+            default => 'for_payment'
+        };
+        $app->renewal_cycle = 0;
+        $app->permit_year = $app->permit_year ?? now()->year;
+        $app->active_total_due = $app->assessment_amount;
+        $app->mode_of_payment = $app->mode_of_payment ?? 'annual';
+        $app->last_name = $app->owner?->last_name;
+        $app->first_name = $app->owner?->first_name;
+        $app->middle_name = $app->owner?->middle_name;
 
-        if ($isOnline) {
-            $entry = \App\Models\onlineBPLS\BplsOnlineApplication::findOrFail($id);
-            $entry->status = match ($entry->workflow_status) {
-                'assessed' => 'for_payment',
-                'paid', 'approved' => 'approved',
-                default => 'for_payment'
-            };
-            $entry->is_online = true;
-            $entry->business_name = $entry->business?->business_name ?? 'N/A';
-            $entry->trade_name = $entry->business?->trade_name;
-            $entry->renewal_cycle = 0;
-            $entry->permit_year = $entry->permit_year ?? now()->year;
-            $entry->active_total_due = $entry->assessment_amount;
-            $entry->mode_of_payment = $entry->mode_of_payment ?? 'annual';
-            $entry->last_name = $entry->owner?->last_name;
-            $entry->first_name = $entry->owner?->first_name;
-            $entry->middle_name = $entry->owner?->middle_name;
-
-            // Recalculate Gross Total from fees to avoid double discount
-            $fees = $this->computeFees($entry);
-            $feeSum = collect($fees)->sum('amount');
-            if ($feeSum > 0) {
-                $entry->active_total_due = $feeSum;
-            } else {
-                $entry->active_total_due = (float) $entry->assessment_amount;
-            }
-            
-            // Critical: prevent virtual fields from being saved in update()
-            $entry->syncOriginal();
-            return $entry;
+        // Recalculate Gross Total from fees to avoid double discount
+        $fees = $this->computeFees($app);
+        $feeSum = collect($fees)->sum('amount');
+        if ($feeSum > 0) {
+            $app->active_total_due = $feeSum;
         }
 
-        $entry = BusinessEntry::find($id);
-
-        if (!$entry) {
-            $onlineApp = \App\Models\onlineBPLS\BplsOnlineApplication::find($id);
-            if ($onlineApp) {
-                return $this->resolveUnifiedEntry("online_{$onlineApp->id}");
-            }
-            abort(404, 'Business entry not found.');
+        // Critical: prevent virtual fields from being saved if update() is called later
+        if (method_exists($app, 'syncOriginal')) {
+            $app->syncOriginal();
         }
-
-        $entry->is_online = false;
-
-        $currentCycle = (int) ($entry->renewal_cycle ?? 0);
-        $storedYear = (int) ($entry->permit_year ?? now()->year);
-        $cycleHasPayments = BplsPayment::where('business_entry_id', $entry->id)
-            ->where('payment_year', $storedYear)
-            ->where('renewal_cycle', $currentCycle)
-            ->exists();
-
-        if (!$cycleHasPayments) {
-            $resolvedYear = $this->resolveNextPermitYear($entry);
-            if ($resolvedYear !== $storedYear) {
-                $entry->update(['permit_year' => $resolvedYear]);
-                $entry = $entry->fresh();
-                $entry->is_online = false;
-            }
-        }
-
-        $entry->syncOriginal();
-        return $entry;
+        
+        return (object) $app->toArray();
     }
 
     // =========================================================================
@@ -329,6 +250,9 @@ class BplsPaymentController extends Controller
 
         $isRenewal = ($entry->renewal_cycle ?? 0) > 0;
 
+        $schedule = $this->buildSchedule($entry, $activeTotalDue);
+        $quarterStatus = $this->getQuarterStatus($entry, $paidQuarters, $activeTotalDue);
+
         $beneficiaryInfo = $this->computeBeneficiaryDiscount($entry, $activeTotalDue);
         $discountedTotal = max(0, $activeTotalDue - $beneficiaryInfo['discount']);
         $perInstallment = $modeCount > 0 ? round($discountedTotal / $modeCount, 2) : 0;
@@ -364,47 +288,7 @@ class BplsPaymentController extends Controller
         ));
     }
 
-    // -------------------------------------------------------------------------
-    // SHOW helper — resolve + guard in one place
-    // -------------------------------------------------------------------------
-    private function resolveAndValidateForShow($unifiedId)
-    {
-        $isOnline = str_starts_with($unifiedId, 'online_');
-        $id = str_replace(['online_', 'walkin_'], '', $unifiedId);
 
-        if ($isOnline) {
-            $entry = \App\Models\onlineBPLS\BplsOnlineApplication::findOrFail($id);
-
-            if (!in_array($entry->workflow_status, ['assessed', 'paid'])) {
-                abort(redirect()->route('treasury.bpls_payment')
-                    ->with('error', 'This online application is not ready for payment.'));
-            }
-
-            $entry->status = match ($entry->workflow_status) {
-                'assessed' => 'for_payment', 'paid' => 'approved', default => 'for_payment'
-            };
-            $entry->is_online = true;
-            $entry->business_name = $entry->business?->business_name;
-            $entry->trade_name = $entry->business?->trade_name;
-            $entry->renewal_cycle = 0;
-            $entry->permit_year = $entry->permit_year ?? now()->year;
-            $entry->active_total_due = $entry->assessment_amount;
-            $entry->mode_of_payment = $entry->mode_of_payment;
-            return $entry;
-        }
-
-        $entry = BusinessEntry::find($id) ?? BusinessEntry::findOrFail($unifiedId);
-        $entry->is_online = false;
-
-        $allowedStatuses = ['for_payment', 'for_renewal_payment', 'approved'];
-        if (!in_array($entry->status, $allowedStatuses)) {
-            abort(redirect()->route('treasury.bpls_payment')
-                ->with('error', 'This business has not been assessed yet.'));
-        }
-
-        $this->maybeAdvancePermitYear($entry);
-        return $entry;
-    }
 
     // =========================================================================
     // PAY
@@ -489,12 +373,53 @@ class BplsPaymentController extends Controller
 
         $payment = BplsPayment::create($paymentData);
 
+        // --- WALK-IN PAYMENT SYNC FOR ONLINE APPLICATIONS ---
+        if ($entry instanceof \App\Models\onlineBPLS\BplsOnlineApplication) {
+            // 1. Sync the manual OR number to the pre-allocated online OR slots
+            \App\Models\bpls\onlineBPLS\BplsApplicationOr::where('bpls_application_id', $entry->id)
+                ->whereIn('installment_number', $quarters)
+                ->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'or_number' => $orNumber,
+                ]);
+
+            // 2. Move workflow status if the 1st installment is paid
+            if ($entry->workflow_status === 'assessed' && $entry->isPaymentSatisfiedForApproval()) {
+                $entry->update([
+                    'workflow_status' => 'paid',
+                    'paid_at' => now(),
+                    'or_number' => $orNumber,
+                ]);
+
+                \App\Models\onlineBPLS\BplsActivityLog::create([
+                    'bpls_application_id' => $entry->id,
+                    'actor_type'          => 'staff',
+                    'actor_id'            => auth()->id(),
+                    'action'              => 'payment_confirmed',
+                    'from_status'         => 'assessed',
+                    'to_status'           => 'paid',
+                    'remarks'             => 'Walk-in payment recorded by Treasury. OR: ' . $orNumber,
+                ]);
+
+                // AUTOMATION: Auto-issue permit if applicable
+                if (class_exists(\App\Http\Controllers\Bpls\Online\BplsApplicationReviewController::class)) {
+                    app(\App\Http\Controllers\Bpls\Online\BplsApplicationReviewController::class)->autoIssuePermitInternal($entry);
+                }
+            }
+        }
+
         $successMessage = "Payment recorded. O.R. #{$payment->or_number}";
         if ($advanceDiscount > 0) {
             $successMessage .= ' — ₱' . number_format($advanceDiscount, 2) . ' advance discount applied!';
         }
 
-        return redirect()->route('bpls.payment.show', $unifiedId)
+        $successRoute = 'bpls.payment.show';
+        if ($entry->is_online && str_contains(request()->header('referer'), 'treasury/bpls-online')) {
+            $successRoute = 'treasury.bpls_online.show';
+        }
+
+        return redirect()->route($successRoute, $unifiedId)
             ->with('payment_success', true)
             ->with('payment_id', $payment->id)
             ->with('success', $successMessage);
@@ -567,57 +492,7 @@ class BplsPaymentController extends Controller
             $data['business_entry_id'] = $entry->id;
         }
 
-
-        $payment = BplsPayment::create($paymentData);
-
-        $successMessage = "Payment recorded. O.R. #{$payment->or_number}";
-        if ($advanceDiscount > 0) {
-            $successMessage .= ' — ₱' . number_format($advanceDiscount, 2) . ' advance discount applied!';
-        }
-
-        // --- WALK-IN PAYMENT SYNC FOR ONLINE APPLICATIONS ---
-        if ($entry instanceof BplsOnlineApplication) {
-            // 1. Sync the manual OR number to the pre-allocated online OR slots
-            BplsApplicationOr::where('bpls_application_id', $entry->id)
-                ->whereIn('installment_number', $quarters)
-                ->update([
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                    'or_number' => $orNumber,
-                ]);
-
-            // 2. Move workflow status if the 1st installment is paid
-            if ($entry->workflow_status === 'assessed' && $entry->isPaymentSatisfiedForApproval()) {
-                $entry->update([
-                    'workflow_status' => 'paid',
-                    'paid_at' => now(),
-                    'or_number' => $orNumber,
-                ]);
-
-                BplsActivityLog::create([
-                    'bpls_application_id' => $entry->id,
-                    'actor_type'          => 'staff',
-                    'actor_id'            => auth()->id(),
-                    'action'              => 'payment_confirmed',
-                    'from_status'         => 'assessed',
-                    'to_status'           => 'paid',
-                    'remarks'             => 'Walk-in payment recorded by Treasury. OR: ' . $orNumber,
-                ]);
-
-                // AUTOMATION: Auto-issue permit if applicable
-                app(\App\Http\Controllers\Bpls\Online\BplsApplicationReviewController::class)->autoIssuePermitInternal($entry);
-            }
-        }
-
-        $successRoute = 'bpls.payment.show';
-        if ($entry->is_online && str_contains(request()->header('referer'), 'treasury/bpls-online')) {
-            $successRoute = 'treasury.bpls_online.show';
-        }
-
-        return redirect()->route($successRoute, $unifiedId)
-            ->with('payment_success', true)
-            ->with('payment_id', $payment->id)
-            ->with('success', $successMessage);
+        return $data;
     }
 
     // =========================================================================
@@ -890,24 +765,45 @@ class BplsPaymentController extends Controller
     // =========================================================================
     public function getAvailableOrNumbers($unifiedId)
     {
-        $this->resolveUnifiedEntry($unifiedId);
+        $entry = $this->resolveUnifiedEntry($unifiedId);
         $userId = auth()->id();
         $assignments = OrAssignment::where('user_id', $userId)->whereNull('deleted_at')->get();
-
-        if ($assignments->isEmpty()) {
-            return response()->json(['available' => [], 'message' => 'No OR ranges are assigned to your account.']);
-        }
 
         $usedHash = BplsPayment::pluck('or_number')
             ->map(fn($or) => ltrim(trim((string) $or), '0') ?: '0')
             ->flip()->toArray();
 
         $available = [];
+
+        // 1. Include ORs specifically assigned to this application (for Online Applications)
+        if ($entry instanceof \App\Models\onlineBPLS\BplsOnlineApplication) {
+            $assigned = \App\Models\bpls\onlineBPLS\BplsApplicationOr::where('bpls_application_id', $entry->id)
+                ->where('status', 'unpaid')
+                ->get();
+
+            foreach ($assigned as $a) {
+                // Skip if already recorded as used in bpls_payments (double check)
+                $orNormal = ltrim(trim((string) $a->or_number), '0') ?: '0';
+                if (isset($usedHash[$orNormal])) continue;
+
+                $available[] = [
+                    'or_number' => $a->or_number,
+                    'receipt_type' => 'Assigned',
+                    'is_assigned' => true
+                ];
+            }
+        }
+
+        // 2. Include the general pool of available ORs for the cashier
         foreach ($assignments as $assignment) {
             $available = array_merge(
                 $available,
                 $this->buildAvailableOrList($assignment, $usedHash)
             );
+        }
+
+        if (empty($available) && $assignments->isEmpty()) {
+            return response()->json(['available' => [], 'message' => 'No OR ranges are assigned to your account.']);
         }
 
         return response()->json(['available' => $available, 'total' => count($available)]);
