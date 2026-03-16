@@ -110,6 +110,20 @@ class BplsOnlineApplication extends Model
         return $this->hasMany(BplsActivityLog::class, 'bpls_application_id');
     }
 
+    public function latestLog()
+    {
+        return $this->hasOne(BplsActivityLog::class, 'bpls_application_id')->latestOfMany();
+    }
+
+    /**
+     * Benefits/Discounts applied to this application via the owner.
+     * This aligns online applications with the Treasury payment logic.
+     */
+    public function benefits()
+    {
+        return $this->belongsToMany(\App\Models\BplsBenefit::class, 'bpls_owner_benefits', 'owner_id', 'benefit_id', 'bpls_owner_id');
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
     public function isEditable(): bool
@@ -160,6 +174,11 @@ class BplsOnlineApplication extends Model
         };
     }
 
+    public function getActiveTotalDueAttribute(): float
+    {
+        return (float) ($this->assessment_amount ?? 0);
+    }
+
     public function getInstallmentAmountAttribute(): float
     {
         $amount = (float) $this->assessment_amount;
@@ -201,6 +220,21 @@ class BplsOnlineApplication extends Model
         return $this->belongsTo(BplsPermitSignatory::class, 'signatory_id');
     }
 
+    public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'verified_by');
+    }
+
+    public function assessor(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'assessed_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'approved_by');
+    }
+
     public function isPaymentSatisfiedForApproval(): bool
     {
         // For annual, we need the 1st (and only) OR to be paid
@@ -208,5 +242,25 @@ class BplsOnlineApplication extends Model
         /** @var \App\Models\bpls\onlineBPLS\BplsApplicationOr|null $firstOr */
         $firstOr = $this->orAssignments()->where('installment_number', 1)->first();
         return $firstOr && $firstOr->isPaid();
+    }
+
+    public function getDynamicRequiredDocumentTypes(): array
+    {
+        $types = \App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES;
+
+        if ($this->discount_claimed && $this->owner) {
+            $activeBenefits = \App\Models\BplsBenefit::active()->get();
+            foreach ($activeBenefits as $benefit) {
+                // If the field_key (e.g., 'is_senior') is true on the owner
+                if ($this->owner->{$benefit->field_key}) {
+                    $docType = 'beneficiary_' . str_replace('is_', '', $benefit->field_key);
+                    $types[] = $docType;
+                }
+            }
+
+            $types = array_values(array_unique($types));
+        }
+
+        return $types;
     }
 }

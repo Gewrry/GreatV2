@@ -19,6 +19,7 @@ class FormCustomizationController extends Controller
         'business_sector',
         'zone',
         'occupancy',
+        'business_nature',
         'amendment_from',
         'amendment_to',
     ];
@@ -112,6 +113,7 @@ class FormCustomizationController extends Controller
             'business_sector',
             'zone',
             'occupancy',
+            'business_nature',
             'amendment_from',
             'amendment_to',
         ];

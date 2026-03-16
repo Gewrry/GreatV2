@@ -33,6 +33,7 @@ class BplsDocument extends Model
         'sanitary_permit' => 'Sanitary Permit',
         'beneficiary_senior' => 'Senior Citizen Proof (ID/OSCA)',
         'beneficiary_pwd' => 'PWD Proof (ID/PDAO)',
+        'beneficiary_4ps' => '4PS ID / Certification',
         'beneficiary_bmbe' => 'BMBE Certification',
         'beneficiary_cooperative' => 'CDA Registration / Certificate of Good Standing',
         'beneficiary_solo_parent' => 'Solo Parent ID',
@@ -52,7 +53,19 @@ class BplsDocument extends Model
 
     public function getTypeLabelAttribute(): string
     {
-        return self::TYPES[$this->document_type] ?? ucfirst(str_replace('_', ' ', $this->document_type));
+        if (isset(self::TYPES[$this->document_type])) {
+            return self::TYPES[$this->document_type];
+        }
+
+        if (str_starts_with($this->document_type, 'beneficiary_')) {
+            $key = 'is_' . str_replace('beneficiary_', '', $this->document_type);
+            $benefit = \App\Models\BplsBenefit::where('field_key', $key)->first();
+            if ($benefit) {
+                return $benefit->label . ' Proof';
+            }
+        }
+
+        return ucfirst(str_replace('_', ' ', $this->document_type));
     }
 
     public function getUrlAttribute(): string

@@ -18,10 +18,11 @@ class TaxDeclaration extends Model
     protected $table = 'tax_declarations';
 
     protected $fillable = [
-        'td_no', 'prev_td_no', 'faas_property_id', 'revision_year_id', 'effectivity_year',
+        'td_no', 'prev_td_no', 'faas_property_id', 'revision_year_id', 'effectivity_year', 'effectivity_quarter',
         'property_type', 'property_kind',
         'faas_land_id', 'faas_building_id', 'faas_machinery_id',
-        'total_market_value', 'total_assessed_value', 'is_taxable', 'tax_rate',
+        'total_market_value', 'total_assessed_value', 'is_taxable', 'exemption_basis', 'tax_rate',
+        'cancelled_td_no', 'cancellation_reason',
         'declaration_reason', 'status', 'created_by', 'approved_by', 'approved_at', 'inactive_at', 'remarks',
     ];
 
@@ -30,6 +31,7 @@ class TaxDeclaration extends Model
         'total_assessed_value' => 'decimal:2',
         'tax_rate'             => 'decimal:5',
         'is_taxable'           => 'boolean',
+        'effectivity_quarter'  => 'integer',
         'approved_at'          => 'datetime',
         'inactive_at'          => 'datetime',
     ];
@@ -285,5 +287,14 @@ class TaxDeclaration extends Model
         self::$lastSeq++;
 
         return date('Y') . '-TD-' . str_pad(self::$lastSeq, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate structured PIN following Stage 3 requirements.
+     * Format: Prov-City-District-Brgy-Section-Parcel
+     */
+    public function generateStructuredPin(): string
+    {
+        return $this->property ? $this->property->generateStructuredPin() : '000-00-000-000-000-000';
     }
 }

@@ -398,7 +398,7 @@
             align-items: center;
             gap: 5px;
             margin-bottom: 3px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
         }
 
@@ -619,7 +619,7 @@
 
         {{-- ── Payor ── --}}
         <div class="payor-row">
-            {{ strtoupper($payment->payor ?? $entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}
+            {{ strtoupper($payment->payor ?? trim($entry->last_name . ', ' . $entry->first_name . ' ' . ($entry->middle_name ?? ''))) }}
         </div>
 
         {{-- ── Benefit Computation Box ── --}}
@@ -843,8 +843,10 @@
                     <span class="cb {{ $payment->payment_method === 'check' ? 'checked' : '' }}"></span> Check
                 </div>
                 <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'money_order' ? 'checked' : '' }}"></span> Money
-                    Order
+                    <span class="cb {{ $payment->payment_method === 'money_order' ? 'checked' : '' }}"></span> Money Order
+                </div>
+                <div class="method-item">
+                    <span class="cb {{ in_array($payment->payment_method, ['online', 'gcash', 'maya', 'card', 'landbank']) ? 'checked' : '' }}"></span> Electronic Payment
                 </div>
             </div>
             <div class="drawee-table">

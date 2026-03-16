@@ -4,6 +4,9 @@
     <div class="flex items-center justify-between">
         <h2 class="text-2xl font-bold text-gray-900">Appointment Details</h2>
         <div class="flex gap-2">
+            @if($appointment->status !== 'onboarded' && $appointment->status !== 'terminated')
+            <a href="{{ route('hr.appointments.onboard', $appointment->id) }}" class="inline-flex items-center px-4 py-2 bg-logo-teal border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-logo-teal/80 shadow-sm">Onboard Employee</a>
+            @endif
             <a href="{{ route('hr.appointments.edit', $appointment->id) }}" class="inline-flex items-center px-4 py-2 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700">Edit</a>
             <a href="{{ route('hr.appointments.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">Back</a>
         </div>

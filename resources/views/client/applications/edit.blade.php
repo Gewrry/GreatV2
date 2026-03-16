@@ -1,44 +1,8 @@
-{{-- resources/views/client/applications/edit.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
+@extends('client.layouts.app')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Application {{ $application->application_number }} — BPLS Online Portal</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
+@section('title', 'Edit Application ' . $application->application_number)
 
-<body class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5">
-
-    {{-- ── Navbar ──────────────────────────────────────────────────────────────── --}}
-    <nav class="bg-white border-b border-lumot/20 shadow-sm sticky top-0 z-40">
-        <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div
-                    class="w-8 h-8 bg-logo-teal rounded-xl flex items-center justify-center shadow-sm shadow-logo-teal/20">
-                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                        stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
-                    </svg>
-                </div>
-                <span class="font-extrabold text-green text-sm tracking-tight">BPLS Online Portal</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <a href="{{ route('client.dashboard') }}"
-                    class="text-xs font-bold text-gray hover:text-logo-teal transition-colors">Dashboard</a>
-                <a href="{{ route('client.applications.index') }}"
-                    class="text-xs font-bold text-gray hover:text-logo-teal transition-colors">My Applications</a>
-                <form action="{{ route('client.logout') }}" method="POST">
-                    @csrf
-                    <button class="text-xs font-bold text-red-400 hover:text-red-600 transition-colors">Sign
-                        Out</button>
-                </form>
-            </div>
-        </div>
-    </nav>
-
+@section('content')
     @php
         // Build existing docs map: type => [name, size, path]
         $existingDocsMap = [];
@@ -55,7 +19,7 @@
         );
     @endphp
 
-    <div class="max-w-5xl mx-auto px-4 py-6" x-data="{
+    <div class="max-w-5xl mx-auto px-4" x-data="{
         step: 1,
         maxReached: 2,
         loading: false,
@@ -77,9 +41,29 @@
         existingDocs: {{ $existingDocsJson }},
         docFiles: {},
         docErrors: {},
+        beneficiaryFlags: {
+            @foreach($benefits as $benefit)
+                {{ $benefit->field_key }}: {{ old($benefit->field_key, ($application->owner?->{$benefit->field_key} ? 'true' : 'false')) }},
+            @endforeach
+        },
+        businessOrganization: '{{ old('business_organization', $application->business?->business_organization ?? '') }}',
+
+        get dynamicRequiredTypes() {
+            let base = ['dti_sec_cda', 'barangay_clearance', 'community_tax'];
+            @foreach($benefits as $benefit)
+                if (this.beneficiaryFlags.{{ $benefit->field_key }}) {
+                    base.push('beneficiary_' + '{{ str_replace('is_', '', $benefit->field_key) }}');
+                }
+            @endforeach
+            if (this.businessOrganization === 'BMBE')        base.push('beneficiary_bmbe');
+            if (this.businessOrganization === 'Cooperative') base.push('beneficiary_cooperative');
+            return base;
+        },
         get requiredCount() {
-            const required = {{ json_encode(\App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES) }};
-            return required.filter(t => !!(this.docFiles[t] || this.existingDocs[t])).length;
+            return this.dynamicRequiredTypes.filter(t => !!(this.docFiles[t] || this.existingDocs[t])).length;
+        },
+        get totalRequired() {
+            return this.dynamicRequiredTypes.length;
         },
         handleFile(type, event) {
             const file = event.target.files[0];
@@ -143,48 +127,68 @@
             </div>
         @endif
 
-        {{-- ── Page Header ──────────────────────────────────────────────────────── --}}
-        <div class="mb-5 flex items-start justify-between gap-4">
-            <div>
-                <a href="{{ route('client.applications.show', $application->id) }}"
-                    class="inline-flex items-center gap-1 text-xs text-gray hover:text-logo-teal font-bold transition-colors mb-1">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                        stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back to Application
-                </a>
-                <h1 class="text-2xl font-extrabold text-green tracking-tight">Edit Application</h1>
-                <p class="text-gray text-sm mt-0.5">Update your business permit application details and documents.</p>
-            </div>
-            <div class="shrink-0 text-right">
-                <p class="text-[10px] font-black text-gray/40 uppercase tracking-widest">Application No.</p>
-                <p class="text-sm font-black text-logo-teal font-mono">{{ $application->application_number }}</p>
-                @if ($application->workflow_status === 'returned')
-                    <span
-                        class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200 animate-pulse">
-                        Returned — Needs Update
-                    </span>
-                @else
-                    <span
-                        class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-logo-teal/10 text-logo-teal border border-logo-teal/20">
-                        Draft
-                    </span>
-                @endif
+        {{-- ── Page Header (Standardized with show.blade.php) ────────────────────── --}}
+        <div class="mb-8 p-8 bg-gradient-to-r from-green/90 to-logo-teal/90 backdrop-blur-xl rounded-[2.5rem] shadow-2xl shadow-logo-teal/20 text-white relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+            <div class="absolute -left-10 -bottom-10 w-40 h-40 bg-logo-green/20 rounded-full blur-3xl"></div>
+
+            <a href="{{ route('client.applications.show', $application->id) }}" class="text-[10px] font-black uppercase tracking-widest text-white/70 hover:text-white transition-all mb-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 rounded-xl border border-white/10 relative z-10">
+                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                Cancel & Return
+            </a>
+
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                <div>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h1 class="text-3xl font-black tracking-tightest leading-none">Update Application</h1>
+                        <div class="px-3 py-1 bg-white/20 backdrop-blur-md border border-white/30 rounded-full text-[10px] font-black uppercase tracking-widest shrink-0">
+                            {{ $application->application_number }}
+                        </div>
+                    </div>
+                    <p class="text-white/80 text-xs font-bold mt-2 uppercase tracking-wide">
+                        {{ $application->business->business_name ?? '—' }} · {{ ucfirst($application->application_type) }} 2026
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    @if ($application->workflow_status === 'returned')
+                        <div class="px-5 py-2.5 bg-amber-400 text-amber-900 text-[10px] font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-amber-500/20 border-2 border-white/20 animate-pulse">
+                            ⚠️ Returned for Update
+                        </div>
+                    @else
+                        <div class="px-5 py-2.5 bg-white/20 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest rounded-2xl border border-white/30">
+                            Draft Mode
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
 
         {{-- ── Returned reason banner ───────────────────────────────────────────── --}}
-        @if ($application->workflow_status === 'returned' && $application->latestLog?->remarks)
-            <div class="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
-                <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <div>
-                    <p class="text-sm font-bold text-amber-800">Returned by reviewer:</p>
-                    <p class="text-sm text-amber-700 mt-0.5">{{ $application->latestLog->remarks }}</p>
+        @if ($application->workflow_status === 'returned')
+            <div class="mb-10 p-10 bg-white/40 backdrop-blur-xl border border-white/60 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                <div class="absolute -right-20 -top-20 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl group-hover:bg-amber-400/20 transition-all duration-1000"></div>
+                
+                <div class="flex flex-col md:flex-row gap-8 items-start relative z-10">
+                    <div class="w-16 h-16 bg-amber-400 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-400/30">
+                        <svg class="w-8 h-8 text-amber-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h2 class="text-xl font-black text-amber-900 tracking-tight">Reviewer Feedback</h2>
+                            <span class="px-2.5 py-1 bg-amber-400/20 text-amber-900 text-[10px] font-black uppercase tracking-widest rounded-lg border border-amber-900/10">Action Required</span>
+                        </div>
+                        <p class="text-amber-900/70 text-sm font-bold leading-relaxed">
+                            @if($application->latestLog?->remarks)
+                                {!! nl2br(e($application->latestLog->remarks)) !!}
+                            @else
+                                Your application has been returned for updates. Please review the details below and resubmit once corrected.
+                            @endif
+                        </p>
+                    </div>
                 </div>
             </div>
         @endif
@@ -451,22 +455,28 @@
                             </div>
                         </div>
 
+                        @if($benefits->isNotEmpty())
                         <div class="mb-5">
                             <label class="block text-xs font-bold text-gray mb-2">Legal Entity / Special
                                 Classification</label>
                             <div class="flex flex-wrap gap-2">
-                                @foreach ([['name' => 'is_pwd', 'label' => 'PWD'], ['name' => 'is_4ps', 'label' => '4PS'], ['name' => 'is_solo_parent', 'label' => 'Solo Parent'], ['name' => 'is_senior', 'label' => 'Senior Citizen'], ['name' => 'discount_10', 'label' => '10% Fully Vaccinated'], ['name' => 'discount_5', 'label' => '5% 1st Dose']] as $badge)
+                                @foreach($benefits as $benefit)
                                     <label class="cursor-pointer">
-                                        <input type="checkbox" name="{{ $badge['name'] }}" class="peer hidden"
-                                            {{ old($badge['name'], $application->owner->{$badge['name']}) ? 'checked' : '' }}>
+                                        <input type="checkbox" name="{{ $benefit->field_key }}" class="peer hidden"
+                                            x-model="beneficiaryFlags.{{ $benefit->field_key }}"
+                                            {{ old($benefit->field_key, $application->owner?->{$benefit->field_key}) ? 'checked' : '' }}>
                                         <span
                                             class="peer-checked:bg-logo-teal peer-checked:text-white peer-checked:border-logo-teal inline-flex items-center px-3 py-1.5 text-xs font-semibold border border-lumot/40 rounded-full text-gray hover:border-logo-teal transition-all duration-150">
-                                            {{ $badge['label'] }}
+                                            {{ $benefit->label }}
+                                            @if($benefit->discount_percent > 0)
+                                                <span class="ml-1 text-[10px] opacity-70">({{ rtrim(rtrim(number_format($benefit->discount_percent, 2), '0'), '.') }}%)</span>
+                                            @endif
                                         </span>
                                     </label>
                                 @endforeach
                             </div>
                         </div>
+                        @endif
 
                         <div class="border-t border-lumot/20 pt-4">
                             <h3 class="text-xs font-extrabold text-logo-blue uppercase tracking-wider mb-3">Owner's
@@ -608,7 +618,7 @@
                                         <option value="">-- Amendment From --</option>
                                         @foreach ($options['amendment_from'] as $opt)
                                             <option value="{{ $opt }}"
-                                                {{ old('amendment_from', $application->business->amendment_from) === $opt ? 'selected' : '' }}>
+                                                {{ old('amendment_from') === $opt ? 'selected' : '' }}>
                                                 {{ $opt }}</option>
                                         @endforeach
                                     </select>
@@ -620,12 +630,47 @@
                                         <option value="">-- Amendment To --</option>
                                         @foreach ($options['amendment_to'] as $opt)
                                             <option value="{{ $opt }}"
-                                                {{ old('amendment_to', $application->business->amendment_to) === $opt ? 'selected' : '' }}>
+                                                {{ old('amendment_to') === $opt ? 'selected' : '' }}>
                                                 {{ $opt }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
+
+                            @if($amendments->isNotEmpty())
+                            <div class="mt-4 bg-logo-teal/5 border border-logo-teal/15 rounded-xl p-4">
+                                <h4 class="text-[10px] font-bold text-logo-teal uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Previous Amendments History
+                                </h4>
+                                <div class="space-y-3">
+                                    @foreach($amendments as $amendment)
+                                        <div class="text-[11px] border-b border-logo-teal/10 pb-2 last:border-0 last:pb-0">
+                                            <div class="flex justify-between font-bold text-gray mb-1">
+                                                <span class="text-logo-teal">{{ $amendment->amendment_type_label }}</span>
+                                                <span class="text-gray/40">{{ $amendment->amended_at->format('M d, Y') }}</span>
+                                            </div>
+                                            <ul class="space-y-0.5 ml-1">
+                                                @foreach($amendment->diff_summary as $change)
+                                                    <li class="flex items-start gap-2 text-gray/60">
+                                                        <span class="text-logo-teal/50">•</span>
+                                                        <span>{{ $change }}</span>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                            @if($amendment->reason)
+                                                <div class="mt-1.5 flex gap-2">
+                                                    <span class="font-bold text-gray/40 uppercase text-[9px]">Reason:</span>
+                                                    <span class="italic text-gray/50">{{ $amendment->reason }}</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
                         </div>
 
                         <div class="mb-5">
@@ -652,6 +697,7 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray mb-1">{{ $sel['label'] }}</label>
                                     <select name="{{ $sel['name'] }}"
+                                        @if($sel['name'] === 'business_organization') x-model="businessOrganization" @endif
                                         class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white">
                                         <option value="">-- Select --</option>
                                         @foreach ($options[$sel['name']] as $opt)
@@ -860,28 +906,26 @@
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-xs font-extrabold text-green uppercase tracking-wider">Required Documents
                             </h3>
-                            <span
-                                class="text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">All
-                                3 required</span>
+                            <span class="text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full"
+                                x-text="'All ' + totalRequired + ' required'"></span>
                         </div>
                         <div class="space-y-3">
-                            @foreach (\App\Models\onlineBPLS\BplsDocument::REQUIRED_TYPES as $type)
-                                @php $label = \App\Models\onlineBPLS\BplsDocument::TYPES[$type]; @endphp
+                            <template x-for="type in dynamicRequiredTypes" :key="type">
                                 <div class="rounded-xl border p-4 transition-all duration-200"
-                                    :class="hasDoc('{{ $type }}') ? 'border-logo-teal/40 bg-logo-teal/5' :
+                                    :class="hasDoc(type) ? 'border-logo-teal/40 bg-logo-teal/5' :
                                         'border-lumot/30 bg-lumot/5'">
                                     <div class="flex items-center justify-between gap-3">
                                         <div class="flex items-center gap-3 min-w-0">
                                             <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all"
-                                                :class="hasDoc('{{ $type }}') ? 'bg-logo-teal/20' : 'bg-lumot/20'">
-                                                <template x-if="hasDoc('{{ $type }}')">
+                                                :class="hasDoc(type) ? 'bg-logo-teal/20' : 'bg-lumot/20'">
+                                                <template x-if="hasDoc(type)">
                                                     <svg class="w-4 h-4 text-logo-teal" fill="none"
                                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
                                                             d="M5 13l4 4L19 7" />
                                                     </svg>
                                                 </template>
-                                                <template x-if="!hasDoc('{{ $type }}')">
+                                                <template x-if="!hasDoc(type)">
                                                     <svg class="w-4 h-4 text-gray/40" fill="none"
                                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -890,17 +934,19 @@
                                                 </template>
                                             </div>
                                             <div class="min-w-0">
-                                                <p class="text-sm font-bold text-green truncate">{{ $label }}
-                                                    <span class="text-red-400">*</span></p>
+                                                <p class="text-sm font-bold text-green truncate">
+                                                    <span x-text="{{ json_encode(\App\Models\onlineBPLS\BplsDocument::TYPES) }}[type] || type.replace(/_/g, ' ').toUpperCase()"></span>
+                                                    <span class="text-red-400">*</span>
+                                                </p>
                                                 <p class="text-[11px] truncate transition-colors"
-                                                    :class="hasDoc('{{ $type }}') ? 'text-logo-teal font-semibold' :
+                                                    :class="hasDoc(type) ? 'text-logo-teal font-semibold' :
                                                         'text-gray/40'"
-                                                    x-text="docLabel('{{ $type }}')"></p>
+                                                    x-text="docLabel(type)"></p>
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0">
-                                            <template x-if="docFiles['{{ $type }}']">
-                                                <button type="button" @click="removeFile('{{ $type }}')"
+                                            <template x-if="docFiles[type]">
+                                                <button type="button" @click="removeFile(type)"
                                                     class="p-1.5 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
                                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                                         stroke="currentColor" stroke-width="2.5">
@@ -910,24 +956,24 @@
                                                 </button>
                                             </template>
                                             <label class="cursor-pointer">
-                                                <input type="file" name="documents[{{ $type }}]"
+                                                <input type="file" :name="'documents[' + type + ']'"
                                                     accept=".pdf,.jpg,.jpeg,.png" class="hidden"
-                                                    @change="handleFile('{{ $type }}', $event)">
+                                                    @change="handleFile(type, $event)">
                                                 <span
                                                     class="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                                                    :class="hasDoc('{{ $type }}') ?
+                                                    :class="hasDoc(type) ?
                                                         'bg-logo-blue/10 text-logo-blue hover:bg-logo-blue/20' :
                                                         'bg-logo-teal text-white hover:bg-green shadow-sm shadow-logo-teal/20'"
-                                                    x-text="existingDocs['{{ $type }}'] || docFiles['{{ $type }}'] ? 'Replace' : 'Choose File'"></span>
+                                                    x-text="existingDocs[type] || docFiles[type] ? 'Replace' : 'Choose File'"></span>
                                             </label>
                                         </div>
                                     </div>
-                                    <template x-if="docErrors['{{ $type }}']">
+                                    <template x-if="docErrors[type]">
                                         <p class="text-[11px] text-red-500 font-semibold mt-2 pl-11"
-                                            x-text="docErrors['{{ $type }}']"></p>
+                                            x-text="docErrors[type]"></p>
                                     </template>
                                 </div>
-                            @endforeach
+                            </template>
                         </div>
                     </div>
 
@@ -992,11 +1038,11 @@
                         <div class="flex justify-between items-center mb-1.5">
                             <span class="text-xs text-gray font-semibold">Required documents on file</span>
                             <span class="text-xs font-extrabold text-logo-teal"
-                                x-text="requiredCount + ' / 3'"></span>
+                                x-text="requiredCount + ' / ' + totalRequired"></span>
                         </div>
                         <div class="w-full h-2 bg-lumot/30 rounded-full overflow-hidden">
                             <div class="h-full bg-logo-teal rounded-full transition-all duration-500"
-                                :style="'width: ' + (requiredCount / 3 * 100) + '%'"></div>
+                                :style="'width: ' + (requiredCount / totalRequired * 100) + '%'"></div>
                         </div>
                     </div>
                 </div>
@@ -1020,10 +1066,10 @@
                         Back to Fill Form
                     </button>
 
-                    <button type="button" @click="requiredCount >= 3 && !loading ? submitForm() : null"
-                        :disabled="requiredCount < 3 || loading"
+                    <button type="button" @click="requiredCount >= totalRequired && !loading ? submitForm() : null"
+                        :disabled="requiredCount < totalRequired || loading"
                         class="px-8 py-2.5 text-white text-sm font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        :class="requiredCount >= 3 ? 'bg-logo-green hover:bg-green shadow-logo-green/20' :
+                        :class="requiredCount >= totalRequired ? 'bg-logo-green hover:bg-green shadow-logo-green/20' :
                             'bg-lumot/50 shadow-none'">
                         <template x-if="!loading">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -1041,7 +1087,7 @@
                             </svg>
                         </template>
                         <span
-                            x-text="loading ? 'Saving...' : (requiredCount < 3 ? 'All 3 Required Docs Needed' : '{{ $application->workflow_status === 'returned' ? 'Save & Resubmit' : 'Save Changes' }}')"></span>
+                            x-text="loading ? 'Saving...' : (requiredCount < totalRequired ? totalRequired + ' Required Docs Needed' : '{{ $application->workflow_status === 'returned' ? 'Save & Resubmit' : 'Save Changes' }}')"></span>
                     </button>
                 </div>
 
@@ -1049,7 +1095,4 @@
 
         </form>
     </div>
-
-</body>
-
-</html>
+@endsection

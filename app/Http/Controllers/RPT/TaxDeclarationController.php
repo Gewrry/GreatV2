@@ -115,10 +115,14 @@ class TaxDeclarationController extends Controller
                 // Derive property_type from component kind for backwards compat
                 'property_type'        => $componentType,
                 'effectivity_year'     => $request->effectivity_year,
+                'effectivity_quarter'  => $request->effectivity_quarter,
                 'revision_year_id'     => $request->revision_year_id,
                 'declaration_reason'   => $request->declaration_reason,
                 'tax_rate'             => $request->tax_rate,
                 'is_taxable'           => $request->boolean('is_taxable', true),
+                'exemption_basis'      => $request->exemption_basis,
+                'cancelled_td_no'      => $request->cancelled_td_no,
+                'cancellation_reason'  => $request->cancellation_reason,
                 'remarks'              => $request->remarks,
                 // MRPAAO-Compliant: use only THIS component's values
                 'total_market_value'   => $component->market_value,

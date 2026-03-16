@@ -56,7 +56,7 @@
 
     {{-- Documents --}}
     @if($application->documents->count())
-        <div class="bg-white rounded-xl shadow p-6">
+        <div class="bg-white rounded-xl shadow p-6 mb-4">
             <h2 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Uploaded Documents</h2>
             <div class="space-y-3">
                 @foreach($application->documents as $doc)
@@ -74,6 +74,45 @@
                 @endforeach
             </div>
         </div>
+    @endif
+
+    {{-- GIS Map --}}
+    @if($application->polygon_coordinates)
+        <div class="bg-white rounded-xl shadow p-6">
+            <h2 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider flex items-center gap-2">
+                <i class="fas fa-map-marked-alt text-teal-600"></i> Property Boundary
+            </h2>
+            <div id="statusMap" style="height: 350px; width: 100%;" class="rounded-xl border border-gray-200"></div>
+            <input type="hidden" id="drawn_coordinates" value="{{ json_encode($application->polygon_coordinates) }}">
+        </div>
+
+        @push('scripts')
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const map = L.map('statusMap').setView([12.8797, 121.7740], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            const coords = document.getElementById('drawn_coordinates').value;
+            if (coords) {
+                try {
+                    const geojson = JSON.parse(coords);
+                    const layer = L.geoJSON(geojson, {
+                        style: { color: '#0d9488', weight: 4, fillOpacity: 0.25 }
+                    }).addTo(map);
+                    map.fitBounds(layer.getBounds());
+                    map.zoomOut(1);
+                } catch(e) {
+                    console.error("Invalid GIS Data", e);
+                }
+            }
+        });
+        </script>
+        @endpush
     @endif
 </div>
 @endsection

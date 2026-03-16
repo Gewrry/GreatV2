@@ -51,6 +51,22 @@
                                 <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
                             @endif
                         </a>
+
+                        <!-- Employee Portal fallback -->
+                        @if(Auth::user()->hasModuleAccess('employee_portal'))
+                        <a href="{{ route('hr.portal.dashboard') }}"
+                            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 {{ request()->routeIs('hr.portal.*') ? 'bg-logo-teal text-white shadow-lg shadow-logo-teal/30 scale-105' : 'text-gray hover:bg-lumot/30 hover:text-green hover:translate-x-1' }}">
+                            <svg class="w-5 h-5 mr-3 {{ request()->routeIs('hr.portal.*') ? 'text-white' : 'text-logo-teal group-hover:text-logo-green' }}"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span>{{ __('Employee Portal') }}</span>
+                            @if (request()->routeIs('hr.portal.*'))
+                                <span class="ml-auto w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                            @endif
+                        </a>
+                        @endif
                     </div>
                 </div>
 
@@ -80,6 +96,11 @@
                         'hr' => [
                             'route' => 'hr.employees.index',
                             'routeMatch' => 'hr.*',
+                            'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+                        ],
+                        'employee_portal' => [
+                            'route' => 'hr.portal.dashboard',
+                            'routeMatch' => 'hr.portal.*',
                             'icon' => 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
                         ],
                         'treasury' => [
@@ -314,7 +335,8 @@
                     </div>
                 @endif
 
-                {{ $slot }}
+                {{ $slot ?? '' }}
+                @yield('content')
             </main>
         </div>
 

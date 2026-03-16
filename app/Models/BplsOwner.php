@@ -5,6 +5,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class BplsOwner extends Model
 {
@@ -28,6 +29,7 @@ class BplsOwner extends Model
         'is_senior',
         'is_bmbe',
         'is_cooperative',
+        'is_vaccine',
         'discount_10',
         'discount_5',
         'region',
@@ -48,6 +50,7 @@ class BplsOwner extends Model
         'is_senior' => 'boolean',
         'is_bmbe' => 'boolean',
         'is_cooperative' => 'boolean',
+        'is_vaccine' => 'boolean',
         'discount_10' => 'boolean',
         'discount_5' => 'boolean',
     ];
@@ -71,11 +74,44 @@ class BplsOwner extends Model
     }
 
     /**
-     * Backward-compat helper: check if owner has a specific benefit by field_key.
-     * Usage: $owner->hasBenefit('is_pwd')
+     * Check if owner has a specific benefit by field_key in the pivot table.
      */
     public function hasBenefit(string $fieldKey): bool
     {
         return $this->benefits->contains('field_key', $fieldKey);
+    }
+
+    /**
+     * Sync benefits based on provided field keys that are active.
+     */
+    public function syncBenefits(array $fieldKeys): void
+    {
+        $benefitIds = BplsBenefit::whereIn('field_key', $fieldKeys)
+            ->active()
+            ->pluck('id')
+            ->toArray();
+
+        $this->benefits()->sync($benefitIds);
+
+        // Also update hardcoded columns for backward compatibility if they exist
+        $ownerCols = \Schema::getColumnListing($this->table);
+        $toUpdate = [];
+        foreach ($fieldKeys as $key) {
+            if (in_array($key, $ownerCols)) {
+                $toUpdate[$key] = true;
+            }
+        }
+        
+        // Reset columns that are NOT in the fieldKeys but are benefit columns
+        $activeBenefitKeys = BplsBenefit::active()->pluck('field_key')->toArray();
+        foreach ($activeBenefitKeys as $key) {
+            if (in_array($key, $ownerCols) && !in_array($key, $fieldKeys)) {
+                $toUpdate[$key] = false;
+            }
+        }
+
+        if (!empty($toUpdate)) {
+            $this->update($toUpdate);
+        }
     }
 }

@@ -14,7 +14,7 @@
                     </a>
                 </div>
 
-                <form action="{{ route('rpt.registration.store') }}" method="POST" enctype="multipart/form-data" class="p-6 space-y-7">
+                <form action="{{ route('rpt.registration.store') }}" method="POST" class="p-6 space-y-7">
                     @csrf
 
                     @if($errors->any())
@@ -91,12 +91,74 @@
                                     <option value="mixed"     {{ old('property_type') == 'mixed'     ? 'selected' : '' }}>Mixed (Multiple Components)</option>
                                 </select>
                             </div>
-                            <div class="md:col-span-2 flex items-center">
-                                <div class="text-sm text-blue-800 flex items-start gap-2">
+                            <div class="md:col-span-2">
+                                <div id="parentLandSection" class="{{ in_array(old('property_type'), ['building', 'machinery']) ? '' : 'hidden' }}">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Parent Land Reference <i class="fas fa-link text-blue-400 ml-1"></i></label>
+                                    <div class="relative group">
+                                        <div class="flex items-center">
+                                            <input type="text" id="parent_land_search" placeholder="Click to select or search Land by ARP, PIN, or Owner..." autocomplete="off"
+                                                class="w-full border rounded-lg px-3 py-2 text-sm bg-white pr-10 focus:ring-2 focus:ring-blue-100 transition-all outline-none">
+                                            <div id="parent_land_loading" class="absolute right-3 top-2.5 hidden">
+                                                <i class="fas fa-circle-notch fa-spin text-blue-500"></i>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" name="parent_land_faas_id" id="parent_land_faas_id" value="{{ old('parent_land_faas_id') }}">
+                                        
+                                        <!-- Search Results Dropdown -->
+                                        <div id="parent_land_results" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl hidden max-h-72 overflow-y-auto transform origin-top transition-all duration-200 scale-95 opacity-0"></div>
+                                    </div>
+                                    <div id="selectedParentLandDisplay" class="mt-4 bg-white border border-blue-100 rounded-2xl shadow-sm hidden animate-fade-in overflow-hidden">
+                                        <div class="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex items-center justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <i class="fas fa-link text-blue-500 text-xs"></i>
+                                                <span class="text-[10px] font-black uppercase tracking-widest text-blue-700">Linked Parent Land Reference</span>
+                                            </div>
+                                            <button type="button" id="clearParentLand" class="text-gray-400 hover:text-red-500 transition-colors">
+                                                <i class="fas fa-times-circle text-sm"></i>
+                                            </button>
+                                        </div>
+                                        <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+                                            <div>
+                                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Owner Address</div>
+                                                <div id="land_disp_address" class="text-[11px] text-gray-700 leading-relaxed font-medium">—</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Owner TIN / Contact</div>
+                                                <div id="land_disp_tin" class="text-[11px] text-gray-700 font-medium">—</div>
+                                                <div id="land_disp_contact" class="text-[11px] text-gray-700 mt-1 font-medium">—</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Property Location</div>
+                                                <div id="land_disp_street" class="text-[11px] text-gray-700 font-medium">—</div>
+                                                <div id="land_disp_loc" class="text-[11px] text-gray-700 mt-1 font-medium">—</div>
+                                            </div>
+                                            <div class="lg:col-span-1 border-gray-100">
+                                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Cadastral Details</div>
+                                                <div id="land_disp_cadastral" class="text-[11px] text-gray-700 font-medium">Lot: — | Blk: —</div>
+                                                <div id="land_disp_survey" class="text-[10px] text-gray-400 mt-1 font-medium">—</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Title Reference</div>
+                                                <div id="land_disp_title" class="text-[11px] font-bold text-blue-700">—</div>
+                                                <div class="text-[10px] text-gray-400 mt-1 font-medium">PIN: <span id="land_disp_pin" class="font-bold">—</span></div>
+                                            </div>
+                                            <div class="lg:col-span-1">
+                                                <div class="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                                    <i class="fas fa-map-marked-alt"></i> Spatial Overview
+                                                </div>
+                                                <div id="miniSpatialMap" class="w-full h-16 rounded-lg border border-emerald-100 bg-gray-50 flex items-center justify-center overflow-hidden relative">
+                                                    <span id="miniMapPlaceholder" class="text-[9px] text-gray-400 italic">No coordinates</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="registrationOnlyInfo" class="text-sm text-blue-800 flex items-start gap-2 {{ in_array(old('property_type'), ['building', 'machinery']) ? 'mt-4' : '' }}">
                                     <i class="fas fa-info-circle mt-0.5 text-blue-500"></i>
                                     <div>
-                                        <span class="font-bold block tracking-wide">REGISTRATION ONLY</span>
-                                        No valuation or appraisal components will be needed at this step. You will create the Draft FAAS and add components in Step 2.
+                                        <span class="font-bold block tracking-wide uppercase">Stage 1: Intake Only</span>
+                                        Establish property existence first. Detailed appraisal and official mapping will follow in Stage 2.
                                     </div>
                                 </div>
                             </div>
@@ -125,14 +187,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Province <span class="text-red-500">*</span></label>
                                 <input type="text" name="province" value="{{ old('province', 'Laguna') }}" required class="w-full border rounded-lg px-3 py-2 text-sm">
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Lot No.</label>
-                                <input type="text" name="lot_no" value="{{ old('lot_no') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Block No.</label>
-                                <input type="text" name="blk_no" value="{{ old('blk_no') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
-                            </div>
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Survey No.</label>
                                 <input type="text" name="survey_no" value="{{ old('survey_no') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
@@ -145,32 +200,48 @@
                         </div>
                     </div>
 
-                    {{-- ── 3. DOCUMENTS UPLOAD ─────────────────────────────────────── --}}
+                    {{-- ── 2.5 BOUNDARY DESCRIPTIONS ─────────────────────────────── --}}
                     <div>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 flex items-center gap-2">
-                            <i class="fas fa-paperclip text-yellow-400"></i> Supporting Documents
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <i class="fas fa-border-all text-cyan-400"></i> Boundary Descriptions
                         </h3>
-                        <p class="text-xs text-gray-400 mb-3">Scan or photograph physical documents. Accepted: PDF, JPG, PNG — max 10MB each.</p>
-
-                        <div id="docList" class="space-y-2">
-                            <div class="doc-row flex gap-2 items-center">
-                                <select name="documents[0][type]" class="border rounded-lg px-3 py-2 text-sm w-52">
-                                    <option value="title_deed">Title Deed (TCT/OCT)</option>
-                                    <option value="deed_of_sale">Deed of Sale</option>
-                                    <option value="sketch_plan">Sketch/Survey Plan</option>
-                                    <option value="tax_clearance">Tax Clearance / Old TD</option>
-                                    <option value="gov_id">Government ID</option>
-                                    <option value="special_power_of_attorney">SPA</option>
-                                    <option value="others">Others</option>
-                                </select>
-                                <input type="text" name="documents[0][label]" placeholder="Label (optional)" class="border rounded-lg px-3 py-2 text-sm flex-1">
-                                <input type="file" name="documents[0][file]" accept=".pdf,.jpg,.jpeg,.png" class="border rounded-lg px-3 py-2 text-sm">
+                        <p class="text-xs text-gray-400 mb-3">Describe the adjoining properties or landmarks on each side of the property.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">North</label>
+                                <input type="text" name="boundary_north" value="{{ old('boundary_north') }}" placeholder="e.g. Lot 123, Juan Dela Cruz" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">South</label>
+                                <input type="text" name="boundary_south" value="{{ old('boundary_south') }}" placeholder="e.g. National Road" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">East</label>
+                                <input type="text" name="boundary_east" value="{{ old('boundary_east') }}" placeholder="e.g. Creek" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">West</label>
+                                <input type="text" name="boundary_west" value="{{ old('boundary_west') }}" placeholder="e.g. Lot 125, Maria Santos" class="w-full border rounded-lg px-3 py-2 text-sm">
                             </div>
                         </div>
-                        <button type="button" id="addDocBtn" class="mt-2 text-blue-600 text-xs hover:underline flex items-center gap-1">
-                            <i class="fas fa-plus"></i> Add Another Document
+                    </div>
+
+                    {{-- ── 2.6 GIS MAPPING (OPTIONAL) ─────────────────────────────── --}}
+                    <div>
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <i class="fas fa-map text-indigo-400"></i> Locate Property on Map
+                        </h3>
+                        <p class="text-xs text-gray-400 mb-3">Draw the property boundaries on the map to save its polygon coordinates. This is helpful for auto-filling the FAAS land component later.</p>
+                        
+                        <div id="registrationMap" style="height: 400px; width: 100%; z-index: 10;" class="rounded-xl border border-gray-300"></div>
+                        <input type="hidden" name="polygon_coordinates" id="polygon_coordinates" value="{{ old('polygon_coordinates') }}">
+                        
+                        <button type="button" id="clearMapBtn" class="mt-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 hidden">
+                            <i class="fas fa-trash-alt mr-1"></i> Clear Map
                         </button>
                     </div>
+
+                    {{-- Documents are uploaded in Stage 2 (FAAS Dossier) --}}
 
                     {{-- ── 4. REMARKS ────────────────────────────────────────────────── --}}
                     <div>
@@ -188,28 +259,309 @@
             </div>
         </div>
     </div>
-</x-admin.app>
+    @push('scripts')
+    <!-- LEAFLET CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 
-<script>
-let docCount = 1;
-document.getElementById('addDocBtn').addEventListener('click', () => {
-    const row = document.createElement('div');
-    row.className = 'doc-row flex gap-2 items-center';
-    row.innerHTML = `
-        <select name="documents[${docCount}][type]" class="border rounded-lg px-3 py-2 text-sm w-52">
-            <option value="title_deed">Title Deed (TCT/OCT)</option>
-            <option value="deed_of_sale">Deed of Sale</option>
-            <option value="sketch_plan">Sketch/Survey Plan</option>
-            <option value="tax_clearance">Tax Clearance / Old TD</option>
-            <option value="gov_id">Government ID</option>
-            <option value="special_power_of_attorney">SPA</option>
-            <option value="others">Others</option>
-        </select>
-        <input type="text" name="documents[${docCount}][label]" placeholder="Label (optional)" class="border rounded-lg px-3 py-2 text-sm flex-1">
-        <input type="file" name="documents[${docCount}][file]" accept=".pdf,.jpg,.jpeg,.png" class="border rounded-lg px-3 py-2 text-sm">
-        <button type="button" onclick="this.closest('.doc-row').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class="fas fa-times"></i></button>
-    `;
-    document.getElementById('docList').appendChild(row);
-    docCount++;
-});
-</script>
+    <!-- LEAFLET JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+
+    // Map Initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        const map = L.map('registrationMap').setView([12.8797, 121.7740], 6);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                if (!document.getElementById('polygon_coordinates').value) {
+                    map.flyTo([position.coords.latitude, position.coords.longitude], 15);
+                }
+            });
+        }
+
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        const drawControl = new L.Control.Draw({
+            draw: {
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true,
+                    shapeOptions: { color: '#3b82f6' }
+                },
+                polyline: false,
+                circle: false,
+                rectangle: false,
+                circlemarker: false,
+                marker: false
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        map.addControl(drawControl);
+
+        const inputCoords = document.getElementById('polygon_coordinates');
+        const clearBtn = document.getElementById('clearMapBtn');
+
+        if (inputCoords.value) {
+            try {
+                const geojson = JSON.parse(inputCoords.value);
+                const layer = L.geoJSON(geojson, {
+                    style: { color: '#3b82f6' }
+                });
+                layer.eachLayer(l => drawnItems.addLayer(l));
+                map.fitBounds(drawnItems.getBounds());
+                clearBtn.classList.remove('hidden');
+            } catch(e) {}
+        }
+
+        map.on(L.Draw.Event.CREATED, function (event) {
+            drawnItems.clearLayers();
+            drawnItems.addLayer(event.layer);
+            updateCoordinates();
+        });
+
+        map.on(L.Draw.Event.EDITED, updateCoordinates);
+        map.on(L.Draw.Event.DELETED, updateCoordinates);
+
+        function updateCoordinates() {
+            const data = drawnItems.toGeoJSON();
+            if (data.features.length > 0) {
+                inputCoords.value = JSON.stringify(data);
+                clearBtn.classList.remove('hidden');
+            } else {
+                inputCoords.value = '';
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        clearBtn.addEventListener('click', function() {
+            drawnItems.clearLayers();
+            updateCoordinates();
+        });
+
+        // ─── Parent Land Search Logic (Enhanced) ───────────────────────────────
+        const propertyTypeSelect = document.getElementById('property_type');
+        const parentLandSection  = document.getElementById('parentLandSection');
+        const searchInput       = document.getElementById('parent_land_search');
+        const loadingIndicator   = document.getElementById('parent_land_loading');
+        const resultsDropdown    = document.getElementById('parent_land_results');
+        const parentLandIdInput  = document.getElementById('parent_land_faas_id');
+        const selectedDisplay    = document.getElementById('selectedParentLandDisplay');
+        const regOnlyInfo        = document.getElementById('registrationOnlyInfo');
+
+        let parentLandLayer = null;
+
+        propertyTypeSelect.addEventListener('change', function() {
+            const val = this.value;
+            if (val === 'building' || val === 'machinery') {
+                parentLandSection.classList.remove('hidden');
+                regOnlyInfo.classList.add('mt-4');
+            } else {
+                parentLandSection.classList.add('hidden');
+                regOnlyInfo.classList.remove('mt-4');
+                clearSelection();
+            }
+        });
+
+        // Show dropdown on focus
+        searchInput.addEventListener('focus', function() {
+            performSearch(this.value.trim());
+        });
+
+        let searchTimeout = null;
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                performSearch(query);
+            }, 300);
+        });
+
+        function performSearch(q) {
+            loadingIndicator.classList.remove('hidden');
+            fetch(`{{ route('rpt.registration.search-land') }}?q=${encodeURIComponent(q)}`)
+                .then(res => res.json())
+                .then(data => {
+                    loadingIndicator.classList.add('hidden');
+                    resultsDropdown.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        resultsDropdown.innerHTML = `<div class="p-4 text-sm text-gray-500 text-center">No approved land records found.</div>`;
+                    } else {
+                        data.forEach(land => {
+                            const div = document.createElement('div');
+                            div.className = "px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group/item";
+                            div.innerHTML = `
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs font-bold text-gray-800 group-hover/item:text-blue-600">${land.pin || land.arp_no}</div>
+                                        <div class="text-[10px] text-gray-500 uppercase tracking-tight">${land.owner_name}</div>
+                                        <div class="text-[9px] text-gray-400 font-medium">${land.barangay ? land.barangay.brgy_name : 'No Barangay'}</div>
+                                    </div>
+                                    <div class="text-[10px] text-blue-400 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                        Select <i class="fas fa-chevron-right ml-1"></i>
+                                    </div>
+                                </div>
+                            `;
+                            div.onclick = () => selectLand(land);
+                            resultsDropdown.appendChild(div);
+                        });
+                    }
+                    showDropdown();
+                });
+        }
+
+        function showDropdown() {
+            resultsDropdown.classList.remove('hidden');
+            setTimeout(() => {
+                resultsDropdown.classList.remove('scale-95', 'opacity-0');
+                resultsDropdown.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function hideDropdown() {
+            resultsDropdown.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                resultsDropdown.classList.add('hidden');
+            }, 200);
+        }
+
+        let miniMap = null;
+
+        function selectLand(land) {
+            console.log('SelectLand triggered for:', land.pin || land.arp_no);
+            parentLandIdInput.value = land.id;
+            
+            // Populate the summary grid
+            document.getElementById('land_disp_address').textContent   = land.owner_address || '—';
+            document.getElementById('land_disp_tin').textContent       = land.owner_tin     ? `TIN: ${land.owner_tin}` : '—';
+            document.getElementById('land_disp_contact').textContent   = land.owner_contact || 'No Phone';
+            document.getElementById('land_disp_street').textContent    = land.street        || 'Street/Sitio';
+            document.getElementById('land_disp_loc').textContent       = `${land.municipality || 'Los Baños'}, ${land.province || 'Laguna'}`;
+            document.getElementById('land_disp_cadastral').textContent = `Lot: ${land.lot_no || '—'} | Blk: ${land.blk_no || '—'}`;
+            document.getElementById('land_disp_survey').textContent    = `Survey: ${land.survey_no || '—'}`;
+            document.getElementById('land_disp_title').textContent     = land.title_no || 'No Title';
+            document.getElementById('land_disp_pin').textContent       = land.pin || land.arp_no || '—';
+
+            selectedDisplay.classList.remove('hidden');
+            hideDropdown();
+            searchInput.classList.add('hidden');
+
+            // Auto-fill form fields
+            if (land.barangay_id) document.querySelector('select[name="barangay_id"]').value = land.barangay_id;
+            if (land.street) document.querySelector('input[name="street"]').value = land.street;
+            if (land.municipality) document.querySelector('input[name="municipality"]').value = land.municipality;
+            if (land.province) document.querySelector('input[name="province"]').value = land.province;
+            
+            if (land.boundary_north) document.querySelector('input[name="boundary_north"]').value = land.boundary_north;
+            if (land.boundary_south) document.querySelector('input[name="boundary_south"]').value = land.boundary_south;
+            if (land.boundary_east)  document.querySelector('input[name="boundary_east"]').value = land.boundary_east;
+            if (land.boundary_west)  document.querySelector('input[name="boundary_west"]').value = land.boundary_west;
+
+            const adminNameInput = document.querySelector('input[name="administrator_name"]');
+            const adminAddrInput = document.querySelector('input[name="administrator_address"]');
+            if (adminNameInput && land.administrator_name && !adminNameInput.value) adminNameInput.value = land.administrator_name;
+            if (adminAddrInput && land.administrator_address && !adminAddrInput.value) adminAddrInput.value = land.administrator_address;
+            
+            // ─── Main Map Integration ───
+            let geoData = land.polygon_coordinates;
+            console.log('Coordinates raw data:', geoData);
+            
+            if (geoData) {
+                let geojson = null;
+                try {
+                    geojson = (typeof geoData === 'string') ? JSON.parse(geoData) : geoData;
+                } catch(e) {
+                    console.error('GeoJSON parse failed:', e);
+                }
+
+                if (geojson) {
+                    console.log('Valid GeoJSON identified:', geojson);
+                    
+                    // Main Map
+                    drawnItems.clearLayers();
+                    try {
+                        const layer = L.geoJSON(geojson);
+                        layer.eachLayer(l => drawnItems.addLayer(l));
+                        updateCoordinates();
+                        
+                        setTimeout(() => {
+                            const bounds = drawnItems.getBounds();
+                            if (bounds.isValid()) {
+                                map.flyToBounds(bounds, { padding: [50, 50], duration: 1 });
+                            }
+                        }, 250);
+                    } catch(e) { console.error('Main map L.geoJSON failed:', e); }
+
+                    // Mini Map Integration
+                    const placeholder = document.getElementById('miniMapPlaceholder');
+                    if (placeholder) placeholder.classList.add('hidden');
+
+                    if (!miniMap) {
+                        miniMap = L.map('miniSpatialMap', { 
+                            zoomControl: false, 
+                            attributionControl: false, 
+                            dragging: false, 
+                            scrollWheelZoom: false,
+                            doubleClickZoom: false
+                        });
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+                    }
+
+                    miniMap.eachLayer(l => { if (l instanceof L.GeoJSON) miniMap.removeLayer(l); });
+                    try {
+                        const miniLayer = L.geoJSON(geojson, { style: { color: '#059669', weight: 2, fillOpacity: 0.3 } }).addTo(miniMap);
+                        setTimeout(() => {
+                            miniMap.invalidateSize();
+                            miniMap.fitBounds(miniLayer.getBounds(), { padding: [5, 5] });
+                        }, 150);
+                    } catch(e) { console.error('Mini map L.geoJSON failed:', e); }
+                }
+            } else {
+                console.warn('No coordinates found for this land.');
+                const placeholder = document.getElementById('miniMapPlaceholder');
+                if (placeholder) placeholder.classList.remove('hidden');
+                if (miniMap) {
+                    miniMap.eachLayer(l => { if (l instanceof L.GeoJSON) miniMap.removeLayer(l); });
+                }
+            }
+        }
+
+        function clearSelection() {
+            parentLandIdInput.value = '';
+            selectedDisplay.classList.add('hidden');
+            searchInput.classList.remove('hidden');
+            searchInput.value = '';
+            
+            drawnItems.clearLayers();
+            updateCoordinates();
+
+            if (miniMap) {
+                miniMap.eachLayer(l => { if (l instanceof L.GeoJSON) miniMap.removeLayer(l); });
+            }
+            const placeholder = document.getElementById('miniMapPlaceholder');
+            if (placeholder) placeholder.classList.remove('hidden');
+        }
+
+        document.getElementById('clearParentLand').onclick = clearSelection;
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
+                hideDropdown();
+            }
+        });
+    });
+    </script>
+    @endpush
+</x-admin.app>
