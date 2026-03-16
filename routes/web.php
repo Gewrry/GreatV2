@@ -824,6 +824,12 @@ Route::get('/bpls/records/payments/search', [BusinessRecordsController::class, '
 
 
 
+// =============================================================================
+// 9. chat bot
+// =============================================================================
+
+Route::post('/chatbot/message', [App\Http\Controllers\ChatbotController::class, 'message'])
+    ->name('chatbot.message');
 
 // =============================================================================
 // 8. BPLS Business details Editing

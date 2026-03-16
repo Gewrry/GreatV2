@@ -1,5 +1,6 @@
 {{-- resources/views/layouts/app.blade.php --}}
 @include('partials.header')
+@include('partials.chatbot')
 
 <body class="font-main antialiased">
     <div class="flex min-h-screen bg-logo-teal/80">
