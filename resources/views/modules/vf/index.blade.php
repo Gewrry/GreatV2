@@ -1,29 +1,7 @@
 {{-- resources/views/modules/vf/index.blade.php --}}
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="p-2 bg-logo-teal/10 rounded-xl">
-                    <svg class="w-6 h-6 text-logo-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8 17a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4zM3 4h2l2.5 8h9L19 7H7M3 4H1m2 0l1 3" />
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-xl font-bold text-green">Vehicle Franchising</h2>
-                    <p class="text-xs text-gray">Franchise Entries · {{ now()->year }}</p>
-                </div>
-            </div>
-            <a href="{{ route('vf.create') }}"
-                class="inline-flex items-center gap-2 px-4 py-2.5 bg-logo-teal text-white text-sm font-semibold rounded-xl shadow-lg shadow-logo-teal/30 hover:bg-green transition-all duration-200 hover:scale-105">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                New Franchise
-            </a>
-        </div>
-    </x-slot>
+<x-admin.app>
 
+    @include('layouts.vf.navbar')
     {{-- Stats Row --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         @php
@@ -170,6 +148,10 @@
                         d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
                 Franchise Records · {{ now()->year }}
+
+                <a href="vf/create" class="bg-green-600 hover:bg-green-800 hover:shadow-xl rounded text-white p-2">Add
+                    New
+                    Entry</a>
             </div>
         </div>
 
@@ -219,7 +201,7 @@
 
                             {{-- TODA / Barangay --}}
                             <td class="px-5 py-4">
-                                <p class="text-sm font-medium text-green">{{ $franchise->toda }}</p>
+                                <p class="text-sm font-medium text-green">{{ $franchise->toda->name ?? '—' }}</p>
                                 <p class="text-xs text-gray">{{ $franchise->barangay }}</p>
                             </td>
 
@@ -284,6 +266,18 @@
                             {{-- Actions --}}
                             <td class="px-5 py-4">
                                 <div class="flex items-center justify-center gap-1.5">
+
+                                    {{-- Pay (AF51) --}}
+                                    <a href="{{ route('vf.payments.create', ['franchise_id' => $franchise->id]) }}"
+                                        title="Record Payment"
+                                        class="p-1.5 bg-logo-green/10 text-logo-green rounded-lg hover:bg-logo-green hover:text-white transition-all duration-150 hover:scale-105">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 002 2v6zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </a>
+
                                     {{-- View --}}
                                     <a href="{{ route('vf.show', $franchise->id) }}" title="View"
                                         class="p-1.5 bg-logo-teal/10 text-logo-teal rounded-lg hover:bg-logo-teal hover:text-white transition-all duration-150 hover:scale-105">
@@ -293,6 +287,7 @@
                                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm-3-9C7.477 3 3 7.477 3 12s4.477 9 9 9 9-4.477 9-9-4.477-9-9-9z" />
                                         </svg>
                                     </a>
+
                                     {{-- Edit --}}
                                     <a href="{{ route('vf.edit', $franchise->id) }}" title="Edit"
                                         class="p-1.5 bg-yellow/20 text-brown rounded-lg hover:bg-yellow hover:text-green transition-all duration-150 hover:scale-105">
@@ -302,15 +297,17 @@
                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                     </a>
+
                                     {{-- Renew --}}
                                     <a href="{{ route('vf.renew', $franchise->id) }}" title="Renew"
-                                        class="p-1.5 bg-logo-green/10 text-logo-green rounded-lg hover:bg-logo-green hover:text-white transition-all duration-150 hover:scale-105">
+                                        class="p-1.5 bg-logo-blue/10 text-logo-blue rounded-lg hover:bg-logo-blue hover:text-white transition-all duration-150 hover:scale-105">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                         </svg>
                                     </a>
+
                                     {{-- Delete --}}
                                     <form action="{{ route('vf.destroy', $franchise->id) }}" method="POST"
                                         onsubmit="return confirm('Delete this franchise record? This cannot be undone.')">
@@ -325,6 +322,7 @@
                                             </svg>
                                         </button>
                                     </form>
+
                                 </div>
                             </td>
                         </tr>
@@ -367,4 +365,4 @@
         @endif
     </div>
 
-</x-app-layout>
+</x-admin.app>

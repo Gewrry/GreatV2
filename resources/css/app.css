@@ -6,18 +6,34 @@
 @source '../**/*.js';
 
 @theme {
-    /* existing */
-    --color-green: #10454F;
-    --color-gray: #506266;
-    --color-brown: #818274;
-    --color-lumot: #A3AB78;
-    --color-yellow: #BDE038;
-    --color-white: #fff;
-    --color-blue: #184C78;
-    --color-bluebody: #d8eaf9;
-    --color-logo-blue: #0066B2;
-    --color-logo-teal: #00A99D;
-    --color-logo-green: #7EC845;
+    /* ── existing ── */
+    --color-green:       #10454F;
+    --color-gray:        #506266;
+    --color-brown:       #818274;
+    --color-lumot:       #A3AB78;
+    --color-yellow:      #BDE038;
+    --color-white:       #fff;
+    --color-blue:        #184C78;
+    --color-bluebody:    #d8eaf9;
+    --color-logo-blue:   #0066B2;
+    --color-logo-teal:   #00A99D;
+    --color-logo-green:  #7EC845;
 
-    --font-main: "Nunito Sans", sans-serif;
+    /* ── GReAT design system ── */
+    --color-surface:     #f5f8fc;
+    --color-surface2:    #edf2f9;
+    --color-navy:        #0b2545;
+    --color-brand-blue:  #1c5aad;
+    --color-blue-soft:   #3d7dd6;
+    --color-cyan:        #00c8e8;
+    --color-cyan-dim:    rgba(0,200,232,0.15);
+    --color-cyan-glow:   rgba(0,200,232,0.28);
+    --color-text-mid:    rgba(11,37,69,0.52);
+    --color-text-soft:   rgba(11,37,69,0.32);
+    --color-border:      rgba(11,37,69,0.08);
+    --color-border-cyan: rgba(0,200,232,0.3);
+
+    /* ── Fonts ── */
+    --font-main:         "Inter", sans-serif;
+    --font-display:      "DM Serif Display", serif;
 }

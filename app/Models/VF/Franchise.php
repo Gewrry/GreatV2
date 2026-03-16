@@ -132,4 +132,30 @@ class Franchise extends Model
                 $q->whereYear('permit_date', $v)
             );
     }
+
+
+
+    // Relationships
+    public function payments()
+    {
+        return $this->hasMany(\App\Models\VF\Payment::class);
+    }
+
+    // Accessors
+    public function getOwnerNameAttribute(): string
+    {
+        if (!$this->owner)
+            return '—';
+        return trim("{$this->owner->last_name}, {$this->owner->first_name} " . ($this->owner->middle_name ? substr($this->owner->middle_name, 0, 1) . '.' : ''));
+    }
+
+    public function getPlateNumberAttribute(): ?string
+    {
+        return $this->vehicle?->plate_number;
+    }
+
+    public function getBangayAttribute(): ?string
+    {
+        return $this->owner?->barangay;
+    }
 }
