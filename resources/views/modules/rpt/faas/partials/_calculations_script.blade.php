@@ -164,7 +164,7 @@
     });
 
     // ── Component Edit Modal Handlers ───────────────────
-    function openEditLandModal(id, useId, area, unitVal, astLvl, lot, blk, lat, lng) {
+    function openEditLandModal(id, useId, area, unitVal, astLvl, lot, blk, lat, lng, polygon) {
         const modal = document.getElementById('editLandModal');
         const form = modal.querySelector('form');
         form.action = "{{ url('rpt/faas/'.$faas->id.'/land') }}/" + id;
@@ -176,6 +176,9 @@
         form.querySelector('[name="blk_no"]').value = blk;
         form.querySelector('[name="latitude"]').value = lat;
         form.querySelector('[name="longitude"]').value = lng;
+        if (form.querySelector('[name="polygon_coordinates"]')) {
+            form.querySelector('[name="polygon_coordinates"]').value = polygon ? polygon : '';
+        }
         modal.classList.remove('hidden');
         form.dispatchEvent(new Event('input', { bubbles: true })); // Trigger live calc
     }

@@ -145,12 +145,13 @@ class FeeRuleController extends Controller
             'business_scale' => 'nullable|string',
             'mode_of_payment' => 'required|in:annual,semi_annual,quarterly',
             'entry_id' => 'nullable|integer',
-            'is_senior' => 'nullable|boolean',
-            'is_pwd' => 'nullable|boolean',
             'is_solo_parent' => 'nullable|boolean',
             'is_4ps' => 'nullable|boolean',
             'is_bmbe' => 'nullable|boolean',
             'is_cooperative' => 'nullable|boolean',
+            'is_vaccine' => 'nullable|boolean', // Added for Pizer
+            'benefit_flags' => 'nullable|array',
+            'benefit_flags.*' => 'boolean',
         ]);
 
         $gs = (float) $request->capital_investment;
@@ -180,50 +181,9 @@ class FeeRuleController extends Controller
         $totalDue = round($fees->sum('amount'), 2);
         
         // ── CALCULATE DISCOUNTS ───────────────────────────────────────────────
-        $discountAmount = 0.0;
-        $discountLabels = [];
-        $totalDiscountPercent = 0.0;
-        
-        // Find the Gross Sales Tax (LBT) fee to apply discounts to
-        $lbtFee = $fees->firstWhere('name', 'Gross Sales Tax (LBT)');
-        $lbtAmount = $lbtFee ? $lbtFee['amount'] : 0;
-
-        if ($request->boolean('is_cooperative')) {
-            $totalDiscountPercent += 1.0;
-            $discountLabels[] = 'Cooperative (100%)';
-        }
-        if ($request->boolean('is_bmbe')) {
-            $totalDiscountPercent += 1.0;
-            $discountLabels[] = 'BMBE (100%)';
-        }
-        if ($request->boolean('is_senior')) {
-            $totalDiscountPercent += 0.20;
-            $discountLabels[] = 'Senior Citizen (20%)';
-        }
-        if ($request->boolean('is_pwd')) {
-            $totalDiscountPercent += 0.20;
-            $discountLabels[] = 'PWD (20%)';
-        }
-        if ($request->boolean('is_solo_parent')) {
-            $totalDiscountPercent += 0.20;
-            $discountLabels[] = 'Solo Parent (20%)';
-        }
-        if ($request->boolean('is_4ps')) {
-             $totalDiscountPercent += 0.10;
-             $discountLabels[] = '4Ps (10%)';
-        }
-
-        // Cap discount at 100% of LBT
-        if ($totalDiscountPercent > 1.0) {
-            $totalDiscountPercent = 1.0;
-        }
-
-        if ($totalDiscountPercent > 0) {
-            $discountAmount = round($lbtAmount * $totalDiscountPercent, 2);
-            $discountLabel = implode(' + ', $discountLabels) . ' LBT Discount';
-        } else {
-            $discountLabel = '';
-        }
+        $disc = $this->resolveDiscounts($request, $fees, $totalDue);
+        $discountAmount = $disc['amount'];
+        $discountLabel = $disc['label'];
 
         $totalAfterDiscount = max(0, $totalDue - $discountAmount);
 
@@ -281,12 +241,8 @@ class FeeRuleController extends Controller
             'mode_of_payment'    => 'required|in:annual,semi_annual,quarterly',
             'permit_year'        => 'nullable|integer|min:2000|max:2100',
             'is_renewal'         => 'nullable|boolean',
-            'is_senior'          => 'nullable|boolean',
-            'is_pwd'             => 'nullable|boolean',
-            'is_solo_parent'     => 'nullable|boolean',
-            'is_4ps'             => 'nullable|boolean',
-            'is_bmbe'            => 'nullable|boolean',
-            'is_cooperative'     => 'nullable|boolean',
+            'benefit_flags'      => 'nullable|array',
+            'benefit_flags.*'    => 'boolean',
         ]);
 
         $gs         = (float) $request->capital_investment;
@@ -317,85 +273,11 @@ class FeeRuleController extends Controller
 
         $totalDue = round($fees->sum('amount'), 2);
 
-        // ── Discounts — reads from BplsSetting exactly like walk-in computeBeneficiaryDiscount() ──
-        $discountAmount = 0.0;
-        $discountLabel  = '';
-
-        $beneficiaryEnabled = BplsSetting::get('beneficiary_discount_enabled', '0') === '1';
-
-        if ($beneficiaryEnabled) {
-            // Build groups for enabled beneficiary types
-            $groups = [];
-
-            if ($request->boolean('is_pwd')) {
-                $groups[] = [
-                    'label'    => 'PWD',
-                    'rate'     => (float) BplsSetting::get('pwd_discount_rate', '20'),
-                    'apply_to' => BplsSetting::get('pwd_discount_apply_to', 'total'),
-                ];
-            }
-            if ($request->boolean('is_senior')) {
-                $groups[] = [
-                    'label'    => 'Senior Citizen',
-                    'rate'     => (float) BplsSetting::get('senior_discount_rate', '20'),
-                    'apply_to' => BplsSetting::get('senior_discount_apply_to', 'total'),
-                ];
-            }
-            if ($request->boolean('is_solo_parent')) {
-                $groups[] = [
-                    'label'    => 'Solo Parent',
-                    'rate'     => (float) BplsSetting::get('solo_parent_discount_rate', '10'),
-                    'apply_to' => BplsSetting::get('solo_parent_discount_apply_to', 'total'),
-                ];
-            }
-            if ($request->boolean('is_4ps')) {
-                $groups[] = [
-                    'label'    => '4Ps',
-                    'rate'     => (float) BplsSetting::get('fourps_discount_rate', '10'),
-                    'apply_to' => BplsSetting::get('fourps_discount_apply_to', 'total'),
-                ];
-            }
-            // BMBE / Cooperative are treated as 100% LBT-exempt regardless of settings
-            if ($request->boolean('is_bmbe')) {
-                $groups[] = ['label' => 'BMBE',        'rate' => 100.0, 'apply_to' => 'total'];
-            }
-            if ($request->boolean('is_cooperative')) {
-                $groups[] = ['label' => 'Cooperative', 'rate' => 100.0, 'apply_to' => 'total'];
-            }
-
-            if (!empty($groups)) {
-                // Permit-fee ratio (for apply_to = permit_only)
-                $totalFeesAmt  = $fees->sum('amount');
-                $permitFeeAmt  = $fees->firstWhere('name', 'Gross Sales Tax (LBT)')['amount'] ?? 0;
-                $permitRatio   = $totalFeesAmt > 0 ? ($permitFeeAmt / $totalFeesAmt) : 1.0;
-
-                $computeGroupDiscount = function (array $group) use ($totalDue, $permitRatio): float {
-                    $effectiveBase = $group['apply_to'] === 'permit_only'
-                        ? round($totalDue * $permitRatio, 2)
-                        : $totalDue;
-                    return round($effectiveBase * ($group['rate'] / 100), 2);
-                };
-
-                $stackRule = BplsSetting::get('beneficiary_discount_stack', 'stack');
-
-                if ($stackRule === 'highest_only') {
-                    usort($groups, fn($a, $b) => $computeGroupDiscount($b) <=> $computeGroupDiscount($a));
-                    $best          = $groups[0];
-                    $discountAmount = $computeGroupDiscount($best);
-                    $discountLabel  = $best['label'] . ' Discount';
-                } else {
-                    $labels = [];
-                    foreach ($groups as $group) {
-                        $discountAmount += $computeGroupDiscount($group);
-                        $labels[]        = $group['label'];
-                    }
-                    $discountAmount = min($discountAmount, $totalDue);
-                    $discountLabel  = implode(' + ', $labels) . ' Discount';
-                }
-
-                $discountAmount = round($discountAmount, 2);
-            }
-        }
+        // ── Discounts — loaded dynamically from bpls_benefits table ──────────
+        $disc = $this->resolveDiscounts($request, $fees, $totalDue);
+        $discountAmount = $disc['amount'];
+        $discountLabel = $disc['label'];
+        $activeBenefits = $disc['benefits'];
 
         $totalAfterDiscount = max(0, $totalDue - $discountAmount);
 
@@ -421,7 +303,89 @@ class FeeRuleController extends Controller
             'schedule'             => $this->buildSchedule($totalAfterDiscount, $mode, $permitYear, $approvedAt, $isRenewal),
             'permit_year'          => $permitYear,
             'business_nature'      => $request->business_nature,
+            'benefits'             => $activeBenefits->map(fn($b) => [
+                'id'               => $b->id,
+                'label'            => $b->label,
+                'field_key'        => $b->field_key,
+                'discount_percent' => $b->discount_percent,
+            ]),
         ]);
+    }
+
+    /**
+     * resolveDiscounts()
+     * Consolidates dynamic discount logic from bpls_benefits table.
+     */
+    private function resolveDiscounts(Request $request, $fees, float $totalDue): array
+    {
+        $lbtFee = $fees->first(fn($f) => str_contains($f['name'], '(LBT)'));
+        $lbtAmount = $lbtFee ? $lbtFee['amount'] : 0;
+
+        $discountAmount = 0.0;
+        $discountLabel = '';
+
+        $activeBenefits = \App\Models\BplsBenefit::active()->get();
+        $submittedFlags = $request->input('benefit_flags', []);
+        $enabled = BplsSetting::get('beneficiary_discount_enabled', '0') === '1';
+
+        if (!$enabled) {
+            return ['amount' => 0.0, 'label' => '', 'benefits' => $activeBenefits];
+        }
+
+        $groups = [];
+        foreach ($activeBenefits as $benefit) {
+            $flagKey = $benefit->field_key;
+            $isSet = array_key_exists($flagKey, $submittedFlags)
+                ? (bool) $submittedFlags[$flagKey]
+                : $request->boolean($flagKey);
+
+            if ($isSet) {
+                $groups[] = [
+                    'label'    => $benefit->label,
+                    'rate'     => (float) $benefit->discount_percent,
+                    'apply_to' => $benefit->apply_to ?? 'permit_only',
+                ];
+            }
+        }
+
+        if (empty($groups)) {
+            return ['amount' => 0.0, 'label' => '', 'benefits' => $activeBenefits];
+        }
+
+        $stackRule = BplsSetting::get('beneficiary_discount_stack', 'stack');
+
+        if ($stackRule === 'highest_only') {
+            $compute = function (array $group) use ($totalDue, $lbtAmount): float {
+                $isTotal = in_array($group['apply_to'], ['total', 'total_amount']);
+                $base = $isTotal ? $totalDue : $lbtAmount;
+                return round($base * ($group['rate'] / 100), 2);
+            };
+            usort($groups, fn($a, $b) => $compute($b) <=> $compute($a));
+            $best = $groups[0];
+            $discountAmount = $compute($best);
+            $discountLabel = $best['label'] . ' Discount';
+        } else {
+            $totalsByBase = ['permit_only' => 0.0, 'total' => 0.0];
+            $labels = [];
+            foreach ($groups as $group) {
+                $isTotal = in_array($group['apply_to'], ['total', 'total_amount']);
+                $baseKey = $isTotal ? 'total' : 'permit_only';
+                $totalsByBase[$baseKey] += (float) $group['rate'];
+                $labels[] = $group['label'];
+            }
+
+            $lbtDisc = round($lbtAmount * (min(100.0, $totalsByBase['permit_only']) / 100), 2);
+            $totalDisc = round($totalDue * (min(100.0, $totalsByBase['total']) / 100), 2);
+
+            $discountAmount = min($totalDue, $lbtDisc + $totalDisc);
+            $discountLabel = implode(' + ', array_unique($labels)) . ' Discount';
+        }
+
+        return [
+            'amount' => round($discountAmount, 2),
+            'label' => $discountLabel,
+            'benefits' => $activeBenefits
+        ];
     }
 
     // ─────────────────────────────────────────────────────────────────────────

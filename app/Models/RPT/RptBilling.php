@@ -59,6 +59,21 @@ class RptBilling extends Model
 
         if ($date->lte($deadline)) return 0.0;
 
+        // --- Tax Amnesty Check ---
+        $amnestyStart = RptaSetting::get('amnesty_start_date');
+        $amnestyEnd   = RptaSetting::get('amnesty_end_date');
+        
+        if ($amnestyStart && $amnestyEnd) {
+            $start = Carbon::parse($amnestyStart)->startOfDay();
+            $end   = Carbon::parse($amnestyEnd)->endOfDay();
+            
+            // If the current calculation date (usually today/payment date) is within the amnesty period, waive all penalties.
+            if ($date->between($start, $end)) {
+                return 0.0;
+            }
+        }
+        // -------------------------
+
         // Number of months delayed (minimum 1)
         $months = max(1, $deadline->diffInMonths($date));
         $rate = min($months * 0.02, 0.72); // Capped at 72% (36 months) per standard LGU code

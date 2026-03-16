@@ -16,6 +16,7 @@ class BplsBenefit extends Model
         'label',
         'field_key',
         'discount_percent',
+        'apply_to',
         'description',
         'is_active',
         'sort_order',

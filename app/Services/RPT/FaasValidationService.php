@@ -46,6 +46,9 @@ class FaasValidationService extends ValidationService
             $this->fail('status', 'Only draft records can be submitted for review.');
         }
 
+        // Owner completeness check
+        $this->assertOwnerIsValid($faas);
+
         if ($faas->property_type === 'land' && $faas->lands()->count() === 0) {
             $this->fail('components', 'Cannot submit for review: Property Type is Land, but no Land appraisal is attached.');
         }
@@ -62,14 +65,22 @@ class FaasValidationService extends ValidationService
             $this->fail('components', 'Cannot submit for review: Property Type is Mixed, but no appraisals (Land, Building, or Machinery) are attached.');
         }
 
+        // Land parcel data integrity checks
+        foreach ($faas->lands as $land) {
+            if (empty($land->area_sqm) || $land->area_sqm <= 0) {
+                $this->fail('area_sqm', 'Cannot submit: Land parcel (Lot: ' . ($land->lot_no ?: 'N/A') . ') has no area specified.');
+            }
+            if (empty($land->rpta_actual_use_id)) {
+                $this->fail('actual_use', 'Cannot submit: Land parcel (Lot: ' . ($land->lot_no ?: 'N/A') . ') has no Actual Use assigned.');
+            }
+        }
+
         if ($faas->totalMarketValue() <= 0) {
             $this->fail('total_market_value', 'Cannot submit for review: Total Market Value must be greater than zero.');
         }
 
-        // Attachment Guard: At least one supporting document must be on file.
-        if ($faas->attachments()->count() === 0) {
-            $this->fail('attachments', 'Cannot submit for review: Please upload at least one supporting document (e.g., Title/Deed, Sketch Plan) before submitting.');
-        }
+        // Document Requirement: At least one supporting document
+        $this->assertHasRequiredDocuments($faas);
     }
 
     /**
@@ -203,6 +214,25 @@ class FaasValidationService extends ValidationService
 
             if ($hasUnpaid) {
                 $this->fail('tax_clearance', "Action Blocked: Property (ARP: {$faas->arp_no}) has outstanding tax liabilities. Please settle all billings in Treasury first.");
+            }
+        }
+    }
+
+    /**
+     * Document Guard: Require at least one supporting document of a legal type.
+     */
+    public function assertHasRequiredDocuments(FaasProperty $faas)
+    {
+        $requiredTypes = ['title_deed', 'deed_of_sale', 'sketch_plan', 'legal_requirement'];
+
+        $hasRequired = $faas->attachments()
+            ->whereIn('type', $requiredTypes)
+            ->exists();
+
+        if (!$hasRequired) {
+            // Fallback: check if ANY document exists at all
+            if ($faas->attachments()->count() === 0) {
+                $this->fail('attachments', 'Cannot submit for review: Please upload at least one supporting document (e.g., Title/Deed, Sketch Plan) in the Document Dossier before submitting.');
             }
         }
     }

@@ -40,6 +40,7 @@
                                     <span class="px-2 py-1 rounded-full text-xs font-medium {{ $badge }}">{{ ucfirst(str_replace('_',' ',$td->status)) }}</span>
                                 </div>
                                 <p class="text-sm text-gray-500 mt-1">{{ $td->property?->owner_name }} — ARP: {{ $td->property?->arp_no ?? '—' }}</p>
+                                <p class="text-[10px] font-bold text-blue-600 tracking-widest uppercase mt-0.5"><i class="fas fa-fingerprint mr-1"></i> PIN: {{ $td->property?->pin ?? 'Pending Approval' }}</p>
                             </div>
                             <div class="flex gap-2 flex-wrap text-[10px] font-bold uppercase tracking-widest">
                                 @if($td->status === 'draft')
@@ -79,9 +80,16 @@
                             <div class="px-6 py-4 space-y-2">
                                 <h3 class="font-semibold text-gray-700 text-sm mb-3">Property Details</h3>
                                 <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Property Type:</span> {{ ucfirst($td->property_type) }}</div>
-                                <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Effectivity Year:</span> {{ $td->effectivity_year }}</div>
+                                <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Effectivity:</span> {{ $td->effectivity_year }} — Q{{ $td->effectivity_quarter }}</div>
                                 <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Declaration Reason:</span> {{ ucfirst(str_replace('_',' ',$td->declaration_reason)) }}</div>
-                                <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Taxable:</span> {{ $td->is_taxable ? 'Yes' : 'No' }}</div>
+                                <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Taxable:</span> 
+                                    @if($td->is_taxable)
+                                        <span class="text-green-600 font-bold uppercase text-[10px]">Taxable</span>
+                                    @else
+                                        <span class="text-red-600 font-bold uppercase text-[10px]">Exempt</span>
+                                        <span class="text-xs text-gray-400 ml-1">({{ $td->exemption_basis ?? 'No basis stated' }})</span>
+                                    @endif
+                                </div>
                                 <div class="text-sm"><span class="text-gray-500 w-32 inline-block">Tax Rate:</span> {{ ($td->tax_rate * 100) }}%</div>
                             </div>
                             <div class="px-6 py-4 space-y-2">
@@ -92,6 +100,25 @@
                                 <div class="flex justify-between text-sm font-semibold"><span class="text-gray-700">Annual Basic RPT Due</span><span class="text-green-700">₱ {{ number_format((float) $td->annualTaxDue(), 2) }}</span></div>
                             </div>
                         </div>
+
+                        {{-- Lineage / History Footer --}}
+                        @if($td->prev_td_no || $td->cancelled_td_no)
+                        <div class="px-6 py-3 bg-gray-50/50 border-t flex items-center gap-6">
+                            @if($td->prev_td_no)
+                            <div class="flex items-center gap-2">
+                                <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Preceded by:</span>
+                                <span class="text-xs font-semibold text-gray-600">{{ $td->prev_td_no }}</span>
+                            </div>
+                            @endif
+                            @if($td->cancelled_td_no)
+                            <div class="flex items-center gap-2">
+                                <span class="text-[9px] font-bold text-red-400 uppercase tracking-widest">Cancelled TD:</span>
+                                <span class="text-xs font-semibold text-red-600">{{ $td->cancelled_td_no }}</span>
+                                <span class="text-[10px] text-red-400 italic">({{ $td->cancellation_reason ?? 'No reason provided' }})</span>
+                            </div>
+                            @endif
+                        </div>
+                        @endif
                     </div>
                 </div>
 

@@ -202,6 +202,17 @@
                                         <p class="text-sm text-gray">{{ $registration->machinery_description }}</p>
                                     </div>
                                 @endif
+
+                                @if($registration->polygon_coordinates)
+                                    <div class="col-span-2 pt-3 mt-3 border-t border-lumot/20">
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <i class="fas fa-map text-indigo-500 text-sm"></i>
+                                            <p class="text-[10px] font-extrabold text-gray/50 uppercase tracking-widest">Property Boundary Map</p>
+                                        </div>
+                                        <div id="reviewMap" class="w-full h-64 rounded-xl border border-gray-200" style="z-index: 10;"></div>
+                                        <input type="hidden" id="drawn_coordinates" value="{{ json_encode($registration->polygon_coordinates) }}">
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -471,5 +482,34 @@
             m.classList.add('hidden');
         }
     </script>
+    @if($registration->polygon_coordinates)
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if(document.getElementById('reviewMap')) {
+            const map = L.map('reviewMap').setView([12.8797, 121.7740], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            const coords = document.getElementById('drawn_coordinates').value;
+            if (coords) {
+                try {
+                    const geojson = JSON.parse(coords);
+                    const layer = L.geoJSON(geojson, {
+                        style: { color: '#3b82f6', weight: 3, fillOpacity: 0.2 }
+                    }).addTo(map);
+                    map.fitBounds(layer.getBounds());
+                    map.zoomOut(1);
+                } catch(e) {
+                    console.error("Invalid GIS Data", e);
+                }
+            }
+        }
+    });
+    </script>
+    @endif
     @endpush
 </x-admin.app>

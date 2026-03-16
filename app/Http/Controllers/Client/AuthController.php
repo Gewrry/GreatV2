@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ClientVerifyEmailMail;
+
 class AuthController extends Controller
 {
     // -----------------------------------------------------------------------
@@ -59,6 +62,13 @@ class AuthController extends Controller
         if (Auth::guard('client')->attempt($credentials, $remember)) {
             $request->session()->regenerate();
 
+            $client = Auth::guard('client')->user();
+
+            if (!$client->email_verified_at) {
+                return redirect()->route('client.verify.show')
+                    ->with('warning', 'Please verify your email address to continue.');
+            }
+
             return redirect()->intended(route('client.dashboard'))
                 ->with('success', 'Welcome back, ' . $client->first_name . '!');
         }
@@ -78,6 +88,67 @@ class AuthController extends Controller
         }
 
         return view('client.auth.register');
+    }
+
+    // -----------------------------------------------------------------------
+    // SHOW VERIFY
+    // -----------------------------------------------------------------------
+    public function showVerify()
+    {
+        $client = Auth::guard('client')->user();
+
+        if (!$client) {
+            return redirect()->route('client.login');
+        }
+
+        if ($client->email_verified_at) {
+            return redirect()->route('client.dashboard');
+        }
+
+        return view('client.auth.verify', compact('client'));
+    }
+
+    // -----------------------------------------------------------------------
+    // VERIFY
+    // -----------------------------------------------------------------------
+    public function verify(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string|size:6',
+        ]);
+
+        $client = Auth::guard('client')->user();
+
+        if ($request->code === $client->verification_code) {
+            $client->update([
+                'email_verified_at' => now(),
+                'verification_code' => null,
+            ]);
+
+            return redirect()->route('client.dashboard')
+                ->with('success', 'Email verified successfully! Welcome to the BPLS Online Portal.');
+        }
+
+        return back()->withErrors(['code' => 'The verification code you entered is incorrect.']);
+    }
+
+    // -----------------------------------------------------------------------
+    // RESEND VERIFICATION
+    // -----------------------------------------------------------------------
+    public function resendVerification()
+    {
+        $client = Auth::guard('client')->user();
+
+        if ($client->email_verified_at) {
+            return redirect()->route('client.dashboard');
+        }
+
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $client->update(['verification_code' => $code]);
+
+        Mail::to($client->email)->send(new ClientVerifyEmailMail($client, $code));
+
+        return back()->with('success', 'A new verification code has been sent to your email.');
     }
 
     // -----------------------------------------------------------------------
@@ -102,6 +173,8 @@ class AuthController extends Controller
             'password.min' => 'Password must be at least 8 characters.',
         ]);
 
+        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
         $client = Client::create([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
@@ -110,12 +183,15 @@ class AuthController extends Controller
             'mobile_no' => $request->mobile_no,
             'password' => Hash::make($request->password),
             'status' => 'active',
+            'verification_code' => $code,
         ]);
+
+        Mail::to($client->email)->send(new ClientVerifyEmailMail($client, $code));
 
         Auth::guard('client')->login($client);
 
-        return redirect()->route('client.dashboard')
-            ->with('success', 'Account created! Welcome to BPLS Online Portal, ' . $client->first_name . '.');
+        return redirect()->route('client.verify.show')
+            ->with('success', 'Account created! Please enter the 6-digit verification code sent to ' . $client->email);
     }
 
     // -----------------------------------------------------------------------

@@ -7,6 +7,7 @@
 @include('modules.rpt.faas.modals._edit_land')
 @include('modules.rpt.faas.modals._edit_building')
 @include('modules.rpt.faas.modals._edit_machinery')
+@include('modules.rpt.faas.modals._edit_master')
 
 @include('modules.rpt.faas.modals._transfer')
 @include('modules.rpt.faas.modals._subdivide')

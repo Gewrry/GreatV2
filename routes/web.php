@@ -40,28 +40,13 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ModuleController;
 
 // HR Controllers
-use App\Http\Controllers\Hr\HumanResourcesController;
+use App\Http\Controllers\HR\HumanResourcesController;
 
 // RPT Controllers
-use App\Http\Controllers\RPT\RPTController;
-use App\Http\Controllers\RPT\TaxDeclarationController;
-use App\Http\Controllers\RPT\ReportController;
-use App\Http\Controllers\RPT\GISController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\RPTA_SettingsController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\RptAuController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\AdditionalItemController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\AssessmentLevelController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\ClassificationController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\DepreciationRateBldgController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\OwnerController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\OtherImprovementController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\RptaSignatoryController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\RptTransactionCodeController;
-use App\Http\Controllers\RPT\RPTA_SETTINGS\RptaGenRevController;
 
 // BPLS Controllers
-use App\Http\Controllers\Hr\PlantillaController;
-use App\Http\Controllers\Hr\RecruitmentController;
+use App\Http\Controllers\HR\PlantillaController;
+use App\Http\Controllers\HR\RecruitmentController;
 use App\Http\Controllers\HR\AppointmentController;
 use App\Http\Controllers\HR\Employee201Controller;
 use App\Http\Controllers\HR\SalaryGradeController;
@@ -115,7 +100,8 @@ use App\Http\Controllers\RPT\PropertyRegistrationController;
 use App\Http\Controllers\RPT\OnlineApplicationController;
 use App\Http\Controllers\RPT\RptDashboardController;
 use App\Http\Controllers\RPT\RPTSettingsController;
-
+use App\Http\Controllers\RPT\TaxDeclarationController;
+use App\Http\Controllers\RPT\GISController;
 
 
 
@@ -187,7 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // =========================================================================
     // 4c. HR MODULE  [module gate: hr]
     // =========================================================================
-    Route::prefix('employee-info')->name('employee-info.')->middleware('module:hr')->group(function () {
+    Route::group(['prefix' => 'employee-info', 'as' => 'employee-info.', 'middleware' => 'module:hr'], function () {
         Route::get('/create', [HumanResourcesController::class, 'create'])->name('create');
         Route::post('/', [HumanResourcesController::class, 'store'])->name('store');
     });
@@ -245,6 +231,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
         Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
         Route::post('/appointments/{appointment}/terminate', [AppointmentController::class, 'terminate'])->name('appointments.terminate');
+        Route::get('/appointments/{appointment}/onboard', [AppointmentController::class, 'onboard'])->name('appointments.onboard');
+        Route::post('/appointments/{appointment}/onboard', [AppointmentController::class, 'processOnboarding'])->name('appointments.process-onboarding');
         Route::get('/appointments/plantilla/{id}', [AppointmentController::class, 'getPlantillaDetails'])->name('appointments.plantilla-details');
         Route::get('/appointments/applicant/{id}', [AppointmentController::class, 'getApplicantDetails'])->name('appointments.applicant-details');
 
@@ -272,6 +260,56 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/document/{document}', [Employee201Controller::class, 'destroyDocument'])->name('employees.document.destroy');
         Route::post('/employees/{employee}/training', [Employee201Controller::class, 'storeTraining'])->name('employees.training.store');
         Route::delete('/training/{training}', [Employee201Controller::class, 'destroyTraining'])->name('employees.training.destroy');
+
+        // Leave Management
+        Route::prefix('leaves')->name('leaves.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\HR\LeaveManagementController::class, 'index'])->name('index');
+            Route::get('/apply', [\App\Http\Controllers\HR\LeaveManagementController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\HR\LeaveManagementController::class, 'store'])->name('store');
+            Route::get('/balances', [\App\Http\Controllers\HR\LeaveManagementController::class, 'balances'])->name('balances');
+            Route::post('/balances/update', [\App\Http\Controllers\HR\LeaveManagementController::class, 'updateBalance'])->name('balances.update');
+            Route::get('/{leave}', [\App\Http\Controllers\HR\LeaveManagementController::class, 'show'])->name('show');
+            Route::post('/{leave}/approve', [\App\Http\Controllers\HR\LeaveManagementController::class, 'approve'])->name('approve');
+            Route::post('/{leave}/reject', [\App\Http\Controllers\HR\LeaveManagementController::class, 'reject'])->name('reject');
+        });
+
+        // Attendance / DTR
+        Route::prefix('attendance')->name('attendance.')->group(function () {
+            Route::get('/schedules', [\App\Http\Controllers\HR\AttendanceController::class, 'schedules'])->name('schedules');
+            Route::post('/schedules', [\App\Http\Controllers\HR\AttendanceController::class, 'storeSchedule'])->name('schedules.store');
+            Route::post('/schedules/assign', [\App\Http\Controllers\HR\AttendanceController::class, 'assignSchedule'])->name('schedules.assign');
+            Route::get('/import', [\App\Http\Controllers\HR\AttendanceController::class, 'importLogs'])->name('import');
+            Route::post('/import', [\App\Http\Controllers\HR\AttendanceController::class, 'processImport'])->name('import.process');
+            Route::get('/time-logs', [\App\Http\Controllers\HR\AttendanceController::class, 'timeLogs'])->name('time-logs');
+            Route::get('/generate', [\App\Http\Controllers\HR\AttendanceController::class, 'generateDtr'])->name('generate');
+            Route::post('/generate', [\App\Http\Controllers\HR\AttendanceController::class, 'processDtr'])->name('generate.process');
+            Route::get('/dtr', [\App\Http\Controllers\HR\AttendanceController::class, 'viewDtr'])->name('dtr');
+        });
+
+        // Payroll
+        Route::prefix('payroll')->name('payroll.')->group(function () {
+            Route::get('/deductions', [\App\Http\Controllers\HR\PayrollController::class, 'deductions'])->name('deductions');
+            Route::post('/deductions', [\App\Http\Controllers\HR\PayrollController::class, 'storeDeduction'])->name('deductions.store');
+            Route::get('/periods', [\App\Http\Controllers\HR\PayrollController::class, 'periods'])->name('periods');
+            Route::post('/periods', [\App\Http\Controllers\HR\PayrollController::class, 'storePeriod'])->name('periods.store');
+            Route::post('/generate/{period}', [\App\Http\Controllers\HR\PayrollController::class, 'generate'])->name('generate');
+            Route::get('/register/{period}', [\App\Http\Controllers\HR\PayrollController::class, 'register'])->name('register');
+            Route::get('/payslip/{record}', [\App\Http\Controllers\HR\PayrollController::class, 'payslip'])->name('payslip');
+            Route::post('/finalize/{period}', [\App\Http\Controllers\HR\PayrollController::class, 'finalize'])->name('finalize');
+        });
+
+        // Employee Portal (Self-Service)
+        Route::prefix('portal')->name('portal.')->middleware('module:employee_portal')->group(function () {
+            Route::get('/dashboard', [\App\Http\Controllers\HR\EmployeePortalController::class, 'dashboard'])->name('dashboard');
+            Route::get('/my-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myLeave'])->name('my-leave');
+            Route::get('/file-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'fileLeave'])->name('file-leave');
+            Route::post('/file-leave', [\App\Http\Controllers\HR\EmployeePortalController::class, 'storeLeave'])->name('file-leave.store');
+            Route::get('/my-dtr', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myDtr'])->name('my-dtr');
+            Route::get('/my-payslips', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myPayslips'])->name('my-payslips');
+            Route::get('/payslip/{record}', [\App\Http\Controllers\HR\EmployeePortalController::class, 'viewPayslip'])->name('payslip.view');
+            Route::get('/my-service-record', [\App\Http\Controllers\HR\EmployeePortalController::class, 'myServiceRecord'])->name('service-record');
+        });
+
     }); // end hr module
 
     // =========================================================================
@@ -324,16 +362,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('treasury')->name('treasury.')->middleware('module:treasury')->group(function () {
         Route::get('/', fn() => view('modules.treasury.index'))->name('index');
         Route::get('/bpls-payment', [BplsPaymentController::class, 'index'])->name('bpls_payment');
+        Route::get('/bpls-online', [BplsPaymentController::class, 'onlineIndex'])->name('bpls_online');
+        Route::get('/bpls-online/{entry}', [BplsPaymentController::class, 'show'])->name('bpls_online.show');
 
         // RPT Payments
         Route::prefix('rpt-payments')->name('rpt.payments.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'index'])->name('index');
+            Route::get('/bulk', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'bulkPaymentIndex'])->name('bulk.index');
+            Route::post('/bulk/pay', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'storeBulkPayment'])->name('bulk.store');
+            Route::get('/rcd', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'rcd'])->name('rcd');
+            Route::get('/history', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'history'])->name('history');
+            
             Route::get('/{td}', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'showPaymentForm'])->name('show');
             Route::post('/{billing}/pay', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'storePayment'])->name('store');
             Route::get('/{td}/clearance', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'taxClearance'])->name('clearance');
             Route::get('/{td}/nod', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'generateNOD'])->name('nod');
+            Route::get('/{td}/soa', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'generateSOA'])->name('soa');
             Route::get('/payment/{payment}/receipt', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'receipt'])->name('receipt');
+            Route::get('/property-history/{td}', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'propertyHistory'])->name('property-history');
+            Route::get('/rcd', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'rcd'])->name('rcd');
         });
+
+        // GIS Dashboard for Treasury
+        Route::get('/gis', [\App\Http\Controllers\Treasury\TreasuryGisController::class, 'index'])->name('gis.index');
+        Route::get('/gis/data', [\App\Http\Controllers\Treasury\TreasuryGisController::class, 'geojson'])->name('gis.data');
+        Route::get('/gis/batch-nod', [\App\Http\Controllers\Treasury\TreasuryGisController::class, 'batchNod'])->name('gis.batch-nod-treasury');
 
     }); // end treasury module
 
@@ -462,6 +515,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/application/{application}/mark-paid', [BplsApplicationReviewController::class, 'markPaid'])->name('application.mark-paid');
             Route::post('/application/{application}/final-approve', [BplsApplicationReviewController::class, 'finalApprove'])->name('application.final-approve');
             Route::post('/application/{application}/confirm-ors', [BplsApplicationReviewController::class, 'confirmOrs'])->name('application.confirm-ors');
+            Route::get('/application/{application}/permit', [BplsApplicationReviewController::class, 'permitDownload'])->name('application.permit-download');
+            Route::post('/application/{application}/send-reminder', [BplsApplicationReviewController::class, 'sendReminder'])->name('application.send-reminder');
         });
 
         // 4g-x. Permit Signatories
@@ -479,6 +534,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('rpt')->name('rpt.')->middleware('module:rpt')->group(function () {
 
         Route::get('/', [RptDashboardController::class, 'index'])->name('index');
+        
+        // GIS Dashboard
+        Route::get('/gis', [GISController::class, 'index'])->name('gis.index');
+        Route::get('/gis/data', [GISController::class, 'geojson'])->name('gis.data');
+        Route::get('/gis/batch-nod', [GISController::class, 'batchNod'])->name('gis.batch-nod');
 
         // Property Registration (Intake)
         Route::prefix('registration')->name('registration.')->group(function () {
@@ -486,6 +546,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/create', [PropertyRegistrationController::class, 'create'])->name('create');
             Route::get('/pending', [PropertyRegistrationController::class, 'pending'])->name('pending');
             Route::get('/search', [PropertyRegistrationController::class, 'search'])->name('search');
+            Route::get('/search-land', [PropertyRegistrationController::class, 'searchLand'])->name('search-land');
             Route::post('/', [PropertyRegistrationController::class, 'store'])->name('store');
             Route::get('/{registration}', [PropertyRegistrationController::class, 'show'])->name('show');
             Route::post('/{registration}/archive', [PropertyRegistrationController::class, 'archive'])->name('archive');
@@ -550,30 +611,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{td}/notice', [TaxDeclarationController::class, 'printNotice'])->name('notice');
         });
 
-        // GIS
-        Route::prefix('gis')->name('gis.')->group(function () {
-            Route::get('/', [GISController::class, 'index'])->name('index');
-            Route::get('/geometries', [GISController::class, 'getGeometries'])->name('get_geometries');
-            Route::post('/update-geometry', [GISController::class, 'updateGeometry'])->name('update_geometry');
-        });
 
-        // Actual Use
-        Route::prefix('actual-use')->name('actual-use.')->group(function () {
-            Route::get('/', [RptAuController::class, 'index'])->name('index');
-            Route::post('/', [RptAuController::class, 'store'])->name('store');
-            Route::get('/{rptAu}', [RptAuController::class, 'show'])->name('show');
-            Route::post('/{rptAu}', [RptAuController::class, 'update'])->name('update');
-            Route::delete('/{rptAu}', [RptAuController::class, 'destroy'])->name('destroy');
-        });
-
-        // Additional Items
-        Route::prefix('additional-items')->name('additional-items.')->group(function () {
-            Route::get('/', [AdditionalItemController::class, 'index'])->name('index');
-            Route::post('/', [AdditionalItemController::class, 'store'])->name('store');
-            Route::get('/{additionalItem}', [AdditionalItemController::class, 'show'])->name('show');
-            Route::put('/{additionalItem}', [AdditionalItemController::class, 'update'])->name('update');
-            Route::delete('/{additionalItem}', [AdditionalItemController::class, 'destroy'])->name('destroy');
-        });
 
         // Online Applications (Staff Review)
         Route::prefix('online-applications')->name('online-applications.')->group(function () {
@@ -587,32 +625,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{application}/reject', [OnlineApplicationController::class, 'reject'])->name('reject');
         });
 
-        // Reports
-        Route::prefix('reports')->name('reports.')->group(function () {
-            Route::get('/', [ReportController::class, 'index'])->name('index');
 
-            $reports = [
-                'parcel-list' => 'parcelList',
-                'rpu-list' => 'rpuList',
-                'cancelled-list' => 'cancelledList',
-                'faas-summary' => 'faasSummary',
-                'td-summary' => 'tdSummary',
-                'taxable-properties' => 'taxableProperties',
-                'ownership-history' => 'ownershipHistory',
-                'transfer-summary' => 'transferSummary',
-                'multiple-owners' => 'multipleOwners',
-                'td-audit-log' => 'tdAuditLog',
-                'global-transaction-log' => 'globalTransactionLog',
-                'user-activity-audit' => 'userActivityAudit',
-            ];
-
-            foreach ($reports as $slug => $method) {
-                $name = str_replace('-', '_', $slug);
-                $ucMethod = ucfirst(lcfirst(str_replace(' ', '', ucwords(str_replace('-', ' ', $slug)))));
-                Route::get("/{$slug}", [ReportController::class, $method])->name($name);
-                Route::get("/{$slug}/export/pdf", [ReportController::class, 'export' . $ucMethod . 'PDF'])->name("{$name}.export.pdf");
-            }
-        });
 
         // Settings
         Route::prefix('settings')->name('settings.')->group(function () {
@@ -706,6 +719,12 @@ Route::prefix('portal')->name('client.')->group(function () {
     Route::middleware([\App\Http\Middleware\ClientAuthenticated::class])->group(function () {
 
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+        
+        // Email Verification
+        Route::get('/verify', [AuthController::class, 'showVerify'])->name('verify.show');
+        Route::post('/verify', [AuthController::class, 'verify'])->name('verify.submit');
+        Route::post('/resend-verification', [AuthController::class, 'resendVerification'])->name('verify.resend');
+
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::prefix('applications')->name('applications.')->group(function () {
@@ -735,8 +754,11 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::post('/', [PaymentController::class, 'initiate'])->name('initiate');
             Route::post('/confirm', [PaymentController::class, 'confirm'])->name('confirm');
             Route::get('/success', [PaymentController::class, 'success'])->name('success');
+            Route::get('/success&{any}', [PaymentController::class, 'successMalformed'])->where('any', '.*');
             Route::get('/receipt/{payment}', [PaymentController::class, 'receipt'])->name('receipt');
         });
+
+        Route::get('bpls-payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payment.verify');
 
         Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('/walkin-payments', [WalkInPaymentsController::class, 'index'])->name('walkin-payments');
@@ -757,8 +779,13 @@ Route::prefix('portal')->name('client.')->group(function () {
         Route::prefix('rpt-payments')->name('rpt-pay.')->group(function () {
             Route::get('/', [RptOnlinePaymentController::class, 'search'])->name('search');
             Route::get('/{td}/soa', [RptOnlinePaymentController::class, 'soa'])->name('soa');
+            Route::get('/{td}/print-soa', [RptOnlinePaymentController::class, 'printSoa'])->name('print-soa');
             Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
+            Route::post('/{payment}/verify', [RptOnlinePaymentController::class, 'verify'])->name('verify');
+            
+            // Fallback for sessions started before the fix (malformed URL with & instead of ?)
             Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');
+            Route::get('/{billing}/success&{any}', [RptOnlinePaymentController::class, 'successMalformed'])->where('any', '.*');
         });
 
         // Client search

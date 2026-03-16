@@ -52,7 +52,7 @@
                             <i class="fas fa-map-marker-alt"></i>
                         </a>
                         @endif
-                        <button onclick="openEditLandModal({{ $land->id }}, {{ $land->rpta_actual_use_id }}, {{ $land->area_sqm }}, {{ $land->unit_value }}, {{ $land->assessment_level }}, '{{ $land->lot_no }}', '{{ $land->blk_no }}', {{ $land->latitude ?? 'null' }}, {{ $land->longitude ?? 'null' }})" 
+                        <button onclick="openEditLandModal({{ $land->id }}, {{ $land->rpta_actual_use_id }}, {{ $land->area_sqm }}, {{ $land->unit_value }}, {{ $land->assessment_level }}, '{{ addslashes($land->lot_no) }}', '{{ addslashes($land->blk_no) }}', {{ $land->latitude ?? 'null' }}, {{ $land->longitude ?? 'null' }}, '{{ $land->polygon_coordinates ? addslashes(json_encode($land->polygon_coordinates)) : '' }}')" 
                                 class="text-emerald-600 hover:text-emerald-800 text-xs transition">
                             <i class="fas fa-edit"></i>
                         </button>
@@ -125,20 +125,36 @@
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Lot No.</label>
-                    <input type="text" name="lot_no" value="{{ old('lot_no') }}" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional">
+                    <input type="text" name="lot_no" value="{{ old('lot_no', $faas->lot_no) }}" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional">
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Blk No.</label>
-                    <input type="text" name="blk_no" value="{{ old('blk_no') }}" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional">
+                    <input type="text" name="blk_no" value="{{ old('blk_no', $faas->blk_no) }}" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Optional">
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Latitude</label>
-                    <input type="number" name="latitude" step="0.00000001" min="-90" max="90" value="{{ old('latitude') }}" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. 14.5995">
+                <input type="hidden" name="latitude" id="inline_latitude">
+                <input type="hidden" name="longitude" id="inline_longitude">
+            </div>
+
+            {{-- GIS Boundary Refinement (from Registration Rough Sketch) --}}
+            <div class="mt-4 border-t border-emerald-100 pt-4">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-[10px] font-black text-emerald-800 uppercase tracking-widest flex items-center gap-1">
+                        <i class="fas fa-draw-polygon"></i> Refine Surveyed Boundary
+                    </label>
+                    <div class="flex gap-2">
+                        @if($faas->propertyRegistration && $faas->propertyRegistration->polygon_coordinates)
+                        <button type="button" id="inlineImportRegBtn" class="text-[9px] font-bold text-blue-600 uppercase px-2 py-1 bg-blue-50 rounded border border-blue-100 hover:bg-blue-100 transition-all">
+                            <i class="fas fa-file-import mr-1"></i> Import Rough Sketch
+                        </button>
+                        @endif
+                        <button type="button" id="inlineCalcAreaBtn" class="text-[9px] font-bold text-emerald-700 uppercase px-2 py-1 bg-emerald-50 rounded border border-emerald-100 hover:bg-emerald-100 transition-all hidden">
+                            <i class="fas fa-ruler-combined mr-1"></i> Validate Area
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Longitude</label>
-                    <input type="number" name="longitude" step="0.00000001" min="-180" max="180" value="{{ old('longitude') }}" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. 120.9842">
-                </div>
+                <div id="inlineLandMap" class="w-full h-64 rounded-xl border border-emerald-200" style="z-index: 10;"></div>
+                <input type="hidden" name="polygon_coordinates" id="inline_polygon_coordinates">
+                <button type="button" id="clearInlineLandMapBtn" class="mt-2 text-[10px] font-bold text-red-500 uppercase px-3 py-1.5 bg-red-50 rounded-lg hover:bg-red-100 hidden">Clear Boundary</button>
             </div>
 
             {{-- Live Preview Box --}}

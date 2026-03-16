@@ -35,9 +35,15 @@
                     {{ $td->property->municipality ?? '' }}
                 </p>
             </div>
-            <span class="self-start bg-teal-100 text-teal-700 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shrink-0">
-                {{ ucfirst($td->property_kind) }}
-            </span>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                <a href="{{ route('client.rpt-pay.print-soa', $td->id) }}" target="_blank"
+                    class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all">
+                    <i class="fas fa-print"></i> Download / Print SOA
+                </a>
+                <span class="self-start sm:self-center bg-teal-100 text-teal-700 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shrink-0">
+                    {{ ucfirst($td->property_kind) }}
+                </span>
+            </div>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-5 pt-5 border-t border-gray-100">
             <div>
@@ -59,52 +65,91 @@
         </div>
     </div>
 
-    {{-- Outstanding Balance Summary --}}
-    <div class="rounded-2xl shadow-lg p-5 sm:p-6 mb-6 text-white"
+    {{-- Comprehensive Summary --}}
+    <div class="rounded-2xl shadow-lg p-5 sm:p-6 mb-6 text-white grid grid-cols-1 sm:grid-cols-2 gap-6"
         style="background:linear-gradient(135deg,#0d9488,#059669);">
-        <div class="flex items-center justify-between">
-            <div>
-                <div class="text-xs sm:text-sm font-medium text-white/80 uppercase tracking-wider">Total Outstanding Balance</div>
-                <div class="text-3xl sm:text-4xl font-extrabold mt-1">₱{{ number_format($totalDue, 2) }}</div>
-                <div class="text-xs text-white/60 mt-1">
-                    {{ $billings->count() }} unpaid quarter(s) — includes penalties & discounts as of {{ now()->format('M d, Y') }}
-                </div>
-            </div>
-            <div class="hidden sm:block">
-                <i class="fas fa-file-invoice-dollar text-5xl text-white/20"></i>
+        <div>
+            <div class="text-xs sm:text-sm font-medium text-white/80 uppercase tracking-wider">Total Lifetime Paid</div>
+            <div class="text-3xl sm:text-4xl font-extrabold mt-1">₱{{ number_format($totalPaid, 2) }}</div>
+            <p class="text-xs text-white/70 mt-1">Verified historical payments</p>
+        </div>
+        <div class="sm:border-l sm:border-white/20 sm:pl-6">
+            <div class="text-xs sm:text-sm font-medium text-white/80 uppercase tracking-wider">Current Outstanding Balance</div>
+            <div class="text-3xl sm:text-4xl font-extrabold mt-1">₱{{ number_format($totalDue, 2) }}</div>
+            <div class="text-xs text-white/70 mt-1">
+                {{ $billings->where('balance', '>', 0)->count() }} unpaid units — includes penalties as of {{ now()->format('M d, Y') }}
             </div>
         </div>
     </div>
 
-    {{-- Delinquency Info --}}
+    {{-- ── PART I: PAYMENT AUDIT TRAIL ── --}}
+    @if($payments->isNotEmpty())
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/40 overflow-hidden mb-6">
+            <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-base font-bold text-gray-800">
+                    <i class="fas fa-history mr-2 text-teal-500"></i>Part I: Payment Audit Trail
+                </h2>
+                <span class="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-1 rounded-full uppercase">Verified Transactions</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs sm:text-sm">
+                    <thead>
+                        <tr class="bg-gray-50/80 text-gray-500 text-[10px] sm:text-xs uppercase tracking-wider">
+                            <th class="px-4 sm:px-6 py-3 text-left">Date</th>
+                            <th class="px-3 sm:px-4 py-3 text-left">O.R. / Ref No.</th>
+                            <th class="px-3 sm:px-4 py-3 text-left">Period Covered</th>
+                            <th class="px-3 sm:px-4 py-3 text-right">Basic + SEF</th>
+                            <th class="px-3 sm:px-4 py-3 text-right">Penalty</th>
+                            <th class="px-4 sm:px-6 py-3 text-right">Total Paid</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach($payments as $p)
+                            <tr class="hover:bg-teal-50/10 transition">
+                                <td class="px-4 sm:px-6 py-3 text-gray-600">{{ $p->payment_date->format('M d, Y') }}</td>
+                                <td class="px-3 sm:px-4 py-3 font-semibold text-gray-800">{{ $p->or_no }}</td>
+                                <td class="px-3 sm:px-4 py-3 text-gray-600">{{ $p->billing?->tax_year }} Q{{ $p->billing?->quarter }}</td>
+                                <td class="px-3 sm:px-4 py-3 text-right text-gray-700">₱{{ number_format($p->basic_tax + $p->sef_tax, 2) }}</td>
+                                <td class="px-3 sm:px-4 py-3 text-right text-red-500">₱{{ number_format($p->penalty, 2) }}</td>
+                                <td class="px-3 sm:px-4 py-3 text-right font-bold text-teal-700">₱{{ number_format($p->amount, 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
+    {{-- Delinquency Enforcement Notice --}}
     @php
-        $hasDelinquency = $billings->contains(fn($b) => $b->tax_year < date('Y'));
-        $earliestBilling = $billings->first();
+        $unpaidBillings = $billings->where('balance', '>', 0)->values();
+        $hasDelinquency = $unpaidBillings->contains(fn($b) => $b->tax_year < date('Y'));
     @endphp
 
     @if($hasDelinquency)
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
             <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
             <div>
-                <p class="text-sm font-bold text-amber-800">Delinquent Taxes Detected</p>
-                <p class="text-xs text-amber-700 mt-0.5">Per the Local Government Code, you must settle the earliest delinquency first before paying current year taxes. Payments are applied in chronological order.</p>
+                <p class="text-sm font-bold text-amber-800">Historical Delinquency Found</p>
+                <p class="text-xs text-amber-700 mt-0.5">Philippine Law requires the settlement of earliest obligations first. Online payment is locked progressively to ensure compliance.</p>
             </div>
         </div>
     @endif
 
-    {{-- Billing Breakdown Table --}}
+    {{-- ── PART II: OUTSTANDING OBLIGATIONS ── --}}
     <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/40 overflow-hidden mb-6">
-        <div class="px-5 sm:px-6 py-4 border-b border-gray-100">
+        <div class="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 class="text-base font-bold text-gray-800">
-                <i class="fas fa-table mr-2 text-teal-500"></i>Statement of Account
+                <i class="fas fa-file-invoice-dollar mr-2 text-teal-500"></i>Part II: Outstanding Obligations
             </h2>
+            <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full uppercase">Current Ledger</span>
         </div>
 
         @if($billings->isEmpty())
             <div class="p-10 text-center">
                 <i class="fas fa-check-circle text-5xl text-green-400 mb-3"></i>
-                <h3 class="text-lg font-bold text-green-600">All Paid!</h3>
-                <p class="text-sm text-gray-400 mt-1">There are no outstanding balances for this property. Congratulations!</p>
+                <h3 class="text-lg font-bold text-green-600">Account Fully Settled</h3>
+                <p class="text-sm text-gray-400 mt-1">No outstanding balances found. This property is in good standing.</p>
             </div>
         @else
             <div class="overflow-x-auto">
@@ -112,10 +157,10 @@
                     <thead>
                         <tr class="bg-gray-50/80 text-gray-500 text-[10px] sm:text-xs uppercase tracking-wider">
                             <th class="px-4 sm:px-6 py-3 text-left">Year / Qtr</th>
-                            <th class="px-3 sm:px-4 py-3 text-right">Basic</th>
-                            <th class="px-3 sm:px-4 py-3 text-right">SEF</th>
+                            <th class="px-3 sm:px-4 py-3 text-right">Net Tax Due</th>
                             <th class="px-3 sm:px-4 py-3 text-right">Penalty</th>
-                            <th class="px-3 sm:px-4 py-3 text-right hidden sm:table-cell">Discount</th>
+                            <th class="px-3 sm:px-4 py-3 text-right">Discount</th>
+                            <th class="px-3 sm:px-4 py-3 text-right">Paid</th>
                             <th class="px-3 sm:px-4 py-3 text-right">Balance</th>
                             <th class="px-4 sm:px-6 py-3 text-center">Action</th>
                         </tr>
@@ -123,43 +168,43 @@
                     <tbody class="divide-y divide-gray-100">
                         @foreach($billings as $index => $b)
                             @php
-                                $isOverdue = $b->penalty_amount > 0;
-                                $hasDiscount = $b->discount_amount > 0;
-                                $isEarliest = $index === 0; // Only the earliest billing can be paid
+                                $isUnpaid = $b->balance > 0;
+                                $isEarliestUnpaid = $isUnpaid && ($unpaidBillings->first()?->id === $b->id);
+                                $isPaid = $b->balance <= 0;
                             @endphp
-                            <tr class="hover:bg-teal-50/50 transition">
-                                <td class="px-4 sm:px-6 py-3.5 font-medium text-gray-800">
+                            <tr class="hover:bg-teal-50/5 transition {{ $isPaid ? 'bg-gray-50/50 grayscale-[0.5]' : '' }}">
+                                <td class="px-4 sm:px-6 py-3.5 font-medium {{ $isPaid ? 'text-gray-400' : 'text-gray-900 font-bold' }}">
                                     {{ $b->tax_year }} — Q{{ $b->quarter }}
-                                    @if($isOverdue)
-                                        <span class="ml-1 text-xs text-red-500"><i class="fas fa-exclamation-triangle"></i></span>
+                                    @if($b->penalty_amount > 0)
+                                        <i class="fas fa-clock text-red-400 ml-1" title="Overdue"></i>
                                     @endif
                                 </td>
-                                <td class="px-3 sm:px-4 py-3.5 text-right text-gray-700">₱{{ number_format($b->basic_tax, 2) }}</td>
-                                <td class="px-3 sm:px-4 py-3.5 text-right text-gray-700">₱{{ number_format($b->sef_tax, 2) }}</td>
-                                <td class="px-3 sm:px-4 py-3.5 text-right {{ $isOverdue ? 'text-red-600 font-semibold' : 'text-gray-400' }}">
-                                    {{ $isOverdue ? '₱' . number_format($b->penalty_amount, 2) : '—' }}
+                                <td class="px-3 sm:px-4 py-3.5 text-right text-gray-600">₱{{ number_format($b->total_tax_due, 2) }}</td>
+                                <td class="px-3 sm:px-4 py-3.5 text-right {{ $b->penalty_amount > 0 ? 'text-red-600 font-bold' : 'text-gray-300' }}">
+                                    {{ $b->penalty_amount > 0 ? '₱' . number_format($b->penalty_amount, 2) : '—' }}
                                 </td>
-                                <td class="px-3 sm:px-4 py-3.5 text-right hidden sm:table-cell {{ $hasDiscount ? 'text-green-600 font-semibold' : 'text-gray-400' }}">
-                                    {{ $hasDiscount ? '(₱' . number_format($b->discount_amount, 2) . ')' : '—' }}
+                                <td class="px-3 sm:px-4 py-3.5 text-right {{ $b->discount_amount > 0 ? 'text-emerald-600' : 'text-gray-300' }}">
+                                    {{ $b->discount_amount > 0 ? '(₱' . number_format($b->discount_amount, 2) . ')' : '—' }}
                                 </td>
-                                <td class="px-3 sm:px-4 py-3.5 text-right font-bold text-gray-900">₱{{ number_format($b->balance, 2) }}</td>
+                                <td class="px-3 sm:px-4 py-3.5 text-right text-gray-500">₱{{ number_format($b->amount_paid, 2) }}</td>
+                                <td class="px-3 sm:px-4 py-3.5 text-right font-bold {{ $isUnpaid ? 'text-gray-900' : 'text-emerald-500' }}">
+                                    ₱{{ number_format($b->balance, 2) }}
+                                </td>
                                 <td class="px-4 sm:px-6 py-3.5 text-center">
-                                    @if($b->balance > 0)
-                                        @if($isEarliest)
-                                            <button
-                                                onclick="openPayModal({{ $b->id }}, '{{ $b->tax_year }} Q{{ $b->quarter }}', {{ $b->balance }})"
-                                                class="inline-flex items-center justify-center gap-1.5 text-white px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm hover:shadow transition-all"
-                                                style="background:linear-gradient(135deg,#0d9488,#059669);"
-                                            >
-                                                <i class="fas fa-credit-card"></i> Pay
-                                            </button>
-                                        @else
-                                            <span class="text-gray-400 text-[10px] font-medium" title="Pay earlier quarters first">
-                                                <i class="fas fa-lock text-xs"></i>
-                                            </span>
-                                        @endif
+                                    @if($isPaid)
+                                        <span class="text-emerald-600 text-[10px] font-black uppercase tracking-widest"><i class="fas fa-check-double mr-1"></i> Paid</span>
+                                    @elseif($isEarliestUnpaid)
+                                        <button
+                                            onclick="openPayModal({{ $b->id }}, '{{ $b->tax_year }} Q{{ $b->quarter }}', {{ $b->balance }})"
+                                            class="inline-flex items-center justify-center gap-1.5 text-white px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm hover:shadow transition-all"
+                                            style="background:linear-gradient(135deg,#0d9488,#059669);"
+                                        >
+                                            <i class="fas fa-credit-card"></i> Pay Now
+                                        </button>
                                     @else
-                                        <span class="text-green-600 text-xs font-medium"><i class="fas fa-check-circle"></i> Paid</span>
+                                        <span class="text-gray-400 text-[10px] font-bold uppercase tracking-tight" title="Pay earlier quarters first">
+                                            <i class="fas fa-lock text-[10px] mr-0.5"></i> Locked
+                                        </span>
                                     @endif
                                 </td>
                             </tr>
@@ -167,8 +212,8 @@
                     </tbody>
                     <tfoot>
                         <tr class="bg-gray-50/80 font-bold text-gray-800">
-                            <td class="px-4 sm:px-6 py-3.5" colspan="5">Grand Total</td>
-                            <td class="px-3 sm:px-4 py-3.5 text-right text-base sm:text-lg">₱{{ number_format($totalDue, 2) }}</td>
+                            <td class="px-4 sm:px-6 py-4" colspan="5">Grand Total Outstanding</td>
+                            <td class="px-3 sm:px-4 py-4 text-right text-base sm:text-lg text-teal-800">₱{{ number_format($totalDue, 2) }}</td>
                             <td></td>
                         </tr>
                     </tfoot>
@@ -177,44 +222,13 @@
         @endif
     </div>
 
-    {{-- Payment History --}}
-    @if($payments->isNotEmpty())
-        <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/40 overflow-hidden mb-6">
-            <div class="px-5 sm:px-6 py-4 border-b border-gray-100">
-                <h2 class="text-base font-bold text-gray-800">
-                    <i class="fas fa-receipt mr-2 text-green-500"></i>Payment History
-                </h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-xs sm:text-sm">
-                    <thead>
-                        <tr class="bg-gray-50/80 text-gray-500 text-[10px] sm:text-xs uppercase tracking-wider">
-                            <th class="px-4 sm:px-6 py-3 text-left">Ref / O.R.</th>
-                            <th class="px-3 sm:px-4 py-3 text-left">Year / Qtr</th>
-                            <th class="px-3 sm:px-4 py-3 text-right">Amount</th>
-                            <th class="px-3 sm:px-4 py-3 text-left hidden sm:table-cell">Mode</th>
-                            <th class="px-3 sm:px-4 py-3 text-left">Date</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @foreach($payments as $pmt)
-                            <tr class="hover:bg-green-50/50 transition">
-                                <td class="px-4 sm:px-6 py-3 font-medium text-gray-800">{{ $pmt->or_no }}</td>
-                                <td class="px-3 sm:px-4 py-3 text-gray-600">{{ $pmt->billing->tax_year ?? '' }} Q{{ $pmt->billing->quarter ?? '' }}</td>
-                                <td class="px-3 sm:px-4 py-3 text-right font-semibold text-green-700">₱{{ number_format($pmt->amount, 2) }}</td>
-                                <td class="px-3 sm:px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{{ ucfirst(str_replace('_', ' ', $pmt->payment_mode)) }}</td>
-                                <td class="px-3 sm:px-4 py-3 text-gray-500 text-xs">{{ $pmt->payment_date?->format('M d, Y') }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    @endif
-
-    {{-- Footer --}}
-    <div class="text-center text-xs text-gray-400 mt-6">
-        <i class="fas fa-shield-alt mr-1"></i> Secured by PayMongo · Payments powered by GCash, Maya, and Card
+    {{-- Comprehensive Disclosure Footer --}}
+    <div class="bg-gray-100/50 rounded-xl p-4 text-center border border-dashed border-gray-300 mb-6">
+        <p class="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Official Comprehensive Disclosure</p>
+        <p class="text-[11px] text-gray-400 leading-relaxed">
+            This account ledger reflects all official transfers of resources, recorded services, and tax obligations associated with TD #{{ $td->td_no }}. 
+            Data is synchronized in real-time with the Municipal Treasury Department.
+        </p>
     </div>
 </div>
 

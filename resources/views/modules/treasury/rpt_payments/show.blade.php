@@ -80,6 +80,9 @@
                                 <i class="fas fa-exclamation-triangle text-amber-500"></i> Outstanding Unpaid Quarters
                             </h2>
                             <div class="flex items-center gap-2">
+                                <a href="{{ route('treasury.rpt.payments.soa', $td) }}" target="_blank" class="text-[10px] font-bold bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded transition-colors uppercase">
+                                    <i class="fas fa-file-invoice"></i> Print Statement of Account
+                                </a>
                                 <a href="{{ route('treasury.rpt.payments.nod', $td) }}" class="text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded transition-colors uppercase">
                                     <i class="fas fa-print"></i> Print Notice of Delinquency
                                 </a>
@@ -342,8 +345,23 @@
                                             </div>
 
                                             <div class="mt-2 text-[10px] text-gray-400 flex items-center justify-between">
-                                                <span><i class="fas fa-user-circle"></i> {{ $payment->collectedBy?->name ?? 'System' }}</span>
-                                                <span class="capitalize">{{ $payment->payment_mode }}</span>
+                                                <span>
+                                                    <i class="fas fa-user-circle"></i> {{ $payment->collectedBy?->name ?? 'System' }}
+                                                    @if($payment->status === 'pending')
+                                                        <span class="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-bold uppercase tracking-tighter">Pending</span>
+                                                    @endif
+                                                </span>
+                                                <span class="capitalize flex items-center gap-2">
+                                                    {{ $payment->payment_mode }}
+                                                    @if($payment->status === 'pending')
+                                                        <form action="{{ route('client.rpt-pay.verify', $payment->id) }}" method="POST" class="inline">
+                                                            @csrf
+                                                            <button type="submit" class="text-blue-600 hover:text-blue-800 font-bold underline" title="Verify via Client Controller">
+                                                                Verify
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                </span>
                                             </div>
                                         </div>
                                     @endforeach

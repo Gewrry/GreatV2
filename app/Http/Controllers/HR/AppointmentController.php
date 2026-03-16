@@ -11,6 +11,15 @@ use App\Models\Plantilla;
 use App\Models\EmploymentType;
 use App\Models\SalaryGrade;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use App\Models\HR\EmployeeInfo;
+use App\Models\User;
+use App\Models\Role;
+use App\Models\HR\LeaveType;
+use App\Models\HR\LeaveBalance;
+use App\Models\HR\DeductionType;
+use App\Models\HR\EmployeeDeduction;
 
 class AppointmentController extends Controller
 {
@@ -217,5 +226,99 @@ class AppointmentController extends Controller
             ]);
         }
         return response()->json(['error' => 'Applicant not found'], 404);
+    }
+
+    public function onboard(Appointment $appointment)
+    {
+        $appointment->load(['office', 'employmentType', 'salaryGrade', 'plantilla', 'applicant']);
+        
+        // Check if already onboarded
+        if (EmployeeInfo::where('employee_id', $appointment->appointment_number)->exists()) {
+            return redirect()->route('hr.appointments.show', $appointment->id)
+                ->with('error', 'This appointment has already been onboarded.');
+        }
+
+        return view('modules.hr.appointments.onboard', compact('appointment'));
+    }
+
+    public function processOnboarding(Request $request, Appointment $appointment)
+    {
+        $validated = $request->validate([
+            'username' => 'required|string|unique:users,uname|max:50',
+            'password' => 'required|string|min:8|confirmed',
+            'email' => 'required|email|unique:employee_info,email',
+            'first_name' => 'required|string|max:50',
+            'last_name' => 'required|string|max:50',
+            'hire_date' => 'required|date',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Create EmployeeInfo
+            $employee = EmployeeInfo::create([
+                'employee_id' => $appointment->appointment_number, // Use appointment number as employee ID by default
+                'email' => $validated['email'],
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'hire_date' => $validated['hire_date'],
+                'designation' => $appointment->position_title,
+                'office_id' => $appointment->office_id,
+                'salary_step' => $appointment->salary_step,
+                'employee_group' => 'Regular', // Default
+                'rate_per_day' => 0, // Should be computed based on SG but for now 0
+            ]);
+
+            // 2. Create User Account
+            $user = User::create([
+                'uname' => $validated['username'],
+                'password' => Hash::make($validated['password']),
+                'employee_id' => $employee->id,
+                'encoded_by' => Auth::id(),
+                'encoded_date' => now(),
+            ]);
+
+            // 3. Assign "Employee" Role
+            $employeeRole = Role::where('slug', 'employee')->first();
+            if ($employeeRole) {
+                $user->roles()->attach($employeeRole->id);
+            }
+
+            // 4. Initialize Leave Balances (Default 1.25 for VL and SL)
+            $leaveTypes = LeaveType::all();
+            foreach ($leaveTypes as $type) {
+                LeaveBalance::create([
+                    'employee_id' => $employee->id,
+                    'leave_type_id' => $type->id,
+                    'balance' => 0.00, // New hires start with 0, or 1.25 if policy dictates
+                    'on_leave' => 0,
+                    'earned' => 0,
+                    'used' => 0,
+                ]);
+            }
+
+            // 5. Initialize Mandatory Deductions
+            $deductions = DeductionType::whereIn('name', ['GSIS', 'Pag-IBIG', 'PhilHealth'])->get();
+            foreach ($deductions as $deduction) {
+                EmployeeDeduction::create([
+                    'employee_id' => $employee->id,
+                    'deduction_type_id' => $deduction->id,
+                    'amount' => $deduction->is_percentage ? 0 : 100, // Placeholder
+                    'is_active' => true,
+                ]);
+            }
+
+            // Update Appointment Status
+            $appointment->update(['status' => 'onboarded']);
+
+            DB::commit();
+
+            return redirect()->route('hr.employees.index')
+                ->with('success', 'Employee onboarded successfully. User account created.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Onboarding failed: ' . $e->getMessage());
+        }
     }
 }

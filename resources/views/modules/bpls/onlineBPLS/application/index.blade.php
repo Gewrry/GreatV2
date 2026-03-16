@@ -13,11 +13,11 @@ $counts = $counts ?? collect();
 
 
            
-    <div class="py-2">
+    <div>
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('layouts.bpls.navbar')
 
-            <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-6 rounded-3xl shadow-sm border border-lumot/20 mt-4">
+<div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-6 shadow-sm border border-lumot/20">
                 
                 {{-- Flash --}}
                 @if(session('success'))

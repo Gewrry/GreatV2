@@ -166,6 +166,16 @@ class EmployeeInfo extends Model
         return $this->hasMany(EmployeeTraining::class, 'employee_id');
     }
 
+    public function leaveBalances(): HasMany
+    {
+        return $this->hasMany(LeaveBalance::class, 'employee_id');
+    }
+
+    public function leaveApplications(): HasMany
+    {
+        return $this->hasMany(LeaveApplication::class, 'employee_id');
+    }
+
     /**
      * Scope a query to search employees by name or ID.
      *

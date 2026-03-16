@@ -709,44 +709,22 @@
                             </div>
                         </div>
 
-                        {{-- Quarter Selection --}}
-                        <div class="px-5 py-4 border-b border-lumot/20">
-                            <label class="block text-xs font-bold text-gray mb-3">
-                                Select Quarter(s) to Pay
-                                <span class="text-gray/50 font-normal ml-1">(click to select, green = already
-                                    paid)</span>
-                            </label>
-                            <div class="grid grid-cols-{{ count($quarterStatus) ?: 4 }} gap-3">
-                                @foreach ($quarterStatus as $q => $qs)
-                                    <button type="button" @click="toggleQuarter({{ $q }})"
-                                        :disabled="{{ json_encode($qs['paid']) }}"
-                                        :class="{
-                                            'bg-logo-teal text-white border-logo-teal shadow': isSelected(
-                                                {{ $q }}) && !isPaid({{ $q }}),
-                                            'bg-logo-green/20 text-logo-green border-logo-green/30 cursor-not-allowed': isPaid(
-                                                {{ $q }}),
-                                            'bg-red-50 border-red-300 text-red-600': !isSelected(
-                                                    {{ $q }}) && !
-                                                isPaid({{ $q }}) && {{ json_encode($qs['overdue']) }},
-                                            'bg-white text-gray border-lumot/30 hover:border-logo-teal/40': !isSelected(
-                                                    {{ $q }}) && !isPaid({{ $q }}) && !
-                                                {{ json_encode($qs['overdue']) }},
-                                        }"
-                                        class="border-2 rounded-xl p-3 text-center transition-all duration-150">
-                                        <p class="text-lg font-extrabold">Q{{ $q }}</p>
-                                        <p class="text-[10px] font-semibold mt-0.5">{{ $qs['date'] }}</p>
-                                        <p class="text-xs font-bold mt-1" x-text="'₱' + fmt(perInstallment)"></p>
-                                        @if ($qs['overdue'] && !$qs['paid'])
-                                            <p class="text-[9px] font-extrabold text-red-400 mt-1 uppercase">⚠ Overdue
-                                            </p>
-                                        @endif
-                                        <p x-show="isPaid({{ $q }})"
-                                            class="text-[9px] font-extrabold text-logo-green mt-1 uppercase">✓ Paid</p>
-                                    </button>
-                                    <input type="checkbox" name="quarters[]" value="{{ $q }}"
-                                        :checked="isSelected({{ $q }})" class="hidden">
-                                @endforeach
-                            </div>
+                    {{-- Payor + Fund Code --}}
+                    <div class="grid grid-cols-2 gap-4 px-5 py-4 border-b border-lumot/20 bg-bluebody/20">
+                        <div>
+                            <label class="block text-xs font-bold text-gray mb-1.5">Payor</label>
+                            <input type="text" name="payor"
+                                value="{{ strtoupper(trim($entry->last_name . ', ' . $entry->first_name . ' ' . ($entry->middle_name ?? ''))) }}"
+                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 font-semibold text-green">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray mb-1.5">Fund Code</label>
+                            <select name="fund_code"
+                                class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 bg-white">
+                                <option value="100">100 | General Fund</option>
+                                <option value="101">101 | Special Education Fund</option>
+                                <option value="102">102 | Trust Fund</option>
+                            </select>
                         </div>
 
                         {{-- Fee Breakdown --}}

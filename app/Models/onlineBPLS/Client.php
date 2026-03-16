@@ -23,6 +23,8 @@ class Client extends Authenticatable
         'mobile_no',
         'password',
         'status',
+        'verification_code',
+        'email_verified_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];

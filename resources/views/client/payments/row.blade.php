@@ -133,9 +133,12 @@
                             <span class="px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 text-[10px] font-bold rounded-lg">
                                 Verifying...
                             </span>
-                            <a href="{{ route('client.payment.success', $application->id) }}" class="text-[9px] font-bold text-yellow-600 hover:underline">
-                                🔄 Refresh
-                            </a>
+                            @if($installment['payment'] ?? null)
+                                <a href="{{ route('client.payment.verify', $installment['payment']->id) }}" 
+                                   class="text-[9px] font-black bg-yellow-400 text-white px-2 py-0.5 rounded-full hover:bg-yellow-500 transition-colors">
+                                    Verify Status
+                                </a>
+                            @endif
                         </div>
 
                     @elseif($instIsFailed || $instIsUnpaid)

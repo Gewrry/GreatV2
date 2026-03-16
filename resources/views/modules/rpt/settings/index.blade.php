@@ -148,6 +148,31 @@
                     </div>
                 </div>
 
+                {{-- Tax Amnesty Configuration --}}
+                <div class="bg-white rounded-xl shadow lg:col-span-2">
+                    <div class="px-5 py-3 border-b border-rose-100 font-bold text-rose-700 bg-rose-50/50 rounded-t-xl"><i class="fas fa-gift text-rose-500 mr-1"></i> Tax Amnesty (Penalty Waiver)</div>
+                    <div class="p-5">
+                        <form action="{{ route('rpt.settings.global.update') }}" method="POST">
+                            @csrf
+                            <div class="flex flex-col md:flex-row gap-4 items-start md:items-end">
+                                <div class="flex-1 w-full">
+                                    <label class="block text-xs font-semibold text-gray-500 mb-1">Amnesty Start Date</label>
+                                    <input type="date" name="amnesty_start_date" value="{{ $settings['amnesty_start_date'] ?? '' }}" class="w-full border rounded px-3 py-2 text-sm focus:ring-rose-500 focus:border-rose-500">
+                                </div>
+                                <div class="flex-1 w-full">
+                                    <label class="block text-xs font-semibold text-gray-500 mb-1">Amnesty End Date</label>
+                                    <input type="date" name="amnesty_end_date" value="{{ $settings['amnesty_end_date'] ?? '' }}" class="w-full border rounded px-3 py-2 text-sm focus:ring-rose-500 focus:border-rose-500">
+                                </div>
+                                <button type="submit" class="bg-rose-600 text-white text-xs px-6 py-2.5 rounded-lg font-bold w-full md:w-auto hover:bg-rose-700 transition shadow-sm">Enable/Update Amnesty</button>
+                                <button type="button" 
+                                    onclick="document.querySelector('input[name=amnesty_start_date]').value=''; document.querySelector('input[name=amnesty_end_date]').value=''; this.previousElementSibling.click();" 
+                                    class="bg-gray-100 text-gray-600 text-xs px-4 py-2.5 rounded-lg font-bold w-full md:w-auto hover:bg-gray-200 transition">Clear</button>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-2 italic">When active, all accumulated RPT penalties will be fully waived (computed as 0) if payment is made between the Start and End dates.</p>
+                        </form>
+                    </div>
+                </div>
+
                 {{-- Assessment Levels (Rates) --}}
                 <div class="bg-white rounded-xl shadow lg:col-span-2" x-data="{ showAddLevel: false }">
                     <div class="px-5 py-3 border-b font-bold text-gray-700 flex items-center justify-between">
