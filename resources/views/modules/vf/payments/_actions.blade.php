@@ -20,7 +20,7 @@
     </a>
 
     {{-- SOA --}}
-    @if ($payment->franchise_id)
+    @if ($payment->franchise_id && empty($hideSoa))
         <a href="{{ route('vf.payments.soa', $payment->franchise_id) }}" target="_blank" title="Statement of Account"
             class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all duration-150 hover:scale-105 border border-indigo-200 hover:border-indigo-600">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

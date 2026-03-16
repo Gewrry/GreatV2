@@ -543,7 +543,7 @@
                                         document.getElementById('franchise_id').value =
                                             f.id;
                                         document.getElementById('payor_field').value = f
-                                            .owner_name;
+                                            .owner_nam e;
                                         fsInput.value =
                                             `FN #${f.fn_number} – ${f.owner_name}`;
                                         box.classList.add('hidden');
