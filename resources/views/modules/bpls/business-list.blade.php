@@ -862,6 +862,9 @@
                 {{-- ══════════════════════════════════════════════════════════ --}}
                 {{-- RETIRE MODAL --}}
                 {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- RETIRE MODAL  (drop-in replacement — paste over the old one) --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
                 <div x-show="retireModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100">
@@ -870,6 +873,8 @@
                     <div class="relative bg-white rounded-2xl shadow-2xl border border-orange-200 w-full max-w-md flex flex-col"
                         x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+
+                        {{-- Header --}}
                         <div class="flex items-center justify-between px-5 py-4 border-b border-orange-100">
                             <div class="flex items-center gap-3">
                                 <div
@@ -894,69 +899,236 @@
                                 </svg>
                             </button>
                         </div>
+
+                        {{-- Body --}}
                         <div class="p-5 space-y-4">
-                            <div class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
-                                <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <p class="text-[11px] text-orange-700 font-semibold">This action will permanently
-                                    retire the business. A retirement certificate will be issued.</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray mb-1.5">Retirement Date <span
-                                        class="text-red-400">*</span></label>
-                                <input type="date" x-model="retireModal.form.retirement_date"
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray mb-1.5">Reason for Retirement <span
-                                        class="text-red-400">*</span></label>
-                                <select x-model="retireModal.form.retirement_reason"
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 bg-white text-gray mb-2">
-                                    <option value="">-- Select Reason --</option>
-                                    <option value="Business Closure">Business Closure</option>
-                                    <option value="Owner Deceased">Owner Deceased</option>
-                                    <option value="Relocation to Another LGU">Relocation to Another LGU</option>
-                                    <option value="Change of Business Ownership">Change of Business Ownership</option>
-                                    <option value="Voluntary Retirement">Voluntary Retirement</option>
-                                    <option value="Revocation of Permit">Revocation of Permit</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                                <textarea x-show="retireModal.form.retirement_reason === 'Other'" x-model="retireModal.form.retirement_reason_custom"
-                                    rows="2" placeholder="Please specify reason..."
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none mt-2"></textarea>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray mb-1.5">Additional Remarks <span
-                                        class="font-normal text-gray/50">(optional)</span></label>
-                                <textarea x-model="retireModal.form.retirement_remarks" rows="2" placeholder="Any additional notes..."
-                                    class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none"></textarea>
-                            </div>
-                            <div x-show="retireModal.error" class="text-xs text-red-500 font-semibold"
-                                x-text="retireModal.error"></div>
-                        </div>
-                        <div class="flex gap-2 px-5 py-4 border-t border-orange-100">
-                            <button @click="retireModal.open = false"
-                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
-                            <button @click="submitRetire()"
-                                :disabled="retireModal.saving || !retireModal.form.retirement_date || !retireModal.form
-                                    .retirement_reason"
-                                class="flex-1 px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-                                <svg x-show="retireModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
+
+                            {{-- ── Balance check loading state ── --}}
+                            <div x-show="retireModal.checkingBalance"
+                                class="flex items-center gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl animate-pulse">
+                                <svg class="w-4 h-4 text-orange-400 animate-spin shrink-0" fill="none"
                                     viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10"
                                         stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                 </svg>
-                                <svg x-show="!retireModal.saving" class="w-3.5 h-3.5" fill="none"
-                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                </svg>
-                                <span x-text="retireModal.saving ? 'Retiring...' : 'Confirm Retirement'"></span>
+                                <p class="text-xs font-semibold text-orange-600">Checking outstanding balance…</p>
+                            </div>
+
+                            {{-- ── BLOCKED: outstanding balance ── --}}
+                            <div x-show="!retireModal.checkingBalance && retireModal.balance && !retireModal.balance.can_retire"
+                                class="space-y-3">
+                                <div class="flex items-start gap-2 p-3 bg-red-50 border border-red-300 rounded-xl">
+                                    <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <div>
+                                        <p class="text-xs font-extrabold text-red-700 mb-1">Cannot Retire — Outstanding
+                                            Balance</p>
+                                        <p class="text-[11px] text-red-600"
+                                            x-text="retireModal.balance?.block_reason"></p>
+                                    </div>
+                                </div>
+
+                                {{-- Balance breakdown table --}}
+                                <div class="border border-red-200 rounded-xl overflow-hidden">
+                                    <div class="bg-red-600 text-white text-center py-2">
+                                        <p class="text-[10px] font-extrabold uppercase tracking-wide">Outstanding
+                                            Balance Summary</p>
+                                    </div>
+                                    <div class="divide-y divide-red-100 text-xs">
+                                        <div class="grid grid-cols-2 px-4 py-2">
+                                            <span class="text-gray/70 font-semibold">Assessed Total Due</span>
+                                            <span class="text-right font-bold text-gray"
+                                                x-text="'₱' + Number(retireModal.balance?.total_due ?? 0).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
+                                        </div>
+                                        <div class="grid grid-cols-2 px-4 py-2">
+                                            <span class="text-gray/70 font-semibold">Amount Paid</span>
+                                            <span class="text-right font-bold text-logo-green"
+                                                x-text="'₱' + Number(retireModal.balance?.total_paid ?? 0).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
+                                        </div>
+                                        <div class="grid grid-cols-2 px-4 py-2"
+                                            x-show="(retireModal.balance?.unpaid_balance ?? 0) > 0">
+                                            <span class="text-gray/70 font-semibold">Unpaid Balance</span>
+                                            <span class="text-right font-bold text-red-600"
+                                                x-text="'₱' + Number(retireModal.balance?.unpaid_balance ?? 0).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
+                                        </div>
+                                        <div class="grid grid-cols-2 px-4 py-2 bg-orange-50/60"
+                                            x-show="(retireModal.balance?.surcharge_estimate ?? 0) > 0">
+                                            <span class="text-orange-700 font-semibold">Est. Surcharge (25%)</span>
+                                            <span class="text-right font-bold text-orange-600"
+                                                x-text="'+ ₱' + Number(retireModal.balance?.surcharge_estimate ?? 0).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
+                                        </div>
+                                        <div class="grid grid-cols-2 px-4 py-2.5 bg-red-50">
+                                            <span class="text-red-700 font-extrabold uppercase text-[10px]">Total
+                                                Outstanding</span>
+                                            <span class="text-right font-extrabold text-red-700"
+                                                x-text="'₱' + Number(retireModal.balance?.total_outstanding ?? 0).toLocaleString('en-PH', {minimumFractionDigits:2})"></span>
+                                        </div>
+                                        <div class="px-4 py-2 bg-lumot/10"
+                                            x-show="retireModal.balance?.unpaid_quarters?.length > 0">
+                                            <span class="text-[10px] font-bold text-gray/60 uppercase">Unpaid
+                                                Installments</span>
+                                            <div class="flex flex-wrap gap-1 mt-1">
+                                                <template x-for="q in (retireModal.balance?.unpaid_quarters ?? [])"
+                                                    :key="q">
+                                                    <span
+                                                        class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200"
+                                                        x-text="'Q' + q"></span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <svg class="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p class="text-[11px] text-blue-700">
+                                        Direct the business owner to the <strong>Treasury / Payment section</strong> to
+                                        settle all
+                                        outstanding dues and surcharges before proceeding with retirement.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- ── ALLOWED: retirement form ── --}}
+                            <template
+                                x-if="!retireModal.checkingBalance && retireModal.balance && retireModal.balance.can_retire">
+                                <div class="space-y-4">
+
+                                    {{-- All-clear badge --}}
+                                    <div
+                                        class="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                                        <svg class="w-4 h-4 text-logo-green shrink-0" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <div>
+                                            <p class="text-xs font-bold text-logo-green">Balance Cleared — Retirement
+                                                Allowed</p>
+                                            <p class="text-[10px] text-green-600">
+                                                All dues for permit year
+                                                <span x-text="retireModal.balance.permit_year"
+                                                    class="font-extrabold"></span>
+                                                have been paid
+                                                (₱<span
+                                                    x-text="Number(retireModal.balance.total_paid).toLocaleString('en-PH',{minimumFractionDigits:2})"></span>).
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                                        <svg class="w-4 h-4 text-orange-500 shrink-0 mt-0.5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <p class="text-[11px] text-orange-700 font-semibold">
+                                            This action will permanently retire the business. A retirement certificate
+                                            will be issued.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1.5">
+                                            Retirement Date <span class="text-red-400">*</span>
+                                        </label>
+                                        <input type="date" x-model="retireModal.form.retirement_date"
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1.5">
+                                            Reason for Retirement <span class="text-red-400">*</span>
+                                        </label>
+                                        <select x-model="retireModal.form.retirement_reason"
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 bg-white text-gray mb-2">
+                                            <option value="">-- Select Reason --</option>
+                                            <option value="Business Closure">Business Closure</option>
+                                            <option value="Owner Deceased">Owner Deceased</option>
+                                            <option value="Relocation to Another LGU">Relocation to Another LGU
+                                            </option>
+                                            <option value="Change of Business Ownership">Change of Business Ownership
+                                            </option>
+                                            <option value="Voluntary Retirement">Voluntary Retirement</option>
+                                            <option value="Revocation of Permit">Revocation of Permit</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <textarea x-show="retireModal.form.retirement_reason === 'Other'" x-model="retireModal.form.retirement_reason_custom"
+                                            rows="2" placeholder="Please specify reason..."
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none mt-2"></textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1.5">
+                                            Additional Remarks <span class="font-normal text-gray/50">(optional)</span>
+                                        </label>
+                                        <textarea x-model="retireModal.form.retirement_remarks" rows="2" placeholder="Any additional notes..."
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none"></textarea>
+                                    </div>
+
+                                    <div x-show="retireModal.error" class="text-xs text-red-500 font-semibold"
+                                        x-text="retireModal.error"></div>
+                                </div>
+                            </template>
+
+                            {{-- Shown while balance data hasn't loaded yet (initial open) --}}
+                            <template x-if="!retireModal.checkingBalance && !retireModal.balance">
+                                <div class="text-xs text-gray/50 italic text-center py-2">Waiting for balance check…
+                                </div>
+                            </template>
+
+                        </div>
+
+                        {{-- Footer --}}
+                        <div class="flex gap-2 px-5 py-4 border-t border-orange-100">
+                            <button @click="retireModal.open = false"
+                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
+                                Cancel
                             </button>
+
+                            {{-- Blocked footer: go to payment --}}
+                            <template
+                                x-if="!retireModal.checkingBalance && retireModal.balance && !retireModal.balance.can_retire">
+                                <a :href="retireModal.entry ? `{{ url('bpls/payment') }}/${retireModal.entry.id}` : '#'"
+                                    class="flex-1 px-4 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors text-center flex items-center justify-center gap-2">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    Go to Payment
+                                </a>
+                            </template>
+
+                            {{-- Allowed footer: submit retirement --}}
+                            <template
+                                x-if="!retireModal.checkingBalance && retireModal.balance && retireModal.balance.can_retire">
+                                <button @click="submitRetire()"
+                                    :disabled="retireModal.saving || !retireModal.form.retirement_date || !retireModal.form
+                                        .retirement_reason"
+                                    class="flex-1 px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                                    <svg x-show="retireModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                    <svg x-show="!retireModal.saving" class="w-3.5 h-3.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                    <span x-text="retireModal.saving ? 'Retiring...' : 'Confirm Retirement'"></span>
+                                </button>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -1004,105 +1176,99 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="overflow-y-auto flex-1 p-6" id="retirement-certificate-print">
-                            <div class="text-center mb-6">
-                                <p class="text-[10px] font-bold text-gray/60 uppercase tracking-widest">Republic of the
-                                    Philippines</p>
-                                <p class="text-[10px] font-bold text-gray/60">Province of Laguna</p>
-                                <p class="text-sm font-extrabold text-green uppercase tracking-wide mt-1">Municipal
-                                    Government</p>
-                                <p class="text-[10px] text-gray/60">Business Permit and Licensing System</p>
-                                <div class="w-16 h-0.5 bg-logo-teal mx-auto my-3"></div>
-                                <h2 class="text-lg font-extrabold text-green uppercase tracking-widest">Certificate of
-                                    Business Retirement</h2>
-                                <p class="text-[11px] text-gray/60 mt-1">This certifies that the business described
-                                    herein has been officially retired.</p>
+                        <div id="retirement-certificate-print">
+                            <div class="header">
+                                <p class="republic">Republic of the Philippines</p>
+                                <p class="province">Province of Laguna</p>
+                                <p class="lgu">Municipal Government</p>
+                                <p class="office">Business Permit and Licensing System</p>
                             </div>
-                            <div class="border-2 border-logo-teal/30 rounded-xl p-5 space-y-3 bg-logo-teal/5 mb-5">
-                                <div class="grid grid-cols-2 gap-y-3 gap-x-4">
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Name</p>
-                                        <p class="text-sm font-extrabold text-green"
-                                            x-text="certModal.entry?.business_name || '—'"></p>
+                            <hr class="divider">
+                            <hr class="divider-thin">
+                            <p class="cert-title">Certificate of Business Retirement</p>
+                            <p class="cert-subtitle">This certifies that the business described herein has been
+                                officially retired.</p>
+
+                            <div class="cert-body">
+                                <div class="grid">
+                                    <div class="field">
+                                        <div class="field-label">Business Name</div>
+                                        <div class="field-value" x-text="certModal.entry?.business_name || '—'"></div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Trade Name</p>
-                                        <p class="text-sm font-bold text-gray"
-                                            x-text="certModal.entry?.trade_name || '—'"></p>
+                                    <div class="field">
+                                        <div class="field-label">Trade Name</div>
+                                        <div class="field-value" x-text="certModal.entry?.trade_name || '—'"></div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Owner</p>
-                                        <p class="text-sm text-gray"
+                                    <div class="field">
+                                        <div class="field-label">Owner</div>
+                                        <div class="field-value"
                                             x-text="certModal.entry ? certModal.entry.last_name + ', ' + certModal.entry.first_name + (certModal.entry.middle_name ? ' ' + certModal.entry.middle_name : '') : '—'">
-                                        </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">TIN No.</p>
-                                        <p class="text-sm text-gray font-mono"
-                                            x-text="certModal.entry?.tin_no || '—'">
-                                        </p>
+                                    <div class="field">
+                                        <div class="field-label">TIN No.</div>
+                                        <div class="field-value" x-text="certModal.entry?.tin_no || '—'"></div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Type</p>
-                                        <p class="text-sm text-gray"
-                                            x-text="certModal.entry?.type_of_business || '—'">
-                                        </p>
+                                    <div class="field">
+                                        <div class="field-label">Business Type</div>
+                                        <div class="field-value" x-text="certModal.entry?.type_of_business || '—'">
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Nature</p>
-                                        <p class="text-sm text-gray" x-text="certModal.entry?.business_nature || '—'">
-                                        </p>
+                                    <div class="field">
+                                        <div class="field-label">Business Nature</div>
+                                        <div class="field-value" x-text="certModal.entry?.business_nature || '—'">
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Business Address</p>
-                                        <p class="text-sm text-gray"
+                                    <div class="field">
+                                        <div class="field-label">Business Address</div>
+                                        <div class="field-value"
                                             x-text="(certModal.entry?.business_barangay || '') + (certModal.entry?.business_municipality ? ', ' + certModal.entry.business_municipality : '') || '—'">
-                                        </p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Retirement Date</p>
-                                        <p class="text-sm font-bold text-orange-500"
-                                            x-text="certModal.entry?.retirement_date || '—'"></p>
+                                    <div class="field">
+                                        <div class="field-label">Retirement Date</div>
+                                        <div class="field-value highlight"
+                                            x-text="certModal.entry?.retirement_date ? new Date(certModal.entry.retirement_date).toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'}) : '—'">
+                                        </div>
                                     </div>
-                                    <div class="col-span-2">
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Reason for Retirement
-                                        </p>
-                                        <p class="text-sm text-gray"
-                                            x-text="certModal.entry?.retirement_reason || '—'">
-                                        </p>
+                                    <div class="field col-span-2">
+                                        <div class="field-label">Reason for Retirement</div>
+                                        <div class="field-value" x-text="certModal.entry?.retirement_reason || '—'">
+                                        </div>
                                     </div>
-                                    <div x-show="certModal.entry?.retirement_remarks" class="col-span-2">
-                                        <p class="text-[10px] text-gray/50 font-bold uppercase">Remarks</p>
-                                        <p class="text-sm text-gray"
-                                            x-text="certModal.entry?.retirement_remarks || ''">
-                                        </p>
+                                    <div class="field col-span-2" x-show="certModal.entry?.retirement_remarks">
+                                        <div class="field-label">Remarks</div>
+                                        <div class="field-value" x-text="certModal.entry?.retirement_remarks || ''">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <p class="text-[11px] text-gray/60 text-center leading-relaxed">
+
+                            <p class="footer-text">
                                 This certificate is issued upon request of the above-named business owner and confirms
                                 that the business has been duly retired in the records of the Municipal Business Permit
                                 and Licensing Office.
                             </p>
-                            <div class="mt-8 grid grid-cols-2 gap-6">
-                                <div class="text-center">
-                                    <div class="border-b-2 border-gray/30 mb-1 pb-8"></div>
-                                    <p class="text-[10px] font-bold text-gray/60 uppercase">Business Owner /
-                                        Representative</p>
-                                    <p class="text-[9px] text-gray/40">Signature over Printed Name</p>
+
+                            <div class="sig-grid">
+                                <div class="sig-block">
+                                    <div style="height:52px;"></div>
+                                    <div class="sig-line"></div>
+                                    <p class="sig-name">Business Owner / Representative</p>
+                                    <p class="sig-title">Signature over Printed Name</p>
                                 </div>
-                                <div class="text-center">
-                                    <div class="border-b-2 border-gray/30 mb-1 pb-8"></div>
-                                    <p class="text-[10px] font-bold text-gray/60 uppercase">BPLO Officer</p>
-                                    <p class="text-[9px] text-gray/40">Signature over Printed Name</p>
+                                <div class="sig-block">
+                                    <div style="height:52px;"></div>
+                                    <div class="sig-line"></div>
+                                    <p class="sig-name">BPLO Officer</p>
+                                    <p class="sig-title">Signature over Printed Name</p>
                                 </div>
                             </div>
-                            <div class="flex items-center justify-between mt-6 pt-4 border-t border-lumot/20">
-                                <p class="text-[10px] text-gray/40" x-text="'Issued: ' + (certModal.issuedAt || '—')">
-                                </p>
-                                <p class="text-[10px] text-gray/40"
-                                    x-text="'Ref. No.: BPL-RET-' + (certModal.entry?.id ? String(certModal.entry.id).padStart(6,'0') : '000000')">
-                                </p>
+
+                            <div class="meta-row">
+                                <span x-text="'Issued: ' + (certModal.issuedAt || '—')"></span>
+                                <span
+                                    x-text="'Ref. No.: BPL-RET-' + (certModal.entry?.id ? String(certModal.entry.id).padStart(6,'0') : '000000')"></span>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2 px-5 py-4 border-t border-lumot/20">
@@ -1242,8 +1408,8 @@
                                 class="w-full pl-9 pr-8 py-2 text-sm border border-lumot/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-logo-teal/40 placeholder-gray/30">
                             <button type="button" x-show="filters.q" @click="filters.q = ''; resetAndFetch()"
                                 class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray/40 hover:text-gray transition-colors">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                    stroke-width="2.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
@@ -2170,11 +2336,14 @@
                         },
                     },
 
+                    // ── CHANGED: added checkingBalance and balance fields ─────────────
                     retireModal: {
                         open: false,
                         saving: false,
                         error: null,
                         entry: null,
+                        checkingBalance: false, // NEW
+                        balance: null, // NEW
                         form: {
                             retirement_date: '',
                             retirement_reason: '',
@@ -2468,17 +2637,56 @@
                     },
 
                     // ── RETIRE modal ──────────────────────────────────────────────────
-                    openRetireModal(entry) {
+                    // CHANGED: now does a balance pre-flight check before showing the form
+                    async openRetireModal(entry) {
                         this.retireModal.entry = entry;
+                        this.retireModal.balance = null;
+                        this.retireModal.error = null;
+                        this.retireModal.saving = false;
                         this.retireModal.form = {
                             retirement_date: new Date().toISOString().split('T')[0],
                             retirement_reason: '',
                             retirement_reason_custom: '',
                             retirement_remarks: '',
                         };
-                        this.retireModal.error = null;
-                        this.retireModal.saving = false;
                         this.retireModal.open = true;
+                        this.retireModal.checkingBalance = true;
+
+                        // Statuses with no payment obligation — skip the balance check
+                        const noPaymentStatuses = ['pending', 'rejected', 'cancelled'];
+                        if (noPaymentStatuses.includes(entry.status)) {
+                            this.retireModal.balance = {
+                                can_retire: true,
+                                block_reason: '',
+                                total_due: 0,
+                                total_paid: 0,
+                                unpaid_balance: 0,
+                                surcharge_estimate: 0,
+                                total_outstanding: 0,
+                                unpaid_quarters: [],
+                                paid_quarters: [],
+                                permit_year: entry.permit_year ?? new Date().getFullYear(),
+                                renewal_cycle: 0,
+                            };
+                            this.retireModal.checkingBalance = false;
+                            return;
+                        }
+
+                        // Fetch balance from server for assessed/payment-stage businesses
+                        try {
+                            const res = await window.fetch(`{{ url('bpls/business-list') }}/${entry.id}/retire-check`, {
+                                headers: {
+                                    'Accept': 'application/json'
+                                },
+                            });
+                            const data = await res.json();
+                            this.retireModal.balance = data;
+                        } catch (err) {
+                            this.retireModal.error = 'Failed to check outstanding balance. Please try again.';
+                            this.retireModal.balance = null;
+                        } finally {
+                            this.retireModal.checkingBalance = false;
+                        }
                     },
 
                     async submitRetire() {
@@ -2506,7 +2714,15 @@
                                 }),
                             });
                             const data = await res.json();
-                            if (!res.ok) throw new Error(data.message || 'Failed to retire business.');
+
+                            if (!res.ok) {
+                                // If server returned updated balance data, refresh the block view
+                                if (data.balance) {
+                                    this.retireModal.balance = data.balance;
+                                }
+                                throw new Error(data.message || 'Failed to retire business.');
+                            }
+
                             const idx = this.entries.findIndex(e => e.id === this.retireModal.entry.id);
                             if (idx !== -1) this.entries[idx] = data.entry;
                             this.retireModal.open = false;
@@ -2531,38 +2747,116 @@
 
                     printCert() {
                         const content = document.getElementById('retirement-certificate-print').innerHTML;
-                        const win = window.open('', '_blank', 'width=800,height=900');
+                        const win = window.open('', '_blank', 'width=850,height=1100');
                         win.document.write(`<!DOCTYPE html><html><head>
-                <title>Business Retirement Certificate</title>
-                <meta charset="UTF-8">
-                <style>
-                    *{box-sizing:border-box;margin:0;padding:0}
-                    body{font-family:Arial,sans-serif;padding:32px;color:#222}
-                    .text-center{text-align:center}.text-right{text-align:right}
-                    p,span{display:block;line-height:1.5}
-                    .grid{display:grid}.grid-cols-2{grid-template-columns:1fr 1fr}
-                    .col-span-2{grid-column:span 2}.gap-3{gap:12px}.gap-6{gap:24px}
-                    .gap-y-3{row-gap:12px}.gap-x-4{column-gap:16px}
-                    .mb-1{margin-bottom:4px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
-                    .mt-1{margin-top:4px}.mt-6{margin-top:24px}.mt-8{margin-top:32px}
-                    .p-5{padding:20px}.pb-8{padding-bottom:32px}.pt-4{padding-top:16px}
-                    .my-3{margin:12px auto}.w-16{width:64px}
-                    .border-b-2{border-bottom:2px solid #d1d5db}.border-t{border-top:1px solid #e5e7eb}
-                    .border-2{border:2px solid #99f6e4}.rounded-xl{border-radius:12px}
-                    .uppercase{text-transform:uppercase}.tracking-widest{letter-spacing:.15em}
-                    .font-extrabold{font-weight:900}.font-bold{font-weight:700}
-                    .font-mono{font-family:monospace}.leading-relaxed{line-height:1.6}
-                    .text-lg{font-size:1.125rem}.text-sm{font-size:.875rem}.text-xs{font-size:.75rem}
-                    @media print{body{padding:16px}}
-                </style>
-            </head><body>${content}</body></html>`);
+        <title>Certificate of Business Retirement</title>
+        <meta charset="UTF-8">
+        <style>
+            @page { size: letter portrait; margin: 0; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+                font-family: 'Times New Roman', Times, serif;
+                background: #fff;
+                color: #111;
+                width: 8.5in;
+                min-height: 11in;
+                padding: 0.85in 1in 0.85in 1in;
+            }
+            .text-center { text-align: center; }
+            .header { text-align: center; margin-bottom: 18px; }
+            .header p { font-size: 11pt; line-height: 1.5; }
+            .header .republic { font-size: 11pt; text-transform: uppercase; letter-spacing: 0.08em; }
+            .header .province { font-size: 11pt; }
+            .header .lgu { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; margin: 2px 0; }
+            .header .office { font-size: 10pt; color: #444; }
+            .divider { border: none; border-top: 2.5px solid #111; margin: 10px auto 6px; width: 100%; }
+            .divider-thin { border: none; border-top: 1px solid #aaa; margin: 6px auto; width: 100%; }
+            .cert-title {
+                font-size: 17pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+                text-align: center;
+                margin: 14px 0 4px;
+            }
+            .cert-subtitle {
+                font-size: 10pt;
+                text-align: center;
+                color: #555;
+                margin-bottom: 20px;
+                font-style: italic;
+            }
+            .cert-body {
+                border: 1.5px solid #333;
+                border-radius: 6px;
+                padding: 22px 28px;
+                margin-bottom: 20px;
+            }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; }
+            .field { margin-bottom: 4px; }
+            .field-label {
+                font-size: 8.5pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: #333;
+                margin-bottom: 2px;
+            }
+            .field-value {
+                font-size: 11pt;
+                color: #111;
+                border-bottom: 1px solid #ccc;
+                padding-bottom: 3px;
+                min-height: 20px;
+            }
+            .field-value.highlight {
+                font-weight: bold;
+                color: #b94600;
+            }
+            .col-span-2 { grid-column: span 2; }
+            .footer-text {
+                font-size: 10pt;
+                text-align: center;
+                color: #444;
+                font-style: italic;
+                line-height: 1.6;
+                margin-bottom: 32px;
+            }
+            .sig-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 32px;
+                margin-top: 40px;
+            }
+            .sig-block { text-align: center; }
+            .sig-line {
+                border-top: 1.5px solid #333;
+                margin: 0 20px 4px;
+                padding-top: 4px;
+            }
+            .sig-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
+            .sig-title { font-size: 9pt; color: #555; }
+            .meta-row {
+                display: flex;
+                justify-content: space-between;
+                font-size: 8.5pt;
+                color: #888;
+                margin-top: 28px;
+                border-top: 1px solid #ddd;
+                padding-top: 8px;
+            }
+            @media print {
+                body { padding: 0.85in 1in; }
+                @page { size: letter portrait; margin: 0; }
+            }
+        </style>
+    </head><body>${content}</body></html>`);
                         win.document.close();
                         setTimeout(() => {
                             win.focus();
                             win.print();
-                        }, 500);
+                        }, 600);
                     },
-
                     // ── EDIT modal ────────────────────────────────────────────────────
                     async openEditModal(entry) {
                         this.editModal.open = true;
@@ -2662,7 +2956,6 @@
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.message || 'Failed to save changes.');
 
-                            // Reflect changes instantly in the list
                             const idx = this.entries.findIndex(e => e.id === this.editModal.entry.id);
                             if (idx !== -1) this.entries[idx] = {
                                 ...this.entries[idx],
@@ -2674,7 +2967,6 @@
                             this.editModal.saved = true;
                             this.editModal.successMsg = data.message;
 
-                            // Refresh amendment history
                             try {
                                 const h = await window.fetch(
                                     `{{ url('bpls/business-list') }}/${data.entry.id}/edit-data`, {
@@ -2686,7 +2978,6 @@
                                 this.editModal.amendments = hd.amendments ?? [];
                             } catch (_) {}
 
-                            // Switch to history tab after 1.2s
                             setTimeout(() => {
                                 this.editModal.tab = 'history';
                             }, 1200);
