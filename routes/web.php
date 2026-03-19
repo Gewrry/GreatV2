@@ -282,6 +282,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/generate', [\App\Http\Controllers\HR\AttendanceController::class, 'processDtr'])->name('generate.process');
             Route::get('/dtr', [\App\Http\Controllers\HR\AttendanceController::class, 'viewDtr'])->name('dtr');
         });
+
         // Payroll
         Route::prefix('payroll')->name('payroll.')->group(function () {
             Route::get('/deductions', [\App\Http\Controllers\HR\PayrollController::class, 'deductions'])->name('deductions');
@@ -367,7 +368,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/bulk/pay', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'storeBulkPayment'])->name('bulk.store');
             Route::get('/rcd', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'rcd'])->name('rcd');
             Route::get('/history', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'history'])->name('history');
-            
+
             Route::get('/{td}', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'showPaymentForm'])->name('show');
             Route::post('/{billing}/pay', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'storePayment'])->name('store');
             Route::get('/{td}/clearance', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'taxClearance'])->name('clearance');
@@ -375,7 +376,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{td}/soa', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'generateSOA'])->name('soa');
             Route::get('/payment/{payment}/receipt', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'receipt'])->name('receipt');
             Route::get('/property-history/{td}', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'propertyHistory'])->name('property-history');
-            Route::get('/rcd', [\App\Http\Controllers\Treasury\RptPaymentController::class, 'rcd'])->name('rcd');
         });
 
         // GIS Dashboard for Treasury
@@ -438,6 +438,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{entry}/mark-paid', [BusinessListController::class, 'markPaid'])->name('mark-paid');
             Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
             Route::post('/{entry}/retire', [BusinessListController::class, 'retire'])->name('retire');
+            Route::get('/{entry}/retire-check', [BusinessListController::class, 'retireCheck'])->name('retire-check');
             Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
             Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])->name('edit-data');
             Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])->name('edit');
@@ -527,7 +528,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('rpt')->name('rpt.')->middleware('module:rpt')->group(function () {
 
         Route::get('/', [RptDashboardController::class, 'index'])->name('index');
-        
+
         // GIS Dashboard
         Route::get('/gis', [GISController::class, 'index'])->name('gis.index');
         Route::get('/gis/data', [GISController::class, 'geojson'])->name('gis.data');
@@ -604,8 +605,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/{td}/notice', [TaxDeclarationController::class, 'printNotice'])->name('notice');
         });
 
-
-
         // Online Applications (Staff Review)
         Route::prefix('online-applications')->name('online-applications.')->group(function () {
             Route::get('/', [OnlineApplicationController::class, 'index'])->name('index');
@@ -617,8 +616,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{application}/return', [OnlineApplicationController::class, 'returnToApplicant'])->name('return');
             Route::post('/{application}/reject', [OnlineApplicationController::class, 'reject'])->name('reject');
         });
-
-
 
         // Settings
         Route::prefix('settings')->name('settings.')->group(function () {
@@ -662,8 +659,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('collection-natures-list', [CollectionNatureController::class, 'apiList'])
             ->name('collection-natures.list');
 
+        // ─────────────────────────────────────────────────────────────────────
         // 4i-i. Franchise Live Search
         // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
+        // ─────────────────────────────────────────────────────────────────────
         Route::get('/search-franchise', function (\Illuminate\Http\Request $request) {
             $q = $request->input('q', '');
             return \App\Models\VF\Franchise::with('owner')
@@ -686,52 +685,80 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ]);
         })->name('franchise.search');
 
+        // ─────────────────────────────────────────────────────────────────────
         // 4i-ii. Payments (AF51 Official Receipts)
         // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
-        // ⚠️ SOA route must be BEFORE /{id} wildcard inside this group
+        // ─────────────────────────────────────────────────────────────────────
         Route::prefix('payments')->name('payments.')->group(function () {
             Route::get('/', [VfPaymentController::class, 'index'])->name('index');
             Route::get('/create', [VfPaymentController::class, 'create'])->name('create');
             Route::post('/', [VfPaymentController::class, 'store'])->name('store');
             Route::get('/{franchise}/soa', [VfPaymentController::class, 'soa'])->name('soa');
-            // ── NEW: Renewal ─────────────────────────────────────────────────
-            // ⚠️ Must be declared BEFORE /{id} and /{id}/print wildcards
             Route::post('/{franchiseId}/renew', [VfPaymentController::class, 'renew'])->name('renew');
-            // ─────────────────────────────────────────────────────────────────
             Route::get('/{id}', [VfPaymentController::class, 'show'])->name('show');
             Route::get('/{id}/print', [VfPaymentController::class, 'printReceipt'])->name('print');
             Route::patch('/{id}/void', [VfPaymentController::class, 'void'])->name('void');
         });
 
+        // ─────────────────────────────────────────────────────────────────────
         // 4i-iii. Prints
         // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
+        // ─────────────────────────────────────────────────────────────────────
         Route::prefix('print')->name('print.')->group(function () {
             Route::get('/{franchise}/permit', [VfPrintController::class, 'permit'])->name('permit');
             Route::get('/{franchise}/sticker', [VfPrintController::class, 'sticker'])->name('sticker');
             Route::get('/{franchise}/orcr', [VfPrintController::class, 'orcr'])->name('orcr');
         });
 
+        // ─────────────────────────────────────────────────────────────────────
         // 4i-iv. Reports
         // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
+        // NOTE: All 4 reports use ?print=1 to toggle between screen and print view.
+        //       No separate print routes needed — the controller handles it internally.
+        // ─────────────────────────────────────────────────────────────────────
         Route::prefix('reports')->name('reports.')->group(function () {
+            // Hub / landing page
             Route::get('/', [VfReportController::class, 'index'])->name('index');
+
+            // 1. Franchise Masterlist  (screen + ?print=1 for print view)
             Route::get('/masterlist', [VfReportController::class, 'masterlist'])->name('masterlist');
-            Route::get('/masterlist/data', [VfReportController::class, 'masterlistData'])->name('masterlist.data');
+
+            // 2. Collection summary per TODA  (screen + ?print=1 for print view)
             Route::get('/toda-summary', [VfReportController::class, 'todaSummary'])->name('toda-summary');
+
+            // 3. Payment history per franchise  (screen + ?print=1 for print view)
+            Route::get('/payment-history', [VfReportController::class, 'paymentHistory'])->name('payment-history');
+
+            // 4. Daily / Monthly collection totals  (screen + ?print=1 for print view)
             Route::get('/collection', [VfReportController::class, 'collection'])->name('collection');
+
+            // Legacy data endpoint — kept for backwards compatibility
+            Route::get('/masterlist/data', [VfReportController::class, 'masterlistData'])->name('masterlist.data');
         });
 
-        // 4i-v. Franchise CRUD
-        // ⚠️ Wildcard routes LAST so they don't swallow named segments above
+        // ─────────────────────────────────────────────────────────────────────
+        // 4i-v. Franchise CRUD + Retire + Renew
+        //
+        // ORDER MATTERS — literal segment routes (/create, /retire-check, etc.)
+        // MUST come before the /{franchise} wildcard, otherwise Laravel matches
+        // the wildcard first and the named routes are never reached.
+        // ─────────────────────────────────────────────────────────────────────
         Route::get('/', [VehicleFranchisingController::class, 'index'])->name('index');
         Route::get('/create', [VehicleFranchisingController::class, 'create'])->name('create');
         Route::post('/', [VehicleFranchisingController::class, 'store'])->name('store');
-        Route::get('/{franchise}', [VehicleFranchisingController::class, 'show'])->name('show');
-        Route::get('/{franchise}/edit', [VehicleFranchisingController::class, 'edit'])->name('edit');
-        Route::put('/{franchise}', [VehicleFranchisingController::class, 'update'])->name('update');
-        Route::delete('/{franchise}', [VehicleFranchisingController::class, 'destroy'])->name('destroy');
+
+        // ── Sub-resource routes with literal second segment ──────────────────
+        // Declared before /{franchise} show/edit/update/delete as a safety guarantee.
+        Route::get('/{franchise}/retire-check', [VehicleFranchisingController::class, 'retireCheck'])->name('retire-check');
+        Route::post('/{franchise}/retire', [VehicleFranchisingController::class, 'retire'])->name('retire');
         Route::get('/{franchise}/renew', [VehicleFranchisingController::class, 'renew'])->name('renew');
         Route::post('/{franchise}/renew', [VehicleFranchisingController::class, 'storeRenewal'])->name('renew.store');
+        Route::get('/{franchise}/edit', [VehicleFranchisingController::class, 'edit'])->name('edit');
+
+        // ── Plain wildcard (show / update / delete) — LAST ──────────────────
+        Route::get('/{franchise}', [VehicleFranchisingController::class, 'show'])->name('show');
+        Route::put('/{franchise}', [VehicleFranchisingController::class, 'update'])->name('update');
+        Route::delete('/{franchise}', [VehicleFranchisingController::class, 'destroy'])->name('destroy');
 
     }); // end vehicle-franchising module
 
@@ -756,7 +783,7 @@ Route::prefix('portal')->name('client.')->group(function () {
     Route::middleware([\App\Http\Middleware\ClientAuthenticated::class])->group(function () {
 
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-        
+
         // Email Verification
         Route::get('/verify', [AuthController::class, 'showVerify'])->name('verify.show');
         Route::post('/verify', [AuthController::class, 'verify'])->name('verify.submit');
@@ -819,8 +846,6 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::get('/{td}/print-soa', [RptOnlinePaymentController::class, 'printSoa'])->name('print-soa');
             Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
             Route::post('/{payment}/verify', [RptOnlinePaymentController::class, 'verify'])->name('verify');
-            
-            // Fallback for sessions started before the fix (malformed URL with & instead of ?)
             Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');
             Route::get('/{billing}/success&{any}', [RptOnlinePaymentController::class, 'successMalformed'])->where('any', '.*');
         });

@@ -26,7 +26,6 @@ class BusinessListController extends Controller
         $source = $request->get('source', 'all');
 
         if ($source === 'online') {
-            // Online = records that originated from BplsOnlineApplication
             $query = BplsOnlineApplication::whereNull('deleted_at');
             $totalCount = (clone $query)->count();
             $pendingCount = (clone $query)->where('workflow_status', 'submitted')->count();
@@ -34,12 +33,8 @@ class BusinessListController extends Controller
             $retiredCount = 0;
             $renewalCount = (clone $query)->where('workflow_status', 'approved')->count();
             $types = collect();
-
         } else {
-            // Walk-in = BusinessEntry is walk-in only by nature;
-            // online applications live entirely in bpls_online_applications.
             $query = BusinessEntry::whereNull('deleted_at');
-
             $totalCount = (clone $query)->count();
             $pendingCount = (clone $query)->where('status', 'pending')->count();
             $approvedCount = (clone $query)->whereIn('status', ['for_payment', 'for_renewal_payment'])->count();
@@ -70,10 +65,7 @@ class BusinessListController extends Controller
             return $this->searchOnline($request);
         }
 
-        // Walk-in = BusinessEntry is walk-in only by nature;
-        // online applications live entirely in bpls_online_applications.
-        $query = BusinessEntry::whereNull('deleted_at')
-            ->with(['payments']);
+        $query = BusinessEntry::whereNull('deleted_at')->with(['payments']);
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -115,8 +107,7 @@ class BusinessListController extends Controller
     // =========================================================================
     private function searchOnline(Request $request)
     {
-        $query = BplsOnlineApplication::with(['business', 'owner'])
-            ->whereNull('deleted_at');
+        $query = BplsOnlineApplication::with(['business', 'owner'])->whereNull('deleted_at');
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -213,11 +204,7 @@ class BusinessListController extends Controller
             'mode_of_payment' => $request->mode_of_payment,
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Assessment saved.',
-            'entry' => $entry->fresh(),
-        ]);
+        return response()->json(['success' => true, 'message' => 'Assessment saved.', 'entry' => $entry->fresh()]);
     }
 
     // =========================================================================
@@ -235,34 +222,23 @@ class BusinessListController extends Controller
 
         $now = Carbon::now('Asia/Manila');
         $totalDue = (float) $request->total_due;
-
-        // ── 1. New registration or renewal? ──────────────────────────────────
         $currentCycle = (int) ($entry->renewal_cycle ?? 0);
         $isRenewal = $currentCycle > 0;
 
-        // ── 2. Resolve correct permit year ────────────────────────────────────
         $paymentController = app(BplsPaymentController::class);
         $permitYear = $paymentController->resolveNextPermitYear($entry);
-
-        // ── 3. Generate Business ID on FIRST approval only ────────────────────
-        //       Column name in DB: business_id (varchar 50)
-        //       Supports BOTH formats from settings:
-        //         Curly:   {muni}-{year}-{id}  → e.g. PILA-2026-000029
-        //         Bracket: [MUNI]-[YEAR]-[ID]  → e.g. PILA-2026-000029
         $businessId = $entry->business_id;
-
         if (empty($businessId)) {
             $businessId = self::generateBusinessId($entry, $permitYear);
         }
 
-        // ── 4. Build update payload ───────────────────────────────────────────
         $updateData = [
             'business_nature' => $request->business_nature,
             'business_scale' => $request->business_scale,
             'capital_investment' => $request->capital_investment,
             'mode_of_payment' => $request->mode_of_payment,
             'permit_year' => $permitYear,
-            'business_id' => $businessId,   // ← correct column name
+            'business_id' => $businessId,
             'approved_at' => $now,
             'status' => $isRenewal ? 'for_renewal_payment' : 'for_payment',
         ];
@@ -276,13 +252,6 @@ class BusinessListController extends Controller
         $entry->update($updateData);
         $entry->refresh();
 
-        // ── 5. Auto-create or update Client account ───────────────────────────
-        //       Flow (from flowchart):
-        //       Assess → Generate business_id → Save to bpls_business_entries
-        //              → Find/Create Client by email
-        //              → Save walk_in_business_id = entry->id on Client
-        //       This allows the portal to query bpls_payments by walk_in_business_id
-
         Log::info('BPLS approvePayment: client account check', [
             'entry_id' => $entry->id,
             'business_name' => $entry->business_name,
@@ -293,13 +262,9 @@ class BusinessListController extends Controller
         ]);
 
         if (!empty($entry->email)) {
-
             $existingClient = Client::where('email', $entry->email)->first();
-
             if (!$existingClient) {
-                // ── Create new Client with walk_in_business_id linked ─────────
                 $tempPassword = 'Bpls@' . Str::random(8);
-
                 $newClient = Client::create([
                     'first_name' => $entry->first_name,
                     'last_name' => $entry->last_name,
@@ -308,16 +273,14 @@ class BusinessListController extends Controller
                     'mobile_no' => $entry->mobile_no,
                     'password' => Hash::make($tempPassword),
                     'status' => 'active',
-                    'walk_in_business_id' => $entry->id,  // ← key link for portal
+                    'walk_in_business_id' => $entry->id,
                 ]);
 
                 Log::info('BPLS approvePayment: new client created', [
                     'client_id' => $newClient->id,
                     'walk_in_business_id' => $entry->id,
-                    'business_id' => $businessId,
                 ]);
 
-                // Send credentials email only on first registration
                 if (!$isRenewal) {
                     try {
                         Mail::to($entry->email)->send(new NewClientCredentialsMail(
@@ -327,12 +290,6 @@ class BusinessListController extends Controller
                             tempPassword: $tempPassword,
                             portalUrl: config('app.client_portal_url', url('/portal/login')),
                         ));
-
-                        Log::info('BPLS approvePayment: credentials email sent', [
-                            'to' => $entry->email,
-                            'entry' => $entry->id,
-                        ]);
-
                     } catch (\Throwable $e) {
                         Log::error('BPLS approvePayment: FAILED to send credentials email', [
                             'entry_id' => $entry->id,
@@ -341,34 +298,13 @@ class BusinessListController extends Controller
                         ]);
                     }
                 }
-
             } else {
-                // ── Client exists — ensure walk_in_business_id is always set ──
-                // This covers cases where client was created via online portal
-                // but now has a walk-in business linked
                 if (is_null($existingClient->walk_in_business_id)) {
                     $existingClient->update(['walk_in_business_id' => $entry->id]);
-
-                    Log::info('BPLS approvePayment: linked existing client to business entry', [
-                        'client_id' => $existingClient->id,
-                        'walk_in_business_id' => $entry->id,
-                        'business_id' => $businessId,
-                    ]);
-                } else {
-                    Log::info('BPLS approvePayment: client already linked, no update needed', [
-                        'client_id' => $existingClient->id,
-                        'existing_walk_in_business_id' => $existingClient->walk_in_business_id,
-                    ]);
                 }
             }
-
-        } else {
-            Log::info('BPLS approvePayment: skipped client create/link — no email on entry', [
-                'entry_id' => $entry->id,
-            ]);
         }
 
-        // ── 6. Build payment schedule for response ────────────────────────────
         $schedule = $paymentController->buildSchedule($entry->fresh(), $totalDue, false);
 
         return response()->json([
@@ -377,11 +313,6 @@ class BusinessListController extends Controller
             'redirect_url' => url("bpls/payment/{$entry->id}"),
             'entry' => $entry->fresh(),
             'schedule' => $schedule,
-            'debug' => [
-                'permit_year' => $permitYear,
-                'is_renewal' => $isRenewal,
-                'business_id' => $businessId,
-            ],
         ]);
     }
 
@@ -416,7 +347,6 @@ class BusinessListController extends Controller
         if ($to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment'])) {
             $cycle = (int) ($entry->renewal_cycle ?? 0);
             $permitYear = (int) ($entry->permit_year ?? $now->year);
-
             $hasPayments = BplsPayment::where('business_entry_id', $entry->id)
                 ->where('payment_year', $permitYear)
                 ->where('renewal_cycle', $cycle)
@@ -469,6 +399,20 @@ class BusinessListController extends Controller
     }
 
     // =========================================================================
+    // GET /bpls/business-list/{entry}/retire-check  (AJAX pre-flight)
+    // =========================================================================
+    /**
+     * Returns the outstanding balance details for a business before retirement.
+     * The retire modal calls this to decide whether to block or allow retirement.
+     */
+    public function retireCheck(BusinessEntry $entry)
+    {
+        $balance = $this->computeOutstandingBalance($entry);
+
+        return response()->json($balance);
+    }
+
+    // =========================================================================
     // POST /bpls/business-list/{entry}/retire
     // =========================================================================
     public function retire(Request $request, BusinessEntry $entry)
@@ -478,6 +422,25 @@ class BusinessListController extends Controller
             'retirement_date' => 'required|date',
             'retirement_remarks' => 'nullable|string|max:1000',
         ]);
+
+        // ── Balance / Surcharge Guard ─────────────────────────────────────────
+        // Businesses that were assessed and moved to payment stage MUST settle
+        // all dues (including applicable surcharges) before retirement.
+        // Businesses still at pending/rejected/cancelled never had a payment
+        // obligation, so they can retire freely.
+        $assessedStatuses = ['for_payment', 'for_renewal_payment', 'approved', 'completed'];
+
+        if (in_array($entry->status, $assessedStatuses)) {
+            $balance = $this->computeOutstandingBalance($entry);
+
+            if (!$balance['can_retire']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $balance['block_reason'],
+                    'balance' => $balance,
+                ], 422);
+            }
+        }
 
         $entry->update([
             'status' => 'retired',
@@ -554,8 +517,7 @@ class BusinessListController extends Controller
 
         $payments = BplsPayment::where('business_entry_id', $entry->id)
             ->where('payment_year', $permitYear)
-            ->where('renewal_cycle', $cycle)
-            ->get();
+            ->where('renewal_cycle', $cycle)->get();
 
         $paidQuarters = [];
         foreach ($payments as $payment) {
@@ -567,10 +529,7 @@ class BusinessListController extends Controller
 
         if (!empty($missingQuarters)) {
             $labels = [1 => '1st', 2 => '2nd', 3 => '3rd', 4 => '4th'];
-            $missing = implode(', ', array_map(
-                fn($q) => ($labels[$q] ?? "Q{$q}") . ' Quarter',
-                $missingQuarters
-            ));
+            $missing = implode(', ', array_map(fn($q) => ($labels[$q] ?? "Q{$q}") . ' Quarter', $missingQuarters));
             $modeLabel = match ($mode) {
                 'quarterly' => 'quarterly',
                 'semi_annual' => 'semi-annual',
@@ -597,9 +556,228 @@ class BusinessListController extends Controller
     }
 
     // =========================================================================
+    // GET  /bpls/business-list/{entry}/edit-data  (AJAX)
+    // POST /bpls/business-list/{entry}/edit
+    // =========================================================================
+    public function editData(BusinessEntry $entry)
+    {
+        $amendments = \App\Models\BusinessAmendment::where('business_entry_id', $entry->id)
+            ->orderByDesc('created_at')->get();
+
+        return response()->json(['entry' => $entry, 'amendments' => $amendments]);
+    }
+
+    public function edit(Request $request, BusinessEntry $entry)
+    {
+        $request->validate([
+            'business_name' => 'required|string|max:255',
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $tracked = [
+            'business_name',
+            'trade_name',
+            'tin_no',
+            'type_of_business',
+            'business_nature',
+            'business_scale',
+            'business_barangay',
+            'business_municipality',
+            'business_street',
+            'last_name',
+            'first_name',
+            'middle_name',
+            'mobile_no',
+            'email',
+            'business_mobile',
+            'business_email',
+            'business_organization',
+            'zone',
+            'total_employees',
+        ];
+
+        $changes = [];
+        foreach ($tracked as $field) {
+            $old = (string) ($entry->$field ?? '');
+            $new = (string) ($request->input($field, '') ?? '');
+            if (trim($old) !== trim($new)) {
+                $changes[$field] = ['old' => $old ?: null, 'new' => $new ?: null];
+            }
+        }
+
+        if (empty($changes)) {
+            return response()->json(['success' => false, 'message' => 'No changes detected.'], 422);
+        }
+
+        $fillable = array_intersect_key($request->only($tracked), array_flip($tracked));
+        $entry->update($fillable);
+
+        \App\Models\BusinessAmendment::create([
+            'business_entry_id' => $entry->id,
+            'changed_by' => auth()->id(),
+            'reason' => $request->reason,
+            'remarks' => $request->remarks,
+            'changes' => json_encode($changes),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Changes saved and amendment recorded.',
+            'entry' => $entry->fresh(),
+        ]);
+    }
+
+    // =========================================================================
+    // PRIVATE — computeOutstandingBalance
+    // =========================================================================
+    /**
+     * Computes whether a business has any unpaid balance or overdue surcharges
+     * that must be settled before it can be retired.
+     *
+     * Returns an array with:
+     *   can_retire    bool    — true if retirement is allowed
+     *   block_reason  string  — human-readable reason if blocked
+     *   total_due     float
+     *   total_paid    float
+     *   unpaid_balance float
+     *   unpaid_quarters int[]  — quarter numbers not yet paid
+     *   surcharge_estimate float  — 25% surcharge on unpaid quarters (RA 7160 §168)
+     *   permit_year   int
+     *   renewal_cycle int
+     */
+    private function computeOutstandingBalance(BusinessEntry $entry): array
+    {
+        $mode = $entry->mode_of_payment ?? 'quarterly';
+        $cycle = (int) ($entry->renewal_cycle ?? 0);
+        $permitYear = (int) ($entry->permit_year ?? now()->year);
+        $now = Carbon::now('Asia/Manila');
+
+        // Total assessed for current cycle
+        $totalDue = $cycle > 0
+            ? (float) ($entry->renewal_total_due ?? 0)
+            : (float) ($entry->total_due ?? 0);
+
+        // ── If nothing was ever assessed, allow retirement immediately ────────
+        if ($totalDue <= 0) {
+            return [
+                'can_retire' => true,
+                'block_reason' => '',
+                'total_due' => 0,
+                'total_paid' => 0,
+                'unpaid_balance' => 0,
+                'surcharge_estimate' => 0,
+                'total_outstanding' => 0,
+                'unpaid_quarters' => [],
+                'paid_quarters' => [],
+                'permit_year' => $permitYear,
+                'renewal_cycle' => $cycle,
+                'mode_of_payment' => $mode,
+            ];
+        }
+
+        // Required installments for this payment mode
+        $requiredQuarters = match ($mode) {
+            'quarterly' => [1, 2, 3, 4],
+            'semi_annual' => [1, 2],
+            'annual' => [1],
+            default => [1, 2, 3, 4],
+        };
+
+        // What has already been paid this cycle
+        $payments = BplsPayment::where('business_entry_id', $entry->id)
+            ->where('payment_year', $permitYear)
+            ->where('renewal_cycle', $cycle)
+            ->get();
+
+        $paidQuarters = [];
+        $totalPaid = 0;
+
+        foreach ($payments as $p) {
+            $totalPaid += (float) $p->amount_paid;
+            foreach ($this->decodeQuartersPaid($p->quarters_paid) as $q) {
+                $paidQuarters[] = (int) $q;
+            }
+        }
+
+        $paidQuarters = array_values(array_unique($paidQuarters));
+        $unpaidQuarters = array_values(array_diff($requiredQuarters, $paidQuarters));
+        $modeCount = count($requiredQuarters);
+        $perQ = $modeCount > 0 ? round($totalDue / $modeCount, 2) : 0;
+
+        // Due dates per quarter
+        $dueDates = [
+            1 => Carbon::create($permitYear, 1, 20),
+            2 => Carbon::create($permitYear, 4, 20),
+            3 => Carbon::create($permitYear, 7, 20),
+            4 => Carbon::create($permitYear, 10, 20),
+        ];
+        // Semi-annual: 2nd installment maps to July 20
+        if ($mode === 'semi_annual') {
+            $dueDates[2] = Carbon::create($permitYear, 7, 20);
+        }
+
+        // Estimate 25% surcharge on overdue unpaid quarters (RA 7160 §168)
+        $surchargeEstimate = 0;
+        foreach ($unpaidQuarters as $q) {
+            $dueDate = $dueDates[$q] ?? $dueDates[1];
+            if ($now->gt($dueDate)) {
+                $surchargeEstimate += round($perQ * 0.25, 2);
+            }
+        }
+
+        $unpaidBalance = round(max(0, $totalDue - $totalPaid), 2);
+        $totalOutstanding = round($unpaidBalance + $surchargeEstimate, 2);
+        $hasPendingPayments = !empty($unpaidQuarters) || $unpaidBalance > 0.01;
+
+        if ($hasPendingPayments) {
+            $quarterLabels = [1 => 'Q1', 2 => 'Q2', 3 => 'Q3', 4 => 'Q4'];
+            $unpaidList = implode(', ', array_map(fn($q) => $quarterLabels[$q] ?? "Q{$q}", $unpaidQuarters));
+
+            $reason = "This business cannot be retired because it has an outstanding balance of "
+                . "₱" . number_format($totalOutstanding, 2) . " "
+                . "(₱" . number_format($unpaidBalance, 2) . " unpaid dues"
+                . ($surchargeEstimate > 0
+                    ? " + ₱" . number_format($surchargeEstimate, 2) . " estimated surcharges"
+                    : "")
+                . ") for permit year {$permitYear}."
+                . (!empty($unpaidQuarters) ? " Unpaid installments: {$unpaidList}." : "")
+                . " All dues must be settled at the Treasury before retirement.";
+
+            return [
+                'can_retire' => false,
+                'block_reason' => $reason,
+                'total_due' => $totalDue,
+                'total_paid' => $totalPaid,
+                'unpaid_balance' => $unpaidBalance,
+                'surcharge_estimate' => $surchargeEstimate,
+                'total_outstanding' => $totalOutstanding,
+                'unpaid_quarters' => $unpaidQuarters,
+                'paid_quarters' => $paidQuarters,
+                'permit_year' => $permitYear,
+                'renewal_cycle' => $cycle,
+                'mode_of_payment' => $mode,
+            ];
+        }
+
+        return [
+            'can_retire' => true,
+            'block_reason' => '',
+            'total_due' => $totalDue,
+            'total_paid' => $totalPaid,
+            'unpaid_balance' => 0,
+            'surcharge_estimate' => 0,
+            'total_outstanding' => 0,
+            'unpaid_quarters' => [],
+            'paid_quarters' => $paidQuarters,
+            'permit_year' => $permitYear,
+            'renewal_cycle' => $cycle,
+            'mode_of_payment' => $mode,
+        ];
+    }
+
+    // =========================================================================
     // HELPERS
     // =========================================================================
-
     private function statusLabel(string $status): string
     {
         return match ($status) {
@@ -620,42 +798,23 @@ class BusinessListController extends Controller
             return $value;
         if (!is_string($value))
             return [];
-
         $decoded = json_decode($value, true);
-        if (is_string($decoded)) {
+        if (is_string($decoded))
             $decoded = json_decode($decoded, true);
-        }
-
         return is_array($decoded) ? $decoded : [];
     }
 
-    // =========================================================================
-    // generateBusinessId — public static, used by approvePayment + blade fallback
-    //
-    // Reads 'business_id_format' from BplsSetting.
-    // Supports BOTH placeholder styles used across the system:
-    //   Curly  : {year}  {id}  {muni}  {barangay_code}
-    //   Bracket: [YEAR]  [ID]  [MUNI]  [BARANGAY]
-    //
-    // Example results (format = "PILA-{year}-{id}" or "PILA-[YEAR]-[ID]"):
-    //   → PILA-2026-000029
-    // =========================================================================
     public static function generateBusinessId(BusinessEntry $entry, int $permitYear): string
     {
-        // Read format from settings — default matches your blade's hint format
         $format = BplsSetting::get('business_id_format', '{muni}-{year}-{id}');
-
         $muniCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_municipality ?? 'MUN'), 0, 4));
         $barangayCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_barangay ?? 'BRG'), 0, 4));
         $paddedId = str_pad($entry->id, 6, '0', STR_PAD_LEFT);
 
-        // Replace BOTH curly {placeholder} and bracket [PLACEHOLDER] styles
-        $format = str_ireplace(
+        return str_ireplace(
             ['{year}', '{id}', '{muni}', '{barangay_code}', '[YEAR]', '[ID]', '[MUNI]', '[BARANGAY]'],
             [$permitYear, $paddedId, $muniCode, $barangayCode, $permitYear, $paddedId, $muniCode, $barangayCode],
             $format
         );
-
-        return $format;
     }
 }

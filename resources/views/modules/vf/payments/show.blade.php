@@ -33,14 +33,12 @@
                 @if ($payment->status === 'paid')
                     <span
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-logo-green/10 text-logo-green border border-logo-green/20 uppercase tracking-wide">
-                        <span class="w-1.5 h-1.5 rounded-full bg-logo-green inline-block"></span>
-                        Paid
+                        <span class="w-1.5 h-1.5 rounded-full bg-logo-green inline-block"></span>Paid
                     </span>
                 @else
                     <span
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-red-50 text-red-500 border border-red-200 uppercase tracking-wide">
-                        <span class="w-1.5 h-1.5 rounded-full bg-red-400 inline-block"></span>
-                        Voided
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-400 inline-block"></span>Voided
                     </span>
                 @endif
             </div>
@@ -88,7 +86,7 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-        {{-- LEFT: OR Details + Collection Items ──────────────────────────── --}}
+        {{-- LEFT: OR Details + Collection Items --}}
         <div class="lg:col-span-2 space-y-5">
 
             {{-- Receipt Information --}}
@@ -99,17 +97,14 @@
                 </div>
                 <div class="p-6">
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-5">
-
                         <div>
                             <p class="text-xs text-gray/55 font-semibold mb-1 uppercase tracking-wide">OR Number</p>
                             <p class="font-bold text-green font-mono text-lg">{{ $payment->or_number }}</p>
                         </div>
-
                         <div>
                             <p class="text-xs text-gray/55 font-semibold mb-1 uppercase tracking-wide">Date</p>
                             <p class="font-semibold text-green">{{ $payment->or_date->format('F d, Y') }}</p>
                         </div>
-
                         <div>
                             <p class="text-xs text-gray/55 font-semibold mb-1 uppercase tracking-wide">Payment Method
                             </p>
@@ -119,34 +114,26 @@
                                     'check' => 'bg-logo-blue/10 text-logo-blue',
                                     'money_order' => 'bg-yellow/20 text-brown',
                                 ];
-                                $methodLabels = [
-                                    'cash' => 'Cash',
-                                    'check' => 'Check',
-                                    'money_order' => 'Money Order',
-                                ];
+                                $methodLabels = ['cash' => 'Cash', 'check' => 'Check', 'money_order' => 'Money Order'];
                             @endphp
                             <span
                                 class="inline-flex px-2.5 py-1 text-xs font-bold rounded-lg {{ $methodColors[$payment->payment_method] ?? 'bg-gray/10 text-gray' }} uppercase tracking-wide">
                                 {{ $methodLabels[$payment->payment_method] ?? $payment->payment_method }}
                             </span>
                         </div>
-
                         <div>
                             <p class="text-xs text-gray/55 font-semibold mb-1 uppercase tracking-wide">Payor</p>
                             <p class="font-bold text-green">{{ $payment->payor }}</p>
                         </div>
-
                         <div>
                             <p class="text-xs text-gray/55 font-semibold mb-1 uppercase tracking-wide">Agency</p>
                             <p class="text-sm text-green">{{ $payment->agency ?? '—' }}</p>
                         </div>
-
                         <div>
                             <p class="text-xs text-gray/55 font-semibold mb-1 uppercase tracking-wide">Fund</p>
                             <p class="text-sm text-green">{{ $payment->fund ?? '—' }}</p>
                         </div>
 
-                        {{-- Check / Money Order fields --}}
                         @if (in_array($payment->payment_method, ['check', 'money_order']))
                             @if ($payment->drawee_bank)
                                 <div>
@@ -170,7 +157,6 @@
                                 </div>
                             @endif
                         @endif
-
                     </div>
 
                     @if ($payment->remarks)
@@ -219,12 +205,10 @@
                             <tr class="border-t-2 border-logo-teal/20 bg-logo-teal/5">
                                 <td colspan="2"
                                     class="px-6 py-4 text-right text-xs font-bold text-gray/60 uppercase tracking-widest">
-                                    Total Amount
-                                </td>
+                                    Total Amount</td>
                                 <td class="px-6 py-4 text-right">
-                                    <span class="text-xl font-bold text-logo-teal font-mono">
-                                        ₱ {{ number_format($payment->total_amount, 2) }}
-                                    </span>
+                                    <span class="text-xl font-bold text-logo-teal font-mono">₱
+                                        {{ number_format($payment->total_amount, 2) }}</span>
                                 </td>
                             </tr>
                             <tr class="bg-surface/40">
@@ -235,8 +219,7 @@
                                             class="text-xs font-bold text-gray/50 uppercase tracking-widest mt-0.5 whitespace-nowrap">In
                                             Words</span>
                                         <p class="text-sm text-green font-medium italic leading-relaxed">
-                                            {{ $payment->amount_in_words }}
-                                        </p>
+                                            {{ $payment->amount_in_words }}</p>
                                     </div>
                                 </td>
                             </tr>
@@ -247,7 +230,7 @@
 
         </div>
 
-        {{-- RIGHT: Franchise Info + Collector ────────────────────────────── --}}
+        {{-- RIGHT: Franchise Info + Collector --}}
         <div class="space-y-5">
 
             {{-- Franchise Record --}}
@@ -304,10 +287,14 @@
                                 </div>
                                 <div class="flex justify-between items-start py-2">
                                     <span class="text-xs text-gray/55 font-semibold">Status</span>
-                                    <span
-                                        class="text-xs font-bold {{ $payment->franchise->status === 'active' ? 'text-logo-green' : 'text-red-400' }}">
-                                        {{ ucfirst($payment->franchise->status ?? '—') }}
-                                    </span>
+                                    @if ($payment->franchise->status === 'retired')
+                                        <span class="text-xs font-bold text-orange-500">Retired</span>
+                                    @elseif ($payment->franchise->status === 'active')
+                                        <span class="text-xs font-bold text-logo-green">Active</span>
+                                    @else
+                                        <span
+                                            class="text-xs font-bold text-gray">{{ ucfirst($payment->franchise->status ?? '—') }}</span>
+                                    @endif
                                 </div>
                             </div>
 
@@ -325,6 +312,45 @@
                     @endif
                 </div>
             </div>
+
+            {{-- Retirement Info (shown only when franchise is retired) --}}
+            @if ($payment->franchise && $payment->franchise->status === 'retired')
+                <div class="bg-orange-50 rounded-2xl border border-orange-200 shadow-sm overflow-hidden">
+                    <div class="px-5 py-4 border-b border-orange-200 flex items-center gap-2">
+                        <span class="w-1 h-5 rounded-full bg-orange-400 inline-block"></span>
+                        <h3 class="text-xs font-bold text-orange-600 uppercase tracking-widest">Retirement Information
+                        </h3>
+                    </div>
+                    <div class="p-5">
+                        <div class="divide-y divide-orange-100 text-xs">
+                            <div class="flex justify-between items-start py-2">
+                                <span class="text-gray/60 font-semibold">Retirement Date</span>
+                                <span class="font-bold text-orange-600">
+                                    {{ $payment->franchise->retirement_date ? \Carbon\Carbon::parse($payment->franchise->retirement_date)->format('F d, Y') : '—' }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-start py-2">
+                                <span class="text-gray/60 font-semibold">Reason</span>
+                                <span
+                                    class="text-gray text-right max-w-[55%]">{{ $payment->franchise->retirement_reason ?? '—' }}</span>
+                            </div>
+                            @if ($payment->franchise->retirement_remarks)
+                                <div class="py-2">
+                                    <span class="text-gray/60 font-semibold block mb-1">Remarks</span>
+                                    <span
+                                        class="text-gray italic">{{ $payment->franchise->retirement_remarks }}</span>
+                                </div>
+                            @endif
+                            <div class="flex justify-between items-start py-2">
+                                <span class="text-gray/60 font-semibold">Retired At</span>
+                                <span class="text-gray">
+                                    {{ $payment->franchise->retired_at ? \Carbon\Carbon::parse($payment->franchise->retired_at)->format('M d, Y h:i A') : '—' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             {{-- Collected By --}}
             <div class="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -355,7 +381,7 @@
                 </div>
             </div>
 
-            {{-- Permit Info (if renewal) --}}
+            {{-- Permit Info --}}
             @if ($payment->franchise && $payment->franchise->permit_number)
                 <div class="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
                     <div class="px-5 py-4 border-b border-border bg-surface flex items-center gap-2">
