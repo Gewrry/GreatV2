@@ -32,7 +32,7 @@ public function index(Request $request)
                 $q->where('arp_no', 'like', '%' . $request->search . '%')
                   ->orWhere('pin', 'like', '%' . $request->search . '%')
                   ->orWhereHas('propertyRegistration', function ($q2) use ($request) {
-                      $q2->where('owner_name', 'like', '%' . $request->search . '%')
+                      $q2->whereHas('owners', fn($oq) => $oq->where('owner_name', 'like', '%' . $request->search . '%'))
                          ->orWhere('title_no', 'like', '%' . $request->search . '%');
                   });
             }))
@@ -115,14 +115,13 @@ public function index(Request $request)
                 'effectivity_date'         => $request->effectivity_date,
                 'revision_type'            => $request->revision_type,
 
-                'owner_name'            => $registration->owner_name,
-                'owner_tin'             => $registration->owner_tin,
-                'owner_address'         => $registration->owner_address,
-                'owner_contact'         => $registration->owner_contact,
                 'administrator_name'    => $registration->administrator_name,
+                'administrator_tin'     => $registration->administrator_tin,
                 'administrator_address' => $registration->administrator_address,
+                'administrator_contact' => $registration->administrator_contact,
                 
                 'barangay_id'           => $registration->barangay_id,
+                'district'              => $registration->district,
                 'street'                => $registration->street,
                 'municipality'          => $registration->municipality,
                 'province'              => $registration->province,
@@ -130,7 +129,15 @@ public function index(Request $request)
                 'lot_no'                => null, // Filled during appraisal
                 'blk_no'                => null, // Filled during appraisal
                 'survey_no'             => $registration->survey_no,
-                'property_type'         => $registration->property_type,
+                
+                'boundary_north'        => $registration->boundary_north,
+                'boundary_south'        => $registration->boundary_south,
+                'boundary_east'         => $registration->boundary_east,
+                'boundary_west'  => $registration->boundary_west,
+                'is_taxable'     => $registration->is_taxable,
+                'exemption_basis' => $registration->exemption_basis,
+                
+                'property_type'  => $registration->property_type,
                 
                 'revision_year_id'      => $revision?->id,
                 'remarks'               => 'DRAFT FAAS based on Intake Registration #'.$registration->id,
@@ -146,6 +153,17 @@ public function index(Request $request)
                 'action'           => 'created',
                 'description'      => 'Initial DRAFT FAAS generated from Property Registration (Intake ID: '.$registration->id.').',
             ]);
+
+            // [NEW] Sync Multiple Owners
+            foreach ($registration->owners as $regOwner) {
+                $property->owners()->create([
+                    'owner_name'    => $regOwner->owner_name,
+                    'owner_tin'     => $regOwner->owner_tin,
+                    'owner_address' => $regOwner->owner_address,
+                    'owner_contact' => $regOwner->owner_contact,
+                    'is_primary'    => $regOwner->is_primary,
+                ]);
+            }
 
             return $property;
         });
@@ -194,14 +212,13 @@ public function index(Request $request)
                 'effectivity_date'         => today(),
                 'revision_type'            => 'New Discovery',
 
-                'owner_name'            => $registration->owner_name,
-                'owner_tin'             => $registration->owner_tin,
-                'owner_address'         => $registration->owner_address,
-                'owner_contact'         => $registration->owner_contact,
                 'administrator_name'    => $registration->administrator_name,
+                'administrator_tin'     => $registration->administrator_tin,
                 'administrator_address' => $registration->administrator_address,
+                'administrator_contact' => $registration->administrator_contact,
 
                 'barangay_id'   => $registration->barangay_id,
+                'district'      => $registration->district,
                 'street'        => $registration->street,
                 'municipality'  => $registration->municipality,
                 'province'      => $registration->province,
@@ -213,6 +230,9 @@ public function index(Request $request)
                 'boundary_south' => $registration->boundary_south,
                 'boundary_east'  => $registration->boundary_east,
                 'boundary_west'  => $registration->boundary_west,
+                'is_taxable'     => $registration->is_taxable,
+                'exemption_basis' => $registration->exemption_basis,
+                
                 'property_type' => $registration->property_type,
 
                 'revision_year_id' => $revision?->id,
@@ -229,6 +249,18 @@ public function index(Request $request)
                 'action'           => 'created',
                 'description'      => 'Draft FAAS auto-created via Quick Start from Registration #' . $registration->id . '. Component: ' . $component,
             ]);
+
+            // [NEW] Sync Multiple Owners
+            foreach ($registration->owners as $regOwner) {
+                $property->owners()->create([
+                    'owner_name'    => $regOwner->owner_name,
+                    'owner_tin'     => $regOwner->owner_tin,
+                    'owner_address' => $regOwner->owner_address,
+                    'owner_contact' => $regOwner->owner_contact,
+                    'email'         => $regOwner->email,
+                    'is_primary'    => $regOwner->is_primary,
+                ]);
+            }
 
             return $property;
         });
@@ -291,6 +323,34 @@ public function index(Request $request)
             $data['polygon_coordinates'] = json_decode($data['polygon_coordinates'], true);
         }
 
+        // ── Duplicate Land Parcel Validation ──
+        // 1. Check lot_no + barangay uniqueness (if lot_no is provided)
+        if (!empty($data['lot_no'])) {
+            $duplicateLot = FaasLand::where('lot_no', $data['lot_no'])
+                ->whereHas('property', function ($q) use ($faas) {
+                    $q->where('barangay_id', $faas->barangay_id)
+                      ->where('id', '!=', $faas->id)
+                      ->whereNotIn('status', ['cancelled', 'inactive']);
+                })
+                ->with('property')
+                ->first();
+
+            if ($duplicateLot) {
+                $ownerArp = $duplicateLot->property->arp_no ?? 'Draft';
+                $ownerName = $duplicateLot->property->owner_name ?? 'Unknown';
+                return back()->withInput()->with('error', "Duplicate Land Detected: Lot No. \"{$data['lot_no']}\" is already registered under another property (ARP: {$ownerArp}, Owner: {$ownerName}). Please verify before proceeding.");
+            }
+        }
+
+        // 2. Spatial Overlap Validation (check if the drawn area intersects other parcels)
+        if (!empty($data['polygon_coordinates'])) {
+            $overlapping = $this->checkPolygonOverlap($data['polygon_coordinates'], null, $faas->id);
+            if ($overlapping) {
+                $ownerName = ($overlapping instanceof FaasLand) ? ($overlapping->property->owner_name ?? 'Unknown') : ($overlapping->owner_name ?? 'Draft Applicant');
+                return back()->withInput()->with('error', "Spatial Overlap Detected: The drawn area overlaps with an existing parcel (Owner: {$ownerName}). Please ensure your boundary does not intersect with other registered lands.");
+            }
+        }
+
         // Auto-connect Assessment Level from System Settings
         $tempMV = (float) $request->area_sqm * (float) $request->unit_value + (float) $request->market_value_adjustments;
         $data['assessment_level'] = \App\Models\RPT\RptaAssessmentLevel::rateFor($request->rpta_actual_use_id, $tempMV);
@@ -324,6 +384,33 @@ public function index(Request $request)
 
         if (isset($data['polygon_coordinates'])) {
             $data['polygon_coordinates'] = json_decode($data['polygon_coordinates'], true);
+        }
+
+        // ── Duplicate Land Parcel Validation (exclude current record) ──
+        if (!empty($data['lot_no'])) {
+            $duplicateLot = FaasLand::where('lot_no', $data['lot_no'])
+                ->where('id', '!=', $land->id)
+                ->whereHas('property', function ($q) use ($faas) {
+                    $q->where('barangay_id', $faas->barangay_id)
+                      ->where('id', '!=', $faas->id)
+                      ->whereNotIn('status', ['cancelled', 'inactive']);
+                })
+                ->with('property')
+                ->first();
+
+            if ($duplicateLot) {
+                $ownerArp = $duplicateLot->property->arp_no ?? 'Draft';
+                $ownerName = $duplicateLot->property->owner_name ?? 'Unknown';
+                return back()->withInput()->with('error', "Duplicate Land Detected: Lot No. \"{$data['lot_no']}\" is already registered under another property (ARP: {$ownerArp}, Owner: {$ownerName}).");
+            }
+        }
+
+        if (!empty($data['polygon_coordinates'])) {
+            $overlapping = $this->checkPolygonOverlap($data['polygon_coordinates'], $land->id, $faas->id);
+            if ($overlapping) {
+                $ownerName = ($overlapping instanceof FaasLand) ? ($overlapping->property->owner_name ?? 'Unknown') : ($overlapping->owner_name ?? 'Draft Applicant');
+                return back()->withInput()->with('error', "Spatial Overlap Detected: The updated area overlaps with an existing parcel (Owner: {$ownerName}). Please adjust the boundary to avoid intersection.");
+            }
         }
 
         // Auto-connect Assessment Level from System Settings
@@ -866,23 +953,27 @@ public function index(Request $request)
 
             // Step 2: Create the new Draft linked to the old one
             $newFaas = FaasProperty::create([
-                'owner_name'               => $faas->owner_name,
-                'owner_tin'                => $faas->owner_tin,
-                'owner_address'            => $faas->owner_address,
-                'owner_contact'            => $faas->owner_contact,
-                'administrator_name'       => $faas->administrator_name,
-                'administrator_address'    => $faas->administrator_address,
                 'barangay_id'              => $faas->barangay_id,
+                'district'                 => $faas->district,
                 'street'                   => $faas->street,
                 'municipality'             => $faas->municipality,
                 'province'                 => $faas->province,
                 'property_type'            => $faas->property_type,
                 'title_no'                 => $faas->title_no,
+                'is_taxable'               => $faas->is_taxable,
+                'exemption_basis'          => $faas->exemption_basis,
                 'previous_faas_property_id'=> $faas->id,
                 'status'                   => 'draft',
                 'created_by'               => Auth::id(),
                 'remarks'                  => 'General Revision of FAAS ARP ' . $faas->arp_no,
             ]);
+
+            // [NEW] Sync Owners from the predecessor
+            foreach ($faas->owners as $owner) {
+                $newOwner = $owner->replicate();
+                $newOwner->faas_property_id = $newFaas->id;
+                $newOwner->save();
+            }
             
             // Step 3: Deep clone components
             foreach ($faas->lands as $land) {
@@ -934,23 +1025,27 @@ public function index(Request $request)
             ]);
 
             $newFaas = FaasProperty::create([
-                'owner_name'               => $faas->owner_name,
-                'owner_tin'                => $faas->owner_tin,
-                'owner_address'            => $faas->owner_address,
-                'owner_contact'            => $faas->owner_contact,
-                'administrator_name'       => $faas->administrator_name,
-                'administrator_address'    => $faas->administrator_address,
                 'barangay_id'              => $faas->barangay_id,
+                'district'                 => $faas->district,
                 'street'                   => $faas->street,
                 'municipality'             => $faas->municipality,
                 'province'                 => $faas->province,
                 'property_type'            => $faas->property_type,
                 'title_no'                 => $faas->title_no,
+                'is_taxable'               => $faas->is_taxable,
+                'exemption_basis'          => $faas->exemption_basis,
                 'previous_faas_property_id'=> $faas->id,
                 'status'                   => 'draft',
                 'created_by'               => Auth::id(),
                 'remarks'                  => 'Reassessment of FAAS ARP ' . $faas->arp_no,
             ]);
+
+            // [NEW] Sync Owners from the predecessor
+            foreach ($faas->owners as $owner) {
+                $newOwner = $owner->replicate();
+                $newOwner->faas_property_id = $newFaas->id;
+                $newOwner->save();
+            }
             
             foreach ($faas->lands as $land) {
                 $newLand = $land->replicate();
@@ -1015,18 +1110,19 @@ public function index(Request $request)
 
             // Create new Draft with updated owner and transition documents
             $newFaas = FaasProperty::create([
-                'owner_name'               => $data['new_owner_name'],
-                'owner_tin'                => $data['new_owner_tin'],
-                'owner_address'            => $data['new_owner_address'],
-                'owner_contact'            => null, // Reset for new owner
                 'administrator_name'       => $faas->administrator_name,
+                'administrator_tin'        => $faas->administrator_tin,
                 'administrator_address'    => $faas->administrator_address,
+                'administrator_contact'    => $faas->administrator_contact,
                 'barangay_id'              => $faas->barangay_id,
+                'district'                 => $faas->district,
                 'street'                   => $faas->street,
                 'municipality'             => $faas->municipality,
                 'province'                 => $faas->province,
                 'property_type'            => $faas->property_type,
                 'title_no'                 => $faas->title_no,
+                'is_taxable'               => $faas->is_taxable,
+                'exemption_basis'          => $faas->exemption_basis,
                 'previous_faas_property_id'=> $faas->id,
                 'revision_type'            => 'TRANSFER', // Explicit revision type
                 'car_no'                   => $data['car_no'],
@@ -1035,7 +1131,15 @@ public function index(Request $request)
                 'transfer_tax_receipt_date'=> $data['transfer_tax_receipt_date'],
                 'status'                   => 'draft',
                 'created_by'               => Auth::id(),
-                'remarks'                  => $data['remarks'] ?: 'Transfer of Ownership from ' . $faas->owner_name . ' (Ref: ' . $data['car_no'] . ')',
+                'remarks'                  => $data['remarks'] ?: 'Transfer of Ownership from ' . $faas->primary_owner_name . ' (Ref: ' . $data['car_no'] . ')',
+            ]);
+
+            // [NEW] Create initial owner record for the new set
+            $newFaas->owners()->create([
+                'owner_name'    => $data['new_owner_name'],
+                'owner_tin'     => $data['new_owner_tin'],
+                'owner_address' => $data['new_owner_address'],
+                'is_primary'    => true,
             ]);
 
             // Deep clone components
@@ -1319,8 +1423,6 @@ public function index(Request $request)
             // 1. Create Successor Draft
             $successor = FaasProperty::create([
                 'property_type'         => 'land',
-                'owner_name'            => $request->owner_name,
-                'owner_address'         => $request->owner_address,
                 'barangay_id'           => $barangayId,
                 'effectivity_date'      => $request->effectivity_date,
                 'revision_type'         => 'consolidation',
@@ -1331,6 +1433,13 @@ public function index(Request $request)
                 'title_no'              => $request->title_no,
                 'remarks'               => $request->remarks,
                 'created_by'            => Auth::id(),
+            ]);
+
+            // [NEW] Sync primary owner
+            $successor->owners()->create([
+                'owner_name'    => $request->owner_name,
+                'owner_address' => $request->owner_address,
+                'is_primary'    => true,
             ]);
 
             // 2. Create Land Component for Successor
@@ -1408,7 +1517,10 @@ public function index(Request $request)
             'owner_address'         => 'required|string|max:500',
             'owner_contact'         => 'nullable|string|max:100',
             'administrator_name'    => 'nullable|string|max:255',
+            'administrator_tin'     => 'nullable|string|max:50',
             'administrator_address' => 'nullable|string|max:500',
+            'administrator_contact' => 'nullable|string|max:100',
+            'district'              => 'nullable|string|max:255',
             'street'                => 'nullable|string|max:255',
             'municipality'          => 'required|string|max:100',
             'province'              => 'required|string|max:100',
@@ -1416,10 +1528,66 @@ public function index(Request $request)
             'lot_no'                => 'nullable|string|max:50',
             'blk_no'                => 'nullable|string|max:50',
             'survey_no'             => 'nullable|string|max:50',
+            'section_no'            => 'nullable|string|max:50',
+            'parcel_no'             => 'nullable|string|max:50',
             'property_kind'         => 'nullable|string|max:50',
+            'is_taxable'            => 'required|boolean',
+            'exemption_basis'       => 'nullable|string|required_if:is_taxable,0',
+            'effectivity_quarter'   => 'nullable|string|in:Q1,Q2,Q3,Q4',
+            'previous_owner'        => 'nullable|string|max:255',
+            'previous_arp_no'       => 'nullable|string|max:100',
+            'previous_assessed_value' => 'nullable|numeric|min:0',
+            'co_owners'             => 'nullable|array',
+            'co_owners.*.owner_name'    => 'required|string|max:255',
+            'co_owners.*.owner_tin'     => 'nullable|string|max:50',
+            'co_owners.*.owner_address' => 'required|string|max:500',
+            'co_owners.*.owner_contact' => 'nullable|string|max:100',
         ]);
 
-        $faas->update($data);
+        // PIN Uniqueness Validation for Land Parcels
+        if (in_array($faas->property_type, ['land', 'mixed']) && !empty($data['section_no']) && !empty($data['parcel_no'])) {
+            $duplicate = FaasProperty::whereIn('property_type', ['land', 'mixed'])
+                ->where('id', '!=', $faas->id)
+                ->where('barangay_id', $faas->barangay_id)
+                ->where('section_no', $data['section_no'])
+                ->where('parcel_no', $data['parcel_no'])
+                ->whereNotIn('status', ['cancelled', 'inactive'])
+                ->exists();
+
+            if ($duplicate) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'PIN Conflict: The combination of Section No. and Parcel No. is already in use by another property in this Barangay.');
+            }
+        }
+        DB::transaction(function () use ($faas, $data) {
+            $faas->update($data);
+
+            // Sync Owners
+            $faas->owners()->delete();
+
+            // Create primary owner record
+            $faas->owners()->create([
+                'owner_name'    => $data['owner_name'],
+                'owner_tin'     => $data['owner_tin'],
+                'owner_address' => $data['owner_address'],
+                'owner_contact' => $data['owner_contact'],
+                'is_primary'    => true,
+            ]);
+
+            // Create co-owner records
+            if (isset($data['co_owners'])) {
+                foreach ($data['co_owners'] as $coOwner) {
+                    $faas->owners()->create([
+                        'owner_name'    => $coOwner['owner_name'],
+                        'owner_tin'     => $coOwner['owner_tin'],
+                        'owner_address' => $coOwner['owner_address'],
+                        'owner_contact' => $coOwner['owner_contact'],
+                        'is_primary'    => false,
+                    ]);
+                }
+            }
+        });
 
         // Smart Sync: If there is exactly one land parcel, sync its Lot/Block to match the Master
         if ($faas->lands()->count() === 1) {
@@ -1510,8 +1678,136 @@ public function index(Request $request)
             }
             return $generated;
         });
-
         return back()->with('success', "{$count} Tax Declarations generated successfully.");
+    }
+
+    /**
+     * API Endpoint: Check if a combination of Section No and Parcel No is available.
+     * Used for real-time frontend validation.
+     */
+    public function checkPinAvailability(Request $request)
+    {
+        $request->validate([
+            'barangay_id' => 'required|integer',
+            'section_no'  => 'required|string',
+            'parcel_no'   => 'required|string',
+            'exclude_id'  => 'nullable|integer' // The ID of the current FAAS property being edited
+        ]);
+
+        $query = FaasProperty::whereIn('property_type', ['land', 'mixed'])
+            ->where('barangay_id', $request->barangay_id)
+            ->where('section_no', $request->section_no)
+            ->where('parcel_no', $request->parcel_no)
+            ->whereNotIn('status', ['cancelled', 'inactive']);
+
+        if ($request->filled('exclude_id')) {
+            $query->where('id', '!=', $request->exclude_id);
+        }
+
+        $isDuplicate = $query->exists();
+
+        return response()->json([
+            'available' => !$isDuplicate
+        ]);
+    }
+
+    /**
+     * Helper to detect spatial overlaps between polygons.
+     * Uses a Point-in-Polygon algorithm for each vertex.
+     */
+    private function checkPolygonOverlap($newCoords, $excludeLandId = null, $excludePropertyId = null)
+    {
+        if (empty($newCoords)) return null;
+
+        $newVertices = $this->extractVertices($newCoords);
+        if (!$newVertices) return null;
+        
+        // 1. Check against Official Parcels (FaasLand)
+        $existingLands = FaasLand::whereNotNull('polygon_coordinates')
+            ->when($excludeLandId, fn($q) => $q->where('id', '!=', $excludeLandId))
+            ->when($excludePropertyId, fn($q) => $q->where('faas_property_id', '!=', $excludePropertyId))
+            ->whereHas('property', function ($q) {
+                $q->whereNotIn('status', ['cancelled', 'inactive']);
+            })
+            ->get();
+
+        foreach ($existingLands as $existing) {
+            $existingCoords = $existing->polygon_coordinates;
+            $existingVertices = $this->extractVertices($existingCoords);
+            if (!$existingVertices) continue;
+
+            foreach ($newVertices as $v) {
+                if ($this->isPointInPolygon($v, $existingVertices)) return $existing;
+            }
+            foreach ($existingVertices as $v) {
+                if ($this->isPointInPolygon($v, $newVertices)) return $existing;
+            }
+        }
+
+        // 2. Check against other Draft Registrations
+        $drafts = \App\Models\RPT\RptPropertyRegistration::whereNotNull('polygon_coordinates')
+            ->whereDoesntHave('faasProperties')
+            ->get();
+
+        foreach ($drafts as $draft) {
+            $draftCoords = $draft->polygon_coordinates;
+            $draftVertices = $this->extractVertices($draftCoords);
+            if (!$draftVertices) continue;
+
+            foreach ($newVertices as $v) {
+                if ($this->isPointInPolygon($v, $draftVertices)) return $draft;
+            }
+            foreach ($draftVertices as $v) {
+                if ($this->isPointInPolygon($v, $newVertices)) return $draft;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Helper to extract outer ring vertices from various GeoJSON formats
+     */
+    private function extractVertices($geojson)
+    {
+        if (empty($geojson)) return null;
+        if (is_string($geojson)) $geojson = json_decode($geojson, true);
+
+        // If it's a FeatureCollection
+        if (isset($geojson['type']) && $geojson['type'] === 'FeatureCollection' && !empty($geojson['features'])) {
+            $geometry = $geojson['features'][0]['geometry'] ?? null;
+        } else if (isset($geojson['geometry'])) {
+            $geometry = $geojson['geometry'];
+        } else {
+            $geometry = $geojson;
+        }
+
+        if (!$geometry || !isset($geometry['coordinates'][0])) return null;
+        
+        // Handle Polygon vs MultiPolygon (simplistic)
+        if ($geometry['type'] === 'Polygon') {
+            return $geometry['coordinates'][0];
+        } else if ($geometry['type'] === 'MultiPolygon') {
+            // First polygon, first ring
+            return $geometry['coordinates'][0][0] ?? null;
+        }
+
+        return null;
+    }
+
+    private function isPointInPolygon($point, $polygon)
+    {
+        $x = $point[0]; $y = $point[1];
+        $inside = false;
+        for ($i = 0, $j = count($polygon) - 1; $i < count($polygon); $j = $i++) {
+            $xi = $polygon[$i][0]; $yi = $polygon[$i][1];
+            $xj = $polygon[$j][0]; $yj = $polygon[$j][1];
+            
+            $intersect = (($yi > $y) != ($yj > $y))
+                && ($x < ($xj - $xi) * ($y - $yi) / ($yj - $yi) + $xi);
+            if ($intersect) $inside = !$inside;
+        }
+        return $inside;
     }
 }
 

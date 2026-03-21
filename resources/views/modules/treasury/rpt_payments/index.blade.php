@@ -38,7 +38,7 @@
 
                 <div class="px-6 py-3 border-b bg-gray-50">
                     <form class="flex gap-3 items-center flex-wrap" action="{{ route('treasury.rpt.payments.index') }}" method="GET">
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by Owner, TD No. or ARP No.…"
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by Owner, TD No., ARP No. or PIN…"
                             class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-logo-teal">
                         
                         <select name="barangay_id" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-logo-teal">
@@ -68,6 +68,7 @@
                             <tr>
                                 <th class="px-4 py-3 whitespace-nowrap">TD No.</th>
                                 <th class="px-4 py-3 whitespace-nowrap">ARP No.</th>
+                                <th class="px-4 py-3 whitespace-nowrap">PIN</th>
                                 <th class="px-4 py-3">Owner / Declarant</th>
                                 <th class="px-4 py-3 text-right">Assessed Value</th>
                                 <th class="px-4 py-3 text-right">Est. Annual Due</th>
@@ -100,6 +101,7 @@
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ $td->td_no }}</td>
                                     <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ $td->property->arp_no ?? '—' }}</td>
+                                    <td class="px-4 py-3 font-mono text-[10px] text-gray-400">{{ $td->property->pin ?? $td->property->generateStructuredPin() }}</td>
                                     <td class="px-4 py-3 font-medium text-gray-800">
                                         {{ $td->property->owner_name }}
                                         <div class="text-[10px] text-gray-500 font-normal leading-tight mt-0.5">
@@ -134,7 +136,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-4 py-12 text-center text-gray-400">
+                                    <td colspan="8" class="px-4 py-12 text-center text-gray-400">
                                         <i class="fas fa-file-invoice-dollar text-4xl mb-3 block text-gray-300"></i>
                                         No forwarded tax declarations found matching your criteria.
                                     </td>

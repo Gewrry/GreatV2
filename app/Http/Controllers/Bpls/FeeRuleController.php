@@ -302,6 +302,7 @@ class FeeRuleController extends Controller
             'per_installment'      => round($totalAfterDiscount / max(1, $installmentCount), 2),
             'schedule'             => $this->buildSchedule($totalAfterDiscount, $mode, $permitYear, $approvedAt, $isRenewal),
             'permit_year'          => $permitYear,
+            'mode_of_payment'      => $mode,
             'business_nature'      => $request->business_nature,
             'benefits'             => $activeBenefits->map(fn($b) => [
                 'id'               => $b->id,
@@ -343,7 +344,7 @@ class FeeRuleController extends Controller
                 $groups[] = [
                     'label'    => $benefit->label,
                     'rate'     => (float) $benefit->discount_percent,
-                    'apply_to' => $benefit->apply_to ?? 'permit_only',
+                    'apply_to' => $benefit->apply_to ?? 'total',
                 ];
             }
         }

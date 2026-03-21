@@ -26,9 +26,11 @@ class RptOnlinePaymentController extends Controller
                 ->where('status', 'forwarded') // Only forwarded TDs are collectible
                 ->where(function ($q) use ($query) {
                     $q->where('td_no', 'like', "%{$query}%")
+                      ->orWhereHas('property.owners', function ($oq) use ($query) {
+                          $oq->where('owner_name', 'like', "%{$query}%");
+                      })
                       ->orWhereHas('property', function ($p) use ($query) {
-                          $p->where('owner_name', 'like', "%{$query}%")
-                            ->orWhere('arp_no', 'like', "%{$query}%")
+                          $p->where('arp_no', 'like', "%{$query}%")
                             ->orWhere('pin', 'like', "%{$query}%");
                       });
                 })
@@ -373,6 +375,17 @@ class RptOnlinePaymentController extends Controller
         }
 
         return response()->json(['received' => true]);
+    }
+
+    // ─── RECEIPT ────────────────────────────────────────────────────────────────
+    public function receipt(RptPayment $payment)
+    {
+        // Only allow viewing completed online payments
+        abort_if($payment->status !== 'completed', 404, 'Receipt not available for this payment.');
+
+        $payment->load(['billing.taxDeclaration.property.barangay']);
+
+        return view('client.rpt.payments.receipt', compact('payment'));
     }
 
     // ─── PRIVATE: Confirm and record the payment ─────────────────────────────

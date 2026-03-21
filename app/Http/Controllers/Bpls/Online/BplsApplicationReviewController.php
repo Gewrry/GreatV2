@@ -581,6 +581,45 @@ class BplsApplicationReviewController extends Controller
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // RETIRE — For applications in retirement_requested status
+    // ═══════════════════════════════════════════════════════════════════════
+    public function retire(Request $request, BplsOnlineApplication $application)
+    {
+        if ($application->workflow_status !== 'retirement_requested') {
+            return back()->with('error', 'Only applications with "Retirement Requested" status can be retired.');
+        }
+
+        $request->validate([
+            'retirement_date' => 'required|date',
+            'retirement_reason' => 'required|string|max:500',
+            'retirement_remarks' => 'nullable|string|max:1000',
+        ]);
+
+        $balance = (float) $application->outstanding_balance;
+
+        if ($balance > 0.01) {
+            return back()->with('error', 'Cannot retire business. There is an outstanding balance of ₱' . number_format($balance, 2) . ' that must be settled first.');
+        }
+
+        $application->update([
+            'workflow_status' => 'retired',
+            'retirement_reason' => $request->retirement_reason,
+            'retirement_date' => $request->retirement_date,
+            'remarks' => $request->retirement_remarks,
+            'approved_at' => now(), // Repurposing shared fields if needed, or keeping it clean
+            'approved_by' => Auth::id(),
+        ]);
+
+        $this->log($application, 'retired', 'retirement_requested', 'retired', $request->retirement_remarks ?? '');
+        
+        try {
+            Mail::to($application->client->email)->send(new BplsStatusUpdatedMail($application, 'Retired'));
+        } catch (\Exception $e) {}
+
+        return back()->with('success', 'Business has been officially retired.');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // REMINDER
     // ═══════════════════════════════════════════════════════════════════════
     public function sendReminder(BplsOnlineApplication $application)
@@ -624,7 +663,7 @@ class BplsApplicationReviewController extends Controller
         }
     }
 
-    private function log(BplsOnlineApplication $app, string $action, string $from, string $to, string $remarks = ''): void
+    private function log(BplsOnlineApplication $app, string $action, string $from, string $to, ?string $remarks = ''): void
     {
         if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
             \App\Models\onlineBPLS\BplsActivityLog::create([
@@ -634,7 +673,7 @@ class BplsApplicationReviewController extends Controller
                 'action' => $action,
                 'from_status' => $from,
                 'to_status' => $to,
-                'remarks' => $remarks,
+                'remarks' => $remarks ?? '',
             ]);
         }
     }

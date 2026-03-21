@@ -1,15 +1,15 @@
 {{-- resources/views/modules/rpt/gis/index.blade.php --}}
 <x-admin.app>
-    <div class="h-screen flex flex-col pt-2">
-        <div class="max-w-[1920px] w-full mx-auto px-4 flex-1 flex flex-col pb-4">
+    <div class="flex flex-col h-[calc(100vh-100px)] overflow-hidden">
+        <div class="max-w-[1920px] w-full mx-auto px-4 flex-1 flex flex-col pb-4 overflow-hidden">
             {{-- Include RPT Navbar --}}
             @include('layouts.rpt.navbar')
 
             {{-- Main Map Container --}}
-            <div class="flex-1 mt-4 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col relative">
+            <div class="flex-1 mt-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col relative">
                 
                 {{-- Toolbar / Header overlay --}}
-                <div class="absolute top-6 left-6 right-6 z-[1000] flex flex-wrap gap-4 justify-between items-start pointer-events-none">
+                <div class="absolute top-6 left-6 right-6 z-[10] flex flex-wrap gap-4 justify-between items-start pointer-events-none">
                     
                     {{-- Left side: Title and Stats --}}
                     <div class="bg-white shadow-2xl rounded-2xl flex items-center gap-6 px-6 py-4 border border-gray-100 pointer-events-auto transition-all hover:shadow-emerald-500/10">
@@ -44,7 +44,7 @@
                                 </button>
                             </div>
                             {{-- Autocomplete Dropdown --}}
-                            <div id="searchDropdown" class="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-gray-100 max-h-96 overflow-y-auto hidden z-[2000] divide-y divide-gray-50">
+                            <div id="searchDropdown" class="absolute top-full left-0 right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-gray-100 max-h-96 overflow-y-auto hidden z-[50] divide-y divide-gray-50">
                                 <!-- Results will be injected here -->
                             </div>
                         </div>
@@ -52,7 +52,7 @@
                 </div>
 
                 {{-- ── Thematic Legend (Bottom-Left) ── --}}
-                <div id="thematicLegend" class="absolute bottom-10 left-8 z-[1000] bg-white shadow-2xl rounded-[2rem] border border-gray-100 p-6 w-80 transition-all duration-500 backdrop-blur-xl">
+                <div id="thematicLegend" class="absolute bottom-10 left-8 z-[10] bg-white shadow-2xl rounded-[2rem] border border-gray-100 p-6 w-80 transition-all duration-500 backdrop-blur-xl">
                     <div class="flex items-center justify-between mb-5 px-1">
                         <div>
                             <h4 class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 mb-0.5">Intelligence Layer</h4>
@@ -119,6 +119,20 @@
                                 <span class="text-xs font-black text-gray-500" id="stat-no_billing">0</span>
                             </div>
                         </label>
+                        {{-- Draft / Intake --}}
+                        <label class="flex items-center gap-4 cursor-pointer group p-3 rounded-2xl hover:bg-violet-50/50 transition-all border border-transparent hover:border-violet-100" data-filter="draft">
+                            <input type="checkbox" checked class="sr-only layer-toggle" data-layer="draft">
+                            <div class="w-6 h-6 rounded-lg border-2 border-violet-500 bg-violet-400/20 group-hover:bg-violet-400/40 transition-all shrink-0 flex items-center justify-center shadow-sm">
+                                <i class="fas fa-check text-violet-600 text-[10px] check-icon"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-[13px] font-bold text-gray-700 leading-tight">Draft / Intake</p>
+                                <p class="text-[10px] text-gray-400 font-medium">New registrations pending appraisal</p>
+                            </div>
+                            <div class="bg-violet-100/50 px-2.5 py-1 rounded-lg">
+                                <span class="text-xs font-black text-violet-700" id="stat-draft">0</span>
+                            </div>
+                        </label>
                     </div>
                 </div>
 
@@ -148,7 +162,8 @@
             paid:       { fill: '#10b981', stroke: '#059669', label: 'Fully Paid' },
             delinquent: { fill: '#ef4444', stroke: '#dc2626', label: 'Delinquent' },
             stale:      { fill: '#f59e0b', stroke: '#d97706', label: 'Stale Assessment' },
-            no_billing: { fill: '#9ca3af', stroke: '#6b7280', label: 'No Billing' }
+            no_billing: { fill: '#9ca3af', stroke: '#6b7280', label: 'No Billing' },
+            draft:      { fill: '#8b5cf6', stroke: '#7c3aed', label: 'Draft / Intake' }
         };
 
         // ── Initialize Map ──
@@ -168,7 +183,8 @@
             paid:       L.layerGroup().addTo(map),
             delinquent: L.layerGroup().addTo(map),
             stale:      L.layerGroup().addTo(map),
-            no_billing: L.layerGroup().addTo(map)
+            no_billing: L.layerGroup().addTo(map),
+            draft:      L.layerGroup().addTo(map)
         };
 
         // ── Fetch GeoJSON ──
@@ -275,7 +291,8 @@
                             });
 
                             // Add to correct layer group
-                            layers[status].addLayer(layer);
+                            const finalStatus = (feature.properties.type === 'registration') ? 'draft' : status;
+                            layers[finalStatus].addLayer(layer);
 
                             // Add to search index
                             buildSearchIndex(layer, feature);

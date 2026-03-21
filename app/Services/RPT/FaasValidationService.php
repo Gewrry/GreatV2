@@ -12,10 +12,17 @@ class FaasValidationService extends ValidationService
      */
     public function assertOwnerIsValid(FaasProperty $faas)
     {
-        if (empty($faas->owner_name)) {
+        $primaryOwner = $faas->owners()->where('is_primary', true)->first();
+        
+        if (!$primaryOwner instanceof \App\Models\RPT\FaasOwner) {
+            $this->fail('owner_name', 'Primary property owner information is legally required.');
+            return;
+        }
+
+        if (empty($primaryOwner->owner_name)) {
             $this->fail('owner_name', 'Property owner name is legally required.');
         }
-        if (empty($faas->owner_address)) {
+        if (empty($primaryOwner->owner_address)) {
             $this->fail('owner_address', 'Property owner address is legally required for tax liability.');
         }
     }

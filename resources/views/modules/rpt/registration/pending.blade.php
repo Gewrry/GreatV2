@@ -64,7 +64,7 @@
                                 <tr class="hover:bg-orange-50/30 transition-colors">
                                     <td class="px-5 py-3 font-mono text-xs text-gray-400">#{{ $reg->id }}</td>
                                     <td class="px-4 py-3">
-                                        <div class="font-semibold text-gray-800">{{ $reg->owner_name }}</div>
+                                        <div class="font-semibold text-gray-800">{{ $reg->primary_owner_name }}</div>
                                         <div class="text-xs text-gray-400 mt-0.5">{{ Str::limit($reg->owner_address, 35) }}</div>
                                     </td>
                                     <td class="px-4 py-3">

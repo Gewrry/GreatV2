@@ -28,6 +28,8 @@
                     'rejected' => 'bg-red-50 text-red-600 border-red-200 ring-red-500/10',
                     'assessed' => 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/10',
                     'returned' => 'bg-amber-50 text-amber-600 border-amber-200 ring-amber-500/10',
+                    'retirement_requested' => 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/10',
+                    'retired' => 'bg-gray-100 text-gray-700 border-gray-200 ring-gray-500/10',
                 ];
                 $sc = $statusColors[$app->workflow_status] ?? 'bg-blue-50 text-blue-600 border-blue-200 ring-blue-500/10';
             @endphp
@@ -49,6 +51,14 @@
                                 @elseif($app->workflow_status === 'assessed')
                                     <svg class="w-7 h-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                @elseif($app->workflow_status === 'retired')
+                                    <svg class="w-7 h-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364a9 9 0 005.636 5.636m12.728 12.728a9 9 0 015.636 5.636m12.728 12.728l5.636 5.636" />
+                                    </svg>
+                                @elseif($app->workflow_status === 'retirement_requested')
+                                    <svg class="w-7 h-7 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                 @else
                                     <svg class="w-7 h-7 text-logo-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -76,6 +86,8 @@
                                             'approved' => 'Permit issued. You may now download your permit.',
                                             'returned' => 'Action required. Please check remarks.',
                                             'rejected' => 'Application was not approved.',
+                                            'retirement_requested' => 'Retirement requested. Awaiting office approval.',
+                                            'retired' => 'This business is officially retired.',
                                             default => ''
                                         };
                                     @endphp
@@ -149,6 +161,25 @@
                                 <a href="{{ route('client.applications.renew', $app->id) }}"
                                    class="px-5 py-2.5 bg-white text-logo-teal text-[11px] font-black uppercase tracking-widest rounded-xl border border-logo-teal/30 hover:bg-bluebody/30 transition-all">
                                     Renew Permit
+                                </a>
+                                <a href="{{ route('client.applications.retire.form', $app->id) }}" class="p-2.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl border border-red-200 shadow-sm tooltip" title="Retire Business">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                </a>
+                            @elseif($app->workflow_status === 'retirement_requested')
+                                <span class="px-5 py-2.5 bg-orange-50 text-orange-600 text-[11px] font-black uppercase tracking-widest rounded-xl border border-orange-200 shadow-sm flex items-center gap-2">
+                                     <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Pending Retirement
+                                </span>
+                            @elseif($app->workflow_status === 'retired')
+                                <a href="{{ route('client.applications.retirement-certificate', $app->id) }}"
+                                   target="_blank"
+                                   class="px-5 py-2.5 bg-white text-orange-600 text-[11px] font-black uppercase tracking-widest rounded-xl border border-orange-200 hover:bg-orange-50 transition-all shadow-sm flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Download Cert.
                                 </a>
                             @else
                                 <a href="{{ route('client.applications.show', $app->id) }}"

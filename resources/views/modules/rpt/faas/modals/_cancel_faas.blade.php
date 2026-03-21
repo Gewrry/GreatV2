@@ -1,5 +1,5 @@
 {{-- Cancel FAAS Modal --}}
-<div id="cancelFaasModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="cancelFaasModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
         <div class="px-6 py-4 bg-red-600 text-white flex justify-between items-center">
             <h3 class="font-bold text-lg leading-none tracking-tight">Cancel FAAS Record</h3>

@@ -1,5 +1,5 @@
 {{-- Upload Attachments Modal --}}
-<div id="manageAttachmentsModal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex py-10 px-4 mt-12 justify-center" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+<div id="manageAttachmentsModal" class="fixed inset-0 z-[2000] hidden bg-black/60 backdrop-blur-sm flex py-10 px-4 mt-12 justify-center" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col mt-4 max-h-[calc(100vh-6rem)] animate-zoom-in">
         {{-- Header --}}
         <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 flex items-center justify-between border-b">

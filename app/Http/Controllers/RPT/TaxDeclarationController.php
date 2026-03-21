@@ -28,7 +28,9 @@ class TaxDeclarationController extends Controller
                 $search = $request->search;
                 $q->where(function ($sub) use ($search) {
                     $sub->where('td_no',     'like', "%{$search}%")
-                        ->orWhere('owner_name', 'like', "%{$search}%")
+                        ->orWhereHas('property.owners', fn($q2) =>
+                            $q2->where('owner_name', 'like', "%{$search}%")
+                        )
                         ->orWhereHas('property', fn($q2) =>
                             $q2->where('arp_no', 'like', "%{$search}%")
                         );
@@ -68,7 +70,7 @@ class TaxDeclarationController extends Controller
         $preComponentType = $request->component_type; // 'land' | 'building' | 'machinery'
         $preComponentId   = $request->component_id;
 
-        $approvedFaas  = FaasProperty::approved()->get(['id', 'arp_no', 'owner_name']);
+        $approvedFaas  = FaasProperty::approved()->get(['id', 'arp_no']);
         $revisionYears = RptaRevisionYear::orderByDesc('year')->get();
 
         return view('modules.rpt.td.create', compact(

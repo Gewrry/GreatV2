@@ -71,7 +71,7 @@
                 { value: 'semi_annual', label: 'Semi-Annual', sub: '2×' },
                 { value: 'annual',      label: 'Annual',      sub: '1×' },
             ]" :key="opt.value">
-                <label class="cursor-pointer group">
+                <label class="cursor-pointer group" @click="modeOfPayment = opt.value; computeFees()">
                     <input type="radio" :value="opt.value" x-model="modeOfPayment" @change="computeFees()" class="peer hidden">
                     <div class="peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 border border-lumot/30 rounded-2xl p-4 text-center transition-all group-hover:border-purple-400 bg-white text-green shadow-sm">
                         <p class="text-xl font-black mb-0.5" x-text="opt.sub"></p>

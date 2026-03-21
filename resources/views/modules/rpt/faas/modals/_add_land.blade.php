@@ -1,5 +1,5 @@
 {{-- Add Land Modal --}}
-<div id="addLandModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="addLandModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
         <div class="px-6 py-4 bg-emerald-600 text-white flex justify-between items-center">
             <h3 class="font-bold text-lg leading-none tracking-tight">Add Land Appraisal Component</h3>

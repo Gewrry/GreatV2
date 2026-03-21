@@ -31,7 +31,8 @@ class BusinessListController extends Controller
             $totalCount = (clone $query)->count();
             $pendingCount = (clone $query)->where('workflow_status', 'submitted')->count();
             $approvedCount = (clone $query)->whereIn('workflow_status', ['assessed', 'paid'])->count();
-            $retiredCount = 0;
+            $retiredCount = (clone $query)->where('workflow_status', 'retired')->count();
+            $retirementCount = (clone $query)->where('workflow_status', 'retirement_requested')->count();
             $renewalCount = (clone $query)->where('workflow_status', 'approved')->count();
             $types = collect();
 
@@ -44,6 +45,7 @@ class BusinessListController extends Controller
             $pendingCount = (clone $query)->where('status', 'pending')->count();
             $approvedCount = (clone $query)->whereIn('status', ['for_payment', 'for_renewal_payment'])->count();
             $retiredCount = (clone $query)->where('status', 'retired')->count();
+            $retirementCount = (clone $query)->where('status', 'retirement_requested')->count();
             $renewalCount = (clone $query)->whereIn('status', ['for_renewal', 'for_renewal_payment'])->count();
             $types = (clone $query)->distinct()->pluck('type_of_business')->filter()->sort()->values();
         }
@@ -53,6 +55,7 @@ class BusinessListController extends Controller
             'pendingCount',
             'approvedCount',
             'retiredCount',
+            'retirementCount',
             'renewalCount',
             'types',
             'source',
@@ -100,14 +103,33 @@ class BusinessListController extends Controller
 
         $paginated = $query->latest()->paginate(12);
 
+        $items = $paginated->getCollection()->map(function ($entry) {
+            return array_merge($entry->toArray(), [
+                'total_paid' => $entry->total_paid,
+                'outstanding_balance' => $entry->outstanding_balance,
+            ]);
+        });
+
         return response()->json([
-            'data' => $paginated->items(),
+            'data' => $items,
             'total' => $paginated->total(),
             'current_page' => $paginated->currentPage(),
             'last_page' => $paginated->lastPage(),
             'from' => $paginated->firstItem(),
             'to' => $paginated->lastItem(),
         ]);
+    }
+
+    // =========================================================================
+    // GET /bpls/business-list/online/{id}
+    // =========================================================================
+    public function showOnline($id)
+    {
+        $app = BplsOnlineApplication::with(['business', 'owner', 'orAssignments'])->findOrFail($id);
+        return response()->json(array_merge($app->toArray(), [
+            'total_paid' => $app->total_paid,
+            'outstanding_balance' => $app->outstanding_balance,
+        ]));
     }
 
     // =========================================================================
@@ -162,6 +184,8 @@ class BusinessListController extends Controller
                 'created_at' => $app->created_at,
                 'is_online' => true,
                 'application_number' => $app->application_number,
+                'total_paid' => $app->total_paid,
+                'outstanding_balance' => $app->outstanding_balance,
                 'bpls_application' => [
                     'id' => $app->id,
                     'application_number' => $app->application_number,
@@ -191,7 +215,10 @@ class BusinessListController extends Controller
     // =========================================================================
     public function show(BusinessEntry $entry)
     {
-        return response()->json($entry);
+        return response()->json(array_merge($entry->toArray(), [
+            'total_paid' => $entry->total_paid,
+            'outstanding_balance' => $entry->outstanding_balance,
+        ]));
     }
 
     // =========================================================================
@@ -388,34 +415,46 @@ class BusinessListController extends Controller
     // =========================================================================
     // POST /bpls/business-list/{entry}/change-status
     // =========================================================================
-    public function changeStatus(Request $request, BusinessEntry $entry)
+    public function changeStatus(Request $request, $id)
     {
         $request->validate([
             'status' => 'required|string',
             'remarks' => 'nullable|string|max:1000',
         ]);
 
-        $now = Carbon::now('Asia/Manila');
-        $from = $entry->status;
         $to = $request->status;
+        $from = '';
+        $isOnline = $request->get('source') === 'online';
 
-        if ($to === 'completed') {
-            return response()->json([
-                'success' => false,
-                'message' => '"Completed" cannot be set manually. The system sets this automatically after all installments are verified as paid.',
-            ], 422);
+        if ($isOnline) {
+            $entry = BplsOnlineApplication::find($id);
+            if (!$entry) {
+                return response()->json(['success' => false, 'message' => 'Online application not found.'], 404);
+            }
+            $from = $entry->workflow_status;
+        } else {
+            $entry = BusinessEntry::find($id);
+            if (!$entry) {
+                return response()->json(['success' => false, 'message' => 'Business entry not found.'], 404);
+            }
+            $from = $entry->status;
         }
 
+        // Special check: cannot change status to retired unless approved here
         if ($to === 'retired') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Use the Retire Business action to retire a business.',
-            ], 422);
-        }
+            $balance = (float) $entry->outstanding_balance;
+            if ($balance > 0.01) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot approve retirement. There is an outstanding balance of ₱' . number_format($balance, 2) . ' that must be settled first.'
+                ], 422);
+            }
+        } // end if ($to === 'retired')
+        // Note: retirement with reason/date must go through the dedicated /retire endpoint
 
-        if ($to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment'])) {
+        if (!$isOnline && $to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment'])) {
             $cycle = (int) ($entry->renewal_cycle ?? 0);
-            $permitYear = (int) ($entry->permit_year ?? $now->year);
+            $permitYear = (int) ($entry->permit_year ?? now()->year);
 
             $hasPayments = BplsPayment::where('business_entry_id', $entry->id)
                 ->where('payment_year', $permitYear)
@@ -436,10 +475,11 @@ class BusinessListController extends Controller
             'pending' => ['rejected', 'cancelled'],
             'for_payment' => ['pending', 'rejected', 'cancelled'],
             'for_renewal_payment' => ['pending', 'rejected', 'cancelled'],
-            'completed' => ['pending'],
-            'approved' => ['pending', 'rejected', 'cancelled'],
+            'completed' => ['pending', 'retirement_requested', 'retired'],
+            'approved' => ['pending', 'rejected', 'cancelled', 'retirement_requested', 'retired'],
             'rejected' => ['pending'],
             'cancelled' => ['pending'],
+            'retirement_requested' => ['retired', 'approved'],
             'retired' => [],
         ];
 
@@ -453,10 +493,15 @@ class BusinessListController extends Controller
             ], 422);
         }
 
-        $updateData = ['status' => $to, 'remarks' => $request->remarks];
-
-        if ($to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment', 'completed', 'approved'])) {
-            $updateData['approved_at'] = null;
+        $updateData = [];
+        if ($isOnline) {
+            $updateData['workflow_status'] = $to;
+        } else {
+            $updateData['status'] = $to;
+            $updateData['remarks'] = $request->remarks;
+            if ($to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment', 'completed', 'approved'])) {
+                $updateData['approved_at'] = null;
+            }
         }
 
         $entry->update($updateData);
@@ -471,7 +516,7 @@ class BusinessListController extends Controller
     // =========================================================================
     // POST /bpls/business-list/{entry}/retire
     // =========================================================================
-    public function retire(Request $request, BusinessEntry $entry)
+    public function retire(Request $request, $id)
     {
         $request->validate([
             'retirement_reason' => 'required|string|max:1000',
@@ -479,14 +524,63 @@ class BusinessListController extends Controller
             'retirement_remarks' => 'nullable|string|max:1000',
         ]);
 
-        $entry->update([
-            'status' => 'retired',
-            'retirement_reason' => $request->retirement_reason,
-            'retirement_date' => $request->retirement_date,
-            'retirement_remarks' => $request->retirement_remarks,
-            'retired_at' => now(),
-            'retired_by' => auth()->id(),
-        ]);
+        $isOnline = $request->get('source') === 'online';
+
+        if ($isOnline) {
+            $entry = BplsOnlineApplication::findOrFail($id);
+            $balance = (float) $entry->outstanding_balance;
+
+            if ($balance > 0.01) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot retire business. There is an outstanding balance of ₱'
+                        . number_format($balance, 2)
+                        . ' (Assessed: ₱' . number_format($entry->assessment_amount ?? 0, 2)
+                        . ' / Paid: ₱' . number_format($entry->total_paid, 2) . ').'
+                        . ' All fees must be settled before retiring.',
+                ], 422);
+            }
+
+            $entry->update([
+                'workflow_status'    => 'retired',
+                'retirement_reason'  => $request->retirement_reason,
+                'retirement_date'    => $request->retirement_date,
+                'retirement_remarks' => $request->retirement_remarks,
+            ]);
+
+            if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
+                \App\Models\onlineBPLS\BplsActivityLog::create([
+                    'bpls_application_id' => $entry->id,
+                    'actor_type'          => 'admin',
+                    'actor_id'            => auth()->id(),
+                    'action'              => 'retired',
+                    'from_status'         => $entry->getOriginal('workflow_status') ?? 'unknown',
+                    'to_status'           => 'retired',
+                    'remarks'             => 'Staff directly retired the business.',
+                ]);
+            }
+
+        } else {
+            $entry = BusinessEntry::findOrFail($id);
+            $balance = (float) $entry->outstanding_balance;
+
+            if ($balance > 0.01) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot retire business. There is an outstanding balance of ₱'
+                        . number_format($balance, 2) . '. All fees must be settled before retiring.',
+                ], 422);
+            }
+
+            $entry->update([
+                'status'             => 'retired',
+                'retirement_reason'  => $request->retirement_reason,
+                'retirement_date'    => $request->retirement_date,
+                'retirement_remarks' => $request->retirement_remarks,
+                'retired_at'         => now(),
+                'retired_by'         => auth()->id(),
+            ]);
+        }
 
         return response()->json([
             'success' => true,
@@ -517,6 +611,45 @@ class BusinessListController extends Controller
     public function approveRenewal(Request $request, BusinessEntry $entry)
     {
         return app(BplsPaymentController::class)->approveRenewal($request, $entry);
+    }
+
+    // =========================================================================
+    // POST /bpls/business-list/{id}/approve-online-renewal
+    // =========================================================================
+    public function approveOnlineRenewal(Request $request, $id)
+    {
+        $request->validate([
+            'capital_investment' => 'required|numeric|min:0',
+            'mode_of_payment'    => 'required|in:quarterly,semi_annual,annual',
+            'total_due'          => 'required|numeric|min:0',
+            'business_scale'     => 'nullable|string|max:255',
+            'business_nature'    => 'nullable|string|max:255',
+        ]);
+
+        $entry = BplsOnlineApplication::findOrFail($id);
+
+        $totalDue    = (float) $request->total_due;
+        $permitYear  = (int) now()->year;
+        $newCycle    = (int) ($entry->renewal_cycle ?? 0) + 1;
+
+        $entry->update([
+            'capital_investment'  => $request->capital_investment,
+            'mode_of_payment'     => $request->mode_of_payment,
+            'business_scale'      => $request->business_scale ?? $entry->business_scale,
+            'business_nature'     => $request->business_nature ?? $entry->business_nature,
+            'renewal_cycle'       => $newCycle,
+            'renewal_total_due'   => $totalDue,
+            'permit_year'         => $permitYear,
+            'workflow_status'     => 'for_renewal_payment',
+            'approved_at'         => now(),
+        ]);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Online business approved for renewal.',
+            'redirect_url' => url("bpls/payment/online/{$entry->id}"),
+            'entry'        => $entry->fresh(),
+        ]);
     }
 
     // =========================================================================
@@ -582,14 +715,10 @@ class BusinessListController extends Controller
                 . "All installments must be settled before marking for renewal.";
         }
 
-        $totalPaid = $payments->sum('amount_paid');
-        $totalDue = $cycle > 0
-            ? (float) ($entry->renewal_total_due ?? 0)
-            : (float) ($entry->total_due ?? 0);
+        $balance = (float) $entry->outstanding_balance;
 
-        if ($totalDue > 0 && $totalPaid < ($totalDue - 0.01)) {
-            $shortfall = number_format($totalDue - $totalPaid, 2);
-            return "Cannot complete — there is an outstanding balance of ₱{$shortfall}. "
+        if ($balance > 0.01) {
+            return "Cannot complete — there is an outstanding balance of ₱" . number_format($balance, 2) . ". "
                 . "The full assessed amount must be collected before marking as completed.";
         }
 
@@ -643,7 +772,7 @@ class BusinessListController extends Controller
     public static function generateBusinessId(BusinessEntry $entry, int $permitYear): string
     {
         // Read format from settings — default matches your blade's hint format
-        $format = BplsSetting::get('business_id_format', '{muni}-{year}-{id}');
+        $format = \App\Models\BplsSetting::get('business_id_format', '{muni}-{year}-{id}');
 
         $muniCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_municipality ?? 'MUN'), 0, 4));
         $barangayCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_barangay ?? 'BRG'), 0, 4));

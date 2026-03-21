@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\onlineBPLS\BplsOnlineApplication;
 use App\Models\BplsBusiness;
 use App\Models\onlineBPLS\BplsDocument;
+use App\Models\onlineBPLS\BplsOnlinePayment;
 use App\Models\BplsOwner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -109,6 +110,133 @@ class ApplicationController extends Controller
         }
 
         return redirect()->route('client.applications.create', ['from' => $application->id]);
+    }
+
+    // ── RETIRE FORM ────────────────────────────────────────────────────────
+    public function retireForm(BplsOnlineApplication $application)
+    {
+        abort_unless($application->client_id === $this->client()->id, 403);
+
+        if (!in_array($application->workflow_status, ['approved', 'retirement_requested'])) {
+            return redirect()->route('client.applications.show', $application->id)
+                ->with('error', 'Only approved applications can be retired.');
+        }
+
+        $application->load(['business', 'owner']);
+
+        // Calculate total paid vs total assessed (deduplicating master + online payments by OR number)
+        $totalAssessed = (float) ($application->assessment_amount ?? 0);
+        $totalPaid = $this->calcTotalPaid($application->id);
+
+        $outstandingBalance = max(0, $totalAssessed - $totalPaid);
+        $canRetire = $outstandingBalance <= 0.01; // allow for rounding
+
+        return view('client.applications.retire', compact(
+            'application', 'totalAssessed', 'totalPaid', 'outstandingBalance', 'canRetire'
+        ));
+    }
+
+    // ── RETIRE ─────────────────────────────────────────────────────────────
+    public function retire(Request $request, BplsOnlineApplication $application)
+    {
+        abort_unless($application->client_id === $this->client()->id, 403);
+
+        if (!in_array($application->workflow_status, ['approved'])) {
+            return redirect()->route('client.applications.show', $application->id)
+                ->with('error', 'Only approved applications can be retired.');
+        }
+
+        // ── Payment enforcement (deduplicating master + online payments) ──
+        $totalAssessed = (float) ($application->assessment_amount ?? 0);
+        $totalPaid     = $this->calcTotalPaid($application->id);
+        $outstandingBalance = $totalAssessed - $totalPaid;
+
+        if ($outstandingBalance > 0.01) {
+            return redirect()->route('client.applications.retire.form', $application->id)
+                ->with('error', 'You must settle all outstanding fees (₱' . number_format($outstandingBalance, 2) . ') before retiring this business.');
+        }
+
+        $request->validate([
+            'retirement_reason' => 'required|string|max:1000',
+            'retirement_date'   => 'required|date|before_or_equal:today',
+            'retirement_remarks'=> 'nullable|string|max:1000',
+        ]);
+
+        $previousStatus = $application->workflow_status;
+
+        $application->update([
+            'workflow_status'    => 'retirement_requested',
+            'retirement_reason'  => $request->retirement_reason,
+            'retirement_date'    => $request->retirement_date,
+            'retirement_remarks' => $request->retirement_remarks,
+        ]);
+
+        // ── Activity log ──────────────────────────────────────────────────
+        if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
+            \App\Models\onlineBPLS\BplsActivityLog::create([
+                'bpls_application_id' => $application->id,
+                'actor_type'          => 'client',
+                'actor_id'            => $this->client()->id,
+                'action'              => 'retirement_requested',
+                'from_status'         => $previousStatus,
+                'to_status'           => 'retirement_requested',
+                'remarks'             => 'Client requested business retirement. Reason: ' . $request->retirement_reason,
+            ]);
+        }
+
+        return redirect()->route('client.applications.show', $application->id)
+            ->with('success', '✅ Your retirement request has been submitted. Our office will process it and notify you.');
+    }
+
+    // ── DOWNLOAD RETIREMENT CERTIFICATE ───────────────────────────────────
+    public function downloadRetirementCertificate(BplsOnlineApplication $application)
+    {
+        abort_unless($application->client_id === $this->client()->id, 403);
+
+        if ($application->workflow_status !== 'retired') {
+            return back()->with('error', 'Retirement certificate is only available for retired businesses.');
+        }
+
+        $application->load(['business', 'owner']);
+
+        $mayorName      = BplsSetting::get('mayor_name', 'HON. JUAN P. DELA CRUZ');
+        $treasurerName  = BplsSetting::get('treasurer_name', 'MARIA R. SANTOS');
+
+        // Build a certificate number using application data
+        $certNumber = 'RET-' . ($application->permit_year ?? now()->year)
+            . '-' . str_pad($application->id, 5, '0', STR_PAD_LEFT);
+
+        $retirementReasonLabels = [
+            'closure'          => 'Permanent Closure / Cessation of Operations',
+            'bankruptcy'       => 'Bankruptcy',
+            'transfer'         => 'Transfer of Location (Outside Municipality)',
+            'owner_death'      => 'Death of Owner',
+            'change_ownership' => 'Change of Ownership / Sale of Business',
+            'other'            => 'Other',
+        ];
+        $retirementReasonLabel = $retirementReasonLabels[$application->retirement_reason ?? ''] ?? ucfirst($application->retirement_reason ?? 'N/A');
+
+        $issuedDate = now();
+
+        $pdf = Pdf::loadView('client.applications.retirement_certificate', compact(
+            'application',
+            'mayorName',
+            'treasurerName',
+            'certNumber',
+            'retirementReasonLabel',
+            'issuedDate'
+        ))
+            ->setPaper('letter', 'portrait')
+            ->setOptions([
+                'defaultFont'        => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'    => true,
+                'dpi'                => 150,
+            ]);
+
+        $filename = 'RetirementCertificate-' . $application->application_number . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     // ── STORE ──────────────────────────────────────────────────────────────
@@ -667,7 +795,35 @@ class ApplicationController extends Controller
         return redirect()->route('client.applications.index')->with('success', 'Application and linked business record deleted successfully.');
     }
 
-    // ── HELPERS (Copied from PaymentController) ───────────────────────────
+    // ── HELPERS ───────────────────────────────────────────────────────────
+
+    /**
+     * Calculate the total amount paid for an application,
+     * deduplicating across master (BplsPayment) and online (BplsOnlinePayment)
+     * records using OR numbers to prevent double-counting.
+     */
+    private function calcTotalPaid(int $applicationId): float
+    {
+        // Master payments: keyed by OR number (take the amount if OR present, else include anyway)
+        $masterByOr = BplsPayment::where('bpls_application_id', $applicationId)
+            ->get()
+            ->mapWithKeys(fn($p) => [
+                ($p->or_number ?? 'master_' . $p->id) => (float) $p->amount_paid
+            ]);
+
+        // Online payments (paid only): keyed by OR number
+        $onlineByOr = BplsOnlinePayment::where('bpls_application_id', $applicationId)
+            ->where('status', 'paid')
+            ->get()
+            ->mapWithKeys(fn($p) => [
+                ($p->or_number ?? 'online_' . $p->id) => (float) $p->amount
+            ]);
+
+        // Merge: master entries take priority; online only adds if OR key is new
+        return $masterByOr->union($onlineByOr)->sum();
+    }
+
+    // ── FEE HELPERS (Copied from PaymentController) ───────────────────────
 
     private function computeFees($entry): array
     {

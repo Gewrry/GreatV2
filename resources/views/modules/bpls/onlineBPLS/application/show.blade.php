@@ -16,6 +16,7 @@
             showAssess: false,
             showPaid: false,
             showFinalApprove: false,
+            showRetire: false,
             showEditOrs: false,
             selectedInstallment: 1,
             docs: @js($application->documents->mapWithKeys(fn($d) => [$d->id => ['status' => $d->status, 'rejection_reason' => $d->rejection_reason, 'type' => $d->document_type]])),
@@ -144,6 +145,7 @@
             @include('modules.bpls.onlineBPLS.application.partials.modals.edit-ors')
             @include('modules.bpls.onlineBPLS.application.partials.modals.mark-paid')
             @include('modules.bpls.onlineBPLS.application.partials.modals.final-approve')
+            @include('modules.bpls.onlineBPLS.application.partials.modals.retire')
 
             {{-- Modal: Reject Document (Special Case because of textarea ID) --}}
             <div x-show="rejectDocId !== null" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">

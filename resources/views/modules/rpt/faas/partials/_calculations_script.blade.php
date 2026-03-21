@@ -164,7 +164,11 @@
     });
 
     // ── Component Edit Modal Handlers ───────────────────
+    // Global state for spatial filtering
+    let currentLandId = undefined;
+
     function openEditLandModal(id, useId, area, unitVal, astLvl, lot, blk, lat, lng, polygon) {
+        currentLandId = id;
         const modal = document.getElementById('editLandModal');
         const form = modal.querySelector('form');
         form.action = "{{ url('rpt/faas/'.$faas->id.'/land') }}/" + id;

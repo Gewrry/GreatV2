@@ -72,8 +72,12 @@
                     <span class="detail-value font-bold">{{ $td->td_no }}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">ARP/PIN:</span>
-                    <span class="detail-value">{{ $td->property->arp_no ?? $td->property->pin }}</span>
+                    <span class="detail-label">ARP Number:</span>
+                    <span class="detail-value">{{ $td->property->arp_no ?? '—' }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">PIN:</span>
+                    <span class="detail-value font-bold">{{ $td->property->pin ?? $td->property->generateStructuredPin() }}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Property Type:</span>

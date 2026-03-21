@@ -27,32 +27,44 @@
 
                     {{-- ── 1. OWNER INFORMATION ─────────────────────────────────── --}}
                     <div>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <i class="fas fa-user text-blue-400"></i> Owner / Declarant
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Owner Name <span class="text-red-500">*</span></label>
-                                <input type="text" name="owner_name" value="{{ old('owner_name') }}" required
-                                    class="w-full border rounded-lg px-3 py-2 text-sm @error('owner_name') border-red-400 @enderror">
-                                @error('owner_name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
-                                <input type="text" name="owner_tin" value="{{ old('owner_tin') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Address <span class="text-red-500">*</span></label>
-                                <input type="text" name="owner_address" value="{{ old('owner_address') }}" required
-                                    class="w-full border rounded-lg px-3 py-2 text-sm @error('owner_address') border-red-400 @enderror">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Contact No.</label>
-                                <input type="text" name="owner_contact" value="{{ old('owner_contact') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input type="email" name="owner_email" value="{{ old('owner_email') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                <i class="fas fa-user text-blue-400"></i> Owner / Declarant
+                            </h3>
+                            <button type="button" onclick="addOwnerRow()" class="text-[10px] font-bold text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded border border-blue-100 hover:bg-blue-100 transition-all">
+                                <i class="fas fa-plus mr-1"></i> Add Co-Owner
+                            </button>
+                        </div>
+                        
+                        <div id="owners-container" class="space-y-4">
+                            {{-- Primary Owner (Existing) --}}
+                            <div class="p-4 bg-gray-50/50 rounded-xl border border-gray-100 relative group">
+                                <div class="absolute -top-2 left-4 px-2 bg-white text-[9px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 rounded">Primary Owner</div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Owner Name <span class="text-red-500">*</span></label>
+                                        <input type="text" name="owner_name" value="{{ old('owner_name') }}" required
+                                            class="w-full border rounded-lg px-3 py-2 text-sm @error('owner_name') border-red-400 @enderror">
+                                        @error('owner_name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
+                                        <input type="text" name="owner_tin" value="{{ old('owner_tin') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Address <span class="text-red-500">*</span></label>
+                                        <input type="text" name="owner_address" value="{{ old('owner_address') }}" required
+                                            class="w-full border rounded-lg px-3 py-2 text-sm @error('owner_address') border-red-400 @enderror">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Contact No.</label>
+                                        <input type="text" name="owner_contact" value="{{ old('owner_contact') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                        <input type="email" name="owner_email" value="{{ old('owner_email') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -67,8 +79,16 @@
                                 <input type="text" name="administrator_name" value="{{ old('administrator_name') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
                             </div>
                             <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
+                                <input type="text" name="administrator_tin" value="{{ old('administrator_tin') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
                                 <input type="text" name="administrator_address" value="{{ old('administrator_address') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Contact No.</label>
+                                <input type="text" name="administrator_contact" value="{{ old('administrator_contact') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
                             </div>
                         </div>
                     </div>
@@ -91,7 +111,20 @@
                                     <option value="mixed"     {{ old('property_type') == 'mixed'     ? 'selected' : '' }}>Mixed (Multiple Components)</option>
                                 </select>
                             </div>
-                            <div class="md:col-span-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Taxability <span class="text-red-500">*</span></label>
+                                <select name="is_taxable" required class="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+                                    <option value="1" {{ old('is_taxable', '1') == '1' ? 'selected' : '' }}>Taxable</option>
+                                    <option value="0" {{ old('is_taxable') == '0' ? 'selected' : '' }}>Exempt</option>
+                                </select>
+                            </div>
+
+                            <div id="exemption_basis_container" class="md:col-span-3 {{ old('is_taxable', '1') == '0' ? '' : 'hidden' }}">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Exemption Basis <span class="text-red-500">*</span></label>
+                                <textarea name="exemption_basis" id="exemption_basis" rows="1" class="w-full border rounded-lg px-3 py-2 text-sm bg-white" placeholder="e.g. Section 234(a) RA 7160 - Gov owned">{{ old('exemption_basis') }}</textarea>
+                                <p class="text-[10px] text-gray-500 mt-1 italic">Legal basis for tax exemption status.</p>
+                            </div>
+                            <div class="md:col-span-3">
                                 <div id="parentLandSection" class="{{ in_array(old('property_type'), ['building', 'machinery']) ? '' : 'hidden' }}">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Parent Land Reference <i class="fas fa-link text-blue-400 ml-1"></i></label>
                                     <div class="relative group">
@@ -105,7 +138,7 @@
                                         <input type="hidden" name="parent_land_faas_id" id="parent_land_faas_id" value="{{ old('parent_land_faas_id') }}">
                                         
                                         <!-- Search Results Dropdown -->
-                                        <div id="parent_land_results" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl hidden max-h-72 overflow-y-auto transform origin-top transition-all duration-200 scale-95 opacity-0"></div>
+                                        <div id="parent_land_results" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl hidden max-h-72 overflow-y-auto transform origin-top transition-all duration-200 scale-95 opacity-0"></div>
                                     </div>
                                     <div id="selectedParentLandDisplay" class="mt-4 bg-white border border-blue-100 rounded-2xl shadow-sm hidden animate-fade-in overflow-hidden">
                                         <div class="px-4 py-2 bg-blue-50/50 border-b border-blue-100 flex items-center justify-between">
@@ -143,10 +176,10 @@
                                                 <div class="text-[10px] text-gray-400 mt-1 font-medium">PIN: <span id="land_disp_pin" class="font-bold">—</span></div>
                                             </div>
                                             <div class="lg:col-span-1">
-                                                <div class="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                                                <div class="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1 relative z-10">
                                                     <i class="fas fa-map-marked-alt"></i> Spatial Overview
                                                 </div>
-                                                <div id="miniSpatialMap" class="w-full h-16 rounded-lg border border-emerald-100 bg-gray-50 flex items-center justify-center overflow-hidden relative">
+                                                <div id="miniSpatialMap" class="w-full h-16 rounded-lg border border-emerald-100 bg-gray-50 flex items-center justify-center overflow-hidden relative z-0 transition-all duration-300 transform hover:scale-[1.02]">
                                                     <span id="miniMapPlaceholder" class="text-[9px] text-gray-400 italic">No coordinates</span>
                                                 </div>
                                             </div>
@@ -178,6 +211,10 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Street / Sitio</label>
                                 <input type="text" name="street" value="{{ old('street') }}" class="w-full border rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">District</label>
+                                <input type="text" name="district" value="{{ old('district') }}" placeholder="e.g. District 1" class="w-full border rounded-lg px-3 py-2 text-sm">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Municipality / City <span class="text-red-500">*</span></label>
@@ -233,7 +270,7 @@
                         </h3>
                         <p class="text-xs text-gray-400 mb-3">Draw the property boundaries on the map to save its polygon coordinates. This is helpful for auto-filling the FAAS land component later.</p>
                         
-                        <div id="registrationMap" style="height: 400px; width: 100%; z-index: 10;" class="rounded-xl border border-gray-300"></div>
+                        <div id="registrationMap" style="height: 400px; width: 100%;" class="rounded-xl border border-gray-300"></div>
                         <input type="hidden" name="polygon_coordinates" id="polygon_coordinates" value="{{ old('polygon_coordinates') }}">
                         
                         <button type="button" id="clearMapBtn" class="mt-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 hidden">
@@ -267,6 +304,7 @@
     <!-- LEAFLET JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
     <script>
 
@@ -324,13 +362,56 @@
             } catch(e) {}
         }
 
+        function checkOverlap(layer) {
+            if (!existingParcelsLayer) return false;
+            
+            const newFeature = layer.toGeoJSON();
+            let hasOverlap = false;
+            let overlappingWith = '';
+
+            existingParcelsLayer.eachLayer(existingLayer => {
+                const existingFeature = existingLayer.toGeoJSON();
+                try {
+                    const intersection = turf.intersect(newFeature, existingFeature);
+                    if (intersection && turf.area(intersection) > 0.001) {
+                        hasOverlap = true;
+                        overlappingWith = existingLayer.getPopup() ? existingLayer.getPopup().getContent() : 'Existing Parcel';
+                    }
+                } catch (e) { console.error('Turf error:', e); }
+            });
+
+            if (hasOverlap) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Spatial Overlap Violation',
+                    html: `<div class="text-sm">The area you drawn overlaps with an already mapped parcel. Overlapping shapes are not allowed in the GIS system.<br><br><div class="p-2 bg-red-50 rounded border text-left">${overlappingWith}</div></div>`,
+                    confirmButtonColor: '#ef4444'
+                }).then(() => {
+                    drawnItems.removeLayer(layer);
+                    updateCoordinates();
+                });
+            }
+            return hasOverlap;
+        }
+
         map.on(L.Draw.Event.CREATED, function (event) {
+            const layer = event.layer;
+            if (checkOverlap(layer)) {
+                // We still let them add it so they can EDIT it, but warn them.
+                // Or we can just reject it. Let's let them add it so they can see where it overlaps.
+            }
             drawnItems.clearLayers();
-            drawnItems.addLayer(event.layer);
+            drawnItems.addLayer(layer);
             updateCoordinates();
         });
 
-        map.on(L.Draw.Event.EDITED, updateCoordinates);
+        map.on(L.Draw.Event.EDITED, function(event) {
+            event.layers.eachLayer(layer => {
+                checkOverlap(layer);
+            });
+            updateCoordinates();
+        });
+        
         map.on(L.Draw.Event.DELETED, updateCoordinates);
 
         function updateCoordinates() {
@@ -348,6 +429,73 @@
             drawnItems.clearLayers();
             updateCoordinates();
         });
+
+        // ─── Load Existing Mapped Parcels as Reference Layer ───────────────────
+        const existingParcelsLayer = L.layerGroup().addTo(map);
+
+        fetch('{{ route("rpt.gis.data") }}')
+            .then(res => res.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    L.geoJSON(data, {
+                        style: function(feature) {
+                            const status = feature.properties.payment_status || 'no_billing';
+                            const type = feature.properties.type;
+                            const colors = {
+                                paid:       { fill: '#10b981', stroke: '#059669' },
+                                delinquent: { fill: '#ef4444', stroke: '#dc2626' },
+                                stale:      { fill: '#f59e0b', stroke: '#d97706' },
+                                no_billing: { fill: '#9ca3af', stroke: '#6b7280' },
+                                draft:      { fill: '#8b5cf6', stroke: '#7c3aed' }
+                            };
+                            const finalStatus = (type === 'registration') ? 'draft' : status;
+                            const c = colors[finalStatus] || colors.no_billing;
+                            return {
+                                color: c.stroke,
+                                weight: 1.5,
+                                fillColor: c.fill,
+                                fillOpacity: 0.25,
+                                dashArray: (type === 'registration') ? '5, 5' : '4 3'
+                            };
+                        },
+                        onEachFeature: function(feature, layer) {
+                            const p = feature.properties;
+                            const isDraft = p.type === 'registration';
+                            layer.bindPopup(`
+                                <div class="text-xs">
+                                    <div class="font-bold text-gray-800 mb-1">${p.pin || p.arp_no || 'N/A'}</div>
+                                    <div class="text-gray-500">Owner: <b>${p.owner || 'Unknown'}</b></div>
+                                    <div class="text-gray-500">Brgy: ${p.barangay || 'N/A'}</div>
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${isDraft ? 'bg-violet-100 text-violet-700 border border-violet-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}">
+                                            <i class="fas ${isDraft ? 'fa-pen-ruler' : 'fa-lock'} text-[8px]"></i> 
+                                            ${isDraft ? 'Draft Registration' : 'Occupied (Official FAAS)'}
+                                        </span>
+                                    </div>
+                                </div>
+                            `, { maxWidth: 200 });
+
+                            layer.on('mouseover', function() {
+                                this.setStyle({ weight: 3, fillOpacity: 0.45 });
+                            });
+                            layer.on('mouseout', function() {
+                                this.setStyle({ weight: 1.5, fillOpacity: 0.25 });
+                            });
+                        }
+                    }).eachLayer(l => l.addTo(existingParcelsLayer));
+
+                    // If the user hasn't drawn anything yet, zoom to existing parcels
+                    if (!inputCoords.value) {
+                        try {
+                            const bounds = existingParcelsLayer.getLayers()[0].getBounds();
+                            if (bounds.isValid()) {
+                                map.fitBounds(bounds, { padding: [50, 50] });
+                            }
+                        } catch(e) {}
+                    }
+                }
+            })
+            .catch(err => console.warn('Could not load existing parcels:', err));
 
         // ─── Parent Land Search Logic (Enhanced) ───────────────────────────────
         const propertyTypeSelect = document.getElementById('property_type');
@@ -401,12 +549,27 @@
                         data.forEach(land => {
                             const div = document.createElement('div');
                             div.className = "px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors group/item";
+
+                            // Build occupied badge if applicable
+                            let occupiedBadge = '';
+                            if (land.is_occupied && land.occupied_by) {
+                                occupiedBadge = `
+                                    <div class="mt-1.5 flex items-center gap-1.5">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide bg-amber-100 text-amber-700 border border-amber-200">
+                                            <i class="fas fa-exclamation-triangle text-[8px]"></i> Already Linked
+                                        </span>
+                                        <span class="text-[9px] text-amber-600 font-medium">ARP: ${land.occupied_by.arp_no} • ${land.occupied_by.owner}</span>
+                                    </div>
+                                `;
+                            }
+
                             div.innerHTML = `
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <div class="text-xs font-bold text-gray-800 group-hover/item:text-blue-600">${land.pin || land.arp_no}</div>
                                         <div class="text-[10px] text-gray-500 uppercase tracking-tight">${land.owner_name}</div>
                                         <div class="text-[9px] text-gray-400 font-medium">${land.barangay ? land.barangay.brgy_name : 'No Barangay'}</div>
+                                        ${occupiedBadge}
                                     </div>
                                     <div class="text-[10px] text-blue-400 opacity-0 group-hover/item:opacity-100 transition-opacity">
                                         Select <i class="fas fa-chevron-right ml-1"></i>
@@ -558,9 +721,67 @@
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!searchInput.contains(e.target) && !resultsDropdown.contains(e.target)) {
-                hideDropdown();
+                if (typeof hideDropdown === 'function') hideDropdown();
             }
         });
+
+        // Exemption Basis Toggle Logic
+        const isTaxableSelect = document.querySelector('select[name="is_taxable"]');
+        const exemptionBasisContainer = document.getElementById('exemption_basis_container');
+        const exemptionBasisInput = document.getElementById('exemption_basis');
+
+        if (isTaxableSelect) {
+            isTaxableSelect.addEventListener('change', function() {
+                if (this.value == '0') {
+                    exemptionBasisContainer.classList.remove('hidden');
+                    exemptionBasisInput.setAttribute('required', 'required');
+                } else {
+                    exemptionBasisContainer.classList.add('hidden');
+                    exemptionBasisInput.removeAttribute('required');
+                }
+            });
+        }
+
+        // Multi-Owner Logic
+        window.addOwnerRow = function() {
+            const container = document.getElementById('owners-container');
+            const rowCount = container.querySelectorAll('.group').length;
+            const div = document.createElement('div');
+            div.className = "p-4 bg-white rounded-xl border border-dashed border-gray-200 relative group animate-fade-in";
+            div.innerHTML = `
+                <button type="button" onclick="removeOwnerRow(this)" class="absolute -top-2 -right-2 w-6 h-6 bg-red-50 text-red-500 border border-red-100 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+                <div class="absolute -top-2 left-4 px-2 bg-white text-[9px] font-black text-gray-400 uppercase tracking-widest border border-gray-100 rounded group-hover:text-blue-500 group-hover:border-blue-100 transition-colors">Co-Owner</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Owner Name <span class="text-red-500">*</span></label>
+                        <input type="text" name="co_owners[${rowCount}][owner_name]" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-100 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">TIN</label>
+                        <input type="text" name="co_owners[${rowCount}][owner_tin]" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-100 transition-all outline-none">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Address <span class="text-red-500">*</span></label>
+                        <input type="text" name="co_owners[${rowCount}][owner_address]" required class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-100 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Contact No.</label>
+                        <input type="text" name="co_owners[${rowCount}][owner_contact]" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-100 transition-all outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="co_owners[${rowCount}][email]" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-100 transition-all outline-none">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        window.removeOwnerRow = function(btn) {
+            btn.closest('.group').remove();
+        }
     });
     </script>
     @endpush

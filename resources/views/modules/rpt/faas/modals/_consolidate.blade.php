@@ -1,5 +1,5 @@
 {{-- Consolidation (Merge) Modal --}}
-<div id="consolidateModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="consolidateModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
         <div class="px-6 py-4 bg-indigo-600 text-white flex justify-between items-center shrink-0">
             <div>
@@ -11,7 +11,7 @@
             </button>
         </div>
 
-        <form action="{{ route('rpt.faas.consolidate.store') }}" method="POST" enctype="multipart/form-data" class="flex flex-col overflow-hidden">
+        <form action="{{ route('rpt.faas.consolidate') }}" method="POST" enctype="multipart/form-data" class="flex flex-col overflow-hidden">
             @csrf
             <div id="consolidation-hidden-ids"></div>
 

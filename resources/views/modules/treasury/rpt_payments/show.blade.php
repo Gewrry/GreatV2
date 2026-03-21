@@ -27,7 +27,12 @@
                             <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
                                 <i class="fas fa-home text-logo-teal"></i> Property & Assessment
                             </h2>
-                            <a href="{{ route('treasury.rpt.payments.index') }}" class="text-xs text-gray-500 hover:text-gray-800"><i class="fas fa-arrow-left"></i> Back to List</a>
+                            <div class="flex items-center gap-3">
+                                <a href="{{ route('treasury.rpt.payments.soa', $td) }}" target="_blank" class="text-[10px] font-bold bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded transition-colors uppercase flex items-center gap-1 shadow-sm">
+                                    <i class="fas fa-file-invoice"></i> Print Statement of Account
+                                </a>
+                                <a href="{{ route('treasury.rpt.payments.index') }}" class="text-xs text-gray-500 hover:text-gray-800"><i class="fas fa-arrow-left"></i> Back to List</a>
+                            </div>
                         </div>
                         <div class="p-6">
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
@@ -43,6 +48,10 @@
                                 <div>
                                     <p class="text-[10px] text-gray-400 font-bold tracking-wider uppercase mb-0.5">ARP Number</p>
                                     <p class="font-mono text-sm text-gray-800 font-semibold">{{ $td->property->arp_no ?? '—' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-gray-400 font-bold tracking-wider uppercase mb-0.5">PIN Number</p>
+                                    <p class="font-mono text-sm text-gray-800 font-semibold">{{ $td->property->pin ?? $td->property->generateStructuredPin() }}</p>
                                 </div>
                                 <div class="col-span-2">
                                     <p class="text-[10px] text-gray-400 font-bold tracking-wider uppercase mb-0.5">Location</p>

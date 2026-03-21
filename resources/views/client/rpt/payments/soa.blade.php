@@ -101,6 +101,7 @@
                             <th class="px-3 sm:px-4 py-3 text-right">Basic + SEF</th>
                             <th class="px-3 sm:px-4 py-3 text-right">Penalty</th>
                             <th class="px-4 sm:px-6 py-3 text-right">Total Paid</th>
+                            <th class="px-3 py-3 text-center">Receipt</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -112,6 +113,12 @@
                                 <td class="px-3 sm:px-4 py-3 text-right text-gray-700">₱{{ number_format($p->basic_tax + $p->sef_tax, 2) }}</td>
                                 <td class="px-3 sm:px-4 py-3 text-right text-red-500">₱{{ number_format($p->penalty, 2) }}</td>
                                 <td class="px-3 sm:px-4 py-3 text-right font-bold text-teal-700">₱{{ number_format($p->amount, 2) }}</td>
+                                <td class="px-3 py-3 text-center">
+                                    <a href="{{ route('client.rpt-pay.receipt', $p->id) }}"
+                                        class="inline-flex items-center gap-1 text-[10px] font-bold text-teal-600 bg-teal-50 hover:bg-teal-100 px-2.5 py-1.5 rounded-lg border border-teal-100 transition-all uppercase tracking-wide">
+                                        <i class="fas fa-file-alt"></i> View
+                                    </a>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

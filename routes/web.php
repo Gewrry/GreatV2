@@ -438,6 +438,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{entry}/mark-paid', [BusinessListController::class, 'markPaid'])->name('mark-paid');
             Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
             Route::post('/{entry}/retire', [BusinessListController::class, 'retire'])->name('retire');
+            Route::post('/{id}/approve-online-renewal', [BusinessListController::class, 'approveOnlineRenewal'])->name('approve-online-renewal');
             Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
             Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])->name('edit-data');
             Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])->name('edit');
@@ -504,6 +505,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/application/{application}/approve', [BplsApplicationReviewController::class, 'approve'])->name('application.approve');
             Route::post('/application/{application}/return', [BplsApplicationReviewController::class, 'returnToClient'])->name('application.return');
             Route::post('/application/{application}/reject', [BplsApplicationReviewController::class, 'reject'])->name('application.reject');
+            Route::post('/application/{application}/retire', [BplsApplicationReviewController::class, 'retire'])->name('application.retire');
             Route::post('/application/{application}/assess', [BplsApplicationReviewController::class, 'assess'])->name('application.assess');
             Route::post('/application/{application}/mark-paid', [BplsApplicationReviewController::class, 'markPaid'])->name('application.mark-paid');
             Route::post('/application/{application}/final-approve', [BplsApplicationReviewController::class, 'finalApprove'])->name('application.final-approve');
@@ -549,6 +551,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('faas')->name('faas.')->group(function () {
             Route::get('/', [FaasPropertyController::class, 'index'])->name('index');
             Route::get('/status-counts', [FaasPropertyController::class, 'statusCounts'])->name('status-counts');
+            Route::get('/check-pin', [FaasPropertyController::class, 'checkPinAvailability'])->name('check-pin');
             Route::get('/{registration}/create-draft', [FaasPropertyController::class, 'createDraft'])->name('create-draft');
             Route::post('/{registration}/store-draft', [FaasPropertyController::class, 'storeDraft'])->name('store-draft');
             Route::get('/{registration}/start/{component}', [FaasPropertyController::class, 'startAppraisal'])->name('start');
@@ -583,7 +586,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{faas}/reassess', [FaasPropertyController::class, 'reassess'])->name('reassess');
             Route::post('/{faas}/transfer', [FaasPropertyController::class, 'transferOwnership'])->name('transfer');
             Route::post('/{faas}/subdivide', [FaasPropertyController::class, 'subdivide'])->name('subdivide');
-            Route::post('/consolidate', [FaasPropertyController::class, 'consolidate'])->name('consolidate.store');
+            Route::post('/consolidate', [FaasPropertyController::class, 'consolidate'])->name('consolidate');
             Route::post('/{faas}/cancel', [FaasPropertyController::class, 'cancel'])->name('cancel');
             Route::put('/{faas}/master-update', [FaasPropertyController::class, 'masterUpdate'])->name('master-update');
         });
@@ -774,6 +777,10 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::get('/{application}/renew', [ApplicationController::class, 'renew'])->name('renew');
             Route::get('/{application}/permit/download', [ApplicationController::class, 'downloadPermit'])->name('permit.download');
             Route::delete('/{application}', [ApplicationController::class, 'destroy'])->name('destroy');
+            // Retirement
+            Route::get('/{application}/retire', [ApplicationController::class, 'retireForm'])->name('retire.form');
+            Route::post('/{application}/retire', [ApplicationController::class, 'retire'])->name('retire');
+            Route::get('/{application}/retirement-certificate', [ApplicationController::class, 'downloadRetirementCertificate'])->name('retirement-certificate');
         });
 
         Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
@@ -819,6 +826,7 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::get('/{td}/print-soa', [RptOnlinePaymentController::class, 'printSoa'])->name('print-soa');
             Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
             Route::post('/{payment}/verify', [RptOnlinePaymentController::class, 'verify'])->name('verify');
+            Route::get('/payment/{payment}/receipt', [RptOnlinePaymentController::class, 'receipt'])->name('receipt');
             
             // Fallback for sessions started before the fix (malformed URL with & instead of ?)
             Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');

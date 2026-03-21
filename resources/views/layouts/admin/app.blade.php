@@ -6,15 +6,15 @@
     <div class="flex min-h-screen bg-logo-teal/80">
 
         <!-- Overlay for mobile -->
-        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-20 lg:hidden hidden transition-opacity duration-300">
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-[1005] lg:hidden hidden transition-opacity duration-300">
         </div>
 
         <!-- Sidebar -->
         <aside id="sidebar"
-            class="fixed inset-y-0 left-0 z-30 w-64 bg-white border-r-4 border-logo-teal overflow-y-auto shadow-xl transform transition-transform duration-300">
+            class="fixed inset-y-0 left-0 z-[1010] w-64 bg-white border-r-4 border-logo-teal overflow-y-auto shadow-xl transform transition-transform duration-300">
 
             <!-- Logo Header -->
-            <div class="sticky top-0 bg-white border-b-2 border-logo-teal p-4 z-10">
+            <div class="sticky top-0 bg-white border-b-2 border-logo-teal p-4 z-20">
                 <div class="flex items-center space-x-2">
                     <a href="{{ route('dashboard') }}" class="hover:opacity-80 transition-opacity">
                         <x-application-logo class="h-9 w-auto fill-current text-green" />
@@ -221,7 +221,7 @@
         <div id="main-content" class="flex-1 flex flex-col min-w-0 transition-all duration-300 lg:ml-64">
 
             <!-- Top Navigation -->
-            <div class="bg-white border-b-2 border-lumot sticky top-0 z-10 shadow-md">
+            <div class="bg-white border-b-2 border-lumot sticky top-0 z-[1001] shadow-md">
                 <div class="flex items-center justify-between px-4 py-3 w-full">
                     <button id="mobile-menu-button" type="button"
                         class="inline-flex items-center justify-center p-2 rounded-xl text-green hover:text-logo-teal hover:bg-lumot/30 focus:outline-none focus:ring-2 focus:ring-logo-teal transition-all duration-200">

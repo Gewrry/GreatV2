@@ -224,7 +224,7 @@
                                     <tr class="td-row hover:bg-bluebody/30 transition-colors"
                                         data-td-no="{{ strtolower($td->td_no ?? '') }}"
                                         data-arp-no="{{ strtolower($td->property?->arp_no ?? '') }}"
-                                        data-owner="{{ strtolower($td->owner_name ?? '') }}"
+                                        data-owner="{{ strtolower($td->primary_owner_name ?? '') }}"
                                         data-barangay="{{ strtolower($td->property?->barangay?->brgy_name ?? '') }}"
                                         data-type="{{ strtolower($td->property_type ?? '') }}">
 
@@ -252,8 +252,8 @@
 
                                         {{-- Taxpayer --}}
                                         <td class="px-4 py-3 max-w-[180px]">
-                                            <p class="text-xs font-bold text-green uppercase leading-tight truncate" title="{{ $td->owner_name }}">
-                                                {{ $td->owner_name }}
+                                            <p class="text-xs font-bold text-green uppercase leading-tight truncate" title="{{ $td->primary_owner_name }}">
+                                                {{ $td->primary_owner_name }}
                                             </p>
                                             <p class="text-[10px] text-gray/40 mt-0.5 font-medium">
                                                 {{ $td->property?->barangay?->brgy_name ?? '—' }}

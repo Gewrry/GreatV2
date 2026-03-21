@@ -24,16 +24,19 @@ class RptPaymentController extends Controller
         $barangayId = $request->input('barangay_id');
 
         // We query Tax Declarations that are forwarded to Treasury
-        $query = TaxDeclaration::with(['property.barangay', 'billings'])
+        $query = TaxDeclaration::query()->with(['property.barangay', 'billings'])
             ->where('status', 'forwarded');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('td_no', 'like', "%{$search}%")
-                  ->orWhereHas('property', function ($p) use ($search) {
+                  ->orWhereHas('property.owners', function ($p) use ($search) {
                       $p->where('owner_name', 'like', "%{$search}%")
-                        ->orWhere('arp_no', 'like', "%{$search}%")
                         ->orWhere('owner_tin', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('property', function ($p) use ($search) {
+                      $p->where('arp_no', 'like', "%{$search}%")
+                        ->orWhere('pin', 'like', "%{$search}%");
                   });
             });
         }
@@ -63,10 +66,16 @@ class RptPaymentController extends Controller
             $taxDeclarations = TaxDeclaration::with(['property.barangay', 'billings' => function($q) {
                 $q->whereIn('status', ['unpaid', 'partial'])->orderBy('tax_year')->orderBy('quarter');
             }])
-            ->where('status', 'forwarded')
-            ->whereHas('property', function ($p) use ($search) {
-                  $p->where('owner_name', 'like', "%{$search}%")
-                    ->orWhere('owner_tin', 'like', "%{$search}%");
+            ->where(function($q) use ($search) {
+                $q->whereHas('property.owners', function ($p) use ($search) {
+                      $p->where('owner_name', 'like', "%{$search}%")
+                        ->orWhere('owner_tin', 'like', "%{$search}%");
+                })
+                ->orWhereHas('property', function ($p) use ($search) {
+                      $p->where('arp_no', 'like', "%{$search}%")
+                        ->orWhere('pin', 'like', "%{$search}%");
+                })
+                ->orWhere('td_no', 'like', "%{$search}%");
             })->get();
 
             $currentYear = date('Y');
@@ -460,9 +469,13 @@ class RptPaymentController extends Controller
                   ->orWhereHas('billing.taxDeclaration', function ($tdQuery) use ($search) {
                       $tdQuery->where('td_no', 'like', "%{$search}%");
                   })
-                  ->orWhereHas('billing.taxDeclaration.property', function ($propQuery) use ($search) {
-                      $propQuery->where('owner_name', 'like', "%{$search}%");
-                  });
+                   ->orWhereHas('billing.taxDeclaration.property', function ($propQuery) use ($search) {
+                       $propQuery->where('arp_no', 'like', "%{$search}%")
+                                 ->orWhere('pin', 'like', "%{$search}%");
+                   })
+                   ->orWhereHas('billing.taxDeclaration.property.owners', function ($propQuery) use ($search) {
+                       $propQuery->where('owner_name', 'like', "%{$search}%");
+                   });
             });
         }
 
@@ -511,7 +524,7 @@ class RptPaymentController extends Controller
 
         return response()->json([
             'td_no' => $td->td_no,
-            'owner' => $td->property->owner_name,
+            'owner' => $td->property->primary_owner_name,
             'payments' => $payments
         ]);
     }

@@ -66,6 +66,7 @@
                     this.fees             = data.fees ?? [];
                     this.schedule         = data.schedule ?? [];
                     this.permitYear       = data.permit_year ?? this.permitYear;
+                    if (data.mode_of_payment) this.modeOfPayment = data.mode_of_payment;
                 } catch (err) {
                     this.computeError = err.message;
                 } finally {

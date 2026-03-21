@@ -557,8 +557,12 @@
     <div class="no-print-btn">
         <button onclick="window.print()">🖨 Print Receipt</button>
         &nbsp;
-        @if(Auth::guard('client')->check())
-            <a href="{{ route('client.applications.show', $entry->bplsApplication->id ?? $entry->id) }}">← Back to Application</a>
+        @if(request()->is('portal/*'))
+            @if($entry instanceof \App\Models\onlineBPLS\BplsOnlineApplication)
+                <a href="{{ route('client.applications.show', $entry->id) }}">← Back to Application</a>
+            @else
+                <a href="{{ url('/portal/walkin-payments') }}">← Back to Payments</a>
+            @endif
         @else
             @if($entry instanceof \App\Models\onlineBPLS\BplsOnlineApplication)
                 <a href="{{ route('bpls.online.application.show', $entry->id) }}">← Back to Review</a>

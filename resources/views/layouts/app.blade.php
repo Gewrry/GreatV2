@@ -241,7 +241,7 @@
         <div id="main-content" class="flex-1 flex flex-col min-w-0 transition-all duration-300 lg:ml-64">
 
             <!-- Top Navigation -->
-            <div class="bg-white border-b-2 border-lumot sticky top-0 z-10 shadow-md">
+            <div class="bg-white border-b-2 border-lumot sticky top-0 z-[1001] shadow-md">
                 <div class="flex items-center justify-between px-4 py-3 w-full">
                     <!-- Sidebar Toggle Button -->
                     <button id="mobile-menu-button" type="button"

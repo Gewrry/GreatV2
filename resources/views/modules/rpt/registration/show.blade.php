@@ -103,31 +103,35 @@
                                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                             </div>
-                            <h3 class="text-xs font-extrabold text-gray/70 uppercase tracking-widest">Owner Information</h3>
+                            <h3 class="text-xs font-extrabold text-gray/70 uppercase tracking-widest">Ownership Information</h3>
                         </div>
-                        <div class="p-5 space-y-3">
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Full Name</p>
-                                    <p class="text-sm font-extrabold text-green">{{ $registration->owner_name }}</p>
+                        <div class="p-5 space-y-4">
+                            @foreach($registration->owners as $owner)
+                            <div class="grid grid-cols-2 gap-3 {{ $loop->first ? '' : 'pt-3 mt-3 border-t border-dashed border-gray-100' }}">
+                                <div class="col-span-2">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <p class="text-[10px] text-gray/50 font-bold uppercase">{{ $owner->is_primary ? 'Primary Owner' : 'Co-Owner' }}</p>
+                                        @if($owner->is_primary)
+                                            <span class="text-[8px] bg-blue-50 text-blue-600 px-1 rounded border border-blue-100 font-black uppercase tracking-tighter">Active Declarant</span>
+                                        @endif
+                                    </div>
+                                    <p class="text-sm font-extrabold text-green">{{ $owner->owner_name }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] text-gray/50 font-bold uppercase">TIN</p>
-                                    <p class="text-sm text-gray font-mono">{{ $registration->owner_tin ?: '—' }}</p>
-                                </div>
-                                <div class="col-span-2">
-                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Address</p>
-                                    <p class="text-sm text-gray">{{ $registration->owner_address }}</p>
+                                    <p class="text-sm text-gray font-mono">{{ $owner->owner_tin ?: '—' }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] text-gray/50 font-bold uppercase">Contact</p>
-                                    <p class="text-sm text-gray">{{ $registration->owner_contact ?: '—' }}</p>
+                                    <p class="text-sm text-gray">{{ $owner->owner_contact ?: '—' }}</p>
                                 </div>
-                                <div>
-                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Email</p>
-                                    <p class="text-sm text-gray truncate">{{ $registration->owner_email ?: '—' }}</p>
+                                <div class="col-span-2">
+                                    <p class="text-[10px] text-gray/50 font-bold uppercase">Address</p>
+                                    <p class="text-sm text-gray line-clamp-1" title="{{ $owner->owner_address }}">{{ $owner->owner_address }}</p>
                                 </div>
                             </div>
+                            @endforeach
+                       </div>
 
                             @if($registration->administrator_name)
                                 <div class="pt-3 mt-3 border-t border-lumot/20">
@@ -418,7 +422,7 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-extrabold text-green">Archive Registration</h3>
-                        <p class="text-[11px] text-gray">#{{ $registration->id }} — {{ Str::limit($registration->owner_name, 30) }}</p>
+                        <p class="text-[11px] text-gray">#{{ $registration->id }} — {{ Str::limit($registration->primary_owner_name, 30) }}</p>
                     </div>
                 </div>
                 <button onclick="closeArchiveModal()"

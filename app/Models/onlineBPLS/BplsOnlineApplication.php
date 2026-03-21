@@ -20,6 +20,8 @@ class BplsOnlineApplication extends Model
 
     protected $table = 'bpls_online_applications';
 
+    protected $appends = ['outstanding_balance', 'total_paid'];
+
     protected $fillable = [
         'application_number',
         'client_id',
@@ -65,6 +67,11 @@ class BplsOnlineApplication extends Model
 
         // Remarks (returned / rejected)
         'remarks',
+
+        // Retirement
+        'retirement_reason',
+        'retirement_date',
+        'retirement_remarks',
     ];
 
     protected $casts = [
@@ -157,7 +164,9 @@ class BplsOnlineApplication extends Model
             'assessed' => 'For Payment',
             'paid' => 'For Final Approval',
             'approved' => 'Approved',
+            'retirement_requested' => 'Retirement Requested',
             'rejected' => 'Rejected',
+            'retired' => 'Retired',
             default => ucfirst($this->workflow_status),
         };
     }
@@ -262,5 +271,49 @@ class BplsOnlineApplication extends Model
         }
 
         return $types;
+    }
+
+    /**
+     * Total amount paid across all quarters / installments (Master + Online)
+     */
+    public function getTotalPaidAttribute(): float
+    {
+        // Sum master payments linked to this application
+        $masterPayments = \App\Models\BplsPayment::where('bpls_application_id', $this->id)->get();
+        $masterPaid     = (float) $masterPayments->sum('amount_paid');
+        $masterOrs      = $masterPayments->pluck('or_number')->filter()->values()->toArray();
+
+        // Sum online payments that aren't already recorded in master (to avoid double counting)
+        // We look for 'paid' online payments that don't have an OR already in the master table
+        $onlinePaid = (float) \App\Models\onlineBPLS\BplsOnlinePayment::where('bpls_application_id', $this->id)
+            ->where('status', 'paid')
+            ->get()
+            ->filter(fn($p) => empty($p->or_number) || !in_array($p->or_number, $masterOrs))
+            ->sum('amount_paid');
+
+        return $masterPaid + $onlinePaid;
+    }
+
+    /**
+     * Remaining balance to be paid
+     */
+    public function getOutstandingBalanceAttribute(): float
+    {
+        $totalAssessed = (float)(($this->renewal_cycle ?? 0) > 0 
+            ? ($this->renewal_total_due ?? 0) 
+            : ($this->assessment_amount ?? 0));
+            
+        if ($totalAssessed <= 0) return 0;
+
+        $paid = (float) $this->total_paid;
+
+        // Calculate total discount from active benefits
+        $discountAmount = 0;
+        foreach ($this->benefits as $benefit) {
+            $discountAmount += $totalAssessed * ((float) ($benefit->discount_percent ?? 0) / 100);
+        }
+
+        $balance = $totalAssessed - $paid - $discountAmount;
+        return $balance > 0.01 ? $balance : 0;
     }
 }

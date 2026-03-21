@@ -12,6 +12,8 @@ class BusinessEntry extends Model
 
     protected $table = 'bpls_business_entries';
 
+    protected $appends = ['outstanding_balance', 'total_paid'];
+
     protected $fillable = [
         // Owner info
         'last_name',
@@ -178,5 +180,38 @@ class BusinessEntry extends Model
     public function bplsApplication()
     {
         return $this->hasOne(\App\Models\onlineBPLS\BplsOnlineApplication::class, 'business_entry_id');
+    }
+
+    // ── Accessors ──────────────────────────────────────────────────────────
+
+    /**
+     * Get the total amount paid for this entry in the current cycle/year.
+     */
+    public function getTotalPaidAttribute(): float
+    {
+        return (float) \App\Models\BplsPayment::where('business_entry_id', $this->id)
+            ->where('payment_year', $this->permit_year ?? now()->year)
+            ->where('renewal_cycle', (int) ($this->renewal_cycle ?? 0))
+            ->sum('amount_paid');
+    }
+
+    /**
+     * Get the remaining balance for this entry.
+     */
+    public function getOutstandingBalanceAttribute(): float
+    {
+        $totalDue = (float) $this->active_total_due;
+        if ($totalDue <= 0) return 0;
+
+        $paid = (float) $this->total_paid;
+        
+        // Calculate total discount from active benefits
+        $discountAmount = 0;
+        foreach ($this->benefits as $benefit) {
+            $discountAmount += $totalDue * ((float) ($benefit->discount_percent ?? 0) / 100);
+        }
+
+        $balance = $totalDue - $paid - $discountAmount;
+        return $balance > 0.01 ? $balance : 0;
     }
 }

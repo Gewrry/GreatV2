@@ -14,6 +14,5 @@
 
 @include('modules.rpt.faas.modals._return_draft')
 @include('modules.rpt.faas.modals._cancel_faas')
-@include('modules.rpt.faas.modals._cancel_faas')
 @include('modules.rpt.faas.modals._manage_attachments')
 @include('modules.rpt.faas.modals._document_preview')

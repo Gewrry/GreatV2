@@ -39,7 +39,7 @@
         <div>
             <div class="flex items-center gap-3 mb-1">
                 <a href="{{ route('rpt.faas.index') }}" class="text-gray-400 hover:text-gray-600"><i class="fas fa-arrow-left text-sm"></i></a>
-                <h2 class="text-xl font-bold text-gray-800">{{ $faas->propertyRegistration->owner_name ?? $faas->owner_name }}</h2>
+                <h2 class="text-xl font-bold text-gray-800">{{ $faas->primary_owner_name }}</h2>
                 @php 
                     $badge = match($faas->status) { 
                         'draft' => 'bg-gray-100 text-gray-700', 
@@ -54,12 +54,25 @@
                     {{ str_replace('_',' ',$faas->status) }}
                 </span>
             </div>
-            <p class="text-xs text-gray-500 font-medium">
+            <p class="text-xs text-gray-500 font-medium mt-1">
                 <span class="bg-gray-100 px-2 py-0.5 rounded">ARP: {{ $faas->arp_no ?? 'UNASSIGNED' }}</span>
                 <span class="mx-2 text-gray-300">|</span>
-                <span>Revision Year: {{ $faas->revision_year_id ?? 'Active' }}</span>
+                <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">PIN: {{ $faas->pin ?? $faas->generateStructuredPin() }}</span>
+                <span class="mx-2 text-gray-300">|</span>
+                <span>Revision Year: {{ $faas->revisionYear->revision_year ?? 'Active' }}</span>
                 <span class="mx-2 text-gray-300">|</span>
                 <span>Barangay: {{ $faas->barangay?->brgy_name ?? '—' }}</span>
+                <span class="mx-2 text-gray-300">|</span>
+                @if(isset($faas->is_taxable))
+                    <span class="{{ $faas->is_taxable ? 'text-blue-600 bg-blue-50' : 'text-emerald-700 bg-emerald-50' }} px-2 py-0.5 rounded uppercase tracking-wider text-[10px] font-bold">
+                        {{ $faas->is_taxable ? 'Taxable' : 'Exempt' }}
+                    </span>
+                    @if(!$faas->is_taxable && $faas->exemption_basis)
+                        <span class="ml-1 text-[10px] text-gray-500 italic">({{ $faas->exemption_basis }})</span>
+                    @endif
+                @else
+                    <span class="text-gray-400">Class: Unknown</span>
+                @endif
             </p>
         </div>
         <div class="flex gap-2 items-center">
@@ -86,7 +99,7 @@
                         </div>
                         
                         {{-- Hover dropdown for checklist --}}
-                        <div class="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-3">
+                        <div class="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all p-3">
                             <div class="text-[10px] font-black uppercase text-gray-400 mb-2 border-b pb-1">Missing Requirements</div>
                             <ul class="space-y-2">
                                 @foreach($checklist as $issue)
@@ -146,11 +159,11 @@
                 <a href="{{ route('rpt.faas.print-noa', $faas) }}" target="_blank" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all ml-1 flex items-center">
                     <i class="fas fa-envelope-open-text mr-1.5 opacity-70"></i> Print NOA
                 </a>
-                <div class="relative inline-block text-left ml-1" x-data="{ open: false }">
+                <div class="relative z-50 inline-block text-left ml-1" x-data="{ open: false }">
                     <button @click="open = !open" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all flex items-center gap-2">
                         <i class="fas fa-plus-circle text-xs"></i> New Transaction <i class="fas fa-chevron-down text-[10px] opacity-70"></i>
                     </button>
-                    <div x-show="open" @click.away="open = false" class="origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 z-50 overflow-hidden border border-gray-100" 
+                    <div x-show="open" @click.away="open = false" class="origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5  overflow-hidden border border-gray-100" 
                          x-transition:enter="transition ease-out duration-100"
                          x-transition:enter-start="transform opacity-0 scale-95"
                          x-transition:enter-end="transform opacity-100 scale-100"
@@ -197,7 +210,7 @@
     </div>
     
     {{-- Revoke Approval Modal --}}
-    <div id="revokeModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div id="revokeModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm  flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
             <div class="px-6 py-4 bg-red-600 text-white flex justify-between items-center">
                 <h3 class="font-bold text-lg leading-none tracking-tight">Revoke Property Approval</h3>
@@ -226,35 +239,53 @@
     </div>
     
     <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        <div>
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Owner Address</div>
-            <div class="text-sm text-gray-700 leading-relaxed">{{ $faas->propertyRegistration->owner_address ?? $faas->owner_address }}</div>
+        <div class="lg:col-span-1">
+            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex justify-between items-center">
+                <span>Ownership Details</span>
+                <span class="text-[9px] bg-gray-100 px-1 rounded">{{ $faas->owners->count() }}</span>
+            </div>
+            <div class="space-y-3 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                @foreach($faas->owners as $owner)
+                    <div class="{{ !$loop->first ? 'pt-2 border-t border-dashed border-gray-100' : '' }}">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                            <span class="text-sm font-bold text-gray-800 tracking-tight leading-none">{{ $owner->owner_name }}</span>
+                            @if($owner->is_primary)
+                                <span class="bg-blue-50 text-blue-600 text-[8px] font-black uppercase px-1 rounded border border-blue-100 tracking-tighter shadow-sm">Primary</span>
+                            @endif
+                        </div>
+                        <div class="text-[10px] text-gray-500 line-clamp-1" title="{{ $owner->owner_address }}">{{ $owner->owner_address }}</div>
+                        <div class="text-[9px] text-gray-400 mt-0.5 font-medium uppercase tracking-wider">
+                            TIN: {{ $owner->owner_tin ?: '—' }} | {{ $owner->owner_contact ?: 'NO PHONE' }}
+                        </div>
+                    </div>
+                @endforeach
+            </div>
         </div>
         <div>
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Owner TIN / Contact</div>
-            <div class="text-sm text-gray-700">TIN: {{ $faas->propertyRegistration->owner_tin ?? $faas->owner_tin ?? '—' }}</div>
-            <div class="text-sm text-gray-700 mt-1">{{ $faas->propertyRegistration->owner_contact ?? $faas->owner_contact ?? 'No Phone' }}</div>
+            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Administrator details</div>
+            <div class="text-sm text-gray-700">{{ $faas->administrator_name ?? '—' }}</div>
+            <div class="text-[11px] text-gray-500 mt-2">TIN: {{ $faas->administrator_tin ?? '—' }} | {{ $faas->administrator_contact ?? 'No Phone' }}</div>
         </div>
         <div>
             <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Property Location</div>
             <div class="text-sm text-gray-700">{{ $faas->propertyRegistration->street ?? $faas->street ?? 'Street/Sitio' }}</div>
-            <div class="text-sm text-gray-700 mt-1">{{ $faas->propertyRegistration->municipality ?? $faas->municipality }}, {{ $faas->propertyRegistration->province ?? $faas->province }}</div>
+            <div class="text-[11px] text-gray-500 mt-1">{{ $faas->propertyRegistration->district ?? $faas->district ?? 'No District' }} | {{ $faas->propertyRegistration->municipality ?? $faas->municipality }}, {{ $faas->propertyRegistration->province ?? $faas->province }}</div>
         </div>
         <div class="lg:col-span-1">
             <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Cadastral Details</div>
-            <div class="text-sm text-gray-700">Lot: {{ $faas->lot_no ?? $faas->parentLand->lot_no ?? $faas->propertyRegistration->lot_no ?? '—' }} | Blk: {{ $faas->blk_no ?? $faas->parentLand->blk_no ?? $faas->propertyRegistration->blk_no ?? '—' }}</div>
-            <div class="text-[11px] text-gray-400 mt-1">Survey: {{ $faas->survey_no ?? $faas->parentLand->survey_no ?? $faas->propertyRegistration->survey_no ?? '—' }}</div>
+            <div class="text-sm text-gray-700">Lot: <span id="header-lot-no">{{ $faas->lot_no ?? $faas->parentLand->lot_no ?? $faas->propertyRegistration->lot_no ?? '—' }}</span> | Blk: <span id="header-blk-no">{{ $faas->blk_no ?? $faas->parentLand->blk_no ?? $faas->propertyRegistration->blk_no ?? '—' }}</span></div>
+            <div class="text-[11px] text-gray-400 mt-1">Survey: <span id="header-survey-no">{{ $faas->survey_no ?? $faas->parentLand->survey_no ?? $faas->propertyRegistration->survey_no ?? '—' }}</span></div>
         </div>
         <div>
             <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Title Reference</div>
-            <div class="text-sm font-bold text-blue-700">{{ $faas->propertyRegistration->title_no ?? $faas->title_no ?? 'No Title' }}</div>
-            <div class="text-[11px] text-gray-400 mt-1">Property Type: <span class="capitalize">{{ $faas->propertyRegistration->property_type ?? $faas->property_type }}</span></div>
+            <div class="text-sm font-bold text-blue-700" id="header-title-no">{{ $faas->title_no ?? $faas->propertyRegistration->title_no ?? 'No Title' }}</div>
+            <div class="text-[11px] text-gray-400 mt-1">Property Type: <span class="capitalize" id="header-property-type">{{ $faas->property_type ?? $faas->propertyRegistration->property_type }}</span></div>
         </div>
         <div class="lg:col-span-1">
-            <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+            <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5 flex items-center gap-1 relative z-10">
                 <i class="fas fa-map-marked-alt"></i> Spatial Overview
             </div>
-            <div id="headerSpatialMap" class="w-full h-16 rounded-lg border border-emerald-100 bg-gray-50 flex items-center justify-center overflow-hidden">
+            <div id="headerSpatialMap" class="w-full h-16 rounded-lg border border-emerald-100 bg-gray-50 flex items-center justify-center overflow-hidden z-0 relative transition-all duration-300 transform hover:scale-[1.02]">
                 <span class="text-[10px] text-gray-400 italic">No coordinates</span>
             </div>
         </div>

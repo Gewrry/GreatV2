@@ -94,10 +94,6 @@ class OnlineApplicationController extends Controller
             $revision = RptaRevisionYear::current();
 
             $property = FaasProperty::create([
-                'owner_name'         => $application->owner_name,
-                'owner_tin'          => $application->owner_tin,
-                'owner_address'      => $application->owner_address,
-                'owner_contact'      => $application->owner_contact,
                 'barangay_id'        => $application->barangay_id,
                 'province'           => $application->province,
                 'municipality'       => $application->municipality,
@@ -108,6 +104,15 @@ class OnlineApplicationController extends Controller
                 'status'             => 'draft', // Staff reviews/appraises as draft
                 'created_by'         => Auth::id(),
                 'remarks'            => 'Created from online application: ' . $application->reference_no,
+            ]);
+
+            // [NEW] Create primary owner record for the FAAS
+            $property->owners()->create([
+                'owner_name'    => $application->owner_name,
+                'owner_tin'     => $application->owner_tin,
+                'owner_address' => $application->owner_address,
+                'owner_contact' => $application->owner_contact,
+                'is_primary'    => true,
             ]);
 
             // Activity log for Draft Creation

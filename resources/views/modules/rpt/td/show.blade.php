@@ -39,7 +39,7 @@
                                     @php $badge = match($td->status) { 'draft' => 'bg-gray-100 text-gray-700', 'for_review' => 'bg-yellow-100 text-yellow-700', 'approved' => 'bg-green-100 text-green-700', 'forwarded' => 'bg-blue-100 text-blue-700', 'cancelled' => 'bg-red-100 text-red-700', default => '' }; @endphp
                                     <span class="px-2 py-1 rounded-full text-xs font-medium {{ $badge }}">{{ ucfirst(str_replace('_',' ',$td->status)) }}</span>
                                 </div>
-                                <p class="text-sm text-gray-500 mt-1">{{ $td->property?->owner_name }} — ARP: {{ $td->property?->arp_no ?? '—' }}</p>
+                                <p class="text-sm text-gray-500 mt-1">{{ $td->property?->primary_owner_name }} — ARP: {{ $td->property?->arp_no ?? '—' }}</p>
                                 <p class="text-[10px] font-bold text-blue-600 tracking-widest uppercase mt-0.5"><i class="fas fa-fingerprint mr-1"></i> PIN: {{ $td->property?->pin ?? 'Pending Approval' }}</p>
                             </div>
                             <div class="flex gap-2 flex-wrap text-[10px] font-bold uppercase tracking-widest">

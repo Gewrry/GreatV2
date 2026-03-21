@@ -164,6 +164,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -239,6 +240,113 @@
             });
             inlineMap.addControl(inlineDrawControl);
 
+            // ─── Load Existing Mapped Parcels as Reference Layer ───────────────
+            const currentPropertyId = {{ $faas->id }};
+            const existingParcelsLayer = L.layerGroup().addTo(inlineMap);
+            
+            function checkOverlap(layer, referenceLayer, drawnGroup, updateFn) {
+                if (!referenceLayer) return false;
+                const newFeature = layer.toGeoJSON();
+                let hasOverlap = false;
+                let overlappingWith = '';
+
+                referenceLayer.eachLayer(existingLayer => {
+                    const existingFeature = existingLayer.toGeoJSON();
+                    try {
+                        const intersection = turf.intersect(newFeature, existingFeature);
+                        if (intersection && turf.area(intersection) > 0.001) {
+                            hasOverlap = true;
+                            overlappingWith = existingLayer.getPopup() ? existingLayer.getPopup().getContent() : 'Existing Parcel';
+                        }
+                    } catch (e) {}
+                });
+
+                if (hasOverlap) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Spatial Overlap Violation',
+                        html: `<div class="text-sm">This boundary overlaps with an existing parcel. Overlapping shapes are not allowed.<br><br><div class="p-2 bg-red-50 rounded border text-left">${overlappingWith}</div></div>`,
+                        confirmButtonColor: '#ef4444'
+                    }).then(() => {
+                        if (drawnGroup && layer) {
+                            drawnGroup.removeLayer(layer);
+                            if (updateFn) updateFn();
+                        }
+                    });
+                }
+                return hasOverlap;
+            }
+
+            fetch('{{ route("rpt.gis.data") }}')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.features && data.features.length > 0) {
+                        const otherParcels = {
+                            type: 'FeatureCollection',
+                            features: data.features.filter(f => {
+                                // Exclude the specific land parcel being worked on (if applicable)
+                                if (f.properties.type === 'faas_land' && typeof currentLandId !== 'undefined') {
+                                    return f.properties.land_id !== currentLandId;
+                                }
+                                return f.properties.id !== currentPropertyId || f.properties.type === 'registration';
+                            })
+                        };
+                        if (otherParcels.features.length > 0) {
+                            L.geoJSON(otherParcels, {
+                                style: function(feature) {
+                                    const isDraft = feature.properties.type === 'registration';
+                                    return { 
+                                        color: isDraft ? '#7c3aed' : '#f59e0b', 
+                                        weight: 1.5, 
+                                        fillColor: isDraft ? '#8b5cf6' : '#fbbf24', 
+                                        fillOpacity: 0.15, 
+                                        dashArray: isDraft ? '5, 5' : '4 3' 
+                                    };
+                                },
+                                onEachFeature: function(feature, layer) {
+                                    const p = feature.properties;
+                                    const isDraft = p.type === 'registration';
+                                    layer.bindPopup(`
+                                        <div class="text-xs">
+                                            <b>${p.pin || p.arp_no || 'N/A'}</b><br>
+                                            Owner: ${p.owner || 'Unknown'}<br>
+                                            <span class="${isDraft ? 'text-violet-600' : 'text-amber-600'} font-bold">
+                                                ${isDraft ? 'Draft Registration' : 'Occupied (Official)'}
+                                            </span>
+                                        </div>
+                                    `, { maxWidth: 200 });
+                                    layer.on('mouseover', function() { this.setStyle({ weight: 3, fillOpacity: 0.35 }); });
+                                    layer.on('mouseout', function() { this.setStyle({ weight: 1.5, fillOpacity: 0.15 }); });
+                                }
+                            }).eachLayer(l => l.addTo(existingParcelsLayer));
+
+                            // Auto-zoom if no existing coordinates
+                            if (!document.getElementById('inline_polygon_coordinates').value) {
+                                try {
+                                    const allLayers = [];
+                                    inlineMap.eachLayer(l => { if (l.getBounds) allLayers.push(l); });
+                                    if (allLayers.length > 0) {
+                                        const combined = L.featureGroup(allLayers);
+                                        inlineMap.fitBounds(combined.getBounds(), { padding: [30, 30] });
+                                    }
+                                } catch(e) {}
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.warn('Could not load reference parcels:', err));
+
+            inlineMap.on(L.Draw.Event.CREATED, function (event) {
+                checkOverlap(event.layer, existingParcelsLayer);
+                inlineDrawnItems.clearLayers();
+                inlineDrawnItems.addLayer(event.layer);
+                updateInlineCoords();
+            });
+            inlineMap.on(L.Draw.Event.EDITED, function (event) {
+                event.layers.eachLayer(layer => checkOverlap(layer, existingParcelsLayer));
+                updateInlineCoords();
+            });
+
             const importRegInlineBtn = document.getElementById('inlineImportRegBtn');
             const calcAreaInlineBtn = document.getElementById('inlineCalcAreaBtn');
 
@@ -275,12 +383,16 @@
             }
 
             inlineMap.on(L.Draw.Event.CREATED, function (event) {
+                checkOverlap(event.layer, existingParcelsLayer, inlineDrawnItems, updateInlineCoords);
                 inlineDrawnItems.clearLayers();
                 inlineDrawnItems.addLayer(event.layer);
                 updateInlineCoords();
                 if(calcAreaInlineBtn) calcAreaInlineBtn.classList.remove('hidden');
             });
-            inlineMap.on(L.Draw.Event.EDITED, updateInlineCoords);
+            inlineMap.on(L.Draw.Event.EDITED, function(event) {
+                event.layers.eachLayer(layer => checkOverlap(layer, existingParcelsLayer, inlineDrawnItems, updateInlineCoords));
+                updateInlineCoords();
+            });
             inlineMap.on(L.Draw.Event.DELETED, function() {
                 updateInlineCoords();
                 if(calcAreaInlineBtn) calcAreaInlineBtn.classList.add('hidden');
@@ -350,6 +462,23 @@
 
             const addDrawnItems = new L.FeatureGroup();
             addMap.addLayer(addDrawnItems);
+
+            const addReferenceLayer = L.layerGroup().addTo(addMap);
+            fetch('{{ route("rpt.gis.data") }}')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.features && data.features.length > 0) {
+                        const others = data.features.filter(f => {
+                            if (f.properties.type === 'faas_land' && typeof currentLandId !== 'undefined') {
+                                return f.properties.land_id !== currentLandId;
+                            }
+                            return f.properties.id !== currentPropertyId;
+                        });
+                        L.geoJSON({ type: 'FeatureCollection', features: others }, {
+                            style: { color: '#f59e0b', weight: 1, fillOpacity: 0.1, dashArray: '3, 3' }
+                        }).eachLayer(l => l.addTo(addReferenceLayer));
+                    }
+                });
             
             const addDrawControl = new L.Control.Draw({
                 draw: { polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#059669' } }, polyline: false, circle: false, rectangle: false, circlemarker: false, marker: false },
@@ -393,12 +522,16 @@
             }
 
             addMap.on(L.Draw.Event.CREATED, function (event) {
+                checkOverlap(event.layer, addReferenceLayer, addDrawnItems, updateAddCoords);
                 addDrawnItems.clearLayers();
                 addDrawnItems.addLayer(event.layer);
                 updateAddCoords();
                 if(calcAreaBtn) calcAreaBtn.classList.remove('hidden');
             });
-            addMap.on(L.Draw.Event.EDITED, updateAddCoords);
+            addMap.on(L.Draw.Event.EDITED, function (event) {
+                event.layers.eachLayer(layer => checkOverlap(layer, addReferenceLayer, addDrawnItems, updateAddCoords));
+                updateAddCoords();
+            });
             addMap.on(L.Draw.Event.DELETED, function() {
                 updateAddCoords();
                 if(calcAreaBtn) calcAreaBtn.classList.add('hidden');
@@ -463,6 +596,63 @@
 
             const editDrawnItems = new L.FeatureGroup();
             editMap.addLayer(editDrawnItems);
+
+            const editReferenceLayer = L.layerGroup().addTo(editMap);
+            let editCachedGisData = null;
+            const currentPropertyId = {{ $faas->id }};
+
+            // Fetch once and cache globally
+            fetch('{{ route("rpt.gis.data") }}')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.features && data.features.length > 0) {
+                        editCachedGisData = data;
+                        refreshEditReferenceLayer();
+                    }
+                });
+
+            function refreshEditReferenceLayer() {
+                if (!editCachedGisData) return;
+                editReferenceLayer.clearLayers();
+                
+                const others = editCachedGisData.features.filter(f => {
+                    const type = f.properties.type;
+                    if (type === 'faas_land' && typeof currentLandId !== 'undefined' && currentLandId !== null) {
+                        return f.properties.land_id !== currentLandId;
+                    }
+                    return type === 'registration' || f.properties.id !== currentPropertyId;
+                });
+                
+                if (others.length > 0) {
+                    L.geoJSON({ type: 'FeatureCollection', features: others }, {
+                        style: function(feature) {
+                            const isDraft = feature.properties.type === 'registration';
+                            return { 
+                                color: isDraft ? '#7c3aed' : '#f59e0b', 
+                                weight: 1.5, 
+                                fillColor: isDraft ? '#8b5cf6' : '#fbbf24', 
+                                fillOpacity: 0.15, 
+                                dashArray: isDraft ? '5, 5' : '4 3' 
+                            };
+                        },
+                        onEachFeature: function(feature, layer) {
+                            const p = feature.properties;
+                            const isDraft = p.type === 'registration';
+                            layer.bindPopup(`
+                                <div class="text-xs">
+                                    <b>${p.pin || p.arp_no || 'N/A'}</b><br>
+                                    Owner: ${p.owner || 'Unknown'}<br>
+                                    <span class="${isDraft ? 'text-violet-600' : 'text-amber-600'} font-bold">
+                                        ${isDraft ? 'Draft Registration' : 'Occupied (Official)'}
+                                    </span>
+                                </div>
+                            `, { maxWidth: 200 });
+                            layer.on('mouseover', function() { this.setStyle({ weight: 3, fillOpacity: 0.35 }); });
+                            layer.on('mouseout', function() { this.setStyle({ weight: 1.5, fillOpacity: 0.15 }); });
+                        }
+                    }).eachLayer(l => l.addTo(editReferenceLayer));
+                }
+            }
             
             const editDrawControl = new L.Control.Draw({
                 draw: { polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#047857' } }, polyline: false, circle: false, rectangle: false, circlemarker: false, marker: false },
@@ -505,12 +695,16 @@
             }
 
             editMap.on(L.Draw.Event.CREATED, function (event) {
+                checkOverlap(event.layer, editReferenceLayer, editDrawnItems, updateEditCoords);
                 editDrawnItems.clearLayers();
                 editDrawnItems.addLayer(event.layer);
                 updateEditCoords();
                 if(calcAreaEditBtn) calcAreaEditBtn.classList.remove('hidden');
             });
-            editMap.on(L.Draw.Event.EDITED, updateEditCoords);
+            editMap.on(L.Draw.Event.EDITED, function(event) {
+                event.layers.eachLayer(layer => checkOverlap(layer, editReferenceLayer, editDrawnItems, updateEditCoords));
+                updateEditCoords();
+            });
             editMap.on(L.Draw.Event.DELETED, function() {
                 updateEditCoords();
                 if(calcAreaEditBtn) calcAreaEditBtn.classList.add('hidden');
@@ -550,6 +744,7 @@
                     if (mutation.attributeName === "class" && !editModal.classList.contains('hidden')) {
                         setTimeout(() => { 
                             editMap.invalidateSize(); 
+                            refreshEditReferenceLayer(); // Repopulate reference matching currentLandId
                             const existingCoords = document.getElementById('edit_polygon_coordinates').value;
                             if (existingCoords && existingCoords !== 'null' && existingCoords !== '') {
                                 try {
@@ -574,6 +769,22 @@
                 editObserver.observe(editModal, { attributes: true });
             }
         }
+            // Master Edit Modal - Exemption Basis Toggle
+            const masterIsTaxableSelect = document.getElementById('master_is_taxable');
+            const masterExemptionBasisContainer = document.getElementById('master_exemption_basis_container');
+            const masterExemptionBasisInput = document.getElementById('master_exemption_basis');
+
+            if (masterIsTaxableSelect) {
+                masterIsTaxableSelect.addEventListener('change', function() {
+                    if (this.value == '0') {
+                        masterExemptionBasisContainer.classList.remove('hidden');
+                        masterExemptionBasisInput.setAttribute('required', 'required');
+                    } else {
+                        masterExemptionBasisContainer.classList.add('hidden');
+                        masterExemptionBasisInput.removeAttribute('required');
+                    }
+                });
+            }
         } catch(e) {
             console.error('CRITICAL ERROR in FAAS Show Scripts:', e);
         }

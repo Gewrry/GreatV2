@@ -647,7 +647,10 @@
                             <div class="flex gap-2">
                                 <button x-show="viewModal.entry?.status !== 'retired'"
                                     @click="viewModal.open = false; openRetireModal(viewModal.entry)"
-                                    class="px-4 py-2 bg-orange-500 text-white text-xs font-bold rounded-xl hover:bg-orange-600 transition-colors flex items-center gap-1.5">
+                                    :disabled="viewModal.entry?.outstanding_balance > 0.1"
+                                    :class="viewModal.entry?.outstanding_balance > 0.1 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-500 hover:bg-orange-600'"
+                                    :title="viewModal.entry?.outstanding_balance > 0.1 ? 'Settlement of outstanding balance (₱' + Number(viewModal.entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                    class="px-4 py-2 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                         stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -854,6 +857,134 @@
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                 </svg>
                                 <span x-text="statusModal.saving ? 'Saving...' : 'Confirm Change'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                {{-- RENEW MODAL --}}
+                {{-- ══════════════════════════════════════════════════════════ --}}
+                <div x-show="renewModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100">
+                    <div class="absolute inset-0 bg-blue-900/40 backdrop-blur-sm" @click="renewModal.open = false"></div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl border border-blue-200 w-full max-w-lg flex flex-col max-h-[90vh]"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+
+                        {{-- Header --}}
+                        <div class="flex items-center justify-between px-5 py-4 border-b border-blue-100 shrink-0">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                                    <svg class="w-5 h-5 text-logo-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-extrabold text-logo-blue">Renew Business Registration</h3>
+                                    <p class="text-[11px] text-gray truncate max-w-[240px]" x-text="renewModal.entry?.business_name"></p>
+                                </div>
+                            </div>
+                            <button @click="renewModal.open = false"
+                                class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-blue-50 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {{-- Body --}}
+                        <div class="overflow-y-auto flex-1 p-5 space-y-4">
+                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-700">
+                                ℹ️ Re-assess the business fees for the new permit year. All fields are pre-filled from the previous cycle.
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray mb-1.5">Capital Investment (₱)</label>
+                                    <input type="number" step="0.01" x-model="renewModal.form.capital_investment"
+                                        @input="renewComputeFees()"
+                                        placeholder="0.00"
+                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40 placeholder-gray/30">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray mb-1.5">Mode of Payment</label>
+                                    <select x-model="renewModal.form.mode_of_payment" @change="renewComputeFees()"
+                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40">
+                                        <option value="">Select...</option>
+                                        <option value="annual">Annual</option>
+                                        <option value="semi_annual">Semi-Annual</option>
+                                        <option value="quarterly">Quarterly</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray mb-1.5">Business Scale</label>
+                                    <select x-model="renewModal.form.business_scale" @change="renewComputeFees()"
+                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40">
+                                        <option value="">Select scale...</option>
+                                        <option value="micro">Micro</option>
+                                        <option value="small">Small</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="large">Large</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray mb-1.5">Business Nature</label>
+                                    <input type="text" x-model="renewModal.form.business_nature"
+                                        placeholder="e.g. Eatery, Trading..."
+                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40 placeholder-gray/30">
+                                </div>
+                            </div>
+
+                            {{-- Fee Preview --}}
+                            <div x-show="renewModal.fees.length > 0 || renewModal.computing" class="border border-lumot/20 rounded-xl overflow-hidden">
+                                <div class="px-3 py-2 bg-lumot/10 text-[10px] font-bold text-gray uppercase tracking-wide flex items-center justify-between">
+                                    <span>Fee Preview</span>
+                                    <svg x-show="renewModal.computing" class="w-3 h-3 animate-spin text-logo-teal" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                </div>
+                                <template x-for="fee in renewModal.fees" :key="fee.code">
+                                    <div class="flex justify-between px-3 py-1.5 text-xs border-b border-lumot/10 last:border-0">
+                                        <span x-text="fee.name" class="text-gray"></span>
+                                        <span x-text="'₱' + Number(fee.amount).toFixed(2)" class="font-mono font-bold text-green"></span>
+                                    </div>
+                                </template>
+                                <div class="flex justify-between px-3 py-2 bg-lumot/10 text-xs font-extrabold">
+                                    <span class="text-gray">TOTAL DUE</span>
+                                    <span class="text-logo-teal" x-text="'₱' + Number(renewModal.totalDue).toFixed(2)"></span>
+                                </div>
+                            </div>
+
+                            {{-- Error --}}
+                            <div x-show="renewModal.error" class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                                <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <p class="text-[11px] text-red-700 font-semibold" x-text="renewModal.error"></p>
+                            </div>
+                        </div>
+
+                        {{-- Footer --}}
+                        <div class="flex gap-2 px-5 py-4 border-t border-blue-100 shrink-0">
+                            <button @click="renewModal.open = false"
+                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
+                                Cancel
+                            </button>
+                            <button @click="submitRenew()"
+                                :disabled="renewModal.saving || renewModal.totalDue <= 0 || !renewModal.form.mode_of_payment"
+                                class="flex-1 px-4 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                <svg x-show="renewModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                                <span x-text="renewModal.saving ? 'Processing...' : '✓ Confirm Renewal'"></span>
                             </button>
                         </div>
                     </div>
@@ -1169,7 +1300,7 @@
                 </div>
 
                 {{-- ── Stat Pills ── --}}
-                <div class="grid sm:grid-cols-4 grid-cols-2 gap-3 mb-5">
+                <div class="grid sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
                     <div
                         class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
                         <div class="w-8 h-8 rounded-xl bg-logo-blue/10 flex items-center justify-center shrink-0">
@@ -1226,6 +1357,34 @@
                             <p class="text-lg font-extrabold text-logo-green">{{ $renewalCount }}</p>
                         </div>
                     </div>
+                    <div
+                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray">Retired</p>
+                            <p class="text-lg font-extrabold text-orange-500">{{ $retiredCount }}</p>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white rounded-2xl border border-lumot/20 shadow-sm px-4 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 21.48l.308.012a9.99 9.99 0 005.992-2.243 9.99 9.99 0 003.87-6.329c.129-.663.129-1.344 0-2.007a9.992 9.992 0 00-3.87-6.329 9.99 9.99 0 00-5.992-2.243l-.308-.012-.308.012a9.99 9.99 0 00-5.992 2.243 9.992 9.992 0 00-3.87 6.329c-.129.663-.129 1.344 0 2.007a9.99 9.99 0 003.87 6.329 9.99 9.99 0 005.992 2.243l.308-.012z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray">Retirement Req.</p>
+                            <p class="text-lg font-extrabold text-red-500">{{ $retirementCount }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ── Filters + View Toggle ── --}}
@@ -1258,6 +1417,7 @@
                             <option value="rejected">Rejected</option>
                             <option value="cancelled">Cancelled</option>
                             <option value="retired">Retired</option>
+                            <option value="retirement_requested">Retirement Requested</option>
                         </select>
                         <select x-model="filters.type" @change="resetAndFetch()"
                             class="text-sm border border-lumot/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-logo-teal/40 text-gray bg-white shrink-0">
@@ -1440,39 +1600,46 @@
                                                         x-text="entry.bpls_application.application_number || '—'"></span>
                                                 </div>
 
-                                                {{-- Workflow Status --}}
-                                                <div class="flex items-center gap-1.5">
-                                                    <span
-                                                        class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Status</span>
-                                                    <span
-                                                        class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                                                        :class="{
-                                                            'bg-yellow-50 text-yellow-700 border-yellow-200': entry
-                                                                .bpls_application.workflow_status === 'submitted',
-                                                            'bg-blue-50 text-blue-600 border-blue-200': entry
-                                                                .bpls_application.workflow_status === 'verified',
-                                                            'bg-purple-50 text-purple-600 border-purple-200': entry
-                                                                .bpls_application.workflow_status === 'assessed',
-                                                            'bg-orange-50 text-orange-500 border-orange-200': entry
-                                                                .bpls_application.workflow_status === 'paid',
-                                                            'bg-green-50 text-logo-green border-green-200': entry
-                                                                .bpls_application.workflow_status === 'approved',
-                                                            'bg-red-50 text-red-500 border-red-200': entry
-                                                                .bpls_application.workflow_status === 'rejected',
-                                                            'bg-gray-50 text-gray border-gray-200': entry
-                                                                .bpls_application.workflow_status === 'returned',
-                                                        }"
-                                                        x-text="{
-                    submitted: 'For Verification',
-                    returned: 'Returned',
-                    verified: 'For Assessment',
-                    assessed: 'For Payment',
-                    paid: 'For Approval',
-                    approved: 'Approved',
-                    rejected: 'Rejected',
-                }[entry.bpls_application.workflow_status] || entry.bpls_application.workflow_status">
-                                                    </span>
-                                                </div>
+                                                <template x-if="entry.bpls_application.workflow_status !== entry.status">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <span
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">App Status</span>
+                                                        <span
+                                                            class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                                                            :class="{
+                                                                'bg-yellow-50 text-yellow-700 border-yellow-200': entry
+                                                                    .bpls_application.workflow_status === 'submitted',
+                                                                'bg-blue-50 text-blue-600 border-blue-200': entry
+                                                                    .bpls_application.workflow_status === 'verified',
+                                                                'bg-purple-50 text-purple-600 border-purple-200': entry
+                                                                    .bpls_application.workflow_status === 'assessed',
+                                                                'bg-orange-50 text-orange-500 border-orange-200': entry
+                                                                    .bpls_application.workflow_status === 'paid',
+                                                                'bg-green-50 text-logo-green border-green-200': entry
+                                                                    .bpls_application.workflow_status === 'approved',
+                                                                'bg-red-50 text-red-500 border-red-200': entry
+                                                                    .bpls_application.workflow_status === 'rejected',
+                                                                'bg-gray-50 text-gray border-gray-200': entry
+                                                                    .bpls_application.workflow_status === 'returned',
+                                                                'bg-orange-50 text-orange-600 border-orange-200': entry
+                                                                    .bpls_application.workflow_status === 'retirement_requested',
+                                                                'bg-red-50 text-red-600 border-red-200': entry
+                                                                    .bpls_application.workflow_status === 'retired',
+                                                            }"
+                                                            x-text="{
+                                                        submitted: 'For Verification',
+                                                        returned: 'Returned',
+                                                        verified: 'For Assessment',
+                                                        assessed: 'For Payment',
+                                                        paid: 'For Approval',
+                                                        approved: 'Approved',
+                                                        rejected: 'Rejected',
+                                                        retirement_requested: 'Retirement Req.',
+                                                        retired: 'Retired',
+                                                    }[entry.bpls_application.workflow_status] || entry.bpls_application.workflow_status">
+                                                        </span>
+                                                    </div>
+                                                </template>
 
                                                 {{-- Assessment Amount --}}
                                                 <template x-if="entry.bpls_application.assessment_amount">
@@ -1615,6 +1782,19 @@
                                                 </a>
                                             </template>
 
+                                            {{-- Renew button --}}
+                                            <button type="button"
+                                                x-show="entry.status === 'completed' || entry.status === 'paid' || ((entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment') && entry.outstanding_balance <= 0.01)"
+                                                @click="openRenewModal(entry)"
+                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-blue hover:bg-blue-700 transition-colors">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                                Renew
+                                            </button>
+
                                             {{-- Retire cert (always) --}}
                                             <button type="button" x-show="entry.status === 'retired'"
                                                 @click="openCertModal(entry)"
@@ -1689,7 +1869,7 @@
                                             Status</th>
                                         <th
                                             class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">
-                                            Online Application</th>
+                                            Application Info</th>
                                         <th
                                             class="px-4 py-3 text-[10px] font-extrabold text-gray/70 uppercase tracking-wider text-right">
                                             Actions</th>
@@ -1757,7 +1937,8 @@
                                                             x-text="entry.bpls_application.application_number || '—'">
                                                         </p>
 
-                                                        {{-- Workflow Status Badge --}}
+                                                <template x-if="entry.bpls_application && entry.bpls_application.workflow_status !== entry.status">
+                                                    <div class="mt-1">
                                                         <span
                                                             class="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border"
                                                             :class="{
@@ -1775,17 +1956,25 @@
                                                                     .bpls_application.workflow_status === 'rejected',
                                                                 'bg-gray-50 text-gray border-gray-200': entry
                                                                     .bpls_application.workflow_status === 'returned',
+                                                                'bg-orange-50 text-orange-600 border-orange-200': entry
+                                                                    .bpls_application.workflow_status === 'retirement_requested',
+                                                                'bg-red-50 text-red-600 border-red-200': entry
+                                                                    .bpls_application.workflow_status === 'retired',
                                                             }"
-                                                            x-text="{
-                    submitted: 'For Verification',
-                    verified: 'For Assessment',
-                    assessed: 'For Payment',
-                    paid: 'For Approval',
-                    approved: 'Approved',
-                    rejected: 'Rejected',
-                    returned: 'Returned',
-                }[entry.bpls_application.workflow_status] || entry.bpls_application.workflow_status">
+                                                            x-text="'Workflow: ' + ({
+                                                        submitted: 'For Verification',
+                                                        verified: 'For Assessment',
+                                                        assessed: 'For Payment',
+                                                        paid: 'For Approval',
+                                                        approved: 'Approved',
+                                                        rejected: 'Rejected',
+                                                        returned: 'Returned',
+                                                        retirement_requested: 'Retirement Req.',
+                                                        retired: 'Retired',
+                                                    }[entry.bpls_application.workflow_status] || entry.bpls_application.workflow_status)">
                                                         </span>
+                                                    </div>
+                                                </template>
 
                                                         {{-- Assessment Amount --}}
                                                         <template x-if="entry.bpls_application.assessment_amount">
@@ -1872,6 +2061,19 @@
 
                                                     {{-- Always shown --}}
 
+                                                    {{-- Renew button --}}
+                                                    <button type="button"
+                                                        x-show="entry.status === 'completed' || entry.status === 'paid' || ((entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment') && entry.outstanding_balance <= 0.01)"
+                                                        @click="openRenewModal(entry)"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-blue hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                        </svg>
+                                                        Renew
+                                                    </button>
+
                                                     <button type="button" @click="openEditModal(entry)"
                                                         title="Edit Business"
                                                         class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors">
@@ -1888,9 +2090,24 @@
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                         </svg>
                                                         Cert
+                                                    </button>
+                                                    {{-- Retire button: visible for approved, completed, retirement_requested (not retired) --}}
+                                                    <button type="button"
+                                                        x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
+                                                        @click="openRetireModal(entry)"
+                                                        :disabled="entry.outstanding_balance > 0.1"
+                                                        :class="entry.outstanding_balance > 0.1 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
+                                                        :title="entry.outstanding_balance > 0.1 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                            stroke="currentColor" stroke-width="2.5">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                        </svg>
+                                                        Retire
                                                     </button>
                                                     <button type="button" @click="openViewModal(entry)"
                                                         title="View Details"
@@ -1985,6 +2202,33 @@
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Cert
+                                    </button>
+                                    {{-- Renew button: visible for completed (walkin) or paid (online) or fully paid balance --}}
+                                    <button type="button"
+                                        x-show="entry.status === 'completed' || entry.status === 'paid' || ((entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment') && entry.outstanding_balance <= 0.01)"
+                                        @click="openRenewModal(entry)"
+                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-blue hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Renew
+                                    </button>
+                                    {{-- Retire button: visible for approved, completed, retirement_requested (not retired) --}}
+                                    <button type="button"
+                                        x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
+                                        @click="openRetireModal(entry)"
+                                        :disabled="entry.outstanding_balance > 0.1"
+                                        :class="entry.outstanding_balance > 0.1 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
+                                        :title="entry.outstanding_balance > 0.1 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                        </svg>
+                                        Retire
                                     </button>
                                     <button type="button" x-show="canAssess(entry.status)"
                                         @click="openModal(entry)"
@@ -2118,6 +2362,7 @@
                                 'rejected': 'Rejected',
                                 'cancelled': 'Cancelled',
                                 'retired': 'Retired',
+                                'retirement_requested': 'Retirement Requested',
                             };
                             return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—');
                         },
@@ -2153,20 +2398,49 @@
                                     icon: '⊘',
                                     color: 'gray',
                                 },
+                                retired: {
+                                    value: 'retired',
+                                    label: 'Approve Retirement',
+                                    description: 'Mark this business as officially retired',
+                                    icon: '✓',
+                                    color: 'green',
+                                },
+                                approved: {
+                                    value: 'approved',
+                                    label: 'Reject Retirement Request',
+                                    description: 'Deny retirement and return to approved status',
+                                    icon: '✕',
+                                    color: 'yellow',
+                                },
+                                retirement_requested: {
+                                    value: 'retirement_requested',
+                                    label: 'Request Retirement',
+                                    description: 'Initiate a retirement request for this business',
+                                    icon: '⊘',
+                                    color: 'orange',
+                                },
                             };
 
                             const map = {
                                 'pending': ['rejected', 'cancelled'],
                                 'for_payment': ['pending', 'rejected', 'cancelled'],
                                 'for_renewal_payment': ['pending', 'rejected', 'cancelled'],
-                                'approved': ['pending', 'rejected', 'cancelled'],
-                                'completed': ['pending'],
+                                'approved': ['pending', 'rejected', 'cancelled', 'retirement_requested'],
+                                'completed': ['pending', 'retirement_requested'],
                                 'rejected': ['pending'],
                                 'cancelled': ['pending'],
+                                'retirement_requested': ['retired', 'approved'],
                                 'retired': [],
                             };
 
-                            return (map[s] ?? []).map(v => OPTIONS[v]).filter(Boolean);
+                             let options = (map[s] ?? []).map(v => OPTIONS[v]).filter(Boolean);
+
+                            // Special: Hide "Approve Retirement" (retired) if there's an outstanding balance
+                            if (this.statusModal.entry?.outstanding_balance > 0.01) {
+                                options = options.filter(o => o.value !== 'retired');
+                            }
+
+                            return options;
                         },
                     },
 
@@ -2180,6 +2454,22 @@
                             retirement_reason: '',
                             retirement_reason_custom: '',
                             retirement_remarks: ''
+                        }
+                    },
+
+                    renewModal: {
+                        open: false,
+                        saving: false,
+                        computing: false,
+                        error: null,
+                        entry: null,
+                        fees: [],
+                        totalDue: 0,
+                        form: {
+                            capital_investment: '',
+                            mode_of_payment: '',
+                            business_scale: '',
+                            business_nature: '',
                         }
                     },
 
@@ -2503,18 +2793,114 @@
                                     retirement_date: this.retireModal.form.retirement_date,
                                     retirement_reason: reason,
                                     retirement_remarks: this.retireModal.form.retirement_remarks,
+                                    source: this.retireModal.entry.is_online ? 'online' : 'walkin',
                                 }),
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.message || 'Failed to retire business.');
-                            const idx = this.entries.findIndex(e => e.id === this.retireModal.entry.id);
-                            if (idx !== -1) this.entries[idx] = data.entry;
+                            
+                            this.fetch(); // Reload the list to get updated mappings
+                            
                             this.retireModal.open = false;
-                            setTimeout(() => this.openCertModal(data.entry), 400);
+                            setTimeout(() => this.openCertModal(this.retireModal.entry), 400);
                         } catch (err) {
                             this.retireModal.error = err.message;
                         } finally {
                             this.retireModal.saving = false;
+                        }
+                    },
+
+                    // ── RENEW modal ───────────────────────────────────────────────────
+                    openRenewModal(entry) {
+                        this.renewModal.entry = entry;
+                        this.renewModal.fees = [];
+                        this.renewModal.totalDue = 0;
+                        this.renewModal.error = null;
+                        this.renewModal.saving = false;
+                        this.renewModal.computing = false;
+                        this.renewModal.form = {
+                            capital_investment: entry.capital_investment || '',
+                            mode_of_payment: entry.mode_of_payment || '',
+                            business_scale: entry.business_scale || '',
+                            business_nature: entry.business_nature || '',
+                        };
+                        this.renewModal.open = true;
+                        // Auto-compute fees if data is ready
+                        if (this.renewModal.form.capital_investment && this.renewModal.form.mode_of_payment) {
+                            this.renewComputeFees();
+                        }
+                    },
+
+                    async renewComputeFees() {
+                        const gs = parseFloat(this.renewModal.form.capital_investment) || 0;
+                        const mode = this.renewModal.form.mode_of_payment;
+                        if (!gs || !mode) {
+                            this.renewModal.fees = [];
+                            this.renewModal.totalDue = 0;
+                            return;
+                        }
+                        this.renewModal.computing = true;
+                        try {
+                            const res = await window.fetch('{{ route('bpls.fee-rules.compute') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    capital_investment: gs,
+                                    business_scale: this.renewModal.form.business_scale || '',
+                                    mode_of_payment: mode,
+                                    entry_id: this.renewModal.entry?.id ?? null,
+                                }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Fee computation failed.');
+                            this.renewModal.fees = data.fees;
+                            this.renewModal.totalDue = data.total_due;
+                        } catch (err) {
+                            this.renewModal.error = err.message;
+                        } finally {
+                            this.renewModal.computing = false;
+                        }
+                    },
+
+                    async submitRenew() {
+                        this.renewModal.saving = true;
+                        this.renewModal.error = null;
+                        try {
+                            const entry = this.renewModal.entry;
+                            const isOnline = entry.is_online || entry.source === 'online';
+                            const url = isOnline
+                                ? `{{ url('bpls/business-list') }}/${entry.id}/approve-online-renewal`
+                                : `{{ url('bpls/business-list') }}/${entry.id}/approve-payment`;
+
+                            const res = await window.fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                    'Accept': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    ...this.renewModal.form,
+                                    total_due: this.renewModal.totalDue,
+                                }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message || 'Failed to process renewal.');
+
+                            this.renewModal.open = false;
+                            if (data.redirect_url) {
+                                window.location.href = data.redirect_url;
+                            } else {
+                                await this.fetch();
+                            }
+                        } catch (err) {
+                            this.renewModal.error = err.message;
+                        } finally {
+                            this.renewModal.saving = false;
                         }
                     },
 
@@ -2709,6 +3095,7 @@
                             'rejected': 'Rejected',
                             'cancelled': 'Cancelled',
                             'retired': 'Retired',
+                            'retirement_requested': 'Retirement Req.',
                         };
                         return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Pending');
                     },
@@ -2721,6 +3108,7 @@
                             'completed': 'bg-green-50 text-logo-green border-green-200',
                             'rejected': 'bg-red-50 text-red-500 border-red-200',
                             'retired': 'bg-orange-50 text-orange-500 border-orange-200',
+                            'retirement_requested': 'bg-orange-50 text-orange-600 border-orange-200',
                             'cancelled': 'bg-gray-50 text-gray-400 border-gray-200',
                             'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
                         };
@@ -2735,6 +3123,7 @@
                             'completed': 'bg-logo-green',
                             'rejected': 'bg-red-400',
                             'retired': 'bg-orange-400',
+                            'retirement_requested': 'bg-orange-400',
                             'cancelled': 'bg-gray-300',
                             'pending': 'bg-yellow-400',
                         };

@@ -14,12 +14,7 @@ class StoreFaasRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Owner / Declarant
-            'owner_name'            => 'required|string|max:255',
-            'owner_address'         => 'required|string|max:500',
-            'owner_tin'             => 'nullable|string|max:50',
-            'owner_contact'         => 'nullable|string|max:50',
-            'owner_email'           => 'nullable|email|max:255',
+            // Administrator (Legacy / Optional)
             'administrator_name'    => 'nullable|string|max:255',
             'administrator_address' => 'nullable|string|max:500',
 

@@ -1,5 +1,5 @@
 {{-- Transfer of Ownership Modal --}}
-<div id="transferModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="transferModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
         <div class="px-6 py-4 bg-indigo-700 text-white flex justify-between items-center">
             <h3 class="font-bold text-lg leading-none tracking-tight">Transfer of Ownership</h3>

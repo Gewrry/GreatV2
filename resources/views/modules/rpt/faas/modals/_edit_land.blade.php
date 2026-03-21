@@ -1,11 +1,11 @@
 {{-- Edit Land Modal --}}
-<div id="editLandModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="editLandModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
         <div class="px-6 py-4 bg-emerald-700 text-white flex justify-between items-center">
             <h3 class="font-bold text-lg leading-none tracking-tight">Edit Land Appraisal</h3>
             <button onclick="document.getElementById('editLandModal').classList.add('hidden')" class="text-emerald-100 hover:text-white"><i class="fas fa-times"></i></button>
         </div>
-        <form action="" method="POST" class="p-6 space-y-4">
+        <form id="edit-land-form" action="" method="POST" class="p-6 space-y-4">
             @csrf
             @method('PUT')
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -18,8 +18,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Lot No.</label><input type="text" name="lot_no" class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm"></div>
-                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Blk No.</label><input type="text" name="blk_no" class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Lot No.</label><input type="text" id="land_edit_lot_no" name="lot_no" class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm"></div>
+                <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Blk No.</label><input type="text" id="land_edit_blk_no" name="blk_no" class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm"></div>
                 <div><label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Area (sqm) *</label><input type="number" name="area_sqm" step="0.0001" min="0" required class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm"></div>
                 <div>
                     <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 flex justify-between">
@@ -40,6 +40,17 @@
                     <input type="hidden" name="assessment_level" step="0.0001" min="0" max="1" value="0">
                     <div class="px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-xs font-bold">
                         <i class="fas fa-info-circle mr-1 text-blue-400"></i> Auto-calculated
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 grid grid-cols-2 gap-3 bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+                    <div>
+                        <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Market Value</div>
+                        <div class="text-sm font-bold text-gray-700">₱ <span id="land-edit-mv-preview">0.00</span></div>
+                    </div>
+                    <div>
+                        <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Assessed Value</div>
+                        <div class="text-sm font-bold text-indigo-700">₱ <span id="land-edit-av-preview">0.00</span></div>
                     </div>
                 </div>
                 <input type="hidden" name="latitude" id="edit_latitude">
@@ -74,3 +85,59 @@
         </form>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('edit-land-form');
+        const headerLot = document.getElementById('header-lot-no');
+        const headerBlk = document.getElementById('header-blk-no');
+        
+        const lotInput = document.getElementById('land_edit_lot_no');
+        const blkInput = document.getElementById('land_edit_blk_no');
+
+        if (lotInput && headerLot) {
+            lotInput.addEventListener('input', function() {
+                headerLot.innerText = this.value || '—';
+            });
+        }
+        if (blkInput && headerBlk) {
+            blkInput.addEventListener('input', function() {
+                headerBlk.innerText = this.value || '—';
+            });
+        }
+
+        // Live calculation logic
+        const recalc = () => {
+            const area = parseFloat(form.querySelector('[name="area_sqm"]').value) || 0;
+            const unit = parseFloat(form.querySelector('[name="unit_value"]').value) || 0;
+            const adj  = parseFloat(form.querySelector('[name="market_value_adjustments"]').value) || 0;
+            
+            const mv = (area * unit) + adj;
+            const useId = form.querySelector('[name="rpta_actual_use_id"]').value;
+            
+            // Access global assessmentRules defined in _calculations_script
+            let rate = 0;
+            if (typeof assessmentRules !== 'undefined' && assessmentRules[useId]) {
+                const rules = assessmentRules[useId];
+                const match = rules.find(r => mv >= r.min && (r.max === null || mv <= r.max));
+                if (match) rate = match.rate;
+            }
+            
+            form.querySelector('[name="assessment_level"]').value = rate;
+            const av = mv * rate;
+
+            const fmt = (v) => new Intl.NumberFormat('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2}).format(v);
+            document.getElementById('land-edit-mv-preview').innerText = fmt(mv);
+            document.getElementById('land-edit-av-preview').innerText = fmt(av);
+        };
+
+        ['rpta_actual_use_id','area_sqm','unit_value','market_value_adjustments','assessment_level']
+            .forEach(n => {
+                const input = form.querySelector(`[name="${n}"]`);
+                if (input) input.addEventListener('input', recalc);
+            });
+            
+        // Trigger once for initial state
+        setTimeout(recalc, 300);
+    });
+</script>

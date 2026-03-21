@@ -30,7 +30,7 @@
     <table>
         <tr>
             <th width="30%">Owner of Real Property</th>
-            <td colspan="3">{{ $td->property?->owner_name }}</td>
+            <td colspan="3">{{ $td->property?->primary_owner_name }}</td>
         </tr>
         <tr>
             <th>Address of Owner</th>

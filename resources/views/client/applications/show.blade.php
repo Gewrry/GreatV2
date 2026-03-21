@@ -66,6 +66,11 @@
                             class="px-6 py-3 bg-white text-green text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-green hover:text-white transition-all shadow-xl shadow-black/10">
                             ⬇️ Download Permit
                         </a>
+                        @if($application->workflow_status === 'approved')
+                            <a href="{{ route('client.applications.retire.form', $application->id) }}" class="p-3 bg-red-500/20 text-white/70 hover:text-white hover:bg-red-500 transition-all rounded-2xl border border-white/10 tooltip" title="Retire Business">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                            </a>
+                        @endif
                     @endif
 
                     <form action="{{ route('client.applications.destroy', $application->id) }}" method="POST" onsubmit="return confirm('Delete this application?')">

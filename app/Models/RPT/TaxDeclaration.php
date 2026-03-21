@@ -62,6 +62,11 @@ class TaxDeclaration extends Model
         return $this->belongsTo(FaasProperty::class, 'faas_property_id');
     }
 
+    public function getPrimaryOwnerNameAttribute()
+    {
+        return $this->property?->primary_owner_name ?? '—';
+    }
+
     public function revisionYear(): BelongsTo
     {
         return $this->belongsTo(RptaRevisionYear::class, 'revision_year_id');
@@ -117,7 +122,7 @@ class TaxDeclaration extends Model
      */
     public function activityLogs(): HasMany
     {
-        return $this->hasMany(TdActivityLog::class, 'tax_declaration_id')->orderBy('id');
+        return $this->hasMany(TdActivityLog::class, 'tax_declaration_id');
     }
 
     // ─── Status / Edit-Lock Helpers ───────────────────────────────────────────────
@@ -243,7 +248,8 @@ class TaxDeclaration extends Model
                         'revision_year_id'     => $faas->rpta_revision_year_id,
                         'declaration_reason'   => 'initial',
                         'tax_rate'             => 0.02, // Default basic RPT
-                        'is_taxable'           => true,
+                        'is_taxable'           => (bool)$faas->is_taxable,
+                        'exemption_basis'      => $faas->exemption_basis,
                         'total_market_value'   => $comp->market_value,
                         'total_assessed_value' => $comp->assessed_value,
                         'status'               => 'approved',
@@ -261,6 +267,53 @@ class TaxDeclaration extends Model
                 }
             }
         }
+    }
+
+    /**
+     * MRPAAO-Compliant Manual Generation:
+     * Create a single TD for a specific FAAS component.
+     */
+    public static function createFromFaas(FaasProperty $faas, string $kind, int $componentId)
+    {
+        $fkField = "faas_{$kind}_id";
+        
+        // Find the specific component
+        $comp = match($kind) {
+            'land'      => FaasLand::find($componentId),
+            'building'  => FaasBuilding::find($componentId),
+            'machinery' => FaasMachinery::find($componentId),
+            default     => null
+        };
+
+        if (!$comp) return null;
+
+        $td = self::create([
+            'faas_property_id'     => $faas->id,
+            $fkField               => $comp->id,
+            'property_kind'        => $kind,
+            'property_type'        => $kind,
+            'effectivity_year'     => date('Y') + 1,
+            'revision_year_id'     => $faas->rpta_revision_year_id,
+            'declaration_reason'   => 'initial',
+            'tax_rate'             => 0.02,
+            'is_taxable'           => (bool)$faas->is_taxable,
+            'exemption_basis'      => $faas->exemption_basis,
+            'total_market_value'   => $comp->market_value,
+            'total_assessed_value' => $comp->assessed_value,
+            'status'               => 'approved',
+            'td_no'                => self::generateTdNo(),
+            'approved_by'          => $faas->approved_by,
+            'approved_at'          => $faas->approved_at,
+            'created_by'           => $faas->approved_by,
+            'remarks'              => "Manually generated based on FAAS ARP {$faas->arp_no}."
+        ]);
+
+        TdActivityLog::record($td->id, 'approved', 'TD Generated from FAAS component.', [
+            'assessed_value' => $td->total_assessed_value,
+            'manual_trigger' => true
+        ]);
+
+        return $td;
     }
 
     /**
