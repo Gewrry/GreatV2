@@ -153,18 +153,43 @@
                                         🔄 Refresh Status
                                     </a>
                                 </div>
-                            @elseif($app->workflow_status === 'approved')
+                            @elseif(in_array($app->workflow_status, ['approved', 'approved_for_renewal']))
                                 <a href="{{ route('client.applications.show', $app->id) }}"
                                    class="px-5 py-2.5 bg-logo-green text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-green transform hover:-translate-y-0.5 active:translate-y-0 transition-all shadow-lg shadow-logo-green/20">
                                     View Digital Permit
                                 </a>
-                                <a href="{{ route('client.applications.renew', $app->id) }}"
-                                   class="px-5 py-2.5 bg-white text-logo-teal text-[11px] font-black uppercase tracking-widest rounded-xl border border-logo-teal/30 hover:bg-bluebody/30 transition-all">
-                                    Renew Permit
-                                </a>
-                                <a href="{{ route('client.applications.retire.form', $app->id) }}" class="p-2.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all rounded-xl border border-red-200 shadow-sm tooltip" title="Retire Business">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                                </a>
+                                @if($app->workflow_status === 'approved_for_renewal')
+                                    <a href="{{ route('client.applications.renew', $app->id) }}"
+                                       class="px-5 py-2.5 bg-blue-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                                        Start Renewal Application
+                                    </a>
+                                @elseif(in_array($app->workflow_status, ['approved', 'paid', 'assessed']))
+                                    @php $hasBalance = $app->outstanding_balance > 0.01; @endphp
+                                    <a href="{{ $hasBalance ? 'javascript:void(0)' : route('client.applications.renew', $app->id) }}"
+                                       class="px-5 py-2.5 {{ $hasBalance ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-white text-logo-teal border-logo-teal/30 hover:bg-bluebody/30' }} text-[11px] font-black uppercase tracking-widest rounded-xl border transition-all tooltip"
+                                       title="{{ $hasBalance ? 'Please settle your outstanding balance of ₱' . number_format($app->outstanding_balance, 2) . ' to request renewal.' : 'Request renewal for this business' }}">
+                                        Renew Permit
+                                    </a>
+                                @endif
+
+                                @if(in_array($app->workflow_status, ['approved', 'paid', 'assessed', 'approved_for_renewal']))
+                                    <a href="{{ route('client.applications.retire.form', $app->id) }}" 
+                                       class="p-2.5 {{ $app->outstanding_balance <= 0.01 ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-gray-50 text-gray-400 cursor-not-allowed' }} transition-all rounded-xl border border-red-200 shadow-sm tooltip" 
+                                       title="{{ $app->outstanding_balance <= 0.01 ? 'Retire Business' : 'Settle balance to retire' }}">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                                    </a>
+                                @endif
+                            @elseif($app->workflow_status === 'renewal_requested')
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="px-5 py-2.5 bg-blue-50 text-blue-600 text-[11px] font-black uppercase tracking-widest rounded-xl border border-blue-200 shadow-sm flex items-center gap-2">
+                                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                         </svg>
+                                         Renewal Pending Approval
+                                    </span>
+                                    <span class="text-[10px] text-gray/60 italic">Please wait for back-office validation</span>
+                                </div>
                             @elseif($app->workflow_status === 'retirement_requested')
                                 <span class="px-5 py-2.5 bg-orange-50 text-orange-600 text-[11px] font-black uppercase tracking-widest rounded-xl border border-orange-200 shadow-sm flex items-center gap-2">
                                      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
@@ -198,7 +223,7 @@
                         </div>
                         <div class="w-full bg-bluebody/30 rounded-full h-2 overflow-hidden border border-bluebody/50">
                             <div class="h-full rounded-full transition-all duration-1000 shadow-[0_0_12px_rgba(0,169,157,0.3)]
-                                        {{ $app->workflow_status === 'approved' ? 'bg-logo-green' :
+                                        {{ in_array($app->workflow_status, ['approved', 'renewal_requested', 'approved_for_renewal']) ? 'bg-logo-green' :
                                            ($app->workflow_status === 'rejected' ? 'bg-red-400' : 'bg-logo-teal') }}"
                                  style="width: {{ $pct }}%"></div>
                         </div>

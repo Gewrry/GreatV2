@@ -94,22 +94,47 @@ class ApplicationController extends Controller
     {
         abort_unless($application->client_id === $this->client()->id, 403);
 
-        if ($application->workflow_status !== 'approved') {
-            return back()->with('error', 'Only approved applications can be renewed.');
+        $isFullyPaid = (float) $application->outstanding_balance <= 0.01;
+        $allowedStatuses = ['approved', 'paid', 'assessed', 'approved_for_renewal'];
+
+        if (!in_array($application->workflow_status, $allowedStatuses) || (!$isFullyPaid && !in_array($application->workflow_status, ['approved', 'approved_for_renewal']))) {
+            return back()->with('error', 'Only approved or fully paid applications can be renewed.');
         }
 
         $currentYear = now()->year;
         $exists = BplsOnlineApplication::where('bpls_business_id', $application->bpls_business_id)
             ->where('permit_year', '>=', $currentYear)
-            ->whereIn('workflow_status', ['submitted', 'verified', 'assessed', 'paid', 'approved'])
+            ->whereIn('workflow_status', ['submitted', 'verified', 'assessed', 'paid', 'approved', 'renewal_requested', 'approved_for_renewal'])
             ->where('id', '!=', $application->id)
             ->exists();
 
         if ($exists) {
-            return back()->with('error', 'A renewal application for this business is already in progress or approved for this year.');
+            return back()->with('error', 'A renewal application or request already exists for this business for ' . $currentYear . '.');
         }
 
-        return redirect()->route('client.applications.create', ['from' => $application->id]);
+        // ── If already approved for renewal, proceed to the create form ──
+        if ($application->workflow_status === 'approved_for_renewal') {
+            return redirect()->route('client.applications.create', ['from' => $application->id])
+                ->with('info', "Starting your renewal for {$currentYear}. Previous data has been pre-filled.");
+        }
+
+        // ── Otherwise, submit a RENEWAL REQUEST ──
+        $oldStatus = $application->workflow_status;
+        $application->update(['workflow_status' => 'renewal_requested']);
+
+        if (class_exists(\App\Models\onlineBPLS\BplsActivityLog::class)) {
+            \App\Models\onlineBPLS\BplsActivityLog::create([
+                'bpls_application_id' => $application->id,
+                'actor_type'          => 'client',
+                'actor_id'            => $this->client()->id,
+                'action'              => 'renewal_requested',
+                'from_status'         => $oldStatus,
+                'to_status'           => 'renewal_requested',
+                'remarks'             => 'Client requested for business renewal.',
+            ]);
+        }
+
+        return back()->with('success', 'Your renewal request has been submitted. Please wait for back-office approval before proceeding with the application.');
     }
 
     // ── RETIRE FORM ────────────────────────────────────────────────────────
@@ -123,13 +148,11 @@ class ApplicationController extends Controller
         }
 
         $application->load(['business', 'owner']);
-
-        // Calculate total paid vs total assessed (deduplicating master + online payments by OR number)
-        $totalAssessed = (float) ($application->assessment_amount ?? 0);
-        $totalPaid = $this->calcTotalPaid($application->id);
-
-        $outstandingBalance = max(0, $totalAssessed - $totalPaid);
-        $canRetire = $outstandingBalance <= 0.01; // allow for rounding
+        
+        $outstandingBalance = (float) $application->outstanding_balance;
+        $totalPaid = (float) $application->total_paid;
+        $totalAssessed = (float) $application->assessment_amount;
+        $canRetire = $outstandingBalance <= 0.01;
 
         return view('client.applications.retire', compact(
             'application', 'totalAssessed', 'totalPaid', 'outstandingBalance', 'canRetire'
@@ -146,10 +169,8 @@ class ApplicationController extends Controller
                 ->with('error', 'Only approved applications can be retired.');
         }
 
-        // ── Payment enforcement (deduplicating master + online payments) ──
-        $totalAssessed = (float) ($application->assessment_amount ?? 0);
-        $totalPaid     = $this->calcTotalPaid($application->id);
-        $outstandingBalance = $totalAssessed - $totalPaid;
+        // ── Payment enforcement (using model accessor which accounts for discounts) ──
+        $outstandingBalance = (float) $application->outstanding_balance;
 
         if ($outstandingBalance > 0.01) {
             return redirect()->route('client.applications.retire.form', $application->id)

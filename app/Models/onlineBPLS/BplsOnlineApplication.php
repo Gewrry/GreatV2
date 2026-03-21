@@ -31,7 +31,7 @@ class BplsOnlineApplication extends Model
         'application_type',     // new | renewal
         'discount_claimed',
         'permit_year',
-        'workflow_status',      // submitted | returned | verified | assessed | paid | approved | rejected
+        'workflow_status',      // submitted | returned | verified | assessed | paid | approved | rejected | renewal_requested | approved_for_renewal
         'ors_confirmed',
         'signatory_id',
         'signatory_name',
@@ -164,10 +164,12 @@ class BplsOnlineApplication extends Model
             'assessed' => 'For Payment',
             'paid' => 'For Final Approval',
             'approved' => 'Approved',
+            'renewal_requested' => 'Renewal Requested',
+            'approved_for_renewal' => 'Approved for Renewal',
             'retirement_requested' => 'Retirement Requested',
             'rejected' => 'Rejected',
             'retired' => 'Retired',
-            default => ucfirst($this->workflow_status),
+            default => ucfirst(str_replace('_', ' ', $this->workflow_status)),
         };
     }
 

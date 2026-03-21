@@ -440,16 +440,17 @@ class BusinessListController extends Controller
             $from = $entry->status;
         }
 
-        // Special check: cannot change status to retired unless approved here
-        if ($to === 'retired') {
+        // Special check: cannot change status to retired or approved_for_renewal unless approved here
+        if ($to === 'retired' || $to === 'approved_for_renewal') {
             $balance = (float) $entry->outstanding_balance;
             if ($balance > 0.01) {
+                $action = ($to === 'retired') ? 'approve retirement' : 'approve renewal request';
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot approve retirement. There is an outstanding balance of ₱' . number_format($balance, 2) . ' that must be settled first.'
+                    'message' => "Cannot {$action}. There is an outstanding balance of ₱" . number_format($balance, 2) . " that must be settled first."
                 ], 422);
             }
-        } // end if ($to === 'retired')
+        } // end if check
         // Note: retirement with reason/date must go through the dedicated /retire endpoint
 
         if (!$isOnline && $to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment'])) {
@@ -475,11 +476,13 @@ class BusinessListController extends Controller
             'pending' => ['rejected', 'cancelled'],
             'for_payment' => ['pending', 'rejected', 'cancelled'],
             'for_renewal_payment' => ['pending', 'rejected', 'cancelled'],
-            'completed' => ['pending', 'retirement_requested', 'retired'],
-            'approved' => ['pending', 'rejected', 'cancelled', 'retirement_requested', 'retired'],
+            'approved' => ['pending', 'rejected', 'cancelled', 'retirement_requested', 'retired', 'renewal_requested'],
+            'completed' => ['pending', 'retirement_requested', 'renewal_requested'],
             'rejected' => ['pending'],
             'cancelled' => ['pending'],
             'retirement_requested' => ['retired', 'approved'],
+            'renewal_requested' => ['approved_for_renewal', 'approved'],
+            'approved_for_renewal' => ['approved'],
             'retired' => [],
         ];
 
@@ -738,7 +741,9 @@ class BusinessListController extends Controller
             'completed' => 'Completed — Ready to Renew',
             'rejected' => 'Rejected',
             'cancelled' => 'Cancelled',
-            'retired' => 'Retired',
+            'retired' => 'Retired Official',
+            'renewal_requested' => 'Renewal Requested',
+            'approved_for_renewal' => 'Approved for Renewal',
             default => ucwords(str_replace('_', ' ', $status)),
         };
     }

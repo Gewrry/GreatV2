@@ -61,13 +61,16 @@
                             class="px-8 py-3 bg-orange-500 text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-orange-600 transition-all shadow-xl shadow-orange-500/30 animate-pulse border-2 border-white/20">
                             💳 Pay Now
                         </a>
-                    @elseif($application->workflow_status === 'approved' || ($application->workflow_status === 'paid' && $application->isPaymentSatisfiedForApproval()))
+                    @elseif(in_array($application->workflow_status, ['approved', 'renewal_requested', 'approved_for_renewal']) || ($application->workflow_status === 'paid' && $application->isPaymentSatisfiedForApproval()))
                         <a href="{{ route('client.applications.permit.download', $application->id) }}"
                             class="px-6 py-3 bg-white text-green text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-green hover:text-white transition-all shadow-xl shadow-black/10">
-                            ⬇️ Download Permit
+                            Download Permit
                         </a>
-                        @if($application->workflow_status === 'approved')
-                            <a href="{{ route('client.applications.retire.form', $application->id) }}" class="p-3 bg-red-500/20 text-white/70 hover:text-white hover:bg-red-500 transition-all rounded-2xl border border-white/10 tooltip" title="Retire Business">
+                        @php $canRetire = $application->outstanding_balance <= 0.01; @endphp
+                        @if(in_array($application->workflow_status, ['approved', 'renewal_requested', 'approved_for_renewal']))
+                            <a href="{{ $canRetire ? route('client.applications.retire.form', $application->id) : 'javascript:void(0)' }}" 
+                               class="p-3 {{ $canRetire ? 'bg-red-500/20 text-white/70 hover:text-white hover:bg-red-500' : 'bg-gray-500/10 text-white/20 cursor-not-allowed' }} transition-all rounded-2xl border border-white/10 tooltip" 
+                               title="{{ $canRetire ? 'Retire Business' : 'Settle outstanding balance of ₱' . number_format($application->outstanding_balance, 2) . ' to retire' }}">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                             </a>
                         @endif

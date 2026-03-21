@@ -1784,9 +1784,12 @@
 
                                             {{-- Renew button --}}
                                             <button type="button"
-                                                x-show="entry.status === 'completed' || entry.status === 'paid' || ((entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment') && entry.outstanding_balance <= 0.01)"
+                                                x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
                                                 @click="openRenewModal(entry)"
-                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-logo-blue hover:bg-blue-700 transition-colors">
+                                                :disabled="entry.outstanding_balance > 0.01"
+                                                :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' : 'bg-logo-blue hover:bg-blue-700'"
+                                                :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before renewal.' : 'Renew Business'"
+                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white transition-colors">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor" stroke-width="2.5">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -2063,9 +2066,12 @@
 
                                                     {{-- Renew button --}}
                                                     <button type="button"
-                                                        x-show="entry.status === 'completed' || entry.status === 'paid' || ((entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment') && entry.outstanding_balance <= 0.01)"
+                                                        x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
                                                         @click="openRenewModal(entry)"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-blue hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                                        :disabled="entry.outstanding_balance > 0.01"
+                                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' : 'bg-logo-blue hover:bg-blue-700'"
+                                                        :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before renewal.' : 'Renew Business'"
+                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -2205,9 +2211,12 @@
                                     </button>
                                     {{-- Renew button: visible for completed (walkin) or paid (online) or fully paid balance --}}
                                     <button type="button"
-                                        x-show="entry.status === 'completed' || entry.status === 'paid' || ((entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment') && entry.outstanding_balance <= 0.01)"
+                                        x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
                                         @click="openRenewModal(entry)"
-                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white bg-logo-blue hover:bg-blue-700 transition-colors whitespace-nowrap">
+                                        :disabled="entry.outstanding_balance > 0.01"
+                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' : 'bg-logo-blue hover:bg-blue-700'"
+                                        :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before renewal.' : 'Renew Business'"
+                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -2419,25 +2428,41 @@
                                     icon: '⊘',
                                     color: 'orange',
                                 },
+                                renewal_requested: {
+                                    value: 'renewal_requested',
+                                    label: 'Request Renewal',
+                                    description: 'Mark this business as requesting renewal',
+                                    icon: '⟳',
+                                    color: 'blue',
+                                },
+                                approved_for_renewal: {
+                                    value: 'approved_for_renewal',
+                                    label: 'Approve Renewal Request',
+                                    description: 'Allow the client to proceed with renewal',
+                                    icon: '✓',
+                                    color: 'green',
+                                },
                             };
 
                             const map = {
                                 'pending': ['rejected', 'cancelled'],
                                 'for_payment': ['pending', 'rejected', 'cancelled'],
                                 'for_renewal_payment': ['pending', 'rejected', 'cancelled'],
-                                'approved': ['pending', 'rejected', 'cancelled', 'retirement_requested'],
-                                'completed': ['pending', 'retirement_requested'],
+                                'approved': ['pending', 'rejected', 'cancelled', 'retirement_requested', 'renewal_requested'],
+                                'completed': ['pending', 'retirement_requested', 'renewal_requested'],
                                 'rejected': ['pending'],
                                 'cancelled': ['pending'],
                                 'retirement_requested': ['retired', 'approved'],
+                                'renewal_requested': ['approved_for_renewal', 'approved'],
+                                'approved_for_renewal': ['approved'],
                                 'retired': [],
                             };
 
                              let options = (map[s] ?? []).map(v => OPTIONS[v]).filter(Boolean);
 
-                            // Special: Hide "Approve Retirement" (retired) if there's an outstanding balance
+                            // Special: Hide "Approve Retirement" (retired) and "Approve Renewal" if there's an outstanding balance
                             if (this.statusModal.entry?.outstanding_balance > 0.01) {
-                                options = options.filter(o => o.value !== 'retired');
+                                options = options.filter(o => o.value !== 'retired' && o.value !== 'approved_for_renewal');
                             }
 
                             return options;
@@ -3096,6 +3121,8 @@
                             'cancelled': 'Cancelled',
                             'retired': 'Retired',
                             'retirement_requested': 'Retirement Req.',
+                            'renewal_requested': 'Renewal Req.',
+                            'approved_for_renewal': 'Renewal Approved',
                         };
                         return map[s] || (s ? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Pending');
                     },
@@ -3109,6 +3136,8 @@
                             'rejected': 'bg-red-50 text-red-500 border-red-200',
                             'retired': 'bg-orange-50 text-orange-500 border-orange-200',
                             'retirement_requested': 'bg-orange-50 text-orange-600 border-orange-200',
+                            'renewal_requested': 'bg-blue-50 text-blue-600 border-blue-200',
+                            'approved_for_renewal': 'bg-emerald-50 text-emerald-600 border-emerald-200',
                             'cancelled': 'bg-gray-50 text-gray-400 border-gray-200',
                             'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
                         };
@@ -3124,6 +3153,8 @@
                             'rejected': 'bg-red-400',
                             'retired': 'bg-orange-400',
                             'retirement_requested': 'bg-orange-400',
+                            'renewal_requested': 'bg-blue-400',
+                            'approved_for_renewal': 'bg-emerald-400',
                             'cancelled': 'bg-gray-300',
                             'pending': 'bg-yellow-400',
                         };
