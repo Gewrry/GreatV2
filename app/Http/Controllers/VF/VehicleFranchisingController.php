@@ -12,6 +12,7 @@ use App\Models\VF\FranchiseVehicle;
 use App\Models\VF\FranchiseHistory;
 use App\Models\VF\Payment;
 use App\Models\VF\Toda;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -178,7 +179,7 @@ class VehicleFranchisingController extends Controller
         $franchise = Franchise::with(['owner', 'toda', 'vehicle', 'history.performedBy'])
             ->findOrFail($id);
 
-        return view('modules.vf.show', compact('franchise'));
+        return view('modules.vf.payments.show', compact('franchise'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -301,14 +302,25 @@ class VehicleFranchisingController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // DESTROY
+    // DESTROY  (soft delete — record stays in DB)
     // ─────────────────────────────────────────────────────────────────────────
     public function destroy($id)
     {
-        Franchise::findOrFail($id)->delete();
+        $franchise = Franchise::findOrFail($id);
+
+        FranchiseHistory::create([
+            'franchise_id' => $franchise->id,
+            'action' => 'deleted',
+            'permit_number' => $franchise->permit_number,
+            'action_date' => now()->toDateString(),
+            'notes' => 'Record removed from active list by ' . (auth()->user()->name ?? 'System') . '.',
+            'performed_by' => auth()->id(),
+        ]);
+
+        $franchise->delete();
 
         return redirect()->route('vf.index')
-            ->with('success', 'Franchise record deleted.');
+            ->with('success', 'Franchise record removed.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -350,7 +362,6 @@ class VehicleFranchisingController extends Controller
         $franchise = Franchise::with(['owner', 'vehicle'])->findOrFail($id);
 
         $validated = $request->validate([
-            // Permit fields
             'permit_number' => 'required|string|unique:vf_franchises,permit_number',
             'permit_date' => 'required|date',
             'toda_id' => 'nullable|exists:vf_todas,id',
@@ -359,7 +370,6 @@ class VehicleFranchisingController extends Controller
             'driver_contact' => 'nullable|string|max:50',
             'license_number' => 'nullable|string|max:100',
             'remarks' => 'nullable|string',
-            // Payment fields
             'or_number' => 'required|string|unique:vf_payments,or_number',
             'or_date' => 'required|date',
             'agency' => 'nullable|string|max:255',
@@ -376,7 +386,6 @@ class VehicleFranchisingController extends Controller
             'items.*.amount' => 'required|numeric|min:0',
         ]);
 
-        // Verify OR number belongs to user's assigned AF51 booklet
         $orNumber = $validated['or_number'];
         $validBook = OrAssignment::where('user_id', (int) Auth::id())
             ->where('receipt_type', 'AF51')
@@ -391,7 +400,6 @@ class VehicleFranchisingController extends Controller
                 ->withInput();
         }
 
-        // Filter out zero-amount items
         $items = collect($validated['items'])
             ->filter(fn($i) => (float) $i['amount'] > 0)
             ->values()
@@ -409,7 +417,6 @@ class VehicleFranchisingController extends Controller
 
         DB::transaction(function () use ($validated, $items, $total, $amountInWords, $collectedBy, $franchise) {
 
-            // 1. Create the payment record
             Payment::create([
                 'or_number' => $validated['or_number'],
                 'or_date' => $validated['or_date'],
@@ -429,7 +436,6 @@ class VehicleFranchisingController extends Controller
                 'collected_by' => $collectedBy,
             ]);
 
-            // 2. Update franchise permit info
             $franchise->update([
                 'permit_number' => $validated['permit_number'],
                 'permit_date' => $validated['permit_date'],
@@ -442,12 +448,10 @@ class VehicleFranchisingController extends Controller
                 'status' => 'active',
             ]);
 
-            // 3. Update sticker number if a new one was provided
             if (!empty($validated['sticker_number'])) {
                 $franchise->vehicle()->update(['sticker_number' => $validated['sticker_number']]);
             }
 
-            // 4. Log to franchise history
             FranchiseHistory::create([
                 'franchise_id' => $franchise->id,
                 'action' => 'renewed',
@@ -459,10 +463,170 @@ class VehicleFranchisingController extends Controller
             ]);
         });
 
-        // Redirect to print the new OR receipt
         $payment = Payment::where('or_number', $validated['or_number'])->firstOrFail();
 
         return redirect()->route('vf.payments.print', $payment->id)
             ->with('success', "Franchise FN #{$franchise->fn_number} renewed. OR #{$validated['or_number']} recorded.");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HELPERS — shared retirement balance check
+    //
+    // Rules:
+    //   1. Never paid at all → allow (nothing was ever owed).
+    //   2. Has payment history → find every year from the first-payment year
+    //      up to the current year and ensure each one has at least one paid OR.
+    //      Any gap year blocks retirement.
+    // ─────────────────────────────────────────────────────────────────────────
+    private function buildRetireStatus(Franchise $franchise): array
+    {
+        $currentYear = now()->year;
+
+        // All paid payments for this franchise, keyed by year
+        $allPaid = Payment::where('franchise_id', $franchise->id)
+            ->where('status', 'paid')
+            ->orderBy('or_date')
+            ->get();
+
+        // No payment history at all → allow retirement unconditionally
+        if ($allPaid->isEmpty()) {
+            return [
+                'can_retire' => true,
+                'block_reason' => '',
+                'unpaid_years' => [],
+                'current_year' => $currentYear,
+                'first_payment_year' => null,
+                'last_payment_year' => null,
+                'last_or_number' => null,
+                'last_or_amount' => null,
+                'never_paid' => true,
+            ];
+        }
+
+        // Determine the first year that a payment obligation began.
+        // We use franchised_at if available, otherwise the year of the first
+        // paid OR, so we never flag "gaps" that pre-date the franchise's
+        // actual operation.
+        $firstPaymentYear = (int) Carbon::parse($allPaid->first()->or_date)->year;
+
+        $startYear = $franchise->franchised_at
+            ? (int) Carbon::parse($franchise->franchised_at)->year
+            : $firstPaymentYear;
+
+        // Build a set of years that have at least one paid OR
+        $paidYears = $allPaid
+            ->map(fn($p) => (int) Carbon::parse($p->or_date)->year)
+            ->unique()
+            ->all();
+
+        // Find every year from startYear → currentYear that is NOT in paidYears
+        $unpaidYears = [];
+        for ($y = $startYear; $y <= $currentYear; $y++) {
+            if (!in_array($y, $paidYears, true)) {
+                $unpaidYears[] = $y;
+            }
+        }
+
+        $lastPayment = $allPaid->last();
+        $lastPaymentYear = (int) Carbon::parse($lastPayment->or_date)->year;
+
+        if (!empty($unpaidYears)) {
+            $yearList = implode(', ', $unpaidYears);
+            $reason = count($unpaidYears) === 1
+                ? "This franchise has an unpaid renewal fee for {$yearList}. "
+                . "Please settle all outstanding fees at the Treasury before retiring."
+                : "This franchise has unpaid renewal fees for the following year(s): {$yearList}. "
+                . "Please settle all outstanding fees at the Treasury before retiring.";
+
+            return [
+                'can_retire' => false,
+                'block_reason' => $reason,
+                'unpaid_years' => $unpaidYears,
+                'current_year' => $currentYear,
+                'first_payment_year' => $startYear,
+                'last_payment_year' => $lastPaymentYear,
+                'last_or_number' => $lastPayment->or_number,
+                'last_or_amount' => $lastPayment->total_amount,
+                'never_paid' => false,
+            ];
+        }
+
+        // All years covered → allow
+        return [
+            'can_retire' => true,
+            'block_reason' => '',
+            'unpaid_years' => [],
+            'current_year' => $currentYear,
+            'first_payment_year' => $startYear,
+            'last_payment_year' => $lastPaymentYear,
+            'last_or_number' => $lastPayment->or_number,
+            'last_or_amount' => $lastPayment->total_amount,
+            'total_paid_year' => $allPaid
+                ->filter(fn($p) => (int) Carbon::parse($p->or_date)->year === $currentYear)
+                ->sum('total_amount'),
+            'never_paid' => false,
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RETIRE CHECK  (GET — AJAX pre-flight)
+    // ─────────────────────────────────────────────────────────────────────────
+    public function retireCheck($id)
+    {
+        $franchise = Franchise::with(['owner', 'vehicle'])->findOrFail($id);
+
+        return response()->json($this->buildRetireStatus($franchise));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // RETIRE  (POST)
+    // ─────────────────────────────────────────────────────────────────────────
+    public function retire(Request $request, $id)
+    {
+        $franchise = Franchise::with(['owner'])->findOrFail($id);
+
+        $request->validate([
+            'retirement_reason' => 'required|string|max:1000',
+            'retirement_date' => 'required|date',
+            'retirement_remarks' => 'nullable|string|max:1000',
+        ]);
+
+        // ── Balance guard (server-side, mirrors retireCheck) ─────────────────
+        $status = $this->buildRetireStatus($franchise);
+
+        if (!$status['can_retire']) {
+            return response()->json([
+                'success' => false,
+                'message' => $status['block_reason'],
+            ], 422);
+        }
+
+        // ── Retire ────────────────────────────────────────────────────────────
+        DB::transaction(function () use ($franchise, $request) {
+            $franchise->update([
+                'status' => 'retired',
+                'retirement_reason' => $request->retirement_reason,
+                'retirement_date' => $request->retirement_date,
+                'retirement_remarks' => $request->retirement_remarks,
+                'retired_at' => now(),
+                'retired_by' => auth()->id(),
+            ]);
+
+            FranchiseHistory::create([
+                'franchise_id' => $franchise->id,
+                'action' => 'retired',
+                'permit_number' => $franchise->permit_number,
+                'action_date' => $request->retirement_date,
+                'notes' => "Franchise retired. Reason: {$request->retirement_reason}"
+                    . ($request->retirement_remarks ? ". Remarks: {$request->retirement_remarks}" : ''),
+                'performed_by' => auth()->id(),
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "Franchise FN #{$franchise->fn_number} has been retired.",
+            'franchise' => $franchise->fresh(),
+        ]);
     }
 }

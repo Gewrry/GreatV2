@@ -102,6 +102,18 @@
                 View Permit
             </a>
 
+        @elseif($application->workflow_status === 'renewal_requested')
+            <form action="{{ route('bpls.business-list.change-status', $application->id) }}" method="POST" class="w-full sm:w-auto">
+                @csrf
+                <input type="hidden" name="status" value="approved_for_renewal">
+                <input type="hidden" name="source" value="online">
+                <button type="submit"
+                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 text-[11px] font-black bg-logo-blue text-white uppercase tracking-widest rounded-xl hover:bg-logo-teal hover:scale-[1.02] transition-all duration-200 shadow-lg shadow-logo-blue/25 whitespace-nowrap">
+                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    Approve Renewal Request
+                </button>
+            </form>
+
         @elseif($application->workflow_status === 'retirement_requested')
             <button type="button" @click="showRetire = true"
                 class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 text-[11px] font-black bg-orange-600 text-white uppercase tracking-widest rounded-xl hover:bg-orange-700 hover:scale-[1.02] transition-all duration-200 shadow-lg shadow-orange-600/25 whitespace-nowrap">
