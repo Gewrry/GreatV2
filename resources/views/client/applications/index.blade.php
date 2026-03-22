@@ -15,6 +15,15 @@
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="mb-6 flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-500 font-bold animate-in fade-in slide-in-from-top-4 duration-300">
+                <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{ session('error') }}
+            </div>
+        @endif
+
         {{-- Header --}}
         <div class="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>

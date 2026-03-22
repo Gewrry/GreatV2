@@ -97,19 +97,22 @@ class ApplicationController extends Controller
         $isFullyPaid = (float) $application->outstanding_balance <= 0.01;
         $allowedStatuses = ['approved', 'paid', 'assessed', 'approved_for_renewal'];
 
-        if (!in_array($application->workflow_status, $allowedStatuses) || (!$isFullyPaid && !in_array($application->workflow_status, ['approved', 'approved_for_renewal']))) {
-            return back()->with('error', 'Only approved or fully paid applications can be renewed.');
+        if (!in_array($application->workflow_status, $allowedStatuses)) {
+            return back()->with('error', 'Renewal request is not permitted for applications with status: ' . $application->status_label);
         }
 
-        $currentYear = now()->year;
+        if (!$isFullyPaid && !in_array($application->workflow_status, ['approved', 'approved_for_renewal'])) {
+            return back()->with('error', 'Please settle your outstanding balance of ₱' . number_format($application->outstanding_balance, 2) . ' before requesting renewal.');
+        }
+
+        $targetYear = $application->permit_year + 1;
         $exists = BplsOnlineApplication::where('bpls_business_id', $application->bpls_business_id)
-            ->where('permit_year', '>=', $currentYear)
+            ->where('permit_year', '>=', $targetYear)
             ->whereIn('workflow_status', ['submitted', 'verified', 'assessed', 'paid', 'approved', 'renewal_requested', 'approved_for_renewal'])
-            ->where('id', '!=', $application->id)
-            ->exists();
+            ->first();
 
         if ($exists) {
-            return back()->with('error', 'A renewal application or request already exists for this business for ' . $currentYear . '.');
+            return back()->with('error', 'A renewal application or request (#' . $exists->application_number . ') for ' . $exists->permit_year . ' already exists for this business.');
         }
 
         // ── If already approved for renewal, proceed to the create form ──

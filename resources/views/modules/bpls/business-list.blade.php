@@ -7,6 +7,84 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* ── Premium Certificate Styles ─────────────────────────────────── */
+        .cert-paper {
+            background: #fff;
+            padding: 3rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem;
+            font-family: 'Times New Roman', Georgia, serif;
+            color: #111827;
+            line-height: 1.5;
+        }
+
+        .cert-paper::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 6px;
+            background: linear-gradient(to right, #0d9488, #0ea5e9, #0d9488);
+        }
+
+        /* Subtle municipal watermark effect */
+        .cert-paper::after {
+            content: 'OFFICIAL';
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 8rem; font-weight: 900; color: rgba(13, 148, 136, 0.03);
+            pointer-events: none; white-space: nowrap; z-index: 0;
+            letter-spacing: 0.2em;
+        }
+
+        .cert-header { text-align: center; margin-bottom: 2.5rem; position: relative; z-index: 1; }
+        .cert-republic { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #4b5563; margin-bottom: 2px; }
+        .cert-province { font-size: 0.85rem; color: #6b7280; font-style: italic; }
+        .cert-lgu { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; color: #111827; margin: 0.4rem 0; letter-spacing: 0.05em; }
+        .cert-office { font-size: 0.75rem; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: 0.1em; }
+
+        .cert-divider { border: none; height: 3px; background: #111827; margin: 1.25rem 0 0.5rem; }
+        .cert-divider-thin { border: none; height: 1px; background: #d1d5db; margin-bottom: 1.5rem; }
+
+        .cert-title-container { text-align: center; margin-bottom: 2.5rem; position: relative; z-index: 1; }
+        .cert-title { 
+            font-size: 1.8rem; font-weight: 900; text-transform: uppercase; 
+            letter-spacing: 0.1em; color: #111827; margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+        .cert-subtitle { font-size: 0.95rem; color: #4b5563; font-style: italic; }
+
+        .cert-body { position: relative; z-index: 1; margin: 0 auto; max-width: 90%; }
+        .cert-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2.5rem; margin-bottom: 2.5rem; }
+        .cert-field { border-bottom: 1.5px dashed #e5e7eb; padding-bottom: 0.25rem; }
+        .cert-label { 
+            font-size: 0.65rem; font-weight: 800; color: #6b7280; 
+            text-transform: uppercase; letter-spacing: 0.08em; 
+            margin-bottom: 0.25rem; font-family: sans-serif; 
+        }
+        .cert-value { font-size: 1.05rem; font-weight: 700; color: #111827; min-height: 1.4rem; }
+        .cert-value.highlight { color: #c2410c; }
+        .cert-value.full-width { grid-column: span 2; }
+
+        .cert-footer-text { 
+            text-align: center; font-size: 0.9rem; color: #374151; 
+            line-height: 1.7; font-style: italic; margin-bottom: 3.5rem;
+            padding: 0 1rem;
+        }
+
+        .cert-sig-row { display: flex; justify-content: space-between; gap: 3rem; margin-top: 1rem; }
+        .cert-sig-block { flex: 1; text-align: center; }
+        .cert-sig-line { border-top: 2px solid #111827; width: 100%; margin-bottom: 0.5rem; }
+        .cert-sig-name { font-size: 0.9rem; font-weight: 900; text-transform: uppercase; color: #111827; }
+        .cert-sig-title { font-size: 0.7rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+        .cert-meta { 
+            margin-top: 4rem; display: flex; justify-content: space-between; 
+            font-size: 0.65rem; color: #9ca3af; font-family: monospace;
+            border-top: 1px solid #f3f4f6; padding-top: 1rem;
+        }
     </style>
     <div class="py-2">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -869,9 +947,10 @@
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100">
                     <div class="absolute inset-0 bg-blue-900/40 backdrop-blur-sm" @click="renewModal.open = false"></div>
-                    <div class="relative bg-white rounded-2xl shadow-2xl border border-blue-200 w-full max-w-lg flex flex-col max-h-[90vh]"
+                    <div class="relative bg-white rounded-2xl shadow-2xl border border-blue-200 w-full max-w-2xl flex flex-col max-h-[92vh]"
                         x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0">
 
                         {{-- Header --}}
                         <div class="flex items-center justify-between px-5 py-4 border-b border-blue-100 shrink-0">
@@ -883,12 +962,36 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="text-sm font-extrabold text-logo-blue">Renew Business Registration</h3>
-                                    <p class="text-[11px] text-gray truncate max-w-[240px]" x-text="renewModal.entry?.business_name"></p>
+                                    <h3 class="text-sm font-extrabold text-logo-blue">Renew Business</h3>
+                                    <p class="text-[11px] text-gray truncate max-w-[200px]" x-text="renewModal.entry?.business_name"></p>
                                 </div>
                             </div>
+
+                            {{-- Step tabs --}}
+                            <div class="flex items-center gap-1.5">
+                                <button @click="renewModal.step = 1"
+                                    :class="renewModal.step === 1 ? 'bg-logo-blue text-white shadow' : 'bg-blue-50 text-gray hover:bg-blue-100'"
+                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">1. Details</button>
+                                <span class="text-gray/30 text-xs">›</span>
+                                <button
+                                    @click="if(!renewModal.computing){ renewComputeFees().then(() => { if(!renewModal.error) renewModal.step = 2; }); }"
+                                    :disabled="!renewModal.form.capital_investment || !renewModal.form.mode_of_payment || renewModal.computing"
+                                    :class="renewModal.step === 2 ? 'bg-logo-blue text-white shadow' : 'bg-blue-50 text-gray hover:bg-blue-100'"
+                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                                    <svg x-show="renewModal.computing" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                    2. Assessment
+                                </button>
+                                <span class="text-gray/30 text-xs">›</span>
+                                <button @click="renewModal.step = 3" :disabled="renewModal.totalDue === 0 || renewModal.computing"
+                                    :class="renewModal.step === 3 ? 'bg-logo-blue text-white shadow' : 'bg-blue-50 text-gray hover:bg-blue-100'"
+                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">3. Schedule</button>
+                            </div>
+
                             <button @click="renewModal.open = false"
-                                class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-blue-50 transition-colors">
+                                class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-blue-50 transition-colors ml-2">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -896,96 +999,221 @@
                         </div>
 
                         {{-- Body --}}
-                        <div class="overflow-y-auto flex-1 p-5 space-y-4">
-                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-700">
-                                ℹ️ Re-assess the business fees for the new permit year. All fields are pre-filled from the previous cycle.
-                            </div>
+                        <div class="overflow-y-auto flex-1 p-5">
 
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray mb-1.5">Capital Investment (₱)</label>
-                                    <input type="number" step="0.01" x-model="renewModal.form.capital_investment"
-                                        @input="renewComputeFees()"
-                                        placeholder="0.00"
-                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40 placeholder-gray/30">
+                            {{-- ── STEP 1: Details ── --}}
+                            <div x-show="renewModal.step === 1" class="space-y-4">
+                                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-700">
+                                    ℹ️ Re-assess the business fees for the new permit year. All fields are pre-filled from the previous cycle.
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray mb-1.5">Mode of Payment</label>
-                                    <select x-model="renewModal.form.mode_of_payment" @change="renewComputeFees()"
-                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40">
-                                        <option value="">Select...</option>
-                                        <option value="annual">Annual</option>
-                                        <option value="semi_annual">Semi-Annual</option>
-                                        <option value="quarterly">Quarterly</option>
-                                    </select>
-                                </div>
-                            </div>
 
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray mb-1.5">Business Scale</label>
-                                    <select x-model="renewModal.form.business_scale" @change="renewComputeFees()"
-                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40">
-                                        <option value="">Select scale...</option>
-                                        <option value="micro">Micro</option>
-                                        <option value="small">Small</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="large">Large</option>
-                                    </select>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1.5">Business Nature</label>
+                                        <input type="text" x-model="renewModal.form.business_nature"
+                                            placeholder="e.g. Eatery, Trading..."
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40 placeholder-gray/30">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray mb-1.5">Business Scale</label>
+                                        <select x-model="renewModal.form.business_scale"
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40">
+                                            <option value="">Select scale...</option>
+                                            <option value="micro">Micro</option>
+                                            <option value="small">Small</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="large">Large</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray mb-1.5">Business Nature</label>
-                                    <input type="text" x-model="renewModal.form.business_nature"
-                                        placeholder="e.g. Eatery, Trading..."
-                                        class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40 placeholder-gray/30">
-                                </div>
-                            </div>
 
-                            {{-- Fee Preview --}}
-                            <div x-show="renewModal.fees.length > 0 || renewModal.computing" class="border border-lumot/20 rounded-xl overflow-hidden">
-                                <div class="px-3 py-2 bg-lumot/10 text-[10px] font-bold text-gray uppercase tracking-wide flex items-center justify-between">
-                                    <span>Fee Preview</span>
-                                    <svg x-show="renewModal.computing" class="w-3 h-3 animate-spin text-logo-teal" fill="none" viewBox="0 0 24 24">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray mb-1.5">Gross Sales / Capital Investment (₱)</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray/50 font-semibold">₱</span>
+                                        <input type="number" step="0.01" x-model="renewModal.form.capital_investment"
+                                            @input.debounce.500ms="if(renewModal.form.mode_of_payment) renewComputeFees()"
+                                            placeholder="0.00"
+                                            class="w-full pl-7 pr-3 text-sm border border-lumot/30 rounded-xl py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40 placeholder-gray/30">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-gray mb-2">Mode of Payment</label>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <template x-for="opt in [{value:'quarterly',label:'Quarterly',sub:'4 payments',icon:'4×'},{value:'semi_annual',label:'Semi-Annual',sub:'2 payments',icon:'2×'},{value:'annual',label:'Annual',sub:'1 payment',icon:'1×'}]" :key="opt.value">
+                                            <label class="cursor-pointer">
+                                                <input type="radio" :value="opt.value" x-model="renewModal.form.mode_of_payment" @change="if(renewModal.form.capital_investment) renewComputeFees()" class="peer hidden">
+                                                <div class="peer-checked:bg-logo-blue peer-checked:text-white peer-checked:border-logo-blue border-2 border-lumot/30 rounded-xl p-3 text-center transition-all duration-150 hover:border-logo-blue/50 hover:bg-blue-50 select-none">
+                                                    <p class="text-2xl font-extrabold" x-text="opt.icon"></p>
+                                                    <p class="text-[11px] font-bold mt-0.5" x-text="opt.label"></p>
+                                                    <p class="text-[9px] opacity-70 mt-0.5" x-text="opt.sub"></p>
+                                                </div>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                {{-- Loading compute state --}}
+                                <div x-show="renewModal.computing" class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl animate-pulse">
+                                    <p class="text-xs font-bold text-gray">Computing fees…</p>
+                                    <svg class="w-4 h-4 animate-spin text-logo-blue" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
                                 </div>
-                                <template x-for="fee in renewModal.fees" :key="fee.code">
-                                    <div class="flex justify-between px-3 py-1.5 text-xs border-b border-lumot/10 last:border-0">
-                                        <span x-text="fee.name" class="text-gray"></span>
-                                        <span x-text="'₱' + Number(fee.amount).toFixed(2)" class="font-mono font-bold text-green"></span>
-                                    </div>
-                                </template>
-                                <div class="flex justify-between px-3 py-2 bg-lumot/10 text-xs font-extrabold">
-                                    <span class="text-gray">TOTAL DUE</span>
-                                    <span class="text-logo-teal" x-text="'₱' + Number(renewModal.totalDue).toFixed(2)"></span>
+                                <div x-show="!renewModal.computing && renewModal.totalDue > 0" class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <p class="text-xs font-bold text-gray">Estimated Renewal Assessment</p>
+                                    <p class="text-sm font-extrabold text-logo-blue" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                </div>
+
+                                {{-- Notice if all fees are disabled --}}
+                                <div x-show="!renewModal.computing && renewModal.form.capital_investment && renewModal.form.mode_of_payment && renewModal.totalDue === 0 && !renewModal.error"
+                                    class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                    <svg class="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <p class="text-[11px] text-yellow-700 font-semibold">No active fee rules found.
+                                        Check fee rules manager.</p>
+                                </div>
+
+                                {{-- Permit year indicator --}}
+                                <div x-show="!renewModal.computing && renewModal.permitYear && renewModal.totalDue > 0"
+                                    class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <svg class="w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <p class="text-[11px] text-blue-700 font-semibold">
+                                        Billing year: <span class="font-extrabold text-blue-800"
+                                            x-text="renewModal.permitYear"></span>
+                                    </p>
                                 </div>
                             </div>
 
-                            {{-- Error --}}
-                            <div x-show="renewModal.error" class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                            {{-- ── STEP 2: Assessment Breakdown ── --}}
+                            <div x-show="renewModal.step === 2" class="space-y-4">
+                                <template x-if="!renewModal.computing">
+                                    <div class="space-y-4">
+                                        <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
+                                            <div>
+                                                <p class="text-xs font-extrabold text-logo-blue" x-text="renewModal.entry?.business_name"></p>
+                                                <p class="text-[10px] text-gray" x-text="'Nature: ' + (renewModal.form.business_nature || '—')"></p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-[10px] text-gray/60">Gross Sales</p>
+                                                <p class="text-sm font-extrabold text-logo-blue" x-text="'₱' + Number(renewModal.form.capital_investment || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                            </div>
+                                        </div>
+
+                                        <div class="border border-blue-200 rounded-xl overflow-hidden">
+                                            <div class="bg-logo-blue text-white text-center py-2.5">
+                                                <p class="text-xs font-extrabold tracking-wide uppercase">Renewal Fee Assessment</p>
+                                            </div>
+                                            <div class="grid grid-cols-3 bg-blue-50/50 px-4 py-2 border-b border-blue-100">
+                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase">Taxes / Fees</p>
+                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Base Value</p>
+                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-right">Tax Due</p>
+                                            </div>
+                                            <template x-for="fee in renewModal.fees" :key="fee.id ?? fee.name">
+                                                <div class="grid grid-cols-3 px-4 py-2.5 border-b border-blue-50 hover:bg-blue-50">
+                                                    <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
+                                                    <p class="text-xs text-gray/60 text-center font-mono" x-text="fee.base !== null ? (typeof fee.base === 'number' ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2}) : fee.base) : '—'"></p>
+                                                    <p class="text-xs font-bold text-logo-blue text-right" x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits:2})"></p>
+                                                </div>
+                                            </template>
+                                            <div class="grid grid-cols-3 px-4 py-3 bg-blue-50 border-t-2 border-blue-200">
+                                                <p class="text-xs font-extrabold text-logo-blue col-span-2 uppercase">Total Taxes Due</p>
+                                                <p class="text-sm font-extrabold text-logo-blue text-right" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            {{-- ── STEP 3: Payment Schedule ── --}}
+                            <div x-show="renewModal.step === 3" class="space-y-4">
+                                <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs font-extrabold text-logo-blue" x-text="renewModal.entry?.business_name"></p>
+                                        <p class="text-[10px] text-gray capitalize" x-text="renewModal.form.mode_of_payment ? renewModal.form.mode_of_payment.replace('_',' ') + ' payment mode' : ''"></p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[10px] text-gray/60">Total Due</p>
+                                        <p class="text-sm font-extrabold text-logo-blue" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                    </div>
+                                </div>
+
+                                <div class="border border-blue-200 rounded-xl overflow-hidden">
+                                    <div class="bg-logo-blue text-white text-center py-2.5">
+                                        <p class="text-xs font-extrabold tracking-wide uppercase">Renewal Payment Schedule
+                                            <template x-if="renewModal.permitYear">
+                                                <span x-text="'— ' + renewModal.permitYear"></span>
+                                            </template>
+                                        </p>
+                                    </div>
+                                    <div class="grid grid-cols-2 bg-blue-50/50 px-4 py-2 border-b border-blue-100">
+                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Payment Deadline</p>
+                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Amount to Pay</p>
+                                    </div>
+                                    <template x-for="(sched, i) in renewModal.schedule" :key="i">
+                                        <div class="grid grid-cols-2 px-4 py-3.5 border-b border-blue-50 hover:bg-blue-50">
+                                            <p class="text-sm text-center font-medium text-gray" x-text="sched.date"></p>
+                                            <p class="text-sm font-bold text-logo-blue text-center" x-text="'₱' + Number(sched.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                        </div>
+                                    </template>
+                                    <div class="grid grid-cols-2 px-4 py-3 bg-blue-50 border-t-2 border-blue-200">
+                                        <p class="text-xs font-extrabold text-logo-blue text-center uppercase">Total</p>
+                                        <p class="text-sm font-extrabold text-logo-blue text-center" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Error feedback --}}
+                            <div x-show="renewModal.error" class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-4">
                                 <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
-                                <p class="text-[11px] text-red-700 font-semibold" x-text="renewModal.error"></p>
+                                <p class="text-xs font-semibold text-red-700 underline underline-offset-4" x-text="renewModal.error"></p>
                             </div>
                         </div>
 
                         {{-- Footer --}}
-                        <div class="flex gap-2 px-5 py-4 border-t border-blue-100 shrink-0">
-                            <button @click="renewModal.open = false"
-                                class="flex-1 px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">
-                                Cancel
-                            </button>
-                            <button @click="submitRenew()"
-                                :disabled="renewModal.saving || renewModal.totalDue <= 0 || !renewModal.form.mode_of_payment"
-                                class="flex-1 px-4 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                                <svg x-show="renewModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                                </svg>
-                                <span x-text="renewModal.saving ? 'Processing...' : '✓ Confirm Renewal'"></span>
-                            </button>
+                        <div class="flex items-center justify-between gap-2 px-5 py-4 border-t border-blue-100 shrink-0">
+                            <div class="flex gap-2">
+                                <button x-show="renewModal.step > 1" @click="renewModal.step--"
+                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">← Back</button>
+                                <button @click="renewModal.open = false"
+                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button x-show="renewModal.step < 3"
+                                    @click="if(renewModal.step === 1){
+                                        renewComputeFees().then(() => { if(!renewModal.error) renewModal.step++; });
+                                    } else {
+                                        renewModal.step++;
+                                    }"
+                                    :disabled="(renewModal.step === 1 && (!renewModal.form.capital_investment || !renewModal.form.mode_of_payment)) || renewModal.computing"
+                                    class="px-5 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl shadow-lg shadow-logo-blue/20 hover:bg-blue-700 transition-all flex items-center gap-2">
+                                    <svg x-show="renewModal.computing && renewModal.step === 1" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                    <span x-text="renewModal.computing && renewModal.step === 1 ? 'Computing…' : 'Next →'"></span>
+                                </button>
+                                <button x-show="renewModal.step === 3" @click="submitRenew()"
+                                    :disabled="renewModal.saving || renewModal.totalDue <= 0"
+                                    class="px-6 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl shadow-lg shadow-logo-blue/30 hover:bg-blue-700 transition-all flex items-center gap-2">
+                                    <svg x-show="renewModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                    </svg>
+                                    <span x-text="renewModal.saving ? 'Processing...' : '✓ Confirm Renewal'"></span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1307,99 +1535,112 @@
                                 </button>
                             </div>
                         </div>
-                        <div id="retirement-certificate-print">
-                            <div class="header">
-                                <p class="republic">Republic of the Philippines</p>
-                                <p class="province">Province of Laguna</p>
-                                <p class="lgu">Municipal Government</p>
-                                <p class="office">Business Permit and Licensing System</p>
+                        <div id="retirement-certificate-print" class="cert-paper">
+                            {{-- Document Header --}}
+                            <div class="cert-header">
+                                <p class="cert-republic">Republic of the Philippines</p>
+                                <p class="cert-province">Province of Laguna</p>
+                                <p class="cert-lgu">Municipal Government</p>
+                                <p class="cert-office">Business Permit and Licensing Office</p>
+                                <hr class="cert-divider">
+                                <hr class="cert-divider-thin">
                             </div>
-                            <hr class="divider">
-                            <hr class="divider-thin">
-                            <p class="cert-title">Certificate of Business Retirement</p>
-                            <p class="cert-subtitle">This certifies that the business described herein has been
-                                officially retired.</p>
 
+                            {{-- Title Section --}}
+                            <div class="cert-title-container">
+                                <h1 class="cert-title">Certificate of Business Retirement</h1>
+                                <p class="cert-subtitle">This certifies that the business described herein has been officially retired from the records of this municipality.</p>
+                            </div>
+
+                            {{-- Data Grid --}}
                             <div class="cert-body">
-                                <div class="grid">
-                                    <div class="field">
-                                        <div class="field-label">Business Name</div>
-                                        <div class="field-value" x-text="certModal.entry?.business_name || '—'"></div>
+                                <div class="cert-grid">
+                                    {{-- Row 1 --}}
+                                    <div class="cert-field">
+                                        <div class="cert-label">Business Name</div>
+                                        <div class="cert-value" x-text="certModal.entry?.business_name || '—'"></div>
                                     </div>
-                                    <div class="field">
-                                        <div class="field-label">Trade Name</div>
-                                        <div class="field-value" x-text="certModal.entry?.trade_name || '—'"></div>
+                                    <div class="cert-field">
+                                        <div class="cert-label">Trade Name</div>
+                                        <div class="cert-value" x-text="certModal.entry?.trade_name || '—'"></div>
                                     </div>
-                                    <div class="field">
-                                        <div class="field-label">Owner</div>
-                                        <div class="field-value"
+
+                                    {{-- Row 2 --}}
+                                    <div class="cert-field">
+                                        <div class="cert-label">Owner / Representative</div>
+                                        <div class="cert-value text-teal-800"
                                             x-text="certModal.entry ? certModal.entry.last_name + ', ' + certModal.entry.first_name + (certModal.entry.middle_name ? ' ' + certModal.entry.middle_name : '') : '—'">
                                         </div>
                                     </div>
-                                    <div class="field">
-                                        <div class="field-label">TIN No.</div>
-                                        <div class="field-value" x-text="certModal.entry?.tin_no || '—'"></div>
+                                    <div class="cert-field">
+                                        <div class="cert-label">Tax Identification Number (TIN)</div>
+                                        <div class="cert-value" x-text="certModal.entry?.tin_no || '—'"></div>
                                     </div>
-                                    <div class="field">
-                                        <div class="field-label">Business Type</div>
-                                        <div class="field-value" x-text="certModal.entry?.type_of_business || '—'">
-                                        </div>
+
+                                    {{-- Row 3 --}}
+                                    <div class="cert-field">
+                                        <div class="cert-label">Type of Organization</div>
+                                        <div class="cert-value" x-text="certModal.entry?.type_of_business || '—'"></div>
                                     </div>
-                                    <div class="field">
-                                        <div class="field-label">Business Nature</div>
-                                        <div class="field-value" x-text="certModal.entry?.business_nature || '—'">
-                                        </div>
+                                    <div class="cert-field">
+                                        <div class="cert-label">Business Nature / Category</div>
+                                        <div class="cert-value" x-text="certModal.entry?.business_nature || '—'"></div>
                                     </div>
-                                    <div class="field">
-                                        <div class="field-label">Business Address</div>
-                                        <div class="field-value"
+
+                                    {{-- Row 4 --}}
+                                    <div class="cert-field">
+                                        <div class="cert-label">Registered Business Address</div>
+                                        <div class="cert-value"
                                             x-text="(certModal.entry?.business_barangay || '') + (certModal.entry?.business_municipality ? ', ' + certModal.entry.business_municipality : '') || '—'">
                                         </div>
                                     </div>
-                                    <div class="field">
-                                        <div class="field-label">Retirement Date</div>
-                                        <div class="field-value highlight"
-                                            x-text="certModal.entry?.retirement_date ? new Date(certModal.entry.retirement_date).toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'}) : '—'">
+                                    <div class="cert-field">
+                                        <div class="cert-label">Official Date of Retirement</div>
+                                        <div class="cert-value highlight"
+                                            x-text="certModal.entry?.retirement_date ? (new Date(certModal.entry.retirement_date).toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'})) : '—'">
                                         </div>
                                     </div>
-                                    <div class="field col-span-2">
-                                        <div class="field-label">Reason for Retirement</div>
-                                        <div class="field-value" x-text="certModal.entry?.retirement_reason || '—'">
-                                        </div>
+
+                                    {{-- Row 5 (Full Width) --}}
+                                    <div class="cert-field col-span-2">
+                                        <div class="cert-label">Primary Reason for Retirement</div>
+                                        <div class="cert-value" x-text="certModal.entry?.retirement_reason || '—'"></div>
                                     </div>
-                                    <div class="field col-span-2" x-show="certModal.entry?.retirement_remarks">
-                                        <div class="field-label">Remarks</div>
-                                        <div class="field-value" x-text="certModal.entry?.retirement_remarks || ''">
+
+                                    <template x-if="certModal.entry?.retirement_remarks">
+                                        <div class="cert-field col-span-2">
+                                            <div class="cert-label">Additional Remarks</div>
+                                            <div class="cert-value text-gray-500 italic" x-text="certModal.entry.retirement_remarks"></div>
                                         </div>
+                                    </template>
+                                </div>
+
+                                {{-- Declaration --}}
+                                <p class="cert-footer-text">
+                                    "This certificate is issued upon the valid request of the aforementioned business owner and serves as the official declaration of business cessation within the jurisdiction of this Municipal Government."
+                                </p>
+
+                                {{-- Signatures --}}
+                                <div class="cert-sig-row">
+                                    <div class="cert-sig-block">
+                                        <div style="height: 60px;"></div>
+                                        <div class="cert-sig-line"></div>
+                                        <p class="cert-sig-name">Business Owner / Representative</p>
+                                        <p class="cert-sig-title">Signature over Printed Name</p>
+                                    </div>
+                                    <div class="cert-sig-block">
+                                        <div style="height: 60px;"></div>
+                                        <div class="cert-sig-line"></div>
+                                        <p class="cert-sig-name" x-text="certModal.retiredBy || 'BPLO OFFICER'"></p>
+                                        <p class="cert-sig-title">BPLO Official Representative</p>
                                     </div>
                                 </div>
-                            </div>
 
-                            <p class="footer-text">
-                                This certificate is issued upon request of the above-named business owner and confirms
-                                that the business has been duly retired in the records of the Municipal Business Permit
-                                and Licensing Office.
-                            </p>
-
-                            <div class="sig-grid">
-                                <div class="sig-block">
-                                    <div style="height:52px;"></div>
-                                    <div class="sig-line"></div>
-                                    <p class="sig-name">Business Owner / Representative</p>
-                                    <p class="sig-title">Signature over Printed Name</p>
+                                {{-- Meta info --}}
+                                <div class="cert-meta">
+                                    <span x-text="'DATE ISSUED: ' + (certModal.issuedAt || '—')"></span>
+                                    <span x-text="'CONTROL NO: BPL-RET-' + (certModal.entry?.id ? String(certModal.entry.id).padStart(6,'0') : '000000')"></span>
                                 </div>
-                                <div class="sig-block">
-                                    <div style="height:52px;"></div>
-                                    <div class="sig-line"></div>
-                                    <p class="sig-name">BPLO Officer</p>
-                                    <p class="sig-title">Signature over Printed Name</p>
-                                </div>
-                            </div>
-
-                            <div class="meta-row">
-                                <span x-text="'Issued: ' + (certModal.issuedAt || '—')"></span>
-                                <span
-                                    x-text="'Ref. No.: BPL-RET-' + (certModal.entry?.id ? String(certModal.entry.id).padStart(6,'0') : '000000')"></span>
                             </div>
                         </div>
                         <div class="flex justify-end gap-2 px-5 py-4 border-t border-lumot/20">
@@ -1740,7 +1981,7 @@
                                                 <span
                                                     class="text-[10px] font-bold text-gray/60 uppercase w-14 shrink-0">Payment</span>
                                                 <span class="text-xs text-gray capitalize"
-                                                    x-text="entry.mode_of_payment.replace('_',' ')"></span>
+                                                    x-text="(entry.mode_of_payment || '').replace('_',' ')"></span>
                                             </div>
                                         </template>
                                         <template x-if="entry.bpls_application">
@@ -1808,7 +2049,7 @@
                                                 </template>
 
                                                 {{-- Assessment Amount --}}
-                                                <template x-if="entry.bpls_application.assessment_amount">
+                                                <template x-if="entry.bpls_application && entry.bpls_application.assessment_amount">
                                                     <div class="flex items-center gap-1.5">
                                                         <span
                                                             class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Assessed</span>
@@ -1962,6 +2203,22 @@
                                                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                 </svg>
                                                 Renew
+                                            </button>
+
+                                            {{-- Retire button --}}
+                                            <button type="button"
+                                                x-show="entry.status !== 'retired' && entry.status !== 'pending' && entry.status !== 'retirement_requested'"
+                                                @click="openRetireModal(entry)"
+                                                :disabled="entry.outstanding_balance > 0.01"
+                                                :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-500 hover:bg-orange-600'"
+                                                :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before retirement.' : 'Retire Business'"
+                                                class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white transition-colors">
+                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Retire
                                             </button>
 
                                             {{-- Retire cert (always) --}}
@@ -2270,9 +2527,9 @@
                                                     <button type="button"
                                                         x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
                                                         @click="openRetireModal(entry)"
-                                                        :disabled="entry.outstanding_balance > 0.1"
-                                                        :class="entry.outstanding_balance > 0.1 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
-                                                        :title="entry.outstanding_balance > 0.1 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                                        :disabled="entry.outstanding_balance > 0.01"
+                                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
+                                                        :title="entry.outstanding_balance > 0.01 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
@@ -2394,9 +2651,9 @@
                                     <button type="button"
                                         x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
                                         @click="openRetireModal(entry)"
-                                        :disabled="entry.outstanding_balance > 0.1"
-                                        :class="entry.outstanding_balance > 0.1 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
-                                        :title="entry.outstanding_balance > 0.1 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                        :disabled="entry.outstanding_balance > 0.01"
+                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
+                                        :title="entry.outstanding_balance > 0.01 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
@@ -2657,8 +2914,12 @@
                         computing: false,
                         error: null,
                         entry: null,
+                        step: 1,
                         fees: [],
+                        schedule: [],
                         totalDue: 0,
+                        perInstallment: 0,
+                        permitYear: null,
                         form: {
                             capital_investment: '',
                             mode_of_payment: '',
@@ -3030,24 +3291,10 @@
                                 }),
                             });
                             const data = await res.json();
-<<<<<<< HEAD
                             if (!res.ok) throw new Error(data.message || 'Failed to retire business.');
                             
                             this.fetch(); // Reload the list to get updated mappings
-                            
-=======
-
-                            if (!res.ok) {
-                                // If server returned updated balance data, refresh the block view
-                                if (data.balance) {
-                                    this.retireModal.balance = data.balance;
-                                }
-                                throw new Error(data.message || 'Failed to retire business.');
-                            }
-
-                            const idx = this.entries.findIndex(e => e.id === this.retireModal.entry.id);
-                            if (idx !== -1) this.entries[idx] = data.entry;
->>>>>>> 035846e923716bd152e63f06e407637885509bb6
+                            this.retireModal.show = false;
                             this.retireModal.open = false;
                             setTimeout(() => this.openCertModal(this.retireModal.entry), 400);
                         } catch (err) {
@@ -3065,6 +3312,10 @@
                         this.renewModal.error = null;
                         this.renewModal.saving = false;
                         this.renewModal.computing = false;
+                        this.renewModal.step = 1;
+                        this.renewModal.schedule = [];
+                        this.renewModal.perInstallment = 0;
+                        this.renewModal.permitYear = null;
                         this.renewModal.form = {
                             capital_investment: entry.capital_investment || '',
                             mode_of_payment: entry.mode_of_payment || '',
@@ -3106,6 +3357,9 @@
                             if (!res.ok) throw new Error(data.message || 'Fee computation failed.');
                             this.renewModal.fees = data.fees;
                             this.renewModal.totalDue = data.total_due;
+                            this.renewModal.perInstallment = data.per_installment;
+                            this.renewModal.schedule = data.schedule;
+                            this.renewModal.permitYear = data.permit_year;
                         } catch (err) {
                             this.renewModal.error = err.message;
                         } finally {
@@ -3152,13 +3406,25 @@
                     },
 
                     // ── CERTIFICATE modal ─────────────────────────────────────────────
-                    openCertModal(entry) {
-                        this.certModal.entry = entry;
-                        this.certModal.issuedAt = new Date().toLocaleDateString('en-PH', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        });
+                    async openCertModal(entry) {
+                        try {
+                            const res = await window.fetch(`{{ url('bpls/business-list') }}/${entry.id}/retirement-certificate`);
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Failed to fetch certificate.');
+
+                            this.certModal.entry = data.entry;
+                            this.certModal.retiredBy = data.retired_by;
+                            this.certModal.issuedAt = data.issued_at;
+                        } catch (err) {
+                            console.error(err);
+                            // Fallback if fetch fails
+                            this.certModal.entry = entry;
+                            this.certModal.issuedAt = new Date().toLocaleDateString('en-PH', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+                        }
                         this.certModal.open = true;
                     },
 
@@ -3175,104 +3441,68 @@
                 font-family: 'Times New Roman', Times, serif;
                 background: #fff;
                 color: #111;
-                width: 8.5in;
-                min-height: 11in;
-                padding: 0.85in 1in 0.85in 1in;
+                padding: 0;
+                margin: 0;
             }
-            .text-center { text-align: center; }
-            .header { text-align: center; margin-bottom: 18px; }
-            .header p { font-size: 11pt; line-height: 1.5; }
-            .header .republic { font-size: 11pt; text-transform: uppercase; letter-spacing: 0.08em; }
-            .header .province { font-size: 11pt; }
-            .header .lgu { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; margin: 2px 0; }
-            .header .office { font-size: 10pt; color: #444; }
-            .divider { border: none; border-top: 2.5px solid #111; margin: 10px auto 6px; width: 100%; }
-            .divider-thin { border: none; border-top: 1px solid #aaa; margin: 6px auto; width: 100%; }
-            .cert-title {
-                font-size: 17pt;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: 0.12em;
-                text-align: center;
-                margin: 14px 0 4px;
+            .cert-paper {
+                width: 7.5in;
+                height: 10in;
+                margin: 0.5in auto;
+                padding: 0.75in;
+                border: 1px solid #eee;
+                position: relative;
+                overflow: hidden;
+                line-height: 1.5;
             }
-            .cert-subtitle {
-                font-size: 10pt;
-                text-align: center;
-                color: #555;
-                margin-bottom: 20px;
-                font-style: italic;
+            .cert-paper::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0; height: 8px;
+                background: linear-gradient(to right, #0d9488, #0ea5e9, #0d9488);
             }
-            .cert-body {
-                border: 1.5px solid #333;
-                border-radius: 6px;
-                padding: 22px 28px;
-                margin-bottom: 20px;
+            .cert-paper::after {
+                content: 'OFFICIAL';
+                position: absolute;
+                top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg);
+                font-size: 8rem; font-weight: 900; color: rgba(13, 148, 136, 0.04);
+                pointer-events: none; white-space: nowrap; z-index: 0;
+                letter-spacing: 0.2rem;
             }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; }
-            .field { margin-bottom: 4px; }
-            .field-label {
-                font-size: 8.5pt;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                color: #333;
-                margin-bottom: 2px;
-            }
-            .field-value {
-                font-size: 11pt;
-                color: #111;
-                border-bottom: 1px solid #ccc;
-                padding-bottom: 3px;
-                min-height: 20px;
-            }
-            .field-value.highlight {
-                font-weight: bold;
-                color: #b94600;
-            }
+            .cert-header { text-align: center; margin-bottom: 40px; }
+            .cert-republic { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #444; }
+            .cert-province { font-size: 13px; font-style: italic; color: #666; }
+            .cert-lgu { font-size: 20px; font-weight: 900; text-transform: uppercase; margin: 5px 0; color: #000; }
+            .cert-office { font-size: 12px; font-weight: 700; color: #0d9488; text-transform: uppercase; }
+            .cert-divider { border: none; height: 3px; background: #000; margin: 15px 0 3px; }
+            .cert-divider-thin { border: none; height: 1px; background: #888; margin-bottom: 20px; }
+            .cert-title-container { text-align: center; margin-bottom: 45px; }
+            .cert-title { font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #000; margin-bottom: 5px; }
+            .cert-subtitle { font-size: 14px; color: #444; font-style: italic; }
+            .cert-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 30px; margin-bottom: 40px; }
+            .cert-field { border-bottom: 1px dashed #ccc; padding-bottom: 3px; }
+            .cert-label { font-size: 9px; font-weight: 800; color: #777; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; font-family: sans-serif; }
+            .cert-value { font-size: 15px; font-weight: 700; color: #000; min-height: 18px; }
+            .cert-value.highlight { color: #c2410c; }
             .col-span-2 { grid-column: span 2; }
-            .footer-text {
-                font-size: 10pt;
-                text-align: center;
-                color: #444;
-                font-style: italic;
-                line-height: 1.6;
-                margin-bottom: 32px;
-            }
-            .sig-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 32px;
-                margin-top: 40px;
-            }
-            .sig-block { text-align: center; }
-            .sig-line {
-                border-top: 1.5px solid #333;
-                margin: 0 20px 4px;
-                padding-top: 4px;
-            }
-            .sig-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
-            .sig-title { font-size: 9pt; color: #555; }
-            .meta-row {
-                display: flex;
-                justify-content: space-between;
-                font-size: 8.5pt;
-                color: #888;
-                margin-top: 28px;
-                border-top: 1px solid #ddd;
-                padding-top: 8px;
-            }
+            .cert-footer-text { text-align: center; font-size: 13px; color: #333; line-height: 1.7; font-style: italic; margin-bottom: 60px; padding: 0 40px; }
+            .cert-sig-row { display: flex; justify-content: space-between; gap: 50px; }
+            .cert-sig-block { flex: 1; text-align: center; }
+            .cert-sig-line { border-top: 2px solid #000; width: 100%; margin-bottom: 5px; }
+            .cert-sig-name { font-size: 13px; font-weight: 900; text-transform: uppercase; }
+            .cert-sig-title { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; }
+            .cert-meta { margin-top: 60px; display: flex; justify-content: space-between; font-size: 10px; color: #999; font-family: monospace; border-top: 1px solid #eee; padding-top: 10px; }
+            .text-teal-800 { color: #115e59; }
+            .text-gray-500 { color: #6b7280; }
+            .italic { font-style: italic; }
             @media print {
-                body { padding: 0.85in 1in; }
-                @page { size: letter portrait; margin: 0; }
+                body { padding: 0; margin: 0; }
+                .cert-paper { border: none; box-shadow: none; margin: 0; width: 100%; height: 100%; }
             }
-        </style>
-    </head><body>${content}</body></html>`);
+        </style></head><body>
+            <div class="cert-paper">${content}</div>
+            <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); } }<\/script>
+        </body></html>`);
                         win.document.close();
-                        setTimeout(() => {
-                            win.focus();
-                            win.print();
-                        }, 600);
                     },
                     // ── EDIT modal ────────────────────────────────────────────────────
                     async openEditModal(entry) {

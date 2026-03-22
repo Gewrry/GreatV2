@@ -68,7 +68,7 @@ class BusinessListController extends Controller
             return $this->searchOnline($request);
         }
 
-        $query = BusinessEntry::whereNull('deleted_at')->with(['payments']);
+        $query = BusinessEntry::whereNull('deleted_at')->with(['payments', 'bplsApplication', 'bplsApplication.orAssignments', 'benefits']);
 
         if ($request->filled('q')) {
             $q = $request->q;
@@ -360,13 +360,21 @@ class BusinessListController extends Controller
         if ($isOnline) {
             $entry = BplsOnlineApplication::find($id);
             if (!$entry) {
-                return response()->json(['success' => false, 'message' => 'Online application not found.'], 404);
+                $msg = 'Online application not found.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 404);
+                }
+                return back()->with('error', $msg);
             }
             $from = $entry->workflow_status;
         } else {
             $entry = BusinessEntry::find($id);
             if (!$entry) {
-                return response()->json(['success' => false, 'message' => 'Business entry not found.'], 404);
+                $msg = 'Business entry not found.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 404);
+                }
+                return back()->with('error', $msg);
             }
             $from = $entry->status;
         }
@@ -376,34 +384,37 @@ class BusinessListController extends Controller
             $balance = (float) $entry->outstanding_balance;
             if ($balance > 0.01) {
                 $action = ($to === 'retired') ? 'approve retirement' : 'approve renewal request';
-                return response()->json([
-                    'success' => false,
-                    'message' => "Cannot {$action}. There is an outstanding balance of ₱" . number_format($balance, 2) . " that must be settled first."
-                ], 422);
+                $msg = "Cannot {$action}. There is an outstanding balance of ₱" . number_format($balance, 2) . " that must be settled first.";
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $msg
+                    ], 422);
+                }
+                return back()->with('error', $msg);
             }
         } // end if check
         // Note: retirement with reason/date must go through the dedicated /retire endpoint
 
         if (!$isOnline && $to === 'pending' && in_array($from, ['for_payment', 'for_renewal_payment'])) {
             $cycle = (int) ($entry->renewal_cycle ?? 0);
-<<<<<<< HEAD
             $permitYear = (int) ($entry->permit_year ?? now()->year);
-
-=======
-            $permitYear = (int) ($entry->permit_year ?? $now->year);
->>>>>>> 035846e923716bd152e63f06e407637885509bb6
             $hasPayments = BplsPayment::where('business_entry_id', $entry->id)
                 ->where('payment_year', $permitYear)
                 ->where('renewal_cycle', $cycle)
                 ->exists();
 
             if ($hasPayments) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot move back to "For Approval" — payments have already been recorded '
+                $msg = 'Cannot move back to "For Approval" — payments have already been recorded '
                         . "for this business in {$permitYear} (cycle {$cycle}). "
-                        . 'Please contact a supervisor to reverse payments before reassessing.',
-                ], 422);
+                        . 'Please contact a supervisor to reverse payments before reassessing.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $msg,
+                    ], 422);
+                }
+                return back()->with('error', $msg);
             }
         }
 
@@ -424,11 +435,15 @@ class BusinessListController extends Controller
         $allowed = $allowedTransitions[$from] ?? [];
 
         if (!in_array($to, $allowed)) {
-            return response()->json([
-                'success' => false,
-                'message' => "Cannot change status from \"{$this->statusLabel($from)}\" to \"{$this->statusLabel($to)}\". "
-                    . 'This transition is not permitted.',
-            ], 422);
+            $msg = "Cannot change status from \"{$this->statusLabel($from)}\" to \"{$this->statusLabel($to)}\". "
+                    . 'This transition is not permitted.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $msg,
+                ], 422);
+            }
+            return back()->with('error', $msg);
         }
 
         $updateData = [];
@@ -444,11 +459,17 @@ class BusinessListController extends Controller
 
         $entry->update($updateData);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status updated to: ' . $this->statusLabel($to) . '.',
-            'entry' => $entry->fresh(),
-        ]);
+        $message = 'Status updated to: ' . $this->statusLabel($to) . '.';
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'entry' => $entry->fresh(),
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
     // =========================================================================
@@ -476,7 +497,6 @@ class BusinessListController extends Controller
             'retirement_remarks' => 'nullable|string|max:1000',
         ]);
 
-<<<<<<< HEAD
         $isOnline = $request->get('source') === 'online';
 
         if ($isOnline) {
@@ -484,14 +504,16 @@ class BusinessListController extends Controller
             $balance = (float) $entry->outstanding_balance;
 
             if ($balance > 0.01) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot retire business. There is an outstanding balance of ₱'
-                        . number_format($balance, 2)
-                        . ' (Assessed: ₱' . number_format($entry->assessment_amount ?? 0, 2)
-                        . ' / Paid: ₱' . number_format($entry->total_paid, 2) . ').'
-                        . ' All fees must be settled before retiring.',
-                ], 422);
+                $msg = 'Cannot retire business. There is an outstanding balance of ₱'
+                    . number_format($balance, 2)
+                    . ' (Assessed: ₱' . number_format($entry->assessment_amount ?? 0, 2)
+                    . ' / Paid: ₱' . number_format($entry->total_paid, 2) . ').'
+                    . ' All fees must be settled before retiring.';
+
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return back()->with('error', $msg);
             }
 
             $entry->update([
@@ -518,11 +540,12 @@ class BusinessListController extends Controller
             $balance = (float) $entry->outstanding_balance;
 
             if ($balance > 0.01) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot retire business. There is an outstanding balance of ₱'
-                        . number_format($balance, 2) . '. All fees must be settled before retiring.',
-                ], 422);
+                $msg = 'Cannot retire business. There is an outstanding balance of ₱'
+                    . number_format($balance, 2) . '. All fees must be settled before retiring.';
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return back()->with('error', $msg);
             }
 
             $entry->update([
@@ -534,41 +557,18 @@ class BusinessListController extends Controller
                 'retired_by'         => auth()->id(),
             ]);
         }
-=======
-        // ── Balance / Surcharge Guard ─────────────────────────────────────────
-        // Businesses that were assessed and moved to payment stage MUST settle
-        // all dues (including applicable surcharges) before retirement.
-        // Businesses still at pending/rejected/cancelled never had a payment
-        // obligation, so they can retire freely.
-        $assessedStatuses = ['for_payment', 'for_renewal_payment', 'approved', 'completed'];
 
-        if (in_array($entry->status, $assessedStatuses)) {
-            $balance = $this->computeOutstandingBalance($entry);
+        $message = 'Business retired successfully.';
 
-            if (!$balance['can_retire']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $balance['block_reason'],
-                    'balance' => $balance,
-                ], 422);
-            }
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'entry' => $entry->fresh(),
+            ]);
         }
 
-        $entry->update([
-            'status' => 'retired',
-            'retirement_reason' => $request->retirement_reason,
-            'retirement_date' => $request->retirement_date,
-            'retirement_remarks' => $request->retirement_remarks,
-            'retired_at' => now(),
-            'retired_by' => auth()->id(),
-        ]);
->>>>>>> 035846e923716bd152e63f06e407637885509bb6
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Business retired successfully.',
-            'entry' => $entry->fresh(),
-        ]);
+        return back()->with('success', $message);
     }
 
     // =========================================================================
@@ -626,12 +626,18 @@ class BusinessListController extends Controller
             'approved_at'         => now(),
         ]);
 
-        return response()->json([
-            'success'      => true,
-            'message'      => 'Online business approved for renewal.',
-            'redirect_url' => url("bpls/payment/online/{$entry->id}"),
-            'entry'        => $entry->fresh(),
-        ]);
+        $message = 'Online business approved for renewal.';
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success'      => true,
+                'message'      => $message,
+                'redirect_url' => url("bpls/payment/online/{$entry->id}"),
+                'entry'        => $entry->fresh(),
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
     // =========================================================================
@@ -805,6 +811,39 @@ class BusinessListController extends Controller
             ? (float) ($entry->renewal_total_due ?? 0)
             : (float) ($entry->total_due ?? 0);
 
+        // ── Calculate Discount Amount based on BusinessEntry flags & Benefits ──────
+        $discountAmount = 0;
+        
+        // 1. Benefits (e.g., Senior, PWD, 4s)
+        foreach ($entry->benefits as $benefit) {
+            $discountAmount += $totalDue * ((float) ($benefit->discount_percent ?? 0) / 100);
+        }
+
+        // 2. Physical columns for 10% or 5% (backward compatibility check)
+        if ($entry->discount_10) {
+            // Avoid double-counting if already covered by a 10% benefit
+            $hasTenPercentBenefit = $entry->benefits->contains(fn($b) => (float)$b->discount_percent === 10.0);
+            if (!$hasTenPercentBenefit) {
+                $discountAmount += $totalDue * 0.10;
+            }
+        }
+        if ($entry->discount_5) {
+            $hasFivePercentBenefit = $entry->benefits->contains(fn($b) => (float)$b->discount_percent === 5.0);
+            if (!$hasFivePercentBenefit) {
+                $discountAmount += $totalDue * 0.05;
+            }
+        }
+
+        // 3. Online application discount flag
+        $onlineApp = $entry->bplsApplication;
+        if ($onlineApp && $onlineApp->discount_claimed) {
+            // Only add if not already covered by a 10% discount
+            $alreadyHasTen = ($entry->discount_10 || $entry->benefits->contains(fn($b) => (float)$b->discount_percent === 10.0));
+            if (!$alreadyHasTen) {
+                $discountAmount += $totalDue * 0.10;
+            }
+        }
+
         // ── If nothing was ever assessed, allow retirement immediately ────────
         if ($totalDue <= 0) {
             return [
@@ -873,7 +912,7 @@ class BusinessListController extends Controller
             }
         }
 
-        $unpaidBalance = round(max(0, $totalDue - $totalPaid), 2);
+        $unpaidBalance = round(max(0, $totalDue - $discountAmount - $totalPaid), 2);
         $totalOutstanding = round($unpaidBalance + $surchargeEstimate, 2);
         $hasPendingPayments = !empty($unpaidQuarters) || $unpaidBalance > 0.01;
 
@@ -956,13 +995,8 @@ class BusinessListController extends Controller
 
     public static function generateBusinessId(BusinessEntry $entry, int $permitYear): string
     {
-<<<<<<< HEAD
         // Read format from settings — default matches your blade's hint format
         $format = \App\Models\BplsSetting::get('business_id_format', '{muni}-{year}-{id}');
-
-=======
-        $format = BplsSetting::get('business_id_format', '{muni}-{year}-{id}');
->>>>>>> 035846e923716bd152e63f06e407637885509bb6
         $muniCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_municipality ?? 'MUN'), 0, 4));
         $barangayCode = strtoupper(substr(preg_replace('/\s+/', '', $entry->business_barangay ?? 'BRG'), 0, 4));
         $paddedId = str_pad($entry->id, 6, '0', STR_PAD_LEFT);

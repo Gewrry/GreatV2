@@ -438,11 +438,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{entry}/mark-paid', [BusinessListController::class, 'markPaid'])->name('mark-paid');
             Route::post('/{entry}/change-status', [BusinessListController::class, 'changeStatus'])->name('change-status');
             Route::post('/{entry}/retire', [BusinessListController::class, 'retire'])->name('retire');
-<<<<<<< HEAD
             Route::post('/{id}/approve-online-renewal', [BusinessListController::class, 'approveOnlineRenewal'])->name('approve-online-renewal');
-=======
             Route::get('/{entry}/retire-check', [BusinessListController::class, 'retireCheck'])->name('retire-check');
->>>>>>> 035846e923716bd152e63f06e407637885509bb6
             Route::get('/{entry}/retirement-certificate', [BusinessListController::class, 'retirementCertificate'])->name('retirement-certificate');
             Route::get('/{entry}/edit-data', [BusinessEntryEditController::class, 'editData'])->name('edit-data');
             Route::post('/{entry}/edit', [BusinessEntryEditController::class, 'update'])->name('edit');
@@ -856,12 +853,9 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::get('/{td}/print-soa', [RptOnlinePaymentController::class, 'printSoa'])->name('print-soa');
             Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
             Route::post('/{payment}/verify', [RptOnlinePaymentController::class, 'verify'])->name('verify');
-<<<<<<< HEAD
             Route::get('/payment/{payment}/receipt', [RptOnlinePaymentController::class, 'receipt'])->name('receipt');
             
             // Fallback for sessions started before the fix (malformed URL with & instead of ?)
-=======
->>>>>>> 035846e923716bd152e63f06e407637885509bb6
             Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');
             Route::get('/{billing}/success&{any}', [RptOnlinePaymentController::class, 'successMalformed'])->where('any', '.*');
         });

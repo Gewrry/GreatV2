@@ -159,8 +159,10 @@
                                     View Digital Permit
                                 </a>
                                 @if($app->workflow_status === 'approved_for_renewal')
-                                    <a href="{{ route('client.applications.renew', $app->id) }}"
-                                       class="px-5 py-2.5 bg-blue-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                                    @php $hasBalance = $app->outstanding_balance > 0.01; @endphp
+                                    <a href="{{ $hasBalance ? 'javascript:void(0)' : route('client.applications.renew', $app->id) }}"
+                                       class="px-5 py-2.5 {{ $hasBalance ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' : 'bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700' }} text-[11px] font-black uppercase tracking-widest rounded-xl transition-all tooltip"
+                                       title="{{ $hasBalance ? 'Please settle your outstanding balance of ₱' . number_format($app->outstanding_balance, 2) . ' to proceed with renewal.' : 'Start Renewal Application' }}">
                                         Start Renewal Application
                                     </a>
                                 @elseif(in_array($app->workflow_status, ['approved', 'paid', 'assessed']))
@@ -173,9 +175,10 @@
                                 @endif
 
                                 @if(in_array($app->workflow_status, ['approved', 'paid', 'assessed', 'approved_for_renewal']))
-                                    <a href="{{ route('client.applications.retire.form', $app->id) }}" 
-                                       class="p-2.5 {{ $app->outstanding_balance <= 0.01 ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-gray-50 text-gray-400 cursor-not-allowed' }} transition-all rounded-xl border border-red-200 shadow-sm tooltip" 
-                                       title="{{ $app->outstanding_balance <= 0.01 ? 'Retire Business' : 'Settle balance to retire' }}">
+                                    @php $canRetire = $app->outstanding_balance <= 0.01; @endphp
+                                    <a href="{{ $canRetire ? route('client.applications.retire.form', $app->id) : 'javascript:void(0)' }}" 
+                                       class="p-2.5 {{ $canRetire ? 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-gray-50 text-gray-400 cursor-not-allowed' }} transition-all rounded-xl border border-red-200 shadow-sm tooltip" 
+                                       title="{{ $canRetire ? 'Retire Business' : 'Settle balance of ₱' . number_format($app->outstanding_balance, 2) . ' to retire' }}">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
                                     </a>
                                 @endif

@@ -151,6 +151,17 @@ class BusinessEntry extends Model
 
     public function getActiveTotalDueAttribute(): float
     {
+        // If there's an online application, its assessment_amount or renewal_total_due is authoritative
+        if ($this->bplsApplication) {
+            $app = $this->bplsApplication;
+            if (($app->renewal_cycle ?? 0) > 0 && (float)$app->renewal_total_due > 0) {
+                return (float) $app->renewal_total_due;
+            }
+            if ((float)$app->assessment_amount > 0) {
+                return (float) $app->assessment_amount;
+            }
+        }
+
         if (($this->renewal_cycle ?? 0) > 0 && $this->renewal_total_due > 0) {
             return (float) $this->renewal_total_due;
         }
@@ -174,12 +185,12 @@ class BusinessEntry extends Model
 
     public function isOnlineApplication(): bool
     {
-        return \App\Models\onlineBPLS\BplsOnlineApplication::where('business_entry_id', $this->id)->exists();
+        return \App\Models\onlineBPLS\BplsOnlineApplication::where('bpls_business_id', $this->id)->exists();
     }
 
     public function bplsApplication()
     {
-        return $this->hasOne(\App\Models\onlineBPLS\BplsOnlineApplication::class, 'business_entry_id');
+        return $this->hasOne(\App\Models\onlineBPLS\BplsOnlineApplication::class, 'bpls_business_id', 'id')->latest();
     }
 
     // ── Accessors ──────────────────────────────────────────────────────────
@@ -189,6 +200,11 @@ class BusinessEntry extends Model
      */
     public function getTotalPaidAttribute(): float
     {
+        // If there's an online application, use its total_paid logic which handles both master and online payments
+        if ($this->bplsApplication) {
+            return (float) $this->bplsApplication->total_paid;
+        }
+
         return (float) \App\Models\BplsPayment::where('business_entry_id', $this->id)
             ->where('payment_year', $this->permit_year ?? now()->year)
             ->where('renewal_cycle', (int) ($this->renewal_cycle ?? 0))
@@ -209,6 +225,14 @@ class BusinessEntry extends Model
         $discountAmount = 0;
         foreach ($this->benefits as $benefit) {
             $discountAmount += $totalDue * ((float) ($benefit->discount_percent ?? 0) / 100);
+        }
+
+        // Also check physical discount columns for 10% or 5%
+        if ($this->discount_10) {
+            $discountAmount += $totalDue * 0.10;
+        }
+        if ($this->discount_5) {
+            $discountAmount += $totalDue * 0.05;
         }
 
         $balance = $totalDue - $paid - $discountAmount;

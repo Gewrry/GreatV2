@@ -3,6 +3,7 @@
 namespace App\Models\bpls\onlineBPLS;
 
 use App\Models\OrAssignment;
+use App\Models\onlineBPLS\BplsOnlineApplication;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,7 +27,7 @@ class BplsApplicationOr extends Model
 
     public function application(): BelongsTo
     {
-        return $this->belongsTo(BplsOnlinePayment::class, 'bpls_application_id');
+        return $this->belongsTo(BplsOnlineApplication::class, 'bpls_application_id');
     }
 
     public function orAssignment(): BelongsTo

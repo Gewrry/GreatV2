@@ -72,6 +72,8 @@ class BplsOnlineApplication extends Model
         'retirement_reason',
         'retirement_date',
         'retirement_remarks',
+        'renewal_cycle',
+        'renewal_total_due',
     ];
 
     protected $casts = [
@@ -290,7 +292,15 @@ class BplsOnlineApplication extends Model
         $onlinePaid = (float) \App\Models\onlineBPLS\BplsOnlinePayment::where('bpls_application_id', $this->id)
             ->where('status', 'paid')
             ->get()
-            ->filter(fn($p) => empty($p->or_number) || !in_array($p->or_number, $masterOrs))
+            ->filter(function($p) use ($masterOrs, $masterPayments) {
+                // If we have an OR number, use it to de-duplicate
+                if (!empty($p->or_number)) {
+                    return !in_array($p->or_number, $masterOrs);
+                }
+                // If OR number is empty, we check if the amount is already in master payments
+                // This is a common case where the payment is reflected in master but the OR isn't synced back to online
+                return !$masterPayments->contains('amount_paid', (string) $p->amount_paid);
+            })
             ->sum('amount_paid');
 
         return $masterPaid + $onlinePaid;
@@ -315,7 +325,13 @@ class BplsOnlineApplication extends Model
             $discountAmount += $totalAssessed * ((float) ($benefit->discount_percent ?? 0) / 100);
         }
 
+        // Also check if discount_claimed flag is set (treat as 10% discount)
+        if ($this->discount_claimed) {
+            $discountAmount += $totalAssessed * 0.10;
+        }
+
         $balance = $totalAssessed - $paid - $discountAmount;
+
         return $balance > 0.01 ? $balance : 0;
     }
 }

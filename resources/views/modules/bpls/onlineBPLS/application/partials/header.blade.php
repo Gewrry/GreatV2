@@ -103,20 +103,32 @@
             </a>
 
         @elseif($application->workflow_status === 'renewal_requested')
+            @php
+                $balance = (float) ($application->outstanding_balance ?? 0);
+                $isBlocked = $balance > 0.01;
+            @endphp
             <form action="{{ route('bpls.business-list.change-status', $application->id) }}" method="POST" class="w-full sm:w-auto">
                 @csrf
                 <input type="hidden" name="status" value="approved_for_renewal">
                 <input type="hidden" name="source" value="online">
                 <button type="submit"
-                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 text-[11px] font-black bg-logo-blue text-white uppercase tracking-widest rounded-xl hover:bg-logo-teal hover:scale-[1.02] transition-all duration-200 shadow-lg shadow-logo-blue/25 whitespace-nowrap">
+                    @if($isBlocked) disabled title="Outstanding balance (₱{{ number_format($balance, 2) }}) must be settled first." @endif
+                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all duration-200 whitespace-nowrap
+                           {{ $isBlocked ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none' : 'bg-logo-blue text-white shadow-lg shadow-logo-blue/25 hover:bg-logo-teal hover:scale-[1.02]' }}">
                     <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                     Approve Renewal Request
                 </button>
             </form>
 
         @elseif($application->workflow_status === 'retirement_requested')
-            <button type="button" @click="showRetire = true"
-                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 text-[11px] font-black bg-orange-600 text-white uppercase tracking-widest rounded-xl hover:bg-orange-700 hover:scale-[1.02] transition-all duration-200 shadow-lg shadow-orange-600/25 whitespace-nowrap">
+            @php
+                $balance = (float) ($application->outstanding_balance ?? 0);
+                $isBlocked = $balance > 0.01;
+            @endphp
+            <button type="button" @click="if(!{{ $isBlocked ? 'true' : 'false' }}) showRetire = true"
+                @if($isBlocked) disabled title="Outstanding balance (₱{{ number_format($balance, 2) }}) must be settled first to approve retirement." @endif
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all duration-200 whitespace-nowrap
+                       {{ $isBlocked ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none' : 'bg-orange-600 text-white shadow-lg shadow-orange-600/25 hover:bg-orange-700 hover:scale-[1.02]' }}">
                 <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Approve Retirement
             </button>
