@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Drop legacy table if exists
+        if (Schema::hasTable('rpt_registration_owners')) {
+            Schema::dropIfExists('rpt_registration_owners');
+        }
+
         Schema::create('rpt_registration_owners', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('rpt_property_registration_id');
@@ -26,6 +31,11 @@ return new class extends Migration
                   ->on('rpt_property_registrations')
                   ->onDelete('cascade');
         });
+
+        // Drop legacy pivot table if exists (needed for fresh installs with old schema)
+        if (Schema::hasTable('faas_owners')) {
+            Schema::dropIfExists('faas_owners');
+        }
 
         Schema::create('faas_owners', function (Blueprint $table) {
             $table->id();

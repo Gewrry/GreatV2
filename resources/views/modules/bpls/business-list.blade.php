@@ -354,6 +354,20 @@
                                                     x-text="'₱' + Number(modal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
                                                 </p>
                                             </div>
+                                            <div x-show="modal.advanceDiscount > 0" class="grid grid-cols-2 px-4 py-2 border-b border-green-200 bg-green-50">
+                                                <div class="flex flex-col">
+                                                    <p class="text-[11px] font-bold text-green-700">Advance Payment Discount</p>
+                                                    <p class="text-[9px] font-black text-green-600 uppercase tracking-tighter" x-text="modal.advanceDiscountLabel"></p>
+                                                </div>
+                                                <p class="text-[11px] font-black text-green-600 text-right" x-text="'- ' + '₱' + Number(modal.advanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                            </div>
+                                            <div x-show="modal.advanceDiscount > 0" class="grid grid-cols-2 px-4 py-2 bg-green-50/50 border-t border-green-200">
+                                                <div class="flex flex-col">
+                                                    <p class="text-[11px] font-bold text-green-700">If Paid in Advance</p>
+                                                    <p class="text-[9px] font-black text-green-600">You could save: <span x-text="'₱' + Number(modal.advanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></span></p>
+                                                </div>
+                                                <p class="text-[11px] font-black text-green-600 text-right" x-text="'₱' + Number(modal.totalWithAdvanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                            </div>
                                             <div class="px-4 py-2 bg-lumot/10 flex items-center justify-between">
                                                 <p class="text-[10px] text-gray/60">Mode: <span
                                                         class="font-bold capitalize"
@@ -2760,6 +2774,11 @@
                         totalDue: 0,
                         perInstallment: 0,
                         permitYear: null,
+                        // Advance payment discount variables
+                        advanceDiscount: 0,
+                        advanceDiscountRate: 0,
+                        advanceDiscountLabel: '',
+                        totalWithAdvanceDiscount: 0,
                         form: {
                             business_nature: '',
                             business_scale: '',
@@ -3027,6 +3046,10 @@
                         this.modal.totalDue = 0;
                         this.modal.perInstallment = 0;
                         this.modal.permitYear = null;
+                        this.modal.advanceDiscount = 0;
+                        this.modal.advanceDiscountRate = 0;
+                        this.modal.advanceDiscountLabel = '';
+                        this.modal.totalWithAdvanceDiscount = 0;
                         this.modal.form = {
                             business_nature: entry.business_nature || '',
                             business_scale: entry.business_scale || '',
@@ -3052,6 +3075,10 @@
                             this.modal.perInstallment = 0;
                             this.modal.schedule = [];
                             this.modal.permitYear = null;
+                            this.modal.advanceDiscount = 0;
+                            this.modal.advanceDiscountRate = 0;
+                            this.modal.advanceDiscountLabel = '';
+                            this.modal.totalWithAdvanceDiscount = 0;
                             return;
                         }
 
@@ -3085,6 +3112,11 @@
                             this.modal.perInstallment = data.per_installment;
                             this.modal.schedule = data.schedule;
                             this.modal.permitYear = data.permit_year ?? null;
+                            // Handle advance payment discount
+                            this.modal.advanceDiscount = data.advance_discount ?? 0;
+                            this.modal.advanceDiscountRate = data.advance_discount_rate ?? 0;
+                            this.modal.advanceDiscountLabel = data.advance_discount_label ?? '';
+                            this.modal.totalWithAdvanceDiscount = data.total_with_advance_discount ?? data.total_due;
 
                         } catch (err) {
                             this.modal.error = err.message;
@@ -3092,6 +3124,10 @@
                             this.modal.totalDue = 0;
                             this.modal.schedule = [];
                             this.modal.permitYear = null;
+                            this.modal.advanceDiscount = 0;
+                            this.modal.advanceDiscountRate = 0;
+                            this.modal.advanceDiscountLabel = '';
+                            this.modal.totalWithAdvanceDiscount = 0;
                         } finally {
                             this.modal.computingFees = false;
                         }

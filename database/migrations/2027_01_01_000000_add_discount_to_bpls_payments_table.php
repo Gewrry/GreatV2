@@ -9,7 +9,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('bpls_payments', function (Blueprint $table) {
-            $table->decimal('discount', 12, 2)->default(0)->after('backtaxes');
+            if (!Schema::hasColumn('bpls_payments', 'discount')) {
+                $table->decimal('discount', 12, 2)->default(0)->after('backtaxes');
+            }
         });
     }
 

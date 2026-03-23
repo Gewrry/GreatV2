@@ -165,9 +165,23 @@
                     </div>
                     <p class="text-[11px] font-black text-red-500 text-right" x-text="'- ' + formatCurrency(discountAmount)"></p>
                 </div>
+                <div x-show="advanceDiscountAmount > 0" class="grid grid-cols-2 px-4 py-2 border-b border-lumot/10 bg-green-50">
+                    <div class="flex flex-col">
+                        <p class="text-[11px] font-bold text-green-700">Advance Payment Discount</p>
+                        <p class="text-[9px] font-black text-green-600 uppercase tracking-tighter" x-text="advanceDiscountLabel"></p>
+                    </div>
+                    <p class="text-[11px] font-black text-green-600 text-right" x-text="'- ' + formatCurrency(advanceDiscountAmount)"></p>
+                </div>
                 <div class="grid grid-cols-3 px-4 py-3 bg-logo-teal/5 border-t-2 border-logo-teal/30">
                     <p class="text-xs font-extrabold text-green col-span-2">TOTAL TAX DUE</p>
                     <p class="text-sm font-extrabold text-logo-teal text-right" x-text="formatCurrency(assessmentAmount)"></p>
+                </div>
+                <div x-show="advanceDiscountAmount > 0" class="grid grid-cols-2 px-4 py-2 bg-green-50/50 border-t border-green-200">
+                    <div class="flex flex-col">
+                        <p class="text-[11px] font-bold text-green-700">If Paid in Advance</p>
+                        <p class="text-[9px] font-black text-green-600">You could save: <span x-text="formatCurrency(advanceDiscountAmount)"></span></p>
+                    </div>
+                    <p class="text-[11px] font-black text-green-600 text-right" x-text="formatCurrency(totalWithAdvanceDiscount)"></p>
                 </div>
                 <div class="px-4 py-2 bg-lumot/10 flex items-center justify-between flex-wrap gap-1">
                     <p class="text-[10px] text-gray/60">Mode: <span class="font-bold capitalize" x-text="modeOfPayment ? modeOfPayment.replace('_',' ') : '—'"></span></p>

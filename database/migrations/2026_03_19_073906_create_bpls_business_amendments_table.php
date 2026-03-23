@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('bpls_business_amendments')) {
+            Schema::dropIfExists('bpls_business_amendments');
+        }
+
         Schema::create('bpls_business_amendments', function (Blueprint $table) {
             $table->id();
             $table->timestamps();
