@@ -79,6 +79,9 @@ use App\Http\Controllers\BplsDashboardController;
 // Settings
 use App\Http\Controllers\Settings\OrAssignmentController;
 
+// Treasury
+use App\Http\Controllers\Treasury\CtcController;
+
 // Audit
 use App\Http\Controllers\AuditLogController;
 
@@ -360,6 +363,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/bpls-payment', [BplsPaymentController::class, 'index'])->name('bpls_payment');
         Route::get('/bpls-online', [BplsPaymentController::class, 'onlineIndex'])->name('bpls_online');
         Route::get('/bpls-online/{entry}', [BplsPaymentController::class, 'show'])->name('bpls_online.show');
+
+        // CTC (Community Tax Certificate)
+        Route::get('/ctc/generate-number', [\App\Http\Controllers\Treasury\CtcController::class, 'generateNumber'])->name('ctc.generateNumber');
+        Route::get('/ctc', [\App\Http\Controllers\Treasury\CtcController::class, 'index'])->name('ctc.index');
+        Route::get('/ctc/list', [\App\Http\Controllers\Treasury\CtcController::class, 'list'])->name('ctc.list');
+        Route::post('/ctc', [\App\Http\Controllers\Treasury\CtcController::class, 'store'])->name('ctc.store');
+        Route::get('/ctc/{id}', [\App\Http\Controllers\Treasury\CtcController::class, 'show'])->name('ctc.show');
+        Route::get('/ctc/{id}/edit', [\App\Http\Controllers\Treasury\CtcController::class, 'edit'])->name('ctc.edit');
+        Route::put('/ctc/{id}', [\App\Http\Controllers\Treasury\CtcController::class, 'update'])->name('ctc.update');
+        Route::delete('/ctc/{id}', [\App\Http\Controllers\Treasury\CtcController::class, 'destroy'])->name('ctc.destroy');
+        Route::get('/ctc/{id}/print', [\App\Http\Controllers\Treasury\CtcController::class, 'print'])->name('ctc.print');
 
         // RPT Payments
         Route::prefix('rpt-payments')->name('rpt.payments.')->group(function () {

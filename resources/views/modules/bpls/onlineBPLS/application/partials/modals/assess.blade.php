@@ -20,6 +20,11 @@
             discountAmount: 0,
             discountLabel: '',
             baseAmount: 0,
+            // Advance payment discount variables
+            advanceDiscountAmount: 0,
+            advanceDiscountRate: 0,
+            advanceDiscountLabel: '',
+            totalWithAdvanceDiscount: 0,
             benefits: @js($benefits->map(fn($b) => [
                 'id'               => $b->id,
                 'label'            => $b->label,
@@ -67,6 +72,11 @@
                     this.schedule         = data.schedule ?? [];
                     this.permitYear       = data.permit_year ?? this.permitYear;
                     if (data.mode_of_payment) this.modeOfPayment = data.mode_of_payment;
+                    // Handle advance payment discount
+                    this.advanceDiscountAmount = data.advance_discount ?? 0;
+                    this.advanceDiscountRate = data.advance_discount_rate ?? 0;
+                    this.advanceDiscountLabel = data.advance_discount_label ?? '';
+                    this.totalWithAdvanceDiscount = data.total_with_advance_discount ?? data.total_after_discount;
                 } catch (err) {
                     this.computeError = err.message;
                 } finally {

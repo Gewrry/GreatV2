@@ -212,6 +212,9 @@ class FeeRuleController extends Controller
             }
         }
 
+        // ── Advance Payment Discount (potential savings if paid in advance) ─────
+        $advanceDiscountInfo = $this->getAdvanceDiscountInfo($mode, $totalAfterDiscount, $installmentCount);
+
         return response()->json([
             'fees' => $fees,
             'total_due' => $totalDue,
@@ -221,6 +224,11 @@ class FeeRuleController extends Controller
             'per_installment' => round($totalAfterDiscount / max(1, $installmentCount), 2),
             'schedule' => $this->buildSchedule($totalAfterDiscount, $mode, $permitYear, $approvedAt, $isRenewal),
             'permit_year' => $permitYear,
+            // Advance payment discount info
+            'advance_discount'           => $advanceDiscountInfo['discount'],
+            'advance_discount_rate'      => $advanceDiscountInfo['rate'],
+            'advance_discount_label'     => $advanceDiscountInfo['label'],
+            'total_with_advance_discount' => max(0, $totalAfterDiscount - $advanceDiscountInfo['discount']),
         ]);
     }
 
@@ -287,6 +295,9 @@ class FeeRuleController extends Controller
             default       => 1,
         };
 
+        // ── Advance Payment Discount (potential savings if paid in advance) ─────
+        $advanceDiscountInfo = $this->getAdvanceDiscountInfo($mode, $totalAfterDiscount, $installmentCount);
+
         // For renewals: treat as liable from Jan 1 of permit year (all quarters apply)
         // For new registrations: liable from today (past quarters not overdue)
         $approvedAt = $isRenewal
@@ -310,7 +321,54 @@ class FeeRuleController extends Controller
                 'field_key'        => $b->field_key,
                 'discount_percent' => $b->discount_percent,
             ]),
+            // Advance payment discount info
+            'advance_discount'           => $advanceDiscountInfo['discount'],
+            'advance_discount_rate'      => $advanceDiscountInfo['rate'],
+            'advance_discount_label'     => $advanceDiscountInfo['label'],
+            'total_with_advance_discount' => max(0, $totalAfterDiscount - $advanceDiscountInfo['discount']),
         ]);
+    }
+
+    /**
+     * Get advance payment discount information for assessment display.
+     * Shows potential savings if the user pays in advance.
+     */
+    private function getAdvanceDiscountInfo(string $mode, float $totalAfterDiscount, int $installmentCount): array
+    {
+        // Check if advance discount is enabled
+        if (BplsSetting::get('advance_discount_enabled', '0') !== '1') {
+            return [
+                'discount' => 0,
+                'rate' => 0,
+                'label' => 'Advance payment discount not enabled',
+            ];
+        }
+
+        // Get discount rate based on mode
+        $discountRate = match ($mode) {
+            'annual' => (float) BplsSetting::get('advance_discount_annual', '10'),
+            'semi_annual' => (float) BplsSetting::get('advance_discount_semi_annual', '8'),
+            default => (float) BplsSetting::get('advance_discount_quarterly', '5'),
+        };
+
+        $daysBefore = (int) BplsSetting::get('advance_discount_days_before', '30');
+
+        // Calculate discount amount (based on per installment)
+        $perInstallment = $installmentCount > 0 ? $totalAfterDiscount / $installmentCount : $totalAfterDiscount;
+        $discountAmount = round($perInstallment * ($discountRate / 100), 2);
+
+        $modeLabel = match ($mode) {
+            'annual' => 'Annual',
+            'semi_annual' => 'Semi-Annual',
+            default => 'Quarterly',
+        };
+
+        return [
+            'discount' => $discountAmount,
+            'rate' => $discountRate,
+            'label' => "{$modeLabel} payment ({$discountRate}% off if paid before due date)",
+            'days_before' => $daysBefore,
+        ];
     }
 
     /**

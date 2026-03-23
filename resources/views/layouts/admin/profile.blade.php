@@ -1,122 +1,141 @@
 {{-- profile.blade.php --}}
-<!-- Settings Dropdown (Desktop) -->
-<div x-data="{ open: false }" class="hidden sm:flex sm:items-center">
-    <x-dropdown align="right" width="160">
-        <x-slot name="trigger">
-            <button
-                class="inline-flex items-center gap-3 px-3 py-2 rounded-full text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all ease-in-out duration-200 shadow-sm hover:shadow">
+<style>
+    .profile-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .35rem .7rem .35rem .45rem;
+        border-radius: 100px;
+        border: 1px solid var(--border, rgba(11,37,69,.08));
+        background: transparent;
+        cursor: pointer;
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: .75rem;
+        font-weight: 500;
+        color: var(--text-mid, rgba(11,37,69,.52));
+        transition: background .18s, border-color .18s, color .18s;
+        text-decoration: none;
+        position: relative;
+    }
+    .profile-trigger:hover {
+        background: var(--surface, #f5f8fc);
+        border-color: var(--border-mid, rgba(11,37,69,.13));
+        color: var(--navy, #0b2545);
+    }
+    .profile-avatar {
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        background: var(--navy, #0b2545);
+        color: var(--cyan, #00c8e8);
+        display: flex; align-items: center; justify-content: center;
+        font-size: .68rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+    .profile-chevron {
+        width: 12px; height: 12px;
+        color: var(--text-soft, rgba(11,37,69,.32));
+        transition: transform .2s;
+    }
+    .profile-open .profile-chevron { transform: rotate(180deg); }
 
-                <!-- Avatar Circle -->
-                <div
-                    class="w-8 h-8 rounded-full bg-gradient-to-br from-logo-green to-logo-teal text-white flex items-center justify-center font-bold text-xs uppercase shadow-inner">
-                    {{ substr(Auth::user()->uname, 0, 1) }}
-                </div>
+    .profile-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        min-width: 200px;
+        background: var(--white, #fff);
+        border: 1px solid var(--border, rgba(11,37,69,.08));
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(11,37,69,.1), 0 1px 4px rgba(11,37,69,.06);
+        z-index: 200;
+        overflow: hidden;
+    }
+    .profile-dropdown-head {
+        padding: .85rem 1rem;
+        border-bottom: 1px solid var(--border, rgba(11,37,69,.08));
+        background: var(--surface, #f5f8fc);
+    }
+    .profile-dropdown-head-name {
+        font-size: .78rem;
+        font-weight: 600;
+        color: var(--navy, #0b2545);
+    }
+    .profile-dropdown-head-sub {
+        font-size: .65rem;
+        color: var(--text-soft, rgba(11,37,69,.32));
+        letter-spacing: .04em;
+        margin-top: .1rem;
+    }
+    .profile-dropdown-link {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .65rem 1rem;
+        font-size: .78rem;
+        font-weight: 500;
+        color: var(--text-mid, rgba(11,37,69,.52));
+        text-decoration: none;
+        transition: background .15s, color .15s;
+    }
+    .profile-dropdown-link:hover { background: var(--surface, #f5f8fc); color: var(--navy, #0b2545); }
+    .profile-dropdown-link svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .7; }
+    .profile-dropdown-link.danger { color: #b91c1c; }
+    .profile-dropdown-link.danger:hover { background: #fff1f2; }
+    .profile-dropdown-divider { border: none; border-top: 1px solid var(--border, rgba(11,37,69,.08)); margin: 0; }
+</style>
 
-                <!-- Username -->
-                <div class="hidden md:block">{{ Auth::user()->uname }}</div>
+<div x-data="{ open: false }" @click.outside="open = false" style="position:relative;">
 
-                <!-- Dropdown Arrow -->
-                <svg class="fill-current h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                        clip-rule="evenodd" />
-                </svg>
-            </button>
-        </x-slot>
-
-        <x-slot name="content" class="">
-            <!-- User Info Header -->
-            <div class="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <div class="flex items-center gap-3">
-
-                    <div>
-                        <p class="font-semibold text-gray-900">Profile Menu</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dropdown Links -->
-            <div class="py-1">
-                <x-dropdown-link :href="route('profile.edit')" class="flex items-center gap-2 px-4 py-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    {{ __('Profile') }}
-                </x-dropdown-link>
-            </div>
-
-            <!-- Logout -->
-            <div class="border-t border-gray-100">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();"
-                        class="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        {{ __('Log Out') }}
-                    </x-dropdown-link>
-                </form>
-            </div>
-        </x-slot>
-    </x-dropdown>
-</div>
-
-<!-- Mobile User Button -->
-<div x-data="{ open: false }" class="flex items-center sm:hidden relative">
-    <!-- User Avatar Button (Mobile) -->
-    <button @click="open = ! open"
-        class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs uppercase shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200">
-        {{ substr(Auth::user()->uname, 0, 1) }}
+    {{-- Trigger --}}
+    <button @click="open = !open" :class="open ? 'profile-open profile-trigger' : 'profile-trigger'" type="button">
+        <span class="profile-avatar">{{ substr(Auth::user()->uname, 0, 1) }}</span>
+        <span class="hidden md:inline" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ Auth::user()->uname }}
+        </span>
+        <svg class="profile-chevron" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+        </svg>
     </button>
 
-    <!-- Mobile Dropdown Menu (Floating) -->
-    <div x-show="open" x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100"
-        x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 transform scale-100"
-        x-transition:leave-end="opacity-0 transform scale-95" @click.away="open = false"
-        class="absolute right-0 top-12 w-72 bg-white rounded-lg shadow-2xl border border-gray-200 z-50"
-        style="display: none;">
+    {{-- Dropdown --}}
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 translate-y-1"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-1"
+         class="profile-dropdown"
+         x-cloak>
 
-        <!-- User Info Section -->
-        <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-t-lg">
-            <div class="flex items-center gap-3">
-                <div
-                    class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-bold text-base uppercase shadow-lg">
-                    {{ substr(Auth::user()->uname, 0, 1) }}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-base text-gray-900 truncate">{{ Auth::user()->uname }}</div>
-                    <div class="text-sm text-gray-600 truncate">{{ Auth::user()->email }}</div>
-                </div>
-            </div>
+        {{-- Head --}}
+        <div class="profile-dropdown-head">
+            <p class="profile-dropdown-head-name">{{ Auth::user()->uname }}</p>
+            <p class="profile-dropdown-head-sub">{{ Auth::user()->email }}</p>
         </div>
 
-        <!-- Mobile Menu Links -->
-        <div class="py-2">
-            <a href="{{ route('profile.edit') }}"
-                class="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        {{-- Links --}}
+        <a href="{{ route('profile.edit') }}" class="profile-dropdown-link">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+            Profile
+        </a>
+
+        <hr class="profile-dropdown-divider">
+
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="profile-dropdown-link danger" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;font-family:inherit;">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                 </svg>
-                {{ __('Profile') }}
-            </a>
+                Sign Out
+            </button>
+        </form>
 
-            <!-- Mobile Logout -->
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit"
-                    class="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition border-t border-gray-100">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    {{ __('Log Out') }}
-                </button>
-            </form>
-        </div>
     </div>
 </div>
