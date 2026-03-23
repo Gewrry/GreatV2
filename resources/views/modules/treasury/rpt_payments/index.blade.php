@@ -83,7 +83,12 @@
                                     $totalBillings = $billingsForYear->count();
                                     $paidBillings = $billingsForYear->where('status', 'paid')->count();
                                     
-                                    if ($totalBillings === 0) {
+                                    $hasUnpaidTransferTax = $td->billings->where('billing_type', \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)->where('status', '!=', 'paid')->first();
+                                    
+                                    if ($hasUnpaidTransferTax) {
+                                        $statusText = 'Transfer Tax Due';
+                                        $statusClass = 'bg-blue-600 text-white';
+                                    } elseif ($totalBillings === 0) {
                                         $statusText = 'Unassessed';
                                         $statusClass = 'bg-gray-100 text-gray-700';
                                     } elseif ($paidBillings === $totalBillings) {

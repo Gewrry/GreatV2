@@ -128,7 +128,13 @@
                 <tr>
                     <td class="text-center">{{ $p->payment_date->format('m/d/Y') }}</td>
                     <td class="text-center font-bold">{{ $p->or_no }}</td>
-                    <td class="text-left">{{ $p->billing?->tax_year }} - Q{{ $p->billing?->quarter }}</td>
+                    <td class="text-left">
+                        @if($p->billing?->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                            Transfer Tax
+                        @else
+                            {{ $p->billing?->tax_year }} - Q{{ $p->billing?->quarter }}
+                        @endif
+                    </td>
                     <td class="text-left capitalize">{{ str_replace('_', ' ', $p->payment_mode) }}</td>
                     <td class="text-right">₱ {{ number_format($p->basic_tax + $p->sef_tax, 2) }}</td>
                     <td class="text-right text-red-500">₱ {{ number_format($p->penalty, 2) }}</td>
@@ -165,7 +171,13 @@
                 @foreach($billings as $b)
                 <tr class="{{ $b->balance > 0 ? '' : 'bg-gray-50 text-gray-400' }}">
                     <td class="text-center font-bold">{{ $b->tax_year }}</td>
-                    <td class="text-center">Q{{ $b->quarter }}</td>
+                    <td class="text-center">
+                        @if($b->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                            N/A
+                        @else
+                            Q{{ $b->quarter }}
+                        @endif
+                    </td>
                     <td class="text-right">₱ {{ number_format($b->total_tax_due, 2) }}</td>
                     <td class="text-right {{ $b->penalty_amount > 0 ? 'text-red-600 font-bold' : '' }}">₱ {{ number_format($b->penalty_amount, 2) }}</td>
                     <td class="text-right text-green-600">₱ {{ number_format($b->discount_amount, 2) }}</td>

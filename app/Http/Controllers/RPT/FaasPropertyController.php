@@ -168,7 +168,8 @@ public function index(Request $request)
             return $property;
         });
 
-        return redirect()->route('rpt.faas.show', $property)->with('success', 'Draft Assessment Record created successfully. You may now add valuation components.');
+        return redirect()->route('rpt.faas.index', ['status' => 'draft'])
+            ->with('success', 'Draft Assessment Record created successfully. You may now add valuation components.');
     }
 
     /**
@@ -198,9 +199,8 @@ public function index(Request $request)
             ->first();
 
         if ($existing) {
-            return redirect()->route('rpt.faas.show', $existing)
-                ->with('open_tab', $component)
-                ->with('info', 'A draft already exists. Opening the ' . ucfirst($component) . ' appraisal panel.');
+            return redirect()->route('rpt.faas.index', ['status' => 'draft'])
+                ->with('info', 'A draft already exists for this property. You can find it in the list below.');
         }
 
         // Auto-create the draft with sensible defaults
@@ -265,16 +265,15 @@ public function index(Request $request)
             return $property;
         });
 
-        return redirect()
-            ->route('rpt.faas.show', $property)
-            ->with('open_tab', $component);
+        return redirect()->route('rpt.faas.index', ['status' => 'draft'])
+            ->with('info', 'A draft assessment record has been initialized. Click on the record to start adding valuation components.');
     }
 
 
 
     public function show(FaasProperty $faas)
     {
-        $faas->load(['barangay', 'lands.actualUse', 'buildings.actualUse', 'machineries.actualUse', 'attachments', 'activityLogs.user', 'taxDeclarations']);
+        $faas->load(['barangay', 'lands.actualUse', 'buildings.actualUse', 'machineries.actualUse', 'attachments', 'activityLogs.user', 'taxDeclarations', 'parentLand.lands', 'predecessors.lands', 'predecessor.lands']);
         
         $allActualUses = RptaActualUse::with(['assessmentLevels' => function($q) {
             $q->orderBy('min_value', 'asc');
@@ -695,18 +694,20 @@ public function index(Request $request)
         return back()->with('success', 'Property recommended for final approval.');
     }
 
-    public function approve(FaasProperty $faas, FaasValidationService $validator)
+    public function approve(FaasProperty $faas, FaasValidationService $validator, Request $request)
     {
         $validator->assertCanApprove($faas);
 
-        DB::transaction(function () use ($faas) {
+        DB::transaction(function () use ($faas, $request) {
             // Re-fetch with lock for atomic ARP generation
             $lockedFaas = FaasProperty::where('id', $faas->id)->lockForUpdate()->first();
             
+            $isOverride = $request->has('manual_override') && ($request->filled('manual_arp_no') || $request->filled('manual_td_no'));
+
             $lockedFaas->update([
                 'status'      => 'approved',
-                'arp_no'      => FaasProperty::generateArpNo($lockedFaas), // Atomic within transaction
-                'pin'         => $lockedFaas->generateStructuredPin(),
+                'arp_no'      => $request->filled('manual_arp_no') ? $request->manual_arp_no : FaasProperty::generateArpNo($lockedFaas),
+                'pin'         => $lockedFaas->pin ?: $lockedFaas->generateStructuredPin(),
                 'approved_by' => Auth::id(),
                 'approved_at' => now(),
             ]);
@@ -715,7 +716,7 @@ public function index(Request $request)
                 'faas_property_id' => $lockedFaas->id, 
                 'user_id'          => Auth::id(), 
                 'action'           => 'approved', 
-                'description'      => 'Record approved and ARP No. ' . $lockedFaas->arp_no . ' assigned.'
+                'description'      => ($isOverride ? '[MANUAL OVERRIDE] ' : '') . 'Record approved and ARP No. ' . $lockedFaas->arp_no . ' assigned.'
             ]);
 
             // General Revision Cascade: If this FAAS supersedes an older record,
@@ -740,7 +741,7 @@ public function index(Request $request)
 
             // [NEW] MRPAAO-Compliant Automation:
             // Generate Tax Declarations for all components on approval.
-            \App\Models\RPT\TaxDeclaration::autoGenerateFromFaas($lockedFaas);
+            \App\Models\RPT\TaxDeclaration::autoGenerateFromFaas($lockedFaas, $request->manual_td_no);
         });
 
         return back()->with('success', 'Property record approved. Tax Declarations have been auto-generated for all components.');
@@ -818,7 +819,7 @@ public function index(Request $request)
         foreach ($request->ids as $id) {
             try {
                 $faas = FaasProperty::findOrFail($id);
-                $this->approve($faas, $validator);
+                $this->approve($faas, $validator, $request);
                 $approvedCount++;
             } catch (\Exception $e) {
                 // Log failure, but continue with others
@@ -963,6 +964,9 @@ public function index(Request $request)
                 'is_taxable'               => $faas->is_taxable,
                 'exemption_basis'          => $faas->exemption_basis,
                 'previous_faas_property_id'=> $faas->id,
+                'previous_arp_no'          => $faas->arp_no,
+                'previous_owner'           => $faas->primary_owner_name,
+                'previous_assessed_value'  => $faas->total_assessed_value,
                 'status'                   => 'draft',
                 'created_by'               => Auth::id(),
                 'remarks'                  => 'General Revision of FAAS ARP ' . $faas->arp_no,
@@ -1035,6 +1039,9 @@ public function index(Request $request)
                 'is_taxable'               => $faas->is_taxable,
                 'exemption_basis'          => $faas->exemption_basis,
                 'previous_faas_property_id'=> $faas->id,
+                'previous_arp_no'          => $faas->arp_no,
+                'previous_owner'           => $faas->primary_owner_name,
+                'previous_assessed_value'  => $faas->total_assessed_value,
                 'status'                   => 'draft',
                 'created_by'               => Auth::id(),
                 'remarks'                  => 'Reassessment of FAAS ARP ' . $faas->arp_no,
@@ -1097,6 +1104,10 @@ public function index(Request $request)
             'car_date'                   => 'required|date',
             'transfer_tax_receipt_no'    => 'required|string|max:100',
             'transfer_tax_receipt_date'  => 'required|date',
+            'instrument_type'            => 'required|string|max:255',
+            'instrument_date'            => 'required|date',
+            'consideration_amount'       => 'nullable|numeric|min:0',
+            'rd_entry_no'                => 'nullable|string|max:100',
             'remarks'                    => 'nullable|string|max:500',
         ]);
 
@@ -1105,7 +1116,7 @@ public function index(Request $request)
                 'faas_property_id' => $faas->id,
                 'user_id'          => Auth::id(),
                 'action'           => 'transfer_initiated',
-                'description'      => 'Transfer of Ownership initiated (CAR: ' . $data['car_no'] . '). Original record remains APPROVED until new owner is approved.',
+                'description'      => 'Transfer of Ownership initiated (Instrument: ' . $data['instrument_type'] . '). Original record remains APPROVED until new owner is approved.',
             ]);
 
             // Create new Draft with updated owner and transition documents
@@ -1124,14 +1135,21 @@ public function index(Request $request)
                 'is_taxable'               => $faas->is_taxable,
                 'exemption_basis'          => $faas->exemption_basis,
                 'previous_faas_property_id'=> $faas->id,
+                'previous_arp_no'          => $faas->arp_no,
+                'previous_owner'           => $faas->primary_owner_name,
+                'previous_assessed_value'  => $faas->total_assessed_value,
                 'revision_type'            => 'TRANSFER', // Explicit revision type
                 'car_no'                   => $data['car_no'],
                 'car_date'                 => $data['car_date'],
                 'transfer_tax_receipt_no'  => $data['transfer_tax_receipt_no'],
                 'transfer_tax_receipt_date'=> $data['transfer_tax_receipt_date'],
+                'instrument_type'          => $data['instrument_type'],
+                'instrument_date'          => $data['instrument_date'],
+                'consideration_amount'     => $data['consideration_amount'] ?? 0,
+                'rd_entry_no'              => $data['rd_entry_no'] ?? null,
                 'status'                   => 'draft',
                 'created_by'               => Auth::id(),
-                'remarks'                  => $data['remarks'] ?: 'Transfer of Ownership from ' . $faas->primary_owner_name . ' (Ref: ' . $data['car_no'] . ')',
+                'remarks'                  => ($data['remarks'] ?? null) ?: 'Transfer of Ownership from ' . $faas->primary_owner_name . ' (' . ($data['instrument_type'] ?? 'N/A') . ')',
             ]);
 
             // [NEW] Create initial owner record for the new set
@@ -1268,6 +1286,9 @@ public function index(Request $request)
                     'property_type'            => 'land',
                     'title_no'                 => $faas->title_no,
                     'previous_faas_property_id'=> $faas->id,
+                    'previous_arp_no'          => $faas->arp_no,
+                    'previous_owner'           => $faas->primary_owner_name,
+                    'previous_assessed_value'  => $faas->total_assessed_value,
                     'status'                   => 'draft',
                     'created_by'               => Auth::id(),
                     'remarks'                  => $request->remarks ?: "Subdivision from Mother ARP: {$faas->arp_no}" . ($propertyKind !== 'land' ? " [{$propertyKind}]" : ''),
@@ -1421,11 +1442,15 @@ public function index(Request $request)
 
         $successor = DB::transaction(function () use ($mothers, $request, $totalArea, $barangayId) {
             // 1. Create Successor Draft
+            $firstMother = $mothers->first();
             $successor = FaasProperty::create([
                 'property_type'         => 'land',
                 'barangay_id'           => $barangayId,
                 'effectivity_date'      => $request->effectivity_date,
                 'revision_type'         => 'consolidation',
+                'previous_arp_no'       => $firstMother->arp_no,
+                'previous_owner'        => $firstMother->primary_owner_name,
+                'previous_assessed_value' => $mothers->sum(fn($m) => $m->total_assessed_value),
                 'status'                => 'draft',
                 'lot_no'                => $request->lot_no,
                 'blk_no'                => $request->blk_no,
@@ -1808,6 +1833,68 @@ public function index(Request $request)
             if ($intersect) $inside = !$inside;
         }
         return $inside;
+    }
+
+    /**
+     * Calculate Transfer Tax based on higher of Market Value vs Consideration.
+     */
+    public function calculateTransferTax(FaasProperty $faas, Request $request)
+    {
+        $consideration = (float) $request->input('consideration_amount', 0);
+        $marketValue   = (float) $faas->total_market_value;
+        $basis         = max($consideration, $marketValue);
+        
+        // Default rate: 0.5% (common for provinces)
+        $rate = 0.005; 
+        $taxDue = round($basis * $rate, 2);
+
+        return response()->json([
+            'market_value'         => $marketValue,
+            'consideration_amount' => $consideration,
+            'tax_basis'            => $basis,
+            'rate'                 => $rate * 100 . '%',
+            'tax_due'              => $taxDue,
+        ]);
+    }
+
+    /**
+     * Generate the Transfer Tax Bill in rpt_billings.
+     */
+    public function generateTransferTaxBill(FaasProperty $faas, Request $request)
+    {
+        // 1. Calculate
+        $calc = $this->calculateTransferTax($faas, $request)->getData();
+        
+        // 2. We need a "Primary" Tax Declaration to anchor the bill
+        // Standard practice: Link to the latest active TD of the property
+        $td = $faas->taxDeclarations()->whereNotIn('status', ['cancelled'])->latest()->first();
+        
+        if (!$td) {
+            return response()->json(['error' => 'No active Tax Declaration found to anchor this bill.'], 422);
+        }
+
+        // 3. Update the FAAS with the consideration amount for persistence
+        $faas->update(['consideration_amount' => $calc->consideration_amount]);
+
+        // 4. Create Billing
+        $billing = RptBilling::create([
+            'tax_declaration_id' => $td->id,
+            'tax_year'           => now()->year,
+            'billing_type'       => RptBilling::TYPE_TRANSFER_TAX,
+            'basic_tax'          => $calc->tax_due,
+            'sef_tax'            => 0,
+            'total_tax_due'      => $calc->tax_due,
+            'total_amount_due'   => $calc->tax_due,
+            'balance'            => $calc->tax_due,
+            'status'             => 'unpaid',
+            'due_date'           => now()->addDays(30), // Optional deadline
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Transfer Tax Bill generated successfully: ₱' . number_format($calc->tax_due, 2),
+            'billing' => $billing
+        ]);
     }
 }
 

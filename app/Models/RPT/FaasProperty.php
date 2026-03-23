@@ -38,12 +38,18 @@ class FaasProperty extends Model
         'exemption_basis',
         'created_by', 'approved_by', 'approved_at', 'inactive_at', 'remarks',
         'polygon_coordinates',
+        'car_no', 'car_date', 'transfer_tax_receipt_no', 'transfer_tax_receipt_date',
+        'instrument_type', 'instrument_date', 'consideration_amount', 'rd_entry_no',
     ];
 
     protected $casts = [
         'approved_at' => 'datetime',
         'inactive_at' => 'datetime',
         'effectivity_date' => 'date',
+        'car_date' => 'date',
+        'transfer_tax_receipt_date' => 'date',
+        'instrument_date' => 'date',
+        'consideration_amount' => 'decimal:2',
         'polygon_coordinates' => 'array',
     ];
 
@@ -204,6 +210,108 @@ class FaasProperty extends Model
     public function isDraft(): bool     { return $this->status === 'draft'; }
     public function isApproved(): bool  { return $this->status === 'approved'; }
     public function isInactive(): bool  { return $this->status === 'inactive'; }
+
+    /**
+     * Checks if at least one Tax Declaration for this property has been Forwarded to Treasury.
+     */
+    public function isForwardedToTreasury(): bool
+    {
+        return $this->taxDeclarations()->where('status', 'forwarded')->exists();
+    }
+
+    /**
+     * Checks if all Tax Declarations associated with this property are fully paid.
+     * Required for new transactions (Transfers, Subdivisions).
+     */
+    public function isFullyPaid(): bool
+    {
+        // 1. Must be taxable to worry about payments
+        if (!$this->is_taxable) return true;
+
+        $tds = $this->taxDeclarations()->whereNotIn('status', ['cancelled'])->get();
+        if ($tds->isEmpty()) return false;
+
+        // 2. All active TDs must be forwarded
+        foreach ($tds as $td) {
+            if ($td->status === 'approved') return false;
+
+            // 3. For every forwarded TD, check for outstanding balances
+            $hasBalance = $td->billings()
+                ->where('balance', '>', 0)
+                ->exists();
+            
+            if ($hasBalance) return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Checks if there are any approved TDs that are still awaiting forwarding.
+     */
+    public function hasUnforwardedTds(): bool
+    {
+        return $this->taxDeclarations()->where('status', 'approved')->exists();
+    }
+
+    /**
+     * Check the status of Transfer Tax billing for this property.
+     */
+    public function getTransferTaxStatus()
+    {
+        $tdIds = $this->taxDeclarations()->pluck('id');
+        
+        $billing = \App\Models\RPT\RptBilling::whereIn('tax_declaration_id', $tdIds)
+            ->where('billing_type', \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+            ->whereIn('status', ['unpaid', 'partial', 'paid'])
+            ->latest()
+            ->first();
+
+        if (!$billing) return 'unbilled';
+        return $billing->status; // unpaid, partial, paid
+    }
+
+    /**
+     * Get the actual amount billed for Transfer Tax.
+     */
+    public function getTransferTaxAmount(): float
+    {
+        $tdIds = $this->taxDeclarations()->pluck('id');
+        
+        $billing = \App\Models\RPT\RptBilling::whereIn('tax_declaration_id', $tdIds)
+            ->where('billing_type', \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+            ->whereIn('status', ['unpaid', 'partial', 'paid'])
+            ->latest()
+            ->first();
+
+        return $billing ? (float) $billing->total_tax_due : 0.0;
+    }
+
+    /**
+     * Get the O.R. and Date of the last paid Transfer Tax.
+     */
+    public function getTransferTaxReceipt(): array
+    {
+        $tdIds = $this->taxDeclarations()->pluck('id');
+        
+        $billing = \App\Models\RPT\RptBilling::whereIn('tax_declaration_id', $tdIds)
+            ->where('billing_type', \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+            ->where('status', 'paid')
+            ->latest()
+            ->first();
+
+        if ($billing) {
+            $payment = $billing->payments()->latest()->first();
+            if ($payment) {
+                return [
+                    'or_no' => $payment->or_no,
+                    'date'  => $payment->payment_date->format('Y-m-d'),
+                ];
+            }
+        }
+
+        return ['or_no' => '', 'date' => ''];
+    }
 
     public function isEditable(): bool
     {

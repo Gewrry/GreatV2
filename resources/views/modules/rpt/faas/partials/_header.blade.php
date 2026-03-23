@@ -33,6 +33,28 @@
     @endif
 @endif
 
+{{-- Pending Forwarding Warning --}}
+@if($faas->isApproved() && !$faas->isForwardedToTreasury())
+<div class="bg-blue-50 border-l-4 border-blue-500 rounded-r-xl shadow-sm mb-4">
+    <div class="px-6 py-4 flex items-start gap-3">
+        <div class="bg-blue-100 p-2 rounded-lg">
+            <i class="fas fa-paper-plane text-blue-600 text-sm"></i>
+        </div>
+        <div>
+            <h4 class="text-blue-800 font-bold text-sm tracking-tight">Property Pending Forwarding to Treasury</h4>
+            <p class="text-xs text-blue-700 mt-1 leading-relaxed">
+                This record is <strong>locally approved</strong> in the Assessor's office. To initiate new transactions (Transfers, Splits) or accept payments, you must first <strong>Forward</strong> its Tax Declarations (Assessment Stage) to the Treasury.
+            </p>
+            <div class="mt-3">
+                <a href="{{ route('rpt.td.index', ['faas_property_id' => $faas->id]) }}" class="text-[10px] font-bold uppercase tracking-widest bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm inline-flex items-center gap-2">
+                    Go to Tax Declarations <i class="fas fa-arrow-right text-[8px]"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- 1️⃣ Master Property Header & Workflow --}}
 <div class="bg-white rounded-xl shadow mb-4">
     <div class="px-6 py-4 flex flex-wrap items-start justify-between gap-4 border-b">
@@ -156,13 +178,33 @@
             @endif
             
             @if($faas->isApproved())
-                <a href="{{ route('rpt.faas.print-noa', $faas) }}" target="_blank" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all ml-1 flex items-center">
-                    <i class="fas fa-envelope-open-text mr-1.5 opacity-70"></i> Print NOA
-                </a>
-                <div class="relative z-50 inline-block text-left ml-1" x-data="{ open: false }">
-                    <button @click="open = !open" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all flex items-center gap-2">
-                        <i class="fas fa-plus-circle text-xs"></i> New Transaction <i class="fas fa-chevron-down text-[10px] opacity-70"></i>
-                    </button>
+                @php 
+                    $isForwarded = $faas->isForwardedToTreasury(); 
+                    $isPaid = $faas->isFullyPaid();
+                    $canTransact = $isForwarded && $isPaid;
+                @endphp
+                
+                @if(!$canTransact)
+                    <div class="group relative inline-block ml-1">
+                        <button disabled class="bg-gray-300 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm cursor-not-allowed flex items-center gap-2 opacity-75">
+                            <i class="fas fa-lock text-xs opacity-70"></i> New Transaction <i class="fas fa-chevron-down text-[10px] opacity-70"></i>
+                        </button>
+                        <div class="absolute right-0 bottom-full mb-2 w-64 bg-gray-900 text-white text-[10px] p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] shadow-xl">
+                            <div class="font-bold text-amber-400 mb-1 flex items-center gap-1">
+                                <i class="fas fa-exclamation-triangle"></i> Workflow Restriction
+                            </div>
+                            @if(!$isForwarded)
+                                New transactions are locked until at least one Tax Declaration is <strong>Forwarded to Treasury</strong> (Assessment Stage).
+                            @elseif(!$isPaid)
+                                ALL Tax Declarations must be <strong>Fully Paid</strong> (Tax Clearance) before initiating new transactions.
+                            @endif
+                        </div>
+                    </div>
+                @else
+                    <div class="relative z-50 inline-block text-left ml-1" x-data="{ open: false }">
+                        <button @click="open = !open" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all flex items-center gap-2">
+                            <i class="fas fa-plus-circle text-xs"></i> New Transaction <i class="fas fa-chevron-down text-[10px] opacity-70"></i>
+                        </button>
                     <div x-show="open" @click.away="open = false" class="origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5  overflow-hidden border border-gray-100" 
                          x-transition:enter="transition ease-out duration-100"
                          x-transition:enter-start="transform opacity-0 scale-95"
@@ -198,6 +240,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 
                 @if(in_array(auth()->user()->role, ['admin', 'provincial_assessor']))

@@ -247,8 +247,12 @@
                             </div>
                         </div>
                         <div class="meta-col flex-1" style="justify-content: space-between;">
-                            <span>payment of REAL PROPERTY TAX upon property(ies) described below for the Calendar Year</span>
-                            <span style="font-size: 16px; font-weight: bold; margin: 0 10px;">{{ $payment->billing->tax_year }}</span>
+                            @if($payment->billing->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                                <span class="text-blue-700 font-bold uppercase">Payment of TRANSFER TAX</span>
+                            @else
+                                <span>payment of REAL PROPERTY TAX upon property(ies) described below for the Calendar Year</span>
+                                <span style="font-size: 16px; font-weight: bold; margin: 0 10px;">{{ $payment->billing->tax_year }}</span>
+                            @endif
                             <span style="font-size: 24px;">▶</span>
                         </div>
                         <div class="meta-col" style="width: 30%; flex-direction: column; align-items: flex-start;">
@@ -295,7 +299,13 @@
                                     {{ number_format($baseTotal, 2) }}
                                 </td>
                                 <td></td>
-                                <td>{{ $payment->billing->tax_year }} ({{ $payment->billing->quarter }})</td>
+                                <td>
+                                    @if($payment->billing->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                                        TRANSFER TAX
+                                    @else
+                                        {{ $payment->billing->tax_year }} ({{ $payment->billing->quarter }})
+                                    @endif
+                                </td>
                                 <td>{{ number_format($baseTotal, 2) }}</td>
                                 <td>{{ number_format($payment->penalty, 2) }}</td>
                                 <td>{{ number_format($payment->amount, 2) }}</td>

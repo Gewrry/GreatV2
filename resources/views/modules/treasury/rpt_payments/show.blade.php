@@ -113,8 +113,12 @@
                                     @foreach($billings as $b)
                                     <tr class="{{ $billing->id == $b->id ? 'bg-blue-50/50' : '' }}">
                                         <td class="px-6 py-3 font-bold text-gray-800">
-                                            Year {{ $b->tax_year }} 
-                                            <span class="ml-1 text-[10px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 font-bold">Q{{ $b->quarter }}</span>
+                                            @if($b->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                                                <span class="text-blue-600 uppercase tracking-tighter">Transfer Tax</span>
+                                            @else
+                                                Year {{ $b->tax_year }} 
+                                                <span class="ml-1 text-[10px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 font-bold">Q{{ $b->quarter }}</span>
+                                            @endif
                                         </td>
                                         <td class="px-6 py-3 text-gray-500 text-[10px]">₱{{ number_format($b->total_tax_due, 2) }}</td>
                                         <td class="px-6 py-3 text-rose-500 font-semibold text-[10px]">+ ₱{{ number_format($b->penalty_amount, 2) }}</td>
@@ -139,7 +143,12 @@
                     <div class="bg-white rounded-xl shadow overflow-hidden {{ $billing->isFullyPaid() ? 'opacity-70 grayscale pointer-events-none' : '' }}">
                         <div class="px-6 py-4 border-b bg-blue-50/50 flex items-center justify-between">
                             <h2 class="text-base font-bold text-blue-900 flex items-center gap-2">
-                                <i class="fas fa-cash-register text-blue-500"></i> Payment Processing (Form 56) - Year {{ $billing->tax_year }} (Q{{ $billing->quarter }})
+                                <i class="fas fa-cash-register text-blue-500"></i> Payment Processing (Form 56) - 
+                                @if($billing->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                                    <span class="text-blue-600">Transfer Tax Collection</span>
+                                @else
+                                    Year {{ $billing->tax_year }} (Q{{ $billing->quarter }})
+                                @endif
                             </h2>
                             @if($billing->isFullyPaid())
                                 <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg"><i class="fas fa-check"></i> FULLY PAID</span>
@@ -201,7 +210,11 @@
                             <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6">
                                 <div class="space-y-2 mb-4 pb-4 border-b border-gray-200">
                                     <div class="flex justify-between items-center text-xs">
-                                        <span class="text-gray-500 uppercase font-bold tracking-wider italic">Assessment Year {{ $billing->tax_year }}</span>
+                                        @if($billing->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                                            <span class="text-blue-600 uppercase font-bold tracking-widest italic">Transfer Tax Collection</span>
+                                        @else
+                                            <span class="text-gray-500 uppercase font-bold tracking-wider italic">Assessment Year {{ $billing->tax_year }}</span>
+                                        @endif
                                         <span class="text-gray-400">Due Date: {{ $billing->due_date->format('M d, Y') }}</span>
                                     </div>
                                     <div class="flex justify-between items-center">

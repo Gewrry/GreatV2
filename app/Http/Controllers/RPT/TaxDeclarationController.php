@@ -172,7 +172,7 @@ class TaxDeclarationController extends Controller
 
     // ─── SHOW ────────────────────────────────────────────────────────────────────
 
-    public function show(TaxDeclaration $td)
+    public function show(TaxDeclaration $td, Request $request)
     {
         $td->load([
             'property.lands.actualUse',
@@ -183,6 +183,11 @@ class TaxDeclarationController extends Controller
             'approvedBy',
             'activityLogs.user',
         ]);
+
+        if ($request->ajax() || $request->headers->get('X-Requested-With') === 'XMLHttpRequest') {
+            return view('modules.rpt.td.partials._details', compact('td'))->with('isModal', true);
+        }
+
         return view('modules.rpt.td.show', compact('td'));
     }
 

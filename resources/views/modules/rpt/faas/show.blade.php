@@ -201,16 +201,27 @@
                     @endif
                 @endforeach
 
-                @if($faas->lands->count() === 0 && $faas->parentLand)
-                    @foreach($faas->parentLand->lands as $pl)
+                // ─── GHOST MOTHER LAYER (Background) ───
+                @php
+                    $parents = collect([$faas->parentLand, $faas->predecessor])->merge($faas->predecessors)->filter();
+                @endphp
+                @foreach($parents as $parent)
+                    @foreach($parent->lands as $pl)
                         @if(!empty($pl->polygon_coordinates))
                             try {
-                                L.geoJSON({!! json_encode($pl->polygon_coordinates) !!}, { style: { color: '#059669', weight: 2, fillOpacity: 0.3, dashArray: '5, 5' } }).addTo(group);
+                                L.geoJSON({!! json_encode($pl->polygon_coordinates) !!}, { 
+                                    style: { 
+                                        color: '#6366f1', // Indigo for Mother
+                                        weight: 2, 
+                                        fillOpacity: 0.05, 
+                                        dashArray: '8, 8' 
+                                    } 
+                                }).addTo(group).bindTooltip('Mother Property: {{ $parent->arp_no }}', { sticky: true });
                                 addedCount++;
                             } catch(e) { console.error('Error adding Parent land coords:', e); }
                         @endif
                     @endforeach
-                @endif
+                @endforeach
 
                 console.log('FAAS Header Map - Layers added:', addedCount);
                 if (addedCount > 0) {
@@ -479,6 +490,27 @@
                         }).eachLayer(l => l.addTo(addReferenceLayer));
                     }
                 });
+
+            // ─── GHOST MOTHER REFERENCE (For Add Land) ───
+            @php
+                $parents = collect([$faas->parentLand, $faas->predecessor])->merge($faas->predecessors)->filter();
+            @endphp
+            @foreach($parents as $parent)
+                @foreach($parent->lands as $pl)
+                    @if(!empty($pl->polygon_coordinates))
+                        try {
+                            L.geoJSON({!! json_encode($pl->polygon_coordinates) !!}, { 
+                                style: { 
+                                    color: '#6366f1', 
+                                    weight: 2, 
+                                    fillOpacity: 0.05, 
+                                    dashArray: '10, 10' 
+                                } 
+                            }).addTo(addMap).bindTooltip('Mother Boundary (Reference): {{ $parent->arp_no }}');
+                        } catch(e) {}
+                    @endif
+                @endforeach
+            @endforeach
             
             const addDrawControl = new L.Control.Draw({
                 draw: { polygon: { allowIntersection: false, showArea: true, shapeOptions: { color: '#059669' } }, polyline: false, circle: false, rectangle: false, circlemarker: false, marker: false },
@@ -652,6 +684,27 @@
                         }
                     }).eachLayer(l => l.addTo(editReferenceLayer));
                 }
+
+                // ─── GHOST MOTHER REFERENCE (For Edit Land) ───
+                @php
+                    $parents = collect([$faas->parentLand, $faas->predecessor])->merge($faas->predecessors)->filter();
+                @endphp
+                @foreach($parents as $parent)
+                    @foreach($parent->lands as $pl)
+                        @if(!empty($pl->polygon_coordinates))
+                            try {
+                                L.geoJSON({!! json_encode($pl->polygon_coordinates) !!}, { 
+                                    style: { 
+                                        color: '#6366f1', 
+                                        weight: 2, 
+                                        fillOpacity: 0.05, 
+                                        dashArray: '10, 10' 
+                                    } 
+                                }).addTo(editMap).bindTooltip('Mother Boundary (Reference): {{ $parent->arp_no }}');
+                            } catch(e) {}
+                        @endif
+                    @endforeach
+                @endforeach
             }
             
             const editDrawControl = new L.Control.Draw({

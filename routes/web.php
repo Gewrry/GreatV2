@@ -585,6 +585,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{faas}/general-revision', [FaasPropertyController::class, 'generalRevision'])->name('general-revision');
             Route::post('/{faas}/recompute', [FaasPropertyController::class, 'recomputeAll'])->name('recompute');
             Route::post('/{faas}/reassess', [FaasPropertyController::class, 'reassess'])->name('reassess');
+            Route::get('/{faas}/calculate-tax', [FaasPropertyController::class, 'calculateTransferTax'])->name('calculate-tax');
+            Route::post('/{faas}/generate-tax-bill', [FaasPropertyController::class, 'generateTransferTaxBill'])->name('generate-tax-bill');
             Route::post('/{faas}/transfer', [FaasPropertyController::class, 'transferOwnership'])->name('transfer');
             Route::post('/{faas}/subdivide', [FaasPropertyController::class, 'subdivide'])->name('subdivide');
             Route::post('/consolidate', [FaasPropertyController::class, 'consolidate'])->name('consolidate');

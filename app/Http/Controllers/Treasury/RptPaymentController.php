@@ -23,9 +23,17 @@ class RptPaymentController extends Controller
         $status = $request->input('status', 'unpaid'); // unpaid, paid, all
         $barangayId = $request->input('barangay_id');
 
-        // We query Tax Declarations that are forwarded to Treasury
+        // We query Tax Declarations that are forwarded or approved (if they have transfer tax)
         $query = TaxDeclaration::query()->with(['property.barangay', 'billings'])
-            ->where('status', 'forwarded');
+            ->where(function($q) {
+                $q->where('status', 'forwarded')
+                  ->orWhere(function($sub) {
+                      $sub->where('status', 'approved')
+                          ->whereHas('billings', function($b) {
+                              $b->where('billing_type', \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX);
+                          });
+                  });
+            });
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -66,6 +74,15 @@ class RptPaymentController extends Controller
             $taxDeclarations = TaxDeclaration::with(['property.barangay', 'billings' => function($q) {
                 $q->whereIn('status', ['unpaid', 'partial'])->orderBy('tax_year')->orderBy('quarter');
             }])
+            ->where(function($q) {
+                $q->where('status', 'forwarded')
+                  ->orWhere(function($sub) {
+                      $sub->where('status', 'approved')
+                          ->whereHas('billings', function($b) {
+                              $b->where('billing_type', \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX);
+                          });
+                  });
+            })
             ->where(function($q) use ($search) {
                 $q->whereHas('property.owners', function ($p) use ($search) {
                       $p->where('owner_name', 'like', "%{$search}%")
@@ -196,8 +213,9 @@ class RptPaymentController extends Controller
      */
     public function showPaymentForm(TaxDeclaration $td, Request $request)
     {
-        // Must be forwarded
-        abort_if(!$td->isForwarded(), 403, 'Cannot process payment. Tax Declaration is not forwarded to Treasury.');
+        // Must be forwarded, UNLESS it has a transfer tax billing that needs payment
+        $hasTransferTax = $td->billings()->where('billing_type', \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)->exists();
+        abort_if(!$td->isForwarded() && !$hasTransferTax, 403, 'Cannot process payment. Tax Declaration is not forwarded to Treasury and has no Transfer Tax bills.');
 
         $currentYear = date('Y');
         

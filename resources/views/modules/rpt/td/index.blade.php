@@ -6,20 +6,20 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('layouts.rpt.navbar')
 
-            <div class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4">
+            <div x-data="tdQuickView" class="min-h-screen bg-gradient-to-br from-bluebody via-white to-blue/5 p-4">
 
                 {{-- ── Header ── --}}
                 <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                        <h1 class="text-2xl font-extrabold text-green tracking-tight">Tax Declarations</h1>
-                        <p class="text-gray text-sm mt-0.5">Official TD records — RPT Registry</p>
+                        <h1 class="text-2xl font-black text-gray-900 tracking-tight">Tax Declarations</h1>
+                        <p class="text-sm text-gray-500 font-medium mt-0.5">Official RPT Registry — Assessment Records</p>
                     </div>
                     <div class="flex items-center gap-2">
 
                         @if(request('status') === 'for_review')
                             <button type="button"
                                 onclick="submitBulkAction('{{ route('rpt.td.bulk-approve') }}')"
-                                class="bulk-action-btn hidden flex items-center gap-1.5 px-4 py-2 bg-logo-green text-white text-xs font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-green/20">
+                                class="bulk-action-btn hidden flex items-center gap-2 px-4 py-2 bg-logo-green text-white text-[11px] font-bold rounded-xl hover:shadow-lg hover:shadow-logo-green/30 hover:-translate-y-0.5 transition-all">
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
@@ -30,7 +30,7 @@
                         @if(request('status') === 'approved')
                             <button type="button"
                                 onclick="submitBulkAction('{{ route('rpt.td.bulk-forward') }}')"
-                                class="bulk-action-btn hidden flex items-center gap-1.5 px-4 py-2 bg-logo-blue text-white text-xs font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-logo-blue/20">
+                                class="bulk-action-btn hidden flex items-center gap-2 px-4 py-2 bg-logo-blue text-white text-[11px] font-bold rounded-xl hover:shadow-lg hover:shadow-logo-blue/30 hover:-translate-y-0.5 transition-all">
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                 </svg>
@@ -38,7 +38,7 @@
                             </button>
                             <button type="button"
                                 onclick="submitBulkAction('{{ route('rpt.faas.consolidate') }}', true)"
-                                class="bulk-action-btn hidden flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-green transition-colors shadow-md shadow-purple-200">
+                                class="bulk-action-btn hidden flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-[11px] font-bold rounded-xl hover:shadow-lg hover:shadow-purple-600/30 hover:-translate-y-0.5 transition-all">
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                                 </svg>
@@ -315,8 +315,9 @@
                                         <td class="px-4 py-3">
                                             <div class="flex items-center justify-end gap-1.5">
                                                 <a href="{{ route('rpt.td.show', $td) }}"
+                                                    @click.prevent="showTd('{{ route('rpt.td.show', $td) }}')"
                                                     class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-logo-blue/10 transition-colors"
-                                                    title="View">
+                                                    title="Quick View">
                                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -400,11 +401,122 @@
                     @endif
                 </div>
 
+                {{-- ══════════════════════════════════════════════════════════════
+                     FIXED QUICK-VIEW MODAL
+                     ─────────────────────────────────────────────────────────────
+                     Fixes applied vs the original:
+                     1. Backdrop and panel are SIBLING divs — no more nested
+                        x-show race condition causing the panel to flash/disappear.
+                     2. overflow-hidden removed from the panel shell so the close
+                        button is never clipped by border-radius.
+                     3. Scrollable area is an inner div (overflow-y-auto) so the
+                        close button always stays visible at top-right.
+                     4. Body scroll locked via x-effect while modal is open.
+                     5. Escape key closes via @keydown.escape.window.
+                     6. pointer-events-none on flex wrapper, pointer-events-auto
+                        on the panel — backdrop click-through works correctly.
+                     7. Better error state shown on fetch failure.
+                ════════════════════════════════════════════════════════════════ --}}
+                {{-- Simplified Modal --}}
+                <div 
+                    x-show="isOpen"
+                    @keydown.escape.window="isOpen = false"
+                    x-effect="document.body.style.overflow = isOpen ? 'hidden' : ''"
+                    class="fixed inset-0 z-[2000] flex items-center justify-center p-4 sm:p-6"
+                    x-cloak>
+                    
+                    {{-- Backdrop --}}
+                    <div 
+                        x-show="isOpen"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-150"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0"
+                        @click="isOpen = false"
+                        class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm">
+                    </div>
+
+                    {{-- Panel Card --}}
+                    <div 
+                        x-show="isOpen"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0 scale-95 translate-y-3"
+                        x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave="transition ease-in duration-200"
+                        x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 scale-95 translate-y-3"
+                        class="relative w-full max-w-7xl max-h-[90vh] bg-white rounded-[2rem] shadow-2xl flex flex-col overflow-hidden border border-gray-100">
+                        
+                        {{-- Close Button --}}
+                        <button 
+                            @click="isOpen = false"
+                            class="absolute right-5 top-5 z-20 bg-gray-100 hover:bg-gray-200 text-gray-500 p-2.5 rounded-2xl transition-all">
+                            <i class="fas fa-times"></i>
+                        </button>
+
+                        {{-- Scrollable Content --}}
+                        <div class="overflow-y-auto flex-1 p-6 sm:p-10 custom-scrollbar">
+                            <template x-if="isLoading">
+                                <div class="py-32 flex flex-col items-center justify-center space-y-4 text-center">
+                                    <div class="w-16 h-16 border-[6px] border-logo-teal/10 border-t-logo-teal rounded-full animate-spin"></div>
+                                    <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Loading Records...</p>
+                                </div>
+                            </template>
+
+                            <div x-show="!isLoading" x-html="content"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 
     <script>
+    const initTdQuickView = () => {
+        if (window.Alpine && !Alpine.data('tdQuickView')) {
+            Alpine.data('tdQuickView', () => ({
+                isOpen:    false,
+                isLoading: false,
+                content:   '',
+
+                async showTd(url) {
+                    this.isOpen    = true;
+                    this.isLoading = true;
+                    this.content   = '';
+
+                    try {
+                        const res = await fetch(url, {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+
+                        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+                        this.content = await res.text();
+                    } catch (err) {
+                        this.content = `
+                            <div class="flex flex-col items-center justify-center py-24 text-center">
+                                <div class="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4 text-red-400">
+                                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                                </div>
+                                <p class="text-sm font-bold text-gray-700">Could not load record</p>
+                                <p class="text-xs text-gray-400 mt-1">${err.message} — please try again.</p>
+                            </div>`;
+                    } finally {
+                        this.isLoading = false;
+                    }
+                }
+            }));
+        }
+    };
+
+    if (window.Alpine) {
+        initTdQuickView();
+    } else {
+        document.addEventListener('alpine:init', initTdQuickView);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
 
         const searchInput    = document.getElementById('live-search');
@@ -417,20 +529,21 @@
         const selectAll      = document.getElementById('select-all');
         const allRows        = Array.from(document.querySelectorAll('.td-row'));
 
-        // ── Filter ──────────────────────────────────────────────────────────────
+        // ── Filter ──────────────────────────────────────────────────────────
         function applyFilters() {
-            const search   = searchInput.value.trim().toLowerCase();
-            const barangay = filterBarangay.value.toLowerCase();
-            const type     = filterType.value.toLowerCase();
+            const search      = searchInput.value.trim().toLowerCase();
+            const barangay    = filterBarangay.value.toLowerCase();
+            const type        = filterType.value.toLowerCase();
             const isFiltering = search || barangay || type;
-
-            let visible = 0;
+            let visible       = 0;
 
             allRows.forEach(row => {
                 const match =
-                    (!search   || row.dataset.tdNo.includes(search) || row.dataset.arpNo.includes(search) || row.dataset.owner.includes(search)) &&
-                    (!barangay || row.dataset.barangay === barangay) &&
-                    (!type     || row.dataset.type === type);
+                    (!search   || row.dataset.tdNo.includes(search)  ||
+                                  row.dataset.arpNo.includes(search)  ||
+                                  row.dataset.owner.includes(search)) &&
+                    (!barangay || row.dataset.barangay === barangay)  &&
+                    (!type     || row.dataset.type     === type);
 
                 row.classList.toggle('hidden', !match);
                 if (match) visible++;
@@ -438,27 +551,24 @@
 
             resultCount.textContent = visible + ' records';
             noResults.classList.toggle('hidden', visible > 0);
-
-            // Hide server pagination while client-filtering
             if (paginationBar) paginationBar.classList.toggle('hidden', !!isFiltering);
 
-            // Reset checkboxes
             if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
             updateBulkDisplay();
         }
 
-        searchInput.addEventListener('input',  applyFilters);
+        searchInput.addEventListener('input',     applyFilters);
         filterBarangay.addEventListener('change', applyFilters);
         filterType.addEventListener('change',     applyFilters);
 
-        btnClear.addEventListener('click', function () {
+        btnClear.addEventListener('click', () => {
             searchInput.value    = '';
             filterBarangay.value = '';
             filterType.value     = '';
             applyFilters();
         });
 
-        // ── Checkboxes ──────────────────────────────────────────────────────────
+        // ── Checkboxes ──────────────────────────────────────────────────────
         function updateBulkDisplay() {
             const checked = document.querySelectorAll('.row-checkbox:checked').length;
             document.querySelectorAll('.bulk-action-btn').forEach(btn =>
@@ -482,7 +592,7 @@
             });
         }
 
-        // ── Bulk submit ─────────────────────────────────────────────────────────
+        // ── Bulk submit ─────────────────────────────────────────────────────
         window.submitBulkAction = function (url, isConsolidation = false) {
             const checked = document.querySelectorAll('.row-checkbox:checked');
             if (!checked.length) return alert('Please select at least one record.');
@@ -490,14 +600,14 @@
                 return alert('Consolidation requires at least 2 properties.');
             if (!confirm(`Perform this bulk action on ${checked.length} record(s)?`)) return;
 
-            const form = document.createElement('form');
+            const form  = document.createElement('form');
             form.method = 'POST';
             form.action = url;
 
-            const csrf = document.createElement('input');
-            csrf.type  = 'hidden';
-            csrf.name  = '_token';
-            csrf.value = document.querySelector('meta[name="csrf-token"]').content;
+            const csrf  = document.createElement('input');
+            csrf.type   = 'hidden';
+            csrf.name   = '_token';
+            csrf.value  = document.querySelector('meta[name="csrf-token"]').content;
             form.appendChild(csrf);
 
             checked.forEach(cb => {

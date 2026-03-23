@@ -74,7 +74,13 @@
                             <tbody class="divide-y divide-slate-200 font-mono">
                                 @foreach($delinquentBillings as $b)
                                 <tr>
-                                    <td class="px-6 py-3 font-serif font-bold italic">Year {{ $b->tax_year }} (Q{{ $b->quarter }})</td>
+                                    <td class="px-6 py-3 font-serif font-bold italic">
+                                        @if($b->billing_type === \App\Models\RPT\RptBilling::TYPE_TRANSFER_TAX)
+                                            Transfer Tax (One-time)
+                                        @else
+                                            Year {{ $b->tax_year }} (Q{{ $b->quarter }})
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-3 text-right">₱{{ number_format($b->total_tax_due, 2) }}</td>
                                     <td class="px-6 py-3 text-right text-amber-700 font-bold">+₱{{ number_format($b->penalty_amount, 2) }}</td>
                                     <td class="px-6 py-3 text-right font-black">₱{{ number_format($b->balance, 2) }}</td>

@@ -12,8 +12,11 @@ class RptBilling extends Model
 {
     protected $table = 'rpt_billings';
 
+    const TYPE_TAX          = 'tax';
+    const TYPE_TRANSFER_TAX = 'transfer_tax';
+
     protected $fillable = [
-        'tax_declaration_id', 'tax_year', 'quarter',
+        'tax_declaration_id', 'tax_year', 'quarter', 'billing_type',
         'basic_tax', 'sef_tax', 'total_tax_due', 'discount_amount', 'penalty_amount',
         'total_amount_due', 'amount_paid', 'balance', 'status', 'due_date', 'paid_at',
     ];
@@ -48,6 +51,10 @@ class RptBilling extends Model
      */
     public function calculatePenalty(Carbon $date): float
     {
+        if ($this->billing_type === self::TYPE_TRANSFER_TAX) {
+            return 0.0;
+        }
+
         // Standard Quarterly Deadlines: Q1=Mar31, Q2=Jun30, Q3=Sep30, Q4=Dec31
         $deadline = match((int)$this->quarter) {
             1 => Carbon::create($this->tax_year, 3, 31)->endOfDay(),

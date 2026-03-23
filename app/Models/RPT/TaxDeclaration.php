@@ -222,13 +222,15 @@ class TaxDeclaration extends Model
      * MRPAAO-Compliant Automation:
      * Automatically generate TDs for all property components upon FAAS approval.
      */
-    public static function autoGenerateFromFaas(FaasProperty $faas)
+    public static function autoGenerateFromFaas(FaasProperty $faas, ?string $manualTdNo = null)
     {
         $components = [
             'land'      => $faas->lands,
             'building'  => $faas->buildings,
             'machinery' => $faas->machineries,
         ];
+
+        $manualTdUsed = false;
 
         foreach ($components as $kind => $list) {
             foreach ($list as $comp) {
@@ -239,13 +241,19 @@ class TaxDeclaration extends Model
                     ->exists();
 
                 if (!$exists) {
+                    $finalTdNo = self::generateTdNo();
+                    if ($manualTdNo && !$manualTdUsed) {
+                        $finalTdNo = $manualTdNo;
+                        $manualTdUsed = true;
+                    }
+
                     $td = self::create([
                         'faas_property_id'     => $faas->id,
                         $fkField               => $comp->id,
                         'property_kind'        => $kind,
                         'property_type'        => $kind,
                         'effectivity_year'     => date('Y') + 1, // Usually effective next year
-                        'revision_year_id'     => $faas->rpta_revision_year_id,
+                        'revision_year_id'     => $faas->revision_year_id,
                         'declaration_reason'   => 'initial',
                         'tax_rate'             => 0.02, // Default basic RPT
                         'is_taxable'           => (bool)$faas->is_taxable,
@@ -253,11 +261,11 @@ class TaxDeclaration extends Model
                         'total_market_value'   => $comp->market_value,
                         'total_assessed_value' => $comp->assessed_value,
                         'status'               => 'approved',
-                        'td_no'                => self::generateTdNo(),
+                        'td_no'                => $finalTdNo,
                         'approved_by'          => $faas->approved_by,
                         'approved_at'          => $faas->approved_at,
                         'created_by'           => $faas->approved_by,
-                        'remarks'              => "Auto-generated upon approval of FAAS ARP {$faas->arp_no}."
+                        'remarks'              => "Auto-generated upon approval of FAAS ARP {$faas->arp_no}." . ($finalTdNo === $manualTdNo ? ' [Manual Override]' : '')
                     ]);
 
                     TdActivityLog::record($td->id, 'approved', 'TD Auto-Generated upon FAAS Approval.', [
@@ -293,7 +301,7 @@ class TaxDeclaration extends Model
             'property_kind'        => $kind,
             'property_type'        => $kind,
             'effectivity_year'     => date('Y') + 1,
-            'revision_year_id'     => $faas->rpta_revision_year_id,
+            'revision_year_id'     => $faas->revision_year_id,
             'declaration_reason'   => 'initial',
             'tax_rate'             => 0.02,
             'is_taxable'           => (bool)$faas->is_taxable,
