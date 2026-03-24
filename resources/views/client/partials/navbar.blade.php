@@ -8,8 +8,10 @@
         <div class="flex items-center gap-6">
             <a href="{{ route('client.dashboard') }}" class="flex items-center gap-2.5">
                 <div class="w-8 h-8 bg-logo-teal rounded-xl flex items-center justify-center shadow-sm">
-                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                 </div>
                 <span class="font-extrabold text-green text-sm">BPLS Portal</span>
@@ -95,7 +97,8 @@
                             @csrf
                             <button type="submit"
                                 class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition-colors text-left">
-                                <div class="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                                <div
+                                    class="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
                                     <svg class="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24"
                                         stroke="currentColor" stroke-width="1.8">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -125,7 +128,8 @@
         <a href="{{ route('client.dashboard') }}" class="flex items-center gap-2.5">
             <div class="w-8 h-8 rounded-xl flex items-center justify-center shadow-md shadow-teal-500/20"
                 style="background:linear-gradient(135deg,#0d9488,#059669);">
-                <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
@@ -198,6 +202,12 @@
         @php
             $tabs = [
                 [
+                    'route' => 'client.walkin-payments',
+                    'pattern' => 'client.walkin-payments',
+                    'label' => 'Wpayments',
+                    'icon' => 'M4 8h16v8a2 2 0 01-2 2H6a2 2 0 01-2-2V8zm0 0l2-4h12l2 4M10 12h4',
+                ],
+                [
                     'route' => 'client.dashboard',
                     'pattern' => 'client.dashboard',
                     'label' => 'Home',
@@ -216,7 +226,6 @@
                     'pattern' => 'client.apply*',
                     'label' => 'Apply',
                     'icon' => 'M12 4v16m8-8H4',
-                    'special' => true,
                 ],
                 [
                     'route' => 'client.payments.index',
@@ -228,7 +237,8 @@
                     'route' => 'client.rpt.index',
                     'pattern' => 'client.rpt.*',
                     'label' => 'RPTTax',
-                    'icon' => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+                    'icon' =>
+                        'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
                 ],
             ];
         @endphp
@@ -262,10 +272,12 @@
                         </svg>
                         {{-- Active dot --}}
                         @if ($active)
-                            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-teal-500"></span>
+                            <span
+                                class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-teal-500"></span>
                         @endif
                     </div>
-                    <span class="text-[10px] font-bold transition-colors {{ $active ? 'text-teal-600' : 'text-gray-400' }}">
+                    <span
+                        class="text-[10px] font-bold transition-colors {{ $active ? 'text-teal-600' : 'text-gray-400' }}">
                         {{ $tab['label'] }}
                     </span>
                 </a>

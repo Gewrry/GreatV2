@@ -123,9 +123,6 @@ Route::get('/payment/{entry}/available-ors', [BplsPaymentController::class, 'get
 Route::get('/bpls/dashboard/print', [BplsDashboardController::class, 'printView'])
     ->name('bpls.dashboard.print');
 
-Route::post('bpls/settings/update-beneficiary-discounts', [BplsSettingsController::class, 'updateBeneficiaryDiscounts'])
-    ->name('bpls.settings.update-beneficiary-discounts');
-
 // =============================================================================
 // 3. PUBLIC ROUTES (No Authentication Required)
 // =============================================================================
@@ -418,6 +415,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // 4g-i. Dashboard
         Route::get('/', [BplsController::class, 'index'])->name('index');
         Route::get('/dashboard/data', [BplsDashboardController::class, 'data'])->name('dashboard.data');
+
+        // ─── FORMAL REPORT ────────────────────────────────────────────────────
+        // Accessible at: /bpls/report?year=YYYY
+        // Named route:   bpls.report
+        // ─────────────────────────────────────────────────────────────────────
+        Route::get('/report', [BplsController::class, 'generateReport'])->name('report');
 
         // 4g-ii. Settings
         Route::prefix('settings')->name('settings.')->group(function () {
@@ -732,49 +735,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // ─────────────────────────────────────────────────────────────────────
         // 4i-iv. Reports
         // ⚠️ Must be declared BEFORE /{franchise} wildcard routes
-        // NOTE: All 4 reports use ?print=1 to toggle between screen and print view.
-        //       No separate print routes needed — the controller handles it internally.
         // ─────────────────────────────────────────────────────────────────────
         Route::prefix('reports')->name('reports.')->group(function () {
-            // Hub / landing page
             Route::get('/', [VfReportController::class, 'index'])->name('index');
-
-            // 1. Franchise Masterlist  (screen + ?print=1 for print view)
             Route::get('/masterlist', [VfReportController::class, 'masterlist'])->name('masterlist');
-
-            // 2. Collection summary per TODA  (screen + ?print=1 for print view)
             Route::get('/toda-summary', [VfReportController::class, 'todaSummary'])->name('toda-summary');
-
-            // 3. Payment history per franchise  (screen + ?print=1 for print view)
             Route::get('/payment-history', [VfReportController::class, 'paymentHistory'])->name('payment-history');
-
-            // 4. Daily / Monthly collection totals  (screen + ?print=1 for print view)
             Route::get('/collection', [VfReportController::class, 'collection'])->name('collection');
-
-            // Legacy data endpoint — kept for backwards compatibility
             Route::get('/masterlist/data', [VfReportController::class, 'masterlistData'])->name('masterlist.data');
         });
 
         // ─────────────────────────────────────────────────────────────────────
         // 4i-v. Franchise CRUD + Retire + Renew
-        //
-        // ORDER MATTERS — literal segment routes (/create, /retire-check, etc.)
-        // MUST come before the /{franchise} wildcard, otherwise Laravel matches
-        // the wildcard first and the named routes are never reached.
         // ─────────────────────────────────────────────────────────────────────
         Route::get('/', [VehicleFranchisingController::class, 'index'])->name('index');
         Route::get('/create', [VehicleFranchisingController::class, 'create'])->name('create');
         Route::post('/', [VehicleFranchisingController::class, 'store'])->name('store');
 
-        // ── Sub-resource routes with literal second segment ──────────────────
-        // Declared before /{franchise} show/edit/update/delete as a safety guarantee.
         Route::get('/{franchise}/retire-check', [VehicleFranchisingController::class, 'retireCheck'])->name('retire-check');
         Route::post('/{franchise}/retire', [VehicleFranchisingController::class, 'retire'])->name('retire');
         Route::get('/{franchise}/renew', [VehicleFranchisingController::class, 'renew'])->name('renew');
         Route::post('/{franchise}/renew', [VehicleFranchisingController::class, 'storeRenewal'])->name('renew.store');
         Route::get('/{franchise}/edit', [VehicleFranchisingController::class, 'edit'])->name('edit');
 
-        // ── Plain wildcard (show / update / delete) — LAST ──────────────────
         Route::get('/{franchise}', [VehicleFranchisingController::class, 'show'])->name('show');
         Route::put('/{franchise}', [VehicleFranchisingController::class, 'update'])->name('update');
         Route::delete('/{franchise}', [VehicleFranchisingController::class, 'destroy'])->name('destroy');
@@ -870,8 +853,6 @@ Route::prefix('portal')->name('client.')->group(function () {
             Route::post('/{billing}/pay', [RptOnlinePaymentController::class, 'initiate'])->name('initiate');
             Route::post('/{payment}/verify', [RptOnlinePaymentController::class, 'verify'])->name('verify');
             Route::get('/payment/{payment}/receipt', [RptOnlinePaymentController::class, 'receipt'])->name('receipt');
-            
-            // Fallback for sessions started before the fix (malformed URL with & instead of ?)
             Route::get('/{billing}/success', [RptOnlinePaymentController::class, 'success'])->name('success');
             Route::get('/{billing}/success&{any}', [RptOnlinePaymentController::class, 'successMalformed'])->where('any', '.*');
         });

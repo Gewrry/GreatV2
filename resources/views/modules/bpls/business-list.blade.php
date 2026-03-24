@@ -25,7 +25,10 @@
         .cert-paper::before {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0; height: 6px;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
             background: linear-gradient(to right, #0d9488, #0ea5e9, #0d9488);
         }
 
@@ -33,57 +36,191 @@
         .cert-paper::after {
             content: 'OFFICIAL';
             position: absolute;
-            top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 8rem; font-weight: 900; color: rgba(13, 148, 136, 0.03);
-            pointer-events: none; white-space: nowrap; z-index: 0;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 8rem;
+            font-weight: 900;
+            color: rgba(13, 148, 136, 0.03);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 0;
             letter-spacing: 0.2em;
         }
 
-        .cert-header { text-align: center; margin-bottom: 2.5rem; position: relative; z-index: 1; }
-        .cert-republic { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #4b5563; margin-bottom: 2px; }
-        .cert-province { font-size: 0.85rem; color: #6b7280; font-style: italic; }
-        .cert-lgu { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; color: #111827; margin: 0.4rem 0; letter-spacing: 0.05em; }
-        .cert-office { font-size: 0.75rem; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: 0.1em; }
+        .cert-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
 
-        .cert-divider { border: none; height: 3px; background: #111827; margin: 1.25rem 0 0.5rem; }
-        .cert-divider-thin { border: none; height: 1px; background: #d1d5db; margin-bottom: 1.5rem; }
+        .cert-republic {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #4b5563;
+            margin-bottom: 2px;
+        }
 
-        .cert-title-container { text-align: center; margin-bottom: 2.5rem; position: relative; z-index: 1; }
-        .cert-title { 
-            font-size: 1.8rem; font-weight: 900; text-transform: uppercase; 
-            letter-spacing: 0.1em; color: #111827; margin-bottom: 0.5rem;
+        .cert-province {
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .cert-lgu {
+            font-size: 1.4rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #111827;
+            margin: 0.4rem 0;
+            letter-spacing: 0.05em;
+        }
+
+        .cert-office {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #0d9488;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .cert-divider {
+            border: none;
+            height: 3px;
+            background: #111827;
+            margin: 1.25rem 0 0.5rem;
+        }
+
+        .cert-divider-thin {
+            border: none;
+            height: 1px;
+            background: #d1d5db;
+            margin-bottom: 1.5rem;
+        }
+
+        .cert-title-container {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .cert-title {
+            font-size: 1.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #111827;
+            margin-bottom: 0.5rem;
             display: inline-block;
         }
-        .cert-subtitle { font-size: 0.95rem; color: #4b5563; font-style: italic; }
 
-        .cert-body { position: relative; z-index: 1; margin: 0 auto; max-width: 90%; }
-        .cert-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 2.5rem; margin-bottom: 2.5rem; }
-        .cert-field { border-bottom: 1.5px dashed #e5e7eb; padding-bottom: 0.25rem; }
-        .cert-label { 
-            font-size: 0.65rem; font-weight: 800; color: #6b7280; 
-            text-transform: uppercase; letter-spacing: 0.08em; 
-            margin-bottom: 0.25rem; font-family: sans-serif; 
+        .cert-subtitle {
+            font-size: 0.95rem;
+            color: #4b5563;
+            font-style: italic;
         }
-        .cert-value { font-size: 1.05rem; font-weight: 700; color: #111827; min-height: 1.4rem; }
-        .cert-value.highlight { color: #c2410c; }
-        .cert-value.full-width { grid-column: span 2; }
 
-        .cert-footer-text { 
-            text-align: center; font-size: 0.9rem; color: #374151; 
-            line-height: 1.7; font-style: italic; margin-bottom: 3.5rem;
+        .cert-body {
+            position: relative;
+            z-index: 1;
+            margin: 0 auto;
+            max-width: 90%;
+        }
+
+        .cert-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem 2.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .cert-field {
+            border-bottom: 1.5px dashed #e5e7eb;
+            padding-bottom: 0.25rem;
+        }
+
+        .cert-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.25rem;
+            font-family: sans-serif;
+        }
+
+        .cert-value {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #111827;
+            min-height: 1.4rem;
+        }
+
+        .cert-value.highlight {
+            color: #c2410c;
+        }
+
+        .cert-value.full-width {
+            grid-column: span 2;
+        }
+
+        .cert-footer-text {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #374151;
+            line-height: 1.7;
+            font-style: italic;
+            margin-bottom: 3.5rem;
             padding: 0 1rem;
         }
 
-        .cert-sig-row { display: flex; justify-content: space-between; gap: 3rem; margin-top: 1rem; }
-        .cert-sig-block { flex: 1; text-align: center; }
-        .cert-sig-line { border-top: 2px solid #111827; width: 100%; margin-bottom: 0.5rem; }
-        .cert-sig-name { font-size: 0.9rem; font-weight: 900; text-transform: uppercase; color: #111827; }
-        .cert-sig-title { font-size: 0.7rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+        .cert-sig-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 3rem;
+            margin-top: 1rem;
+        }
 
-        .cert-meta { 
-            margin-top: 4rem; display: flex; justify-content: space-between; 
-            font-size: 0.65rem; color: #9ca3af; font-family: monospace;
-            border-top: 1px solid #f3f4f6; padding-top: 1rem;
+        .cert-sig-block {
+            flex: 1;
+            text-align: center;
+        }
+
+        .cert-sig-line {
+            border-top: 2px solid #111827;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .cert-sig-name {
+            font-size: 0.9rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #111827;
+        }
+
+        .cert-sig-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 2px;
+        }
+
+        .cert-meta {
+            margin-top: 4rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #9ca3af;
+            font-family: monospace;
+            border-top: 1px solid #f3f4f6;
+            padding-top: 1rem;
         }
     </style>
     <div class="py-2">
@@ -96,12 +233,12 @@
                 {{-- ASSESS MODAL — 3-step: Details → Assessment → Schedule --}}
                 {{-- ═════════════════════════════════════If You Reading this, You are not human! or JR
                 Programmer═════════════════════ --}}
-                <div x-show="modal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                <div x-show="modal.open" x-cloak class="fixed inset-0 z-99 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
                     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
                     <div class="absolute inset-0 bg-green/40 backdrop-blur-sm" @click="closeModal()"></div>
-                    <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-2xl max-h-[92vh] flex flex-col"
+                    <div class="z-99 relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-2xl max-h-[92vh] flex flex-col"
                         x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
                         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
@@ -354,19 +491,31 @@
                                                     x-text="'₱' + Number(modal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
                                                 </p>
                                             </div>
-                                            <div x-show="modal.advanceDiscount > 0" class="grid grid-cols-2 px-4 py-2 border-b border-green-200 bg-green-50">
+                                            <div x-show="modal.advanceDiscount > 0"
+                                                class="grid grid-cols-2 px-4 py-2 border-b border-green-200 bg-green-50">
                                                 <div class="flex flex-col">
-                                                    <p class="text-[11px] font-bold text-green-700">Advance Payment Discount</p>
-                                                    <p class="text-[9px] font-black text-green-600 uppercase tracking-tighter" x-text="modal.advanceDiscountLabel"></p>
+                                                    <p class="text-[11px] font-bold text-green-700">Advance Payment
+                                                        Discount</p>
+                                                    <p class="text-[9px] font-black text-green-600 uppercase tracking-tighter"
+                                                        x-text="modal.advanceDiscountLabel"></p>
                                                 </div>
-                                                <p class="text-[11px] font-black text-green-600 text-right" x-text="'- ' + '₱' + Number(modal.advanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                                <p class="text-[11px] font-black text-green-600 text-right"
+                                                    x-text="'- ' + '₱' + Number(modal.advanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                </p>
                                             </div>
-                                            <div x-show="modal.advanceDiscount > 0" class="grid grid-cols-2 px-4 py-2 bg-green-50/50 border-t border-green-200">
+                                            <div x-show="modal.advanceDiscount > 0"
+                                                class="grid grid-cols-2 px-4 py-2 bg-green-50/50 border-t border-green-200">
                                                 <div class="flex flex-col">
-                                                    <p class="text-[11px] font-bold text-green-700">If Paid in Advance</p>
-                                                    <p class="text-[9px] font-black text-green-600">You could save: <span x-text="'₱' + Number(modal.advanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></span></p>
+                                                    <p class="text-[11px] font-bold text-green-700">If Paid in Advance
+                                                    </p>
+                                                    <p class="text-[9px] font-black text-green-600">You could save:
+                                                        <span
+                                                            x-text="'₱' + Number(modal.advanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></span>
+                                                    </p>
                                                 </div>
-                                                <p class="text-[11px] font-black text-green-600 text-right" x-text="'₱' + Number(modal.totalWithAdvanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                                <p class="text-[11px] font-black text-green-600 text-right"
+                                                    x-text="'₱' + Number(modal.totalWithAdvanceDiscount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                </p>
                                             </div>
                                             <div class="px-4 py-2 bg-lumot/10 flex items-center justify-between">
                                                 <p class="text-[10px] text-gray/60">Mode: <span
@@ -740,8 +889,13 @@
                                 <button x-show="viewModal.entry?.status !== 'retired'"
                                     @click="viewModal.open = false; openRetireModal(viewModal.entry)"
                                     :disabled="viewModal.entry?.outstanding_balance > 0.1"
-                                    :class="viewModal.entry?.outstanding_balance > 0.1 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-500 hover:bg-orange-600'"
-                                    :title="viewModal.entry?.outstanding_balance > 0.1 ? 'Settlement of outstanding balance (₱' + Number(viewModal.entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                    :class="viewModal.entry?.outstanding_balance > 0.1 ?
+                                        'opacity-50 cursor-not-allowed bg-orange-300' :
+                                        'bg-orange-500 hover:bg-orange-600'"
+                                    :title="viewModal.entry?.outstanding_balance > 0.1 ?
+                                        'Settlement of outstanding balance (₱' + Number(viewModal.entry
+                                            .outstanding_balance).toLocaleString() +
+                                        ') is required before retirement.' : 'Retire Business'"
                                     class="px-4 py-2 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                         stroke="currentColor" stroke-width="2">
@@ -960,7 +1114,8 @@
                 <div x-show="renewModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4"
                     x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100">
-                    <div class="absolute inset-0 bg-blue-900/40 backdrop-blur-sm" @click="renewModal.open = false"></div>
+                    <div class="absolute inset-0 bg-blue-900/40 backdrop-blur-sm" @click="renewModal.open = false">
+                    </div>
                     <div class="relative bg-white rounded-2xl shadow-2xl border border-blue-200 w-full max-w-2xl flex flex-col max-h-[92vh]"
                         x-transition:enter="transition ease-out duration-200"
                         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
@@ -970,43 +1125,55 @@
                         <div class="flex items-center justify-between px-5 py-4 border-b border-blue-100 shrink-0">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                                    <svg class="w-5 h-5 text-logo-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg class="w-5 h-5 text-logo-blue" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
                                 </div>
                                 <div>
                                     <h3 class="text-sm font-extrabold text-logo-blue">Renew Business</h3>
-                                    <p class="text-[11px] text-gray truncate max-w-[200px]" x-text="renewModal.entry?.business_name"></p>
+                                    <p class="text-[11px] text-gray truncate max-w-[200px]"
+                                        x-text="renewModal.entry?.business_name"></p>
                                 </div>
                             </div>
 
                             {{-- Step tabs --}}
                             <div class="flex items-center gap-1.5">
                                 <button @click="renewModal.step = 1"
-                                    :class="renewModal.step === 1 ? 'bg-logo-blue text-white shadow' : 'bg-blue-50 text-gray hover:bg-blue-100'"
-                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">1. Details</button>
+                                    :class="renewModal.step === 1 ? 'bg-logo-blue text-white shadow' :
+                                        'bg-blue-50 text-gray hover:bg-blue-100'"
+                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors">1.
+                                    Details</button>
                                 <span class="text-gray/30 text-xs">›</span>
                                 <button
                                     @click="if(!renewModal.computing){ renewComputeFees().then(() => { if(!renewModal.error) renewModal.step = 2; }); }"
-                                    :disabled="!renewModal.form.capital_investment || !renewModal.form.mode_of_payment || renewModal.computing"
-                                    :class="renewModal.step === 2 ? 'bg-logo-blue text-white shadow' : 'bg-blue-50 text-gray hover:bg-blue-100'"
+                                    :disabled="!renewModal.form.capital_investment || !renewModal.form.mode_of_payment ||
+                                        renewModal.computing"
+                                    :class="renewModal.step === 2 ? 'bg-logo-blue text-white shadow' :
+                                        'bg-blue-50 text-gray hover:bg-blue-100'"
                                     class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
-                                    <svg x-show="renewModal.computing" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <svg x-show="renewModal.computing" class="w-3 h-3 animate-spin" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
                                     2. Assessment
                                 </button>
                                 <span class="text-gray/30 text-xs">›</span>
-                                <button @click="renewModal.step = 3" :disabled="renewModal.totalDue === 0 || renewModal.computing"
-                                    :class="renewModal.step === 3 ? 'bg-logo-blue text-white shadow' : 'bg-blue-50 text-gray hover:bg-blue-100'"
-                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">3. Schedule</button>
+                                <button @click="renewModal.step = 3"
+                                    :disabled="renewModal.totalDue === 0 || renewModal.computing"
+                                    :class="renewModal.step === 3 ? 'bg-logo-blue text-white shadow' :
+                                        'bg-blue-50 text-gray hover:bg-blue-100'"
+                                    class="px-3 py-1 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed">3.
+                                    Schedule</button>
                             </div>
 
                             <button @click="renewModal.open = false"
                                 class="p-1.5 rounded-lg text-gray hover:text-logo-blue hover:bg-blue-50 transition-colors ml-2">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2.5">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
@@ -1017,8 +1184,10 @@
 
                             {{-- ── STEP 1: Details ── --}}
                             <div x-show="renewModal.step === 1" class="space-y-4">
-                                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-700">
-                                    ℹ️ Re-assess the business fees for the new permit year. All fields are pre-filled from the previous cycle.
+                                <div
+                                    class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-700">
+                                    ℹ️ Re-assess the business fees for the new permit year. All fields are pre-filled
+                                    from the previous cycle.
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-4">
@@ -1042,10 +1211,13 @@
                                 </div>
 
                                 <div>
-                                    <label class="block text-xs font-bold text-gray mb-1.5">Gross Sales / Capital Investment (₱)</label>
+                                    <label class="block text-xs font-bold text-gray mb-1.5">Gross Sales / Capital
+                                        Investment (₱)</label>
                                     <div class="relative">
-                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray/50 font-semibold">₱</span>
-                                        <input type="number" step="0.01" x-model="renewModal.form.capital_investment"
+                                        <span
+                                            class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray/50 font-semibold">₱</span>
+                                        <input type="number" step="0.01"
+                                            x-model="renewModal.form.capital_investment"
                                             @input.debounce.500ms="if(renewModal.form.mode_of_payment) renewComputeFees()"
                                             placeholder="0.00"
                                             class="w-full pl-7 pr-3 text-sm border border-lumot/30 rounded-xl py-2.5 focus:outline-none focus:ring-2 focus:ring-logo-blue/40 placeholder-gray/30">
@@ -1055,10 +1227,16 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray mb-2">Mode of Payment</label>
                                     <div class="grid grid-cols-3 gap-2">
-                                        <template x-for="opt in [{value:'quarterly',label:'Quarterly',sub:'4 payments',icon:'4×'},{value:'semi_annual',label:'Semi-Annual',sub:'2 payments',icon:'2×'},{value:'annual',label:'Annual',sub:'1 payment',icon:'1×'}]" :key="opt.value">
+                                        <template
+                                            x-for="opt in [{value:'quarterly',label:'Quarterly',sub:'4 payments',icon:'4×'},{value:'semi_annual',label:'Semi-Annual',sub:'2 payments',icon:'2×'},{value:'annual',label:'Annual',sub:'1 payment',icon:'1×'}]"
+                                            :key="opt.value">
                                             <label class="cursor-pointer">
-                                                <input type="radio" :value="opt.value" x-model="renewModal.form.mode_of_payment" @change="if(renewModal.form.capital_investment) renewComputeFees()" class="peer hidden">
-                                                <div class="peer-checked:bg-logo-blue peer-checked:text-white peer-checked:border-logo-blue border-2 border-lumot/30 rounded-xl p-3 text-center transition-all duration-150 hover:border-logo-blue/50 hover:bg-blue-50 select-none">
+                                                <input type="radio" :value="opt.value"
+                                                    x-model="renewModal.form.mode_of_payment"
+                                                    @change="if(renewModal.form.capital_investment) renewComputeFees()"
+                                                    class="peer hidden">
+                                                <div
+                                                    class="peer-checked:bg-logo-blue peer-checked:text-white peer-checked:border-logo-blue border-2 border-lumot/30 rounded-xl p-3 text-center transition-all duration-150 hover:border-logo-blue/50 hover:bg-blue-50 select-none">
                                                     <p class="text-2xl font-extrabold" x-text="opt.icon"></p>
                                                     <p class="text-[11px] font-bold mt-0.5" x-text="opt.label"></p>
                                                     <p class="text-[9px] opacity-70 mt-0.5" x-text="opt.sub"></p>
@@ -1069,16 +1247,22 @@
                                 </div>
 
                                 {{-- Loading compute state --}}
-                                <div x-show="renewModal.computing" class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl animate-pulse">
+                                <div x-show="renewModal.computing"
+                                    class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl animate-pulse">
                                     <p class="text-xs font-bold text-gray">Computing fees…</p>
-                                    <svg class="w-4 h-4 animate-spin text-logo-blue" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <svg class="w-4 h-4 animate-spin text-logo-blue" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
                                 </div>
-                                <div x-show="!renewModal.computing && renewModal.totalDue > 0" class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                                <div x-show="!renewModal.computing && renewModal.totalDue > 0"
+                                    class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl">
                                     <p class="text-xs font-bold text-gray">Estimated Renewal Assessment</p>
-                                    <p class="text-sm font-extrabold text-logo-blue" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                    <p class="text-sm font-extrabold text-logo-blue"
+                                        x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                    </p>
                                 </div>
 
                                 {{-- Notice if all fees are disabled --}}
@@ -1114,34 +1298,54 @@
                                     <div class="space-y-4">
                                         <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
                                             <div>
-                                                <p class="text-xs font-extrabold text-logo-blue" x-text="renewModal.entry?.business_name"></p>
-                                                <p class="text-[10px] text-gray" x-text="'Nature: ' + (renewModal.form.business_nature || '—')"></p>
+                                                <p class="text-xs font-extrabold text-logo-blue"
+                                                    x-text="renewModal.entry?.business_name"></p>
+                                                <p class="text-[10px] text-gray"
+                                                    x-text="'Nature: ' + (renewModal.form.business_nature || '—')"></p>
                                             </div>
                                             <div class="text-right">
                                                 <p class="text-[10px] text-gray/60">Gross Sales</p>
-                                                <p class="text-sm font-extrabold text-logo-blue" x-text="'₱' + Number(renewModal.form.capital_investment || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                                <p class="text-sm font-extrabold text-logo-blue"
+                                                    x-text="'₱' + Number(renewModal.form.capital_investment || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                </p>
                                             </div>
                                         </div>
 
                                         <div class="border border-blue-200 rounded-xl overflow-hidden">
                                             <div class="bg-logo-blue text-white text-center py-2.5">
-                                                <p class="text-xs font-extrabold tracking-wide uppercase">Renewal Fee Assessment</p>
+                                                <p class="text-xs font-extrabold tracking-wide uppercase">Renewal Fee
+                                                    Assessment</p>
                                             </div>
-                                            <div class="grid grid-cols-3 bg-blue-50/50 px-4 py-2 border-b border-blue-100">
-                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase">Taxes / Fees</p>
-                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Base Value</p>
-                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase text-right">Tax Due</p>
+                                            <div
+                                                class="grid grid-cols-3 bg-blue-50/50 px-4 py-2 border-b border-blue-100">
+                                                <p class="text-[10px] font-extrabold text-gray/70 uppercase">Taxes /
+                                                    Fees</p>
+                                                <p
+                                                    class="text-[10px] font-extrabold text-gray/70 uppercase text-center">
+                                                    Base Value</p>
+                                                <p
+                                                    class="text-[10px] font-extrabold text-gray/70 uppercase text-right">
+                                                    Tax Due</p>
                                             </div>
                                             <template x-for="fee in renewModal.fees" :key="fee.id ?? fee.name">
-                                                <div class="grid grid-cols-3 px-4 py-2.5 border-b border-blue-50 hover:bg-blue-50">
+                                                <div
+                                                    class="grid grid-cols-3 px-4 py-2.5 border-b border-blue-50 hover:bg-blue-50">
                                                     <p class="text-xs font-semibold text-gray" x-text="fee.name"></p>
-                                                    <p class="text-xs text-gray/60 text-center font-mono" x-text="fee.base !== null ? (typeof fee.base === 'number' ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2}) : fee.base) : '—'"></p>
-                                                    <p class="text-xs font-bold text-logo-blue text-right" x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits:2})"></p>
+                                                    <p class="text-xs text-gray/60 text-center font-mono"
+                                                        x-text="fee.base !== null ? (typeof fee.base === 'number' ? '₱' + Number(fee.base).toLocaleString('en-PH', {minimumFractionDigits: 2}) : fee.base) : '—'">
+                                                    </p>
+                                                    <p class="text-xs font-bold text-logo-blue text-right"
+                                                        x-text="'₱' + Number(fee.amount).toLocaleString('en-PH', {minimumFractionDigits:2})">
+                                                    </p>
                                                 </div>
                                             </template>
-                                            <div class="grid grid-cols-3 px-4 py-3 bg-blue-50 border-t-2 border-blue-200">
-                                                <p class="text-xs font-extrabold text-logo-blue col-span-2 uppercase">Total Taxes Due</p>
-                                                <p class="text-sm font-extrabold text-logo-blue text-right" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                            <div
+                                                class="grid grid-cols-3 px-4 py-3 bg-blue-50 border-t-2 border-blue-200">
+                                                <p class="text-xs font-extrabold text-logo-blue col-span-2 uppercase">
+                                                    Total Taxes Due</p>
+                                                <p class="text-sm font-extrabold text-logo-blue text-right"
+                                                    x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -1152,54 +1356,75 @@
                             <div x-show="renewModal.step === 3" class="space-y-4">
                                 <div class="bg-bluebody/60 rounded-xl p-3 flex items-center justify-between">
                                     <div>
-                                        <p class="text-xs font-extrabold text-logo-blue" x-text="renewModal.entry?.business_name"></p>
-                                        <p class="text-[10px] text-gray capitalize" x-text="renewModal.form.mode_of_payment ? renewModal.form.mode_of_payment.replace('_',' ') + ' payment mode' : ''"></p>
+                                        <p class="text-xs font-extrabold text-logo-blue"
+                                            x-text="renewModal.entry?.business_name"></p>
+                                        <p class="text-[10px] text-gray capitalize"
+                                            x-text="renewModal.form.mode_of_payment ? renewModal.form.mode_of_payment.replace('_',' ') + ' payment mode' : ''">
+                                        </p>
                                     </div>
                                     <div class="text-right">
                                         <p class="text-[10px] text-gray/60">Total Due</p>
-                                        <p class="text-sm font-extrabold text-logo-blue" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                        <p class="text-sm font-extrabold text-logo-blue"
+                                            x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                        </p>
                                     </div>
                                 </div>
 
                                 <div class="border border-blue-200 rounded-xl overflow-hidden">
                                     <div class="bg-logo-blue text-white text-center py-2.5">
-                                        <p class="text-xs font-extrabold tracking-wide uppercase">Renewal Payment Schedule
+                                        <p class="text-xs font-extrabold tracking-wide uppercase">Renewal Payment
+                                            Schedule
                                             <template x-if="renewModal.permitYear">
                                                 <span x-text="'— ' + renewModal.permitYear"></span>
                                             </template>
                                         </p>
                                     </div>
                                     <div class="grid grid-cols-2 bg-blue-50/50 px-4 py-2 border-b border-blue-100">
-                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Payment Deadline</p>
-                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Amount to Pay</p>
+                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">
+                                            Payment Deadline</p>
+                                        <p class="text-[10px] font-extrabold text-gray/70 uppercase text-center">Amount
+                                            to Pay</p>
                                     </div>
                                     <template x-for="(sched, i) in renewModal.schedule" :key="i">
-                                        <div class="grid grid-cols-2 px-4 py-3.5 border-b border-blue-50 hover:bg-blue-50">
-                                            <p class="text-sm text-center font-medium text-gray" x-text="sched.date"></p>
-                                            <p class="text-sm font-bold text-logo-blue text-center" x-text="'₱' + Number(sched.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                        <div
+                                            class="grid grid-cols-2 px-4 py-3.5 border-b border-blue-50 hover:bg-blue-50">
+                                            <p class="text-sm text-center font-medium text-gray" x-text="sched.date">
+                                            </p>
+                                            <p class="text-sm font-bold text-logo-blue text-center"
+                                                x-text="'₱' + Number(sched.amount).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                            </p>
                                         </div>
                                     </template>
                                     <div class="grid grid-cols-2 px-4 py-3 bg-blue-50 border-t-2 border-blue-200">
-                                        <p class="text-xs font-extrabold text-logo-blue text-center uppercase">Total</p>
-                                        <p class="text-sm font-extrabold text-logo-blue text-center" x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})"></p>
+                                        <p class="text-xs font-extrabold text-logo-blue text-center uppercase">Total
+                                        </p>
+                                        <p class="text-sm font-extrabold text-logo-blue text-center"
+                                            x-text="'₱' + Number(renewModal.totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2})">
+                                        </p>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- Error feedback --}}
-                            <div x-show="renewModal.error" class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-4">
-                                <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            <div x-show="renewModal.error"
+                                class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mt-4">
+                                <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
-                                <p class="text-xs font-semibold text-red-700 underline underline-offset-4" x-text="renewModal.error"></p>
+                                <p class="text-xs font-semibold text-red-700 underline underline-offset-4"
+                                    x-text="renewModal.error"></p>
                             </div>
                         </div>
 
                         {{-- Footer --}}
-                        <div class="flex items-center justify-between gap-2 px-5 py-4 border-t border-blue-100 shrink-0">
+                        <div
+                            class="flex items-center justify-between gap-2 px-5 py-4 border-t border-blue-100 shrink-0">
                             <div class="flex gap-2">
                                 <button x-show="renewModal.step > 1" @click="renewModal.step--"
-                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">← Back</button>
+                                    class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">←
+                                    Back</button>
                                 <button @click="renewModal.open = false"
                                     class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Cancel</button>
                             </div>
@@ -1210,19 +1435,25 @@
                                     } else {
                                         renewModal.step++;
                                     }"
-                                    :disabled="(renewModal.step === 1 && (!renewModal.form.capital_investment || !renewModal.form.mode_of_payment)) || renewModal.computing"
+                                    :disabled="(renewModal.step === 1 && (!renewModal.form.capital_investment || !renewModal.form
+                                        .mode_of_payment)) || renewModal.computing"
                                     class="px-5 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl shadow-lg shadow-logo-blue/20 hover:bg-blue-700 transition-all flex items-center gap-2">
-                                    <svg x-show="renewModal.computing && renewModal.step === 1" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <svg x-show="renewModal.computing && renewModal.step === 1"
+                                        class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
-                                    <span x-text="renewModal.computing && renewModal.step === 1 ? 'Computing…' : 'Next →'"></span>
+                                    <span
+                                        x-text="renewModal.computing && renewModal.step === 1 ? 'Computing…' : 'Next →'"></span>
                                 </button>
                                 <button x-show="renewModal.step === 3" @click="submitRenew()"
                                     :disabled="renewModal.saving || renewModal.totalDue <= 0"
                                     class="px-6 py-2 bg-logo-blue text-white text-sm font-bold rounded-xl shadow-lg shadow-logo-blue/30 hover:bg-blue-700 transition-all flex items-center gap-2">
-                                    <svg x-show="renewModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <svg x-show="renewModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
+                                        viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                                     </svg>
                                     <span x-text="renewModal.saving ? 'Processing...' : '✓ Confirm Renewal'"></span>
@@ -1434,14 +1665,15 @@
                                             <option value="Revocation of Permit">Revocation of Permit</option>
                                             <option value="Other">Other</option>
                                         </select>
-                                        <textarea x-show="retireModal.form.retirement_reason === 'Other'" x-model="retireModal.form.retirement_reason_custom"
-                                            rows="2" placeholder="Please specify reason..."
+                                        <textarea x-show="retireModal.form.retirement_reason === 'Other'"
+                                            x-model="retireModal.form.retirement_reason_custom" rows="2" placeholder="Please specify reason..."
                                             class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none mt-2"></textarea>
                                     </div>
 
                                     <div>
                                         <label class="block text-xs font-bold text-gray mb-1.5">
-                                            Additional Remarks <span class="font-normal text-gray/50">(optional)</span>
+                                            Additional Remarks <span
+                                                class="font-normal text-gray/50">(optional)</span>
                                         </label>
                                         <textarea x-model="retireModal.form.retirement_remarks" rows="2" placeholder="Any additional notes..."
                                             class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none"></textarea>
@@ -1488,11 +1720,12 @@
                                     :disabled="retireModal.saving || !retireModal.form.retirement_date || !retireModal.form
                                         .retirement_reason"
                                     class="flex-1 px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-                                    <svg x-show="retireModal.saving" class="w-3.5 h-3.5 animate-spin" fill="none"
-                                        viewBox="0 0 24 24">
+                                    <svg x-show="retireModal.saving" class="w-3.5 h-3.5 animate-spin"
+                                        fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10"
                                             stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z">
+                                        </path>
                                     </svg>
                                     <svg x-show="!retireModal.saving" class="w-3.5 h-3.5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1516,7 +1749,8 @@
                     </div>
                     <div class="relative bg-white rounded-2xl shadow-2xl border border-lumot/20 w-full max-w-xl flex flex-col"
                         x-transition:enter="transition ease-out duration-200"
-                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                        x-transition:enter-start="opacity-0 scale-95"
+                        x-transition:enter-end="opacity-100 scale-100">
                         <div class="flex items-center justify-between px-5 py-4 border-b border-lumot/20">
                             <div class="flex items-center gap-3">
                                 <div
@@ -1541,8 +1775,8 @@
                                 </button>
                                 <button @click="certModal.open = false"
                                     class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                        stroke-width="2.5">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2.5">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M6 18L18 6M6 6l12 12" />
                                     </svg>
@@ -1563,7 +1797,8 @@
                             {{-- Title Section --}}
                             <div class="cert-title-container">
                                 <h1 class="cert-title">Certificate of Business Retirement</h1>
-                                <p class="cert-subtitle">This certifies that the business described herein has been officially retired from the records of this municipality.</p>
+                                <p class="cert-subtitle">This certifies that the business described herein has been
+                                    officially retired from the records of this municipality.</p>
                             </div>
 
                             {{-- Data Grid --}}
@@ -1572,7 +1807,8 @@
                                     {{-- Row 1 --}}
                                     <div class="cert-field">
                                         <div class="cert-label">Business Name</div>
-                                        <div class="cert-value" x-text="certModal.entry?.business_name || '—'"></div>
+                                        <div class="cert-value" x-text="certModal.entry?.business_name || '—'">
+                                        </div>
                                     </div>
                                     <div class="cert-field">
                                         <div class="cert-label">Trade Name</div>
@@ -1594,11 +1830,13 @@
                                     {{-- Row 3 --}}
                                     <div class="cert-field">
                                         <div class="cert-label">Type of Organization</div>
-                                        <div class="cert-value" x-text="certModal.entry?.type_of_business || '—'"></div>
+                                        <div class="cert-value" x-text="certModal.entry?.type_of_business || '—'">
+                                        </div>
                                     </div>
                                     <div class="cert-field">
                                         <div class="cert-label">Business Nature / Category</div>
-                                        <div class="cert-value" x-text="certModal.entry?.business_nature || '—'"></div>
+                                        <div class="cert-value" x-text="certModal.entry?.business_nature || '—'">
+                                        </div>
                                     </div>
 
                                     {{-- Row 4 --}}
@@ -1618,20 +1856,24 @@
                                     {{-- Row 5 (Full Width) --}}
                                     <div class="cert-field col-span-2">
                                         <div class="cert-label">Primary Reason for Retirement</div>
-                                        <div class="cert-value" x-text="certModal.entry?.retirement_reason || '—'"></div>
+                                        <div class="cert-value" x-text="certModal.entry?.retirement_reason || '—'">
+                                        </div>
                                     </div>
 
                                     <template x-if="certModal.entry?.retirement_remarks">
                                         <div class="cert-field col-span-2">
                                             <div class="cert-label">Additional Remarks</div>
-                                            <div class="cert-value text-gray-500 italic" x-text="certModal.entry.retirement_remarks"></div>
+                                            <div class="cert-value text-gray-500 italic"
+                                                x-text="certModal.entry.retirement_remarks"></div>
                                         </div>
                                     </template>
                                 </div>
 
                                 {{-- Declaration --}}
                                 <p class="cert-footer-text">
-                                    "This certificate is issued upon the valid request of the aforementioned business owner and serves as the official declaration of business cessation within the jurisdiction of this Municipal Government."
+                                    "This certificate is issued upon the valid request of the aforementioned business
+                                    owner and serves as the official declaration of business cessation within the
+                                    jurisdiction of this Municipal Government."
                                 </p>
 
                                 {{-- Signatures --}}
@@ -1653,7 +1895,8 @@
                                 {{-- Meta info --}}
                                 <div class="cert-meta">
                                     <span x-text="'DATE ISSUED: ' + (certModal.issuedAt || '—')"></span>
-                                    <span x-text="'CONTROL NO: BPL-RET-' + (certModal.entry?.id ? String(certModal.entry.id).padStart(6,'0') : '000000')"></span>
+                                    <span
+                                        x-text="'CONTROL NO: BPL-RET-' + (certModal.entry?.id ? String(certModal.entry.id).padStart(6,'0') : '000000')"></span>
                                 </div>
                             </div>
                         </div>
@@ -1662,8 +1905,8 @@
                                 class="px-4 py-2 bg-white text-gray text-sm font-bold rounded-xl border border-lumot/30 hover:bg-lumot/10 transition-colors">Close</button>
                             <button @click="printCert()"
                                 class="px-5 py-2 bg-logo-teal text-white text-sm font-bold rounded-xl hover:bg-green transition-colors flex items-center gap-2">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                    stroke-width="2">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                 </svg>
@@ -2021,10 +2264,12 @@
                                                         x-text="entry.bpls_application.application_number || '—'"></span>
                                                 </div>
 
-                                                <template x-if="entry.bpls_application.workflow_status !== entry.status">
+                                                <template
+                                                    x-if="entry.bpls_application.workflow_status !== entry.status">
                                                     <div class="flex items-center gap-1.5">
                                                         <span
-                                                            class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">App Status</span>
+                                                            class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">App
+                                                            Status</span>
                                                         <span
                                                             class="text-[10px] font-bold px-2 py-0.5 rounded-full border"
                                                             :class="{
@@ -2043,7 +2288,8 @@
                                                                 'bg-gray-50 text-gray border-gray-200': entry
                                                                     .bpls_application.workflow_status === 'returned',
                                                                 'bg-orange-50 text-orange-600 border-orange-200': entry
-                                                                    .bpls_application.workflow_status === 'retirement_requested',
+                                                                    .bpls_application
+                                                                    .workflow_status === 'retirement_requested',
                                                                 'bg-red-50 text-red-600 border-red-200': entry
                                                                     .bpls_application.workflow_status === 'retired',
                                                             }"
@@ -2063,7 +2309,8 @@
                                                 </template>
 
                                                 {{-- Assessment Amount --}}
-                                                <template x-if="entry.bpls_application && entry.bpls_application.assessment_amount">
+                                                <template
+                                                    x-if="entry.bpls_application && entry.bpls_application.assessment_amount">
                                                     <div class="flex items-center gap-1.5">
                                                         <span
                                                             class="text-[10px] font-bold text-gray/60 uppercase w-16 shrink-0">Assessed</span>
@@ -2208,8 +2455,12 @@
                                                 x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
                                                 @click="openRenewModal(entry)"
                                                 :disabled="entry.outstanding_balance > 0.01"
-                                                :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' : 'bg-logo-blue hover:bg-blue-700'"
-                                                :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before renewal.' : 'Renew Business'"
+                                                :class="entry.outstanding_balance > 0.01 ?
+                                                    'opacity-50 cursor-not-allowed bg-blue-300' :
+                                                    'bg-logo-blue hover:bg-blue-700'"
+                                                :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(
+                                                        entry.outstanding_balance).toLocaleString() +
+                                                    ') must be settled before renewal.' : 'Renew Business'"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white transition-colors">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor" stroke-width="2.5">
@@ -2224,8 +2475,12 @@
                                                 x-show="entry.status !== 'retired' && entry.status !== 'pending' && entry.status !== 'retirement_requested'"
                                                 @click="openRetireModal(entry)"
                                                 :disabled="entry.outstanding_balance > 0.01"
-                                                :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-500 hover:bg-orange-600'"
-                                                :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before retirement.' : 'Retire Business'"
+                                                :class="entry.outstanding_balance > 0.01 ?
+                                                    'opacity-50 cursor-not-allowed bg-orange-300' :
+                                                    'bg-orange-500 hover:bg-orange-600'"
+                                                :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(
+                                                        entry.outstanding_balance).toLocaleString() +
+                                                    ') must be settled before retirement.' : 'Retire Business'"
                                                 class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white transition-colors">
                                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor" stroke-width="2.5">
@@ -2377,31 +2632,41 @@
                                                             x-text="entry.bpls_application.application_number || '—'">
                                                         </p>
 
-                                                <template x-if="entry.bpls_application && entry.bpls_application.workflow_status !== entry.status">
-                                                    <div class="mt-1">
-                                                        <span
-                                                            class="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border"
-                                                            :class="{
-                                                                'bg-yellow-50 text-yellow-700 border-yellow-200': entry
-                                                                    .bpls_application.workflow_status === 'submitted',
-                                                                'bg-blue-50 text-blue-600 border-blue-200': entry
-                                                                    .bpls_application.workflow_status === 'verified',
-                                                                'bg-purple-50 text-purple-600 border-purple-200': entry
-                                                                    .bpls_application.workflow_status === 'assessed',
-                                                                'bg-orange-50 text-orange-500 border-orange-200': entry
-                                                                    .bpls_application.workflow_status === 'paid',
-                                                                'bg-green-50 text-green-600 border-green-200': entry
-                                                                    .bpls_application.workflow_status === 'approved',
-                                                                'bg-red-50 text-red-500 border-red-200': entry
-                                                                    .bpls_application.workflow_status === 'rejected',
-                                                                'bg-gray-50 text-gray border-gray-200': entry
-                                                                    .bpls_application.workflow_status === 'returned',
-                                                                'bg-orange-50 text-orange-600 border-orange-200': entry
-                                                                    .bpls_application.workflow_status === 'retirement_requested',
-                                                                'bg-red-50 text-red-600 border-red-200': entry
-                                                                    .bpls_application.workflow_status === 'retired',
-                                                            }"
-                                                            x-text="'Workflow: ' + ({
+                                                        <template
+                                                            x-if="entry.bpls_application && entry.bpls_application.workflow_status !== entry.status">
+                                                            <div class="mt-1">
+                                                                <span
+                                                                    class="inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border"
+                                                                    :class="{
+                                                                        'bg-yellow-50 text-yellow-700 border-yellow-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'submitted',
+                                                                        'bg-blue-50 text-blue-600 border-blue-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'verified',
+                                                                        'bg-purple-50 text-purple-600 border-purple-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'assessed',
+                                                                        'bg-orange-50 text-orange-500 border-orange-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'paid',
+                                                                        'bg-green-50 text-green-600 border-green-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'approved',
+                                                                        'bg-red-50 text-red-500 border-red-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'rejected',
+                                                                        'bg-gray-50 text-gray border-gray-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'returned',
+                                                                        'bg-orange-50 text-orange-600 border-orange-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'retirement_requested',
+                                                                        'bg-red-50 text-red-600 border-red-200': entry
+                                                                            .bpls_application
+                                                                            .workflow_status === 'retired',
+                                                                    }"
+                                                                    x-text="'Workflow: ' + ({
                                                         submitted: 'For Verification',
                                                         verified: 'For Assessment',
                                                         assessed: 'For Payment',
@@ -2412,9 +2677,9 @@
                                                         retirement_requested: 'Retirement Req.',
                                                         retired: 'Retired',
                                                     }[entry.bpls_application.workflow_status] || entry.bpls_application.workflow_status)">
-                                                        </span>
-                                                    </div>
-                                                </template>
+                                                                </span>
+                                                            </div>
+                                                        </template>
 
                                                         {{-- Assessment Amount --}}
                                                         <template x-if="entry.bpls_application.assessment_amount">
@@ -2506,8 +2771,12 @@
                                                         x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
                                                         @click="openRenewModal(entry)"
                                                         :disabled="entry.outstanding_balance > 0.01"
-                                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' : 'bg-logo-blue hover:bg-blue-700'"
-                                                        :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before renewal.' : 'Renew Business'"
+                                                        :class="entry.outstanding_balance > 0.01 ?
+                                                            'opacity-50 cursor-not-allowed bg-blue-300' :
+                                                            'bg-logo-blue hover:bg-blue-700'"
+                                                        :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' +
+                                                            Number(entry.outstanding_balance).toLocaleString() +
+                                                            ') must be settled before renewal.' : 'Renew Business'"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
@@ -2542,8 +2811,13 @@
                                                         x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
                                                         @click="openRetireModal(entry)"
                                                         :disabled="entry.outstanding_balance > 0.01"
-                                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
-                                                        :title="entry.outstanding_balance > 0.01 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                                        :class="entry.outstanding_balance > 0.01 ?
+                                                            'opacity-50 cursor-not-allowed bg-orange-300' :
+                                                            'bg-orange-400 hover:bg-orange-600'"
+                                                        :title="entry.outstanding_balance > 0.01 ?
+                                                            'Settlement of outstanding balance (₱' + Number(entry
+                                                                .outstanding_balance).toLocaleString() +
+                                                            ') is required before retirement.' : 'Retire Business'"
                                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
@@ -2649,10 +2923,12 @@
                                     {{-- Renew button: visible for completed (walkin) or paid (online) or fully paid balance --}}
                                     <button type="button"
                                         x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
-                                        @click="openRenewModal(entry)"
-                                        :disabled="entry.outstanding_balance > 0.01"
-                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' : 'bg-logo-blue hover:bg-blue-700'"
-                                        :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') must be settled before renewal.' : 'Renew Business'"
+                                        @click="openRenewModal(entry)" :disabled="entry.outstanding_balance > 0.01"
+                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' :
+                                            'bg-logo-blue hover:bg-blue-700'"
+                                        :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry
+                                                .outstanding_balance).toLocaleString() +
+                                            ') must be settled before renewal.' : 'Renew Business'"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
@@ -2664,10 +2940,13 @@
                                     {{-- Retire button: visible for approved, completed, retirement_requested (not retired) --}}
                                     <button type="button"
                                         x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
-                                        @click="openRetireModal(entry)"
-                                        :disabled="entry.outstanding_balance > 0.01"
-                                        :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-orange-300' : 'bg-orange-400 hover:bg-orange-600'"
-                                        :title="entry.outstanding_balance > 0.01 ? 'Settlement of outstanding balance (₱' + Number(entry.outstanding_balance).toLocaleString() + ') is required before retirement.' : 'Retire Business'"
+                                        @click="openRetireModal(entry)" :disabled="entry.outstanding_balance > 0.01"
+                                        :class="entry.outstanding_balance > 0.01 ?
+                                            'opacity-50 cursor-not-allowed bg-orange-300' :
+                                            'bg-orange-400 hover:bg-orange-600'"
+                                        :title="entry.outstanding_balance > 0.01 ? 'Settlement of outstanding balance (₱' +
+                                            Number(entry.outstanding_balance).toLocaleString() +
+                                            ') is required before retirement.' : 'Retire Business'"
                                         class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
@@ -2890,7 +3169,9 @@
                                 'pending': ['rejected', 'cancelled'],
                                 'for_payment': ['pending', 'rejected', 'cancelled'],
                                 'for_renewal_payment': ['pending', 'rejected', 'cancelled'],
-                                'approved': ['pending', 'rejected', 'cancelled', 'retirement_requested', 'renewal_requested'],
+                                'approved': ['pending', 'rejected', 'cancelled', 'retirement_requested',
+                                    'renewal_requested'
+                                ],
                                 'completed': ['pending', 'retirement_requested', 'renewal_requested'],
                                 'rejected': ['pending'],
                                 'cancelled': ['pending'],
@@ -2900,7 +3181,7 @@
                                 'retired': [],
                             };
 
-                             let options = (map[s] ?? []).map(v => OPTIONS[v]).filter(Boolean);
+                            let options = (map[s] ?? []).map(v => OPTIONS[v]).filter(Boolean);
 
                             // Special: Hide "Approve Retirement" (retired) and "Approve Renewal" if there's an outstanding balance
                             if (this.statusModal.entry?.outstanding_balance > 0.01) {
@@ -3328,7 +3609,7 @@
                             });
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.message || 'Failed to retire business.');
-                            
+
                             this.fetch(); // Reload the list to get updated mappings
                             this.retireModal.show = false;
                             this.retireModal.open = false;
@@ -3409,9 +3690,9 @@
                         try {
                             const entry = this.renewModal.entry;
                             const isOnline = entry.is_online || entry.source === 'online';
-                            const url = isOnline
-                                ? `{{ url('bpls/business-list') }}/${entry.id}/approve-online-renewal`
-                                : `{{ url('bpls/business-list') }}/${entry.id}/approve-payment`;
+                            const url = isOnline ?
+                                `{{ url('bpls/business-list') }}/${entry.id}/approve-online-renewal` :
+                                `{{ url('bpls/business-list') }}/${entry.id}/approve-payment`;
 
                             const res = await window.fetch(url, {
                                 method: 'POST',
@@ -3444,7 +3725,8 @@
                     // ── CERTIFICATE modal ─────────────────────────────────────────────
                     async openCertModal(entry) {
                         try {
-                            const res = await window.fetch(`{{ url('bpls/business-list') }}/${entry.id}/retirement-certificate`);
+                            const res = await window.fetch(
+                                `{{ url('bpls/business-list') }}/${entry.id}/retirement-certificate`);
                             const data = await res.json();
                             if (!res.ok) throw new Error(data.error || 'Failed to fetch certificate.');
 
