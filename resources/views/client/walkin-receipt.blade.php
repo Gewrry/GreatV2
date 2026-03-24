@@ -15,6 +15,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Official Receipt — O.R. #{{ $payment->or_number }}</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
     @php
         $rs = $receiptSettings ?? collect();
         $rGet = fn($key, $default) => $rs[$key]->value ?? $default;
@@ -23,7 +29,7 @@
         $officeName = $rGet('receipt_office_name', 'Office of the Treasurer');
         $headerLine3 = $rGet('receipt_header_line3', 'Province of Laguna');
         $agencyName = $rGet('receipt_agency_name', 'MTO-Majayjay');
-        $afLabel = $rGet('receipt_af_label', 'Accountable form No. 51');
+        $afLabel = $rGet('receipt_af_label', 'Accountable Form No. 51');
 
         $receivedText = $rGet('receipt_received_text', 'Received the amount stated above');
         $footerNote = $rGet('receipt_footer_note', '');
@@ -42,17 +48,15 @@
         $sig3Name = $rGet('receipt_signatory3_name', '');
         $sig3Title = $rGet('receipt_signatory3_title', '');
 
-        $receiptWidth = (int) $rGet('receipt_width_px', '360');
+        $receiptWidth = (int) $rGet('receipt_width_px', '420');
         $minFeeRows = (int) $rGet('receipt_min_fee_rows', '8');
         $showDiscountBadge = $rGet('receipt_show_discount_badge', '1') === '1';
         $showAmountInWords = $rGet('receipt_show_amount_in_words', '1') === '1';
         $showRemarks = $rGet('receipt_show_remarks', '1') === '1';
-
         $surchargeCode = $rGet('receipt_surcharge_code', '631-008');
         $backtaxCode = $rGet('receipt_backtax_code', '631-009');
         $defaultFundCode = $rGet('receipt_default_fund_code', '101');
 
-        // Fee ratio calculation
         $quartersPaid = is_array($payment->quarters_paid)
             ? $payment->quarters_paid
             : json_decode($payment->quarters_paid, true) ?? [];
@@ -64,7 +68,6 @@
         };
         $ratio = $modeCount > 0 ? $qCount / $modeCount : 1;
 
-        // Filler rows
         $nonEmptyRows = collect($fees)->filter(fn($f) => round($f['amount'] * $ratio, 2) > 0)->count();
         $extraRows = 0;
         if (($payment->surcharges ?? 0) > 0) {
@@ -89,394 +92,407 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --ink: #0d0d0d;
+            --ink2: #5a5a5a;
+            --ink3: #999;
+            --rule: #d8d8d8;
+            --bg: #f7f7f5;
+            --accent: #1a7a5e;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            font-size: 11px;
-            background: #fff;
-            color: #000;
-        }
-
-        .receipt-wrap {
-            width: {{ $receiptWidth }}px;
-            margin: 20px auto;
-            border: 2px solid #000;
-            padding: 0;
-        }
-
-        .header-top {
-            text-align: center;
-            padding: 10px 12px 6px;
-            border-bottom: 1px solid #000;
-        }
-
-        .header-top .logos {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 4px;
-        }
-
-        .header-top .logo-box {
-            width: 40px;
-            height: 40px;
-            border: 1px solid #999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            color: #666;
-            text-align: center;
-        }
-
-        .header-top .title-block {
-            flex: 1;
-            padding: 0 8px;
-        }
-
-        .header-top .title-block p {
-            font-size: 9px;
-            font-weight: bold;
-            line-height: 1.4;
-        }
-
-        .header-top .title-block .main {
-            font-size: 11px;
-            font-weight: 900;
-            text-transform: uppercase;
-        }
-
-        .af-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            border-bottom: 1px solid #000;
-            font-size: 9px;
-        }
-
-        .af-row div {
-            padding: 3px 8px;
-        }
-
-        .af-row div:first-child {
-            border-right: 1px solid #000;
-        }
-
-        .date-or-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            border-bottom: 1px solid #000;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .date-or-row div {
-            padding: 5px 8px;
-        }
-
-        .date-or-row div:first-child {
-            border-right: 1px solid #000;
-        }
-
-        .agency-row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            border-bottom: 1px solid #000;
-            font-size: 10px;
-        }
-
-        .agency-row div {
-            padding: 4px 8px;
-        }
-
-        .agency-row .fund {
-            border-left: 1px solid #000;
-            font-weight: bold;
-            padding: 4px 12px;
-        }
-
-        .payor-row {
-            padding: 4px 8px;
-            border-bottom: 1px solid #000;
-            font-size: 11px;
-            font-weight: 900;
-            text-transform: uppercase;
-        }
-
-        .fee-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .fee-table thead tr {
-            background: #222;
-            color: #fff;
-        }
-
-        .fee-table thead th {
-            padding: 5px 8px;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            text-align: left;
-        }
-
-        .fee-table thead th:last-child {
-            text-align: right;
-        }
-
-        .fee-table tbody tr td {
-            padding: 4px 8px;
-            border-bottom: 1px solid #ddd;
-            font-size: 10px;
-        }
-
-        .fee-table tbody tr td:last-child {
-            text-align: right;
-            font-weight: bold;
-        }
-
-        .fee-table tbody tr td.code {
-            text-align: center;
-            font-family: monospace;
-            color: #555;
-            font-size: 9px;
-        }
-
-        .fee-table tbody tr.discount-row td {
-            background: #f0fdf4;
-            color: #16a34a;
-            font-weight: bold;
-            border-bottom: 1px solid #bbf7d0;
-        }
-
-        .fee-table tbody tr.discount-row td.code {
-            color: #16a34a;
-        }
-
-        .fee-table tbody tr.beneficiary-row td {
-            background: #faf5ff;
-            color: #7e22ce;
-            font-weight: bold;
-            border-bottom: 1px solid #e9d5ff;
-        }
-
-        .fee-table tbody tr.beneficiary-row td.code {
-            color: #7e22ce;
-        }
-
-        .fee-table tbody tr.surcharge-row td {
-            background: #fff7ed;
-            color: #ea580c;
-        }
-
-        .fee-table tbody tr.backtax-row td {
-            background: #fef2f2;
-            color: #dc2626;
-        }
-
-        .fee-table tfoot tr td {
-            padding: 6px 8px;
-            font-weight: 900;
+            font-family: 'DM Sans', sans-serif;
             font-size: 12px;
-            border-top: 2px solid #000;
-        }
-
-        .fee-table tfoot tr td:last-child {
-            text-align: right;
-        }
-
-        .words-row {
-            padding: 5px 8px;
-            border-top: 1px solid #000;
-            font-size: 9px;
-        }
-
-        .words-row .label {
-            font-weight: bold;
-            font-size: 9px;
-            margin-bottom: 2px;
-        }
-
-        .words-row .value {
-            font-weight: 900;
-            font-size: 10px;
-            text-transform: uppercase;
-        }
-
-        .remarks-row {
-            padding: 5px 8px;
-            border-top: 1px solid #000;
-            font-size: 9px;
-            min-height: 28px;
-        }
-
-        .remarks-row .label {
-            font-weight: bold;
-        }
-
-        .payment-method-row {
-            display: grid;
-            grid-template-columns: 90px 1fr;
-            border-top: 1px solid #000;
-        }
-
-        .payment-method-row .methods {
-            padding: 5px 8px;
-        }
-
-        .payment-method-row .method-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            margin-bottom: 3px;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
-        .cb {
-            width: 11px;
-            height: 11px;
-            border: 1.5px solid #000;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-        }
-
-        .cb.checked::after {
-            content: '✓';
-            font-weight: 900;
-        }
-
-        .payment-method-row .drawee-table {
-            border-left: 1px solid #000;
-        }
-
-        .drawee-table table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9px;
-        }
-
-        .drawee-table table th {
-            padding: 3px 6px;
-            border-bottom: 1px solid #000;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .drawee-table table td {
-            padding: 4px 6px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
-        }
-
-        .drawee-table table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .received-row {
-            border-top: 1px solid #000;
-            padding: 8px 8px 4px;
-            font-size: 9px;
-            font-weight: bold;
-        }
-
-        .signatories-row {
-            display: flex;
-            justify-content: space-around;
-            padding: 0 8px 10px;
-        }
-
-        .signatory {
-            text-align: center;
-            flex: 1;
-            padding: 0 4px;
-        }
-
-        .signatory .name {
-            font-weight: 900;
-            font-size: 10px;
-            text-transform: uppercase;
-            border-top: 1px solid #000;
-            margin: 16px 8px 0;
-            padding-top: 3px;
-        }
-
-        .signatory .title {
-            font-size: 8px;
-            margin-top: 2px;
-        }
-
-        .footer-note {
-            padding: 6px 8px;
-            border-top: 1px dashed #aaa;
-            font-size: 8px;
-            color: #555;
-            font-style: italic;
-            text-align: center;
-        }
-
-        .discount-badge {
-            background: #dcfce7;
-            border: 1px solid #86efac;
-            color: #15803d;
-            font-size: 9px;
-            font-weight: bold;
-            text-align: center;
-            padding: 3px 8px;
-            border-bottom: 1px solid #000;
-        }
-
-        .beneficiary-badge {
-            background: #faf5ff;
-            border: 1px solid #d8b4fe;
-            color: #7e22ce;
-            font-size: 9px;
-            font-weight: bold;
-            text-align: center;
-            padding: 3px 8px;
-            border-bottom: 1px solid #000;
+            background: var(--bg);
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
         }
 
         .no-print-btn {
             text-align: center;
-            padding: 16px;
+            padding: 18px 0;
+        }
+
+        .no-print-btn button,
+        .no-print-btn a {
+            display: inline-block;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 8px 22px;
+            border-radius: 7px;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            margin: 0 4px;
         }
 
         .no-print-btn button {
-            background: #0d9488;
-            color: white;
-            border: none;
-            padding: 10px 32px;
-            font-size: 13px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
         }
 
         .no-print-btn a {
-            display: inline-block;
-            padding: 10px 24px;
-            background: #6b7280;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
+            background: #e8e8e8;
+            color: var(--ink2);
+        }
+
+        /* ── Receipt card ── */
+        .receipt {
+            width: {{ $receiptWidth }}px;
+            margin: 0 auto 24px;
+            background: #fff;
+            border: 1px solid var(--rule);
+            border-radius: 4px;
+        }
+
+        /* ── Header ── */
+        .r-header {
+            padding: 18px 20px 14px;
+            border-bottom: 1px solid var(--rule);
+            text-align: center;
+        }
+
+        .r-header__lgu {
+            font-size: 10px;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            margin-bottom: 2px;
+        }
+
+        .r-header__office {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: -.01em;
+            color: var(--ink);
+        }
+
+        .r-header__line {
+            font-size: 11px;
+            color: var(--ink3);
+            margin-top: 1px;
+        }
+
+        .r-header__af {
+            font-size: 10px;
+            font-family: 'DM Mono', monospace;
+            color: var(--ink3);
+            margin-top: 4px;
+        }
+
+        /* ── Meta row (date / OR / fund) ── */
+        .r-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr 80px;
+            border-bottom: 1px solid var(--rule);
+            font-size: 11px;
+        }
+
+        .r-meta__cell {
+            padding: 8px 12px;
+        }
+
+        .r-meta__cell+.r-meta__cell {
+            border-left: 1px solid var(--rule);
+        }
+
+        .r-meta__label {
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            margin-bottom: 2px;
+        }
+
+        .r-meta__value {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--ink);
+        }
+
+        /* ── Payor row ── */
+        .r-payor {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--rule);
+        }
+
+        .r-payor__label {
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            margin-bottom: 2px;
+        }
+
+        .r-payor__name {
             font-size: 13px;
-            font-weight: bold;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: -.01em;
+        }
+
+        .r-payor__address {
+            font-size: 10px;
+            color: var(--ink3);
+            margin-top: 1px;
+        }
+
+        /* ── Fee table ── */
+        .r-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-bottom: 1px solid var(--rule);
+        }
+
+        .r-table thead th {
+            padding: 7px 12px;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: .09em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            border-bottom: 1px solid var(--rule);
+            text-align: left;
+            background: #fafaf9;
+        }
+
+        .r-table thead th:last-child {
+            text-align: right;
+        }
+
+        .r-table tbody td {
+            padding: 6px 12px;
+            font-size: 11px;
+            color: var(--ink);
+            border-bottom: 1px solid #f2f2f2;
+        }
+
+        .r-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .r-table .td-code {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            color: var(--ink3);
+        }
+
+        .r-table .td-amt {
+            text-align: right;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .r-table .tr-surcharge td {
+            color: #d97706;
+        }
+
+        .r-table .tr-backtax td {
+            color: #dc2626;
+        }
+
+        .r-table .tr-discount td {
+            color: var(--accent);
+        }
+
+        .r-table .tr-filler td {
+            color: transparent;
+            border-bottom: 1px solid #f2f2f2;
+        }
+
+        .r-table tfoot td {
+            padding: 9px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #fafaf9;
+            border-top: 1px solid var(--rule);
+        }
+
+        .r-table tfoot .td-amt {
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        /* ── Amount in words ── */
+        .r-words {
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--rule);
+            font-size: 11px;
+        }
+
+        .r-words__label {
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            margin-bottom: 2px;
+        }
+
+        .r-words__value {
+            color: var(--ink);
+            line-height: 1.4;
+        }
+
+        /* ── Remarks ── */
+        .r-remarks {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--rule);
+            font-size: 11px;
+            color: var(--ink2);
+        }
+
+        .r-remarks__label {
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            margin-bottom: 2px;
+        }
+
+        /* ── Payment method ── */
+        .r-method {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--rule);
+            flex-wrap: wrap;
+        }
+
+        .r-method__options {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .method-opt {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--ink2);
+        }
+
+        .method-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid var(--rule);
+            background: #fff;
+            flex-shrink: 0;
+        }
+
+        .method-dot--checked {
+            border-color: var(--accent);
+            background: var(--accent);
+        }
+
+        .r-method__drawee {
+            flex: 1;
+            min-width: 160px;
+        }
+
+        .drawee-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+
+        .drawee-table th {
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--ink3);
+            padding: 0 0 4px;
+            text-align: left;
+            border-bottom: 1px solid var(--rule);
+        }
+
+        .drawee-table td {
+            padding: 3px 0;
+            color: var(--ink2);
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+        }
+
+        /* ── Received text ── */
+        .r-received {
+            padding: 9px 12px;
+            font-size: 11px;
+            color: var(--ink3);
+            border-bottom: 1px solid var(--rule);
+            font-style: italic;
+        }
+
+        /* ── Signatories ── */
+        .r-signatories {
+            display: grid;
+            gap: 0;
+            border-bottom: 1px solid var(--rule);
+        }
+
+        .r-signatories {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        }
+
+        .signatory {
+            padding: 16px 12px 10px;
+            text-align: center;
+        }
+
+        .signatory+.signatory {
+            border-left: 1px solid var(--rule);
+        }
+
+        .signatory__line {
+            border-top: 1px solid var(--ink);
+            padding-top: 6px;
+            margin-bottom: 3px;
+        }
+
+        .signatory__name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: -.01em;
+        }
+
+        .signatory__title {
+            font-size: 10px;
+            color: var(--ink3);
+            margin-top: 1px;
+        }
+
+        /* ── Footer note ── */
+        .r-footer-note {
+            padding: 8px 12px;
+            font-size: 10px;
+            color: var(--ink3);
+            text-align: center;
         }
 
         @media print {
+            body {
+                background: #fff;
+            }
+
             .no-print-btn {
                 display: none;
             }
 
-            body {
-                margin: 0;
-            }
-
-            .receipt-wrap {
+            .receipt {
                 margin: 0 auto;
-                border: 1.5px solid #000;
+                border: 1px solid #ccc;
+                border-radius: 0;
+                width: {{ $receiptWidth }}px;
             }
         }
     </style>
@@ -485,76 +501,53 @@
 <body>
 
     <div class="no-print-btn">
-        <button onclick="window.print()">🖨 Print Receipt</button>
-        &nbsp;
-        <a href="{{ route('client.walkin-payments') }}">← Back to Payments</a>
+        <button onclick="window.print()">Print Receipt</button>
+        <a href="{{ route('client.walkin-payments') }}">← Back</a>
     </div>
 
-    <div class="receipt-wrap">
+    <div class="receipt">
 
         {{-- Header --}}
-        <div class="header-top">
-            <div class="logos">
-                <div class="logo-box">PH<br>Seal</div>
-                <div class="title-block">
-                    <p>{{ $headerLine1 }}</p>
-                    <p class="main">{{ $officeName }}</p>
-                    <p>{{ $headerLine3 }}</p>
-                </div>
-                <div class="logo-box">LGU<br>Seal</div>
+        <div class="r-header">
+            <p class="r-header__lgu">{{ $headerLine1 }}</p>
+            <p class="r-header__office">{{ $officeName }}</p>
+            <p class="r-header__line">{{ $headerLine3 }} &mdash; {{ $agencyName }}</p>
+            <p class="r-header__af">{{ $afLabel }}</p>
+        </div>
+
+        {{-- Meta --}}
+        <div class="r-meta">
+            <div class="r-meta__cell">
+                <div class="r-meta__label">Date</div>
+                <div class="r-meta__value">{{ \Carbon\Carbon::parse($payment->payment_date)->format('m/d/Y') }}</div>
+            </div>
+            <div class="r-meta__cell">
+                <div class="r-meta__label">O.R. Number</div>
+                <div class="r-meta__value">{{ $payment->or_number }}</div>
+            </div>
+            <div class="r-meta__cell">
+                <div class="r-meta__label">Fund</div>
+                <div class="r-meta__value">{{ $defaultFundCode }}</div>
             </div>
         </div>
 
-        {{-- Advance Discount Badge --}}
-        @if ($showDiscountBadge && ($advanceDiscount ?? 0) > 0)
-            <div class="discount-badge">
-                ✓ ADVANCE PAYMENT DISCOUNT APPLIED ({{ $discountRate ?? 0 }}% OFF)
+        {{-- Payor --}}
+        <div class="r-payor">
+            <div class="r-payor__label">Payor</div>
+            <div class="r-payor__name">
+                {{ strtoupper($payment->payor ?? $entry->last_name . ', ' . $entry->first_name) }}</div>
+            <div class="r-payor__address">
+                {{ $entry->owner_barangay ?? '' }}{{ !empty($entry->owner_municipality) ? ', ' . $entry->owner_municipality : '' }}{{ !empty($entry->owner_province) ? ', ' . $entry->owner_province : '' }}
             </div>
-        @endif
-
-        {{-- Beneficiary Discount Badge --}}
-        @if (($beneficiaryDiscount ?? 0) > 0)
-            <div class="beneficiary-badge">
-                ✓ BENEFICIARY DISCOUNT APPLIED — {{ strtoupper($beneficiaryLabel ?? '') }}
-                (₱{{ number_format($beneficiaryDiscount, 2) }})
-            </div>
-        @endif
-
-        {{-- AF Row --}}
-        <div class="af-row">
-            <div>{{ $afLabel }}</div>
-            <div>Revised January 1992</div>
         </div>
 
-        {{-- Date / OR Number --}}
-        <div class="date-or-row">
-            <div>Date: {{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</div>
-            <div>PGL N.: {{ $payment->or_number }}</div>
-        </div>
-
-        {{-- Agency / Fund Code --}}
-        <div class="agency-row">
-            <div>{{ $agencyName }}</div>
-            <div class="fund">{{ $payment->fund_code ?? $defaultFundCode }}</div>
-        </div>
-
-        {{-- Business ID + Payor --}}
-        @if (!empty($entry->business_id))
-            <div style="padding:2px 8px;font-size:9px;color:#555;border-bottom:1px solid #eee;font-style:italic;">
-                Business ID: <strong>{{ $entry->business_id }}</strong>
-            </div>
-        @endif
-        <div class="payor-row">
-            {{ strtoupper($payment->payor ?? $entry->last_name . ', ' . $entry->first_name . ' ' . $entry->middle_name) }}
-        </div>
-
-        {{-- Fee Table --}}
-        <table class="fee-table">
+        {{-- Fee table --}}
+        <table class="r-table">
             <thead>
                 <tr>
-                    <th>Nature of Collection</th>
-                    <th style="text-align:center;">Account Code</th>
-                    <th>Amount</th>
+                    <th style="width:55%;">Nature of Collection</th>
+                    <th style="width:20%;">Account Code</th>
+                    <th style="width:25%;">Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -563,46 +556,46 @@
                     @if ($feeAmt > 0)
                         <tr>
                             <td>{{ $fee['name'] }}</td>
-                            <td class="code">{{ $fee['code'] }}</td>
-                            <td>{{ number_format($feeAmt, 2) }}</td>
+                            <td class="td-code">{{ $fee['code'] }}</td>
+                            <td class="td-amt">{{ number_format($feeAmt, 2) }}</td>
                         </tr>
                     @endif
                 @endforeach
 
                 @if (($payment->surcharges ?? 0) > 0)
-                    <tr class="surcharge-row">
-                        <td>SURCHARGES</td>
-                        <td class="code">{{ $surchargeCode }}</td>
-                        <td>{{ number_format($payment->surcharges, 2) }}</td>
+                    <tr class="tr-surcharge">
+                        <td>Surcharges</td>
+                        <td class="td-code">{{ $surchargeCode }}</td>
+                        <td class="td-amt">{{ number_format($payment->surcharges, 2) }}</td>
                     </tr>
                 @endif
 
                 @if (($payment->backtaxes ?? 0) > 0)
-                    <tr class="backtax-row">
-                        <td>BACKTAXES</td>
-                        <td class="code">{{ $backtaxCode }}</td>
-                        <td>{{ number_format($payment->backtaxes, 2) }}</td>
+                    <tr class="tr-backtax">
+                        <td>Backtaxes</td>
+                        <td class="td-code">{{ $backtaxCode }}</td>
+                        <td class="td-amt">{{ number_format($payment->backtaxes, 2) }}</td>
                     </tr>
                 @endif
 
                 @if (($advanceDiscount ?? 0) > 0)
-                    <tr class="discount-row">
-                        <td>ADVANCE DISCOUNT ({{ $discountRate ?? 0 }}%)</td>
-                        <td class="code">—</td>
-                        <td>({{ number_format($advanceDiscount, 2) }})</td>
+                    <tr class="tr-discount">
+                        <td>Advance Discount ({{ $discountRate ?? 0 }}%)</td>
+                        <td class="td-code">—</td>
+                        <td class="td-amt">({{ number_format($advanceDiscount, 2) }})</td>
                     </tr>
                 @endif
 
                 @if (($beneficiaryDiscount ?? 0) > 0)
-                    <tr class="beneficiary-row">
-                        <td>BENEFICIARY DISCOUNT — {{ strtoupper($beneficiaryLabel ?? '') }}</td>
-                        <td class="code">—</td>
-                        <td>({{ number_format($beneficiaryDiscount, 2) }})</td>
+                    <tr class="tr-discount">
+                        <td>Beneficiary Discount — {{ ucwords($beneficiaryLabel ?? '') }}</td>
+                        <td class="td-code">—</td>
+                        <td class="td-amt">({{ number_format($beneficiaryDiscount, 2) }})</td>
                     </tr>
                 @endif
 
                 @for ($i = 0; $i < $fillerRows; $i++)
-                    <tr>
+                    <tr class="tr-filler">
                         <td>&nbsp;</td>
                         <td></td>
                         <td></td>
@@ -611,17 +604,17 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="2">TOTAL</td>
-                    <td>{{ number_format($payment->total_collected, 2) }}</td>
+                    <td colspan="2">Total</td>
+                    <td class="td-amt">{{ number_format($payment->total_collected, 2) }}</td>
                 </tr>
             </tfoot>
         </table>
 
-        {{-- Amount in Words --}}
+        {{-- Amount in words --}}
         @if ($showAmountInWords)
-            <div class="words-row">
-                <div class="label">Amount in Words</div>
-                <div class="value">
+            <div class="r-words">
+                <div class="r-words__label">Amount in Words</div>
+                <div class="r-words__value">
                     @php
                         if (!function_exists('numToWordsClient')) {
                             function numToWordsClient(float $amount): string
@@ -698,28 +691,26 @@
         @endif
 
         {{-- Remarks --}}
-        @if ($showRemarks)
-            <div class="remarks-row">
-                <span class="label">Remarks: </span>{{ $payment->remarks ?? '' }}
+        @if ($showRemarks && !empty($payment->remarks))
+            <div class="r-remarks">
+                <div class="r-remarks__label">Remarks</div>
+                {{ $payment->remarks }}
             </div>
         @endif
 
-        {{-- Payment Method --}}
-        <div class="payment-method-row">
-            <div class="methods">
-                <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'cash' ? 'checked' : '' }}"></span> Cash
-                </div>
-                <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'check' ? 'checked' : '' }}"></span> Check
-                </div>
-                <div class="method-item">
-                    <span class="cb {{ $payment->payment_method === 'money_order' ? 'checked' : '' }}"></span> Money
-                    Order
-                </div>
+        {{-- Payment method --}}
+        <div class="r-method">
+            <div class="r-method__options">
+                @foreach (['cash' => 'Cash', 'check' => 'Check', 'money_order' => 'Money Order'] as $val => $lbl)
+                    <div class="method-opt">
+                        <div class="method-dot {{ $payment->payment_method === $val ? 'method-dot--checked' : '' }}">
+                        </div>
+                        {{ $lbl }}
+                    </div>
+                @endforeach
             </div>
-            <div class="drawee-table">
-                <table>
+            <div class="r-method__drawee">
+                <table class="drawee-table">
                     <thead>
                         <tr>
                             <th>Drawee Bank</th>
@@ -729,9 +720,9 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>{{ $payment->drawee_bank ?? '' }}</td>
-                            <td>{{ $payment->check_number ?? '' }}</td>
-                            <td>{{ $payment->check_date ? \Carbon\Carbon::parse($payment->check_date)->format('m/d/Y') : '' }}
+                            <td>{{ $payment->drawee_bank ?? '—' }}</td>
+                            <td>{{ $payment->check_number ?? '—' }}</td>
+                            <td>{{ $payment->check_date ? \Carbon\Carbon::parse($payment->check_date)->format('m/d/Y') : '—' }}
                             </td>
                         </tr>
                         <tr>
@@ -745,37 +736,43 @@
         </div>
 
         {{-- Received text --}}
-        <div class="received-row">{{ $receivedText }}</div>
+        <div class="r-received">{{ $receivedText }}</div>
 
         {{-- Signatories --}}
-        <div class="signatories-row">
+        <div class="r-signatories">
             <div class="signatory">
-                <p class="name">{{ strtoupper($sig1Name) }}</p>
-                <p class="title">{{ $sig1Title }}</p>
+                <div style="height:28px;"></div>
+                <div class="signatory__line"></div>
+                <div class="signatory__name">{{ strtoupper($sig1Name) }}</div>
+                <div class="signatory__title">{{ $sig1Title }}</div>
             </div>
             @if ($sig2Enabled && !empty($sig2Name))
                 <div class="signatory">
-                    <p class="name">{{ strtoupper($sig2Name) }}</p>
-                    <p class="title">{{ $sig2Title }}</p>
+                    <div style="height:28px;"></div>
+                    <div class="signatory__line"></div>
+                    <div class="signatory__name">{{ strtoupper($sig2Name) }}</div>
+                    <div class="signatory__title">{{ $sig2Title }}</div>
                 </div>
             @endif
             @if ($sig3Enabled && !empty($sig3Name))
                 <div class="signatory">
-                    <p class="name">{{ strtoupper($sig3Name) }}</p>
-                    <p class="title">{{ $sig3Title }}</p>
+                    <div style="height:28px;"></div>
+                    <div class="signatory__line"></div>
+                    <div class="signatory__name">{{ strtoupper($sig3Name) }}</div>
+                    <div class="signatory__title">{{ $sig3Title }}</div>
                 </div>
             @endif
         </div>
 
-        {{-- Footer Note --}}
+        {{-- Footer note --}}
         @if (!empty($footerNote))
-            <div class="footer-note">{{ $footerNote }}</div>
+            <div class="r-footer-note">{{ $footerNote }}</div>
         @endif
 
     </div>
 
     <div class="no-print-btn">
-        <button onclick="window.print()">🖨 Print Receipt</button>
+        <button onclick="window.print()">Print Receipt</button>
     </div>
 
 </body>

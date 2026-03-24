@@ -36,8 +36,15 @@
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.04); }
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                transform: translateY(-20px) scale(1.04);
+            }
         }
 
         .card-press {
@@ -55,15 +62,36 @@
         }
 
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(16px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .fade-up { animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both; }
-        .delay-1 { animation-delay: .06s; }
-        .delay-2 { animation-delay: .12s; }
-        .delay-3 { animation-delay: .18s; }
-        .delay-4 { animation-delay: .24s; }
+        .fade-up {
+            animation: fadeUp .45s cubic-bezier(.22, 1, .36, 1) both;
+        }
+
+        .delay-1 {
+            animation-delay: .06s;
+        }
+
+        .delay-2 {
+            animation-delay: .12s;
+        }
+
+        .delay-3 {
+            animation-delay: .18s;
+        }
+
+        .delay-4 {
+            animation-delay: .24s;
+        }
 
         /* Quarter badge */
         .q-badge {
@@ -87,19 +115,24 @@
         }
 
         /* Method pills */
-        .pill-cash { background: #dcfce7; color: #15803d; }
-        .pill-check { background: #dbeafe; color: #1d4ed8; }
-        .pill-mo { background: #fef9c3; color: #854d0e; }
+        .pill-cash {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .pill-check {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .pill-mo {
+            background: #fef9c3;
+            color: #854d0e;
+        }
     </style>
 @endpush
 
 @section('content')
-    {{-- Animated Background --}}
-    <div class="fixed inset-0 -z-10 overflow-hidden">
-        <div class="blob absolute -top-32 -left-32 w-96 h-96 bg-teal-300"></div>
-        <div class="blob blob-2 absolute top-1/3 -right-24 w-80 h-80 bg-emerald-300"></div>
-        <div class="blob blob-3 absolute -bottom-24 left-1/4 w-72 h-72 bg-cyan-200"></div>
-    </div>
 
 
     <div class="max-w-lg mx-auto px-4 pt-6 pb-28 space-y-4">
@@ -109,8 +142,8 @@
             <div class="flex items-center gap-3 mb-1">
                 <div class="w-9 h-9 rounded-2xl flex items-center justify-center shadow-md"
                     style="background:linear-gradient(135deg,#0d9488,#059669);">
-                    <svg class="w-4.5 h-4.5 text-white" style="width:18px;height:18px;" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <svg class="w-4.5 h-4.5 text-white" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M9 14l2 2 4-4M4.5 19.5l.75-4.5 10.5-10.5a2.121 2.121 0 013 3L8.25 18.75l-4.5.75z" />
                     </svg>
@@ -401,8 +434,8 @@
                                 <a href="{{ route('client.walkin-payments.receipt', $payment->id) }}"
                                     class="flex-1 flex items-center justify-center gap-1.5 py-3
                                           text-[11px] font-bold text-teal-600 hover:bg-teal-50 transition-colors">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="2">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
@@ -412,8 +445,8 @@
                                 <a href="{{ route('client.walkin-payments.permit', $payment->id) }}"
                                     class="flex-1 flex items-center justify-center gap-1.5 py-3
                                           text-[11px] font-bold text-indigo-600 hover:bg-indigo-50 transition-colors">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
-                                        stroke="currentColor" stroke-width="2">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                        stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" />
                                     </svg>
