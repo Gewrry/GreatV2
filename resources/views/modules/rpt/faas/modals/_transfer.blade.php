@@ -37,14 +37,24 @@
                         },
                         body: JSON.stringify({ consideration_amount: this.consideration })
                     })
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok && res.status !== 422) {
+                            throw new Error('Server error (HTTP ' + res.status + ')');
+                        }
+                        return res.json();
+                    })
                     .then(data => {
                         if (data.success) {
                             this.taxStatus = 'unpaid';
+                            this.taxDue = data.billing ? data.billing.total_tax_due : this.taxDue;
                             alert(data.message);
                         } else {
-                            alert(data.error || 'Failed to generate bill.');
+                            alert('ERROR: ' + (data.error || 'Failed to generate bill. Check the console for details.'));
                         }
+                        this.isLoading = false;
+                    })
+                    .catch(err => {
+                        alert('Network/Server Error: ' + err.message + '. Please check if the server is running.');
                         this.isLoading = false;
                     });
                 }

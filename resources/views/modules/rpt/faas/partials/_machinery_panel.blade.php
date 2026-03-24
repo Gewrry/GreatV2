@@ -8,7 +8,7 @@
             <i class="fas fa-cogs text-purple-500"></i> Machineries / Equipment
             <span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{{ $faas->machineries->count() }} added</span>
         </h3>
-        @if($faas->isEditable())
+        @if($faas->isEditable() && strtoupper(trim($faas->revision_type)) !== 'TRANSFER')
             <button onclick="toggleForm('machinery-form')" class="text-xs font-semibold text-purple-700 border border-purple-200 rounded-lg px-3 py-1 hover:bg-purple-100 transition">
                 <i class="fas fa-plus mr-1"></i> Add Machinery
             </button>
@@ -42,14 +42,16 @@
                     <td class="px-4 py-3 text-right font-bold text-purple-700 tabular-nums">{{ number_format($mach->assessed_value, 2) }}</td>
                     @if($faas->isEditable())
                     <td class="px-4 py-3 text-right flex justify-end gap-2">
-                        <button onclick="openEditMachModal({{ $mach->id }}, {{ $mach->rpta_actual_use_id }}, '{{ addslashes($mach->machine_name) }}', {{ $mach->original_cost }}, {{ $mach->useful_life }}, {{ $mach->year_acquired }}, {{ $mach->assessment_level }})" 
-                                class="text-purple-600 hover:text-purple-800 text-xs transition">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <form action="{{ route('rpt.faas.machinery.destroy', [$faas, $mach]) }}" method="POST" onsubmit="return confirm('Remove this machinery?')">
-                            @csrf @method('DELETE')
-                            <button class="text-red-300 hover:text-red-500 text-xs transition"><i class="fas fa-trash-alt"></i></button>
-                        </form>
+                        @if(strtoupper(trim($faas->revision_type)) !== 'TRANSFER')
+                            <button onclick="openEditMachModal({{ $mach->id }}, {{ $mach->rpta_actual_use_id }}, '{{ addslashes($mach->machine_name) }}', {{ $mach->original_cost }}, {{ $mach->useful_life }}, {{ $mach->year_acquired }}, {{ $mach->assessment_level }})" 
+                                    class="text-purple-600 hover:text-purple-800 text-xs transition">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <form action="{{ route('rpt.faas.machinery.destroy', [$faas, $mach]) }}" method="POST" onsubmit="return confirm('Remove this machinery?')">
+                                @csrf @method('DELETE')
+                                <button class="text-red-300 hover:text-red-500 text-xs transition"><i class="fas fa-trash-alt"></i></button>
+                            </form>
+                        @endif
                     </td>
                     @endif
                     @if($faas->isApproved())

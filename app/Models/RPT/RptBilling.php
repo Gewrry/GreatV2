@@ -93,6 +93,11 @@ class RptBilling extends Model
      */
     public function calculateDiscount(Carbon $date): float
     {
+        // Transfer Tax is a one-time fee — no discounts apply
+        if ($this->billing_type === self::TYPE_TRANSFER_TAX) {
+            return 0.0;
+        }
+
         // Eligibility: Must NOT have any prior delinquencies
         if ($this->hasDelinquencies()) {
             return 0.0;

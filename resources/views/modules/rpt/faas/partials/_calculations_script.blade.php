@@ -134,7 +134,39 @@
         }
     }
 
+    async function updateLandUnitValue(form) {
+        const useId = form.querySelector('[name="rpta_actual_use_id"]').value;
+        const brgyId = {{ $faas->barangay_id ?? 'null' }};
+        const revId = {{ $faas->revision_year_id ?? 'null' }};
+        
+        if (!useId) return;
+
+        try {
+            const res = await fetch(`{{ route('rpt.faas.check-unit-value') }}?actual_use_id=${useId}&barangay_id=${brgyId}&revision_year_id=${revId}`);
+            const data = await res.json();
+            if (data.unit_value > 0) {
+                const valInput = form.querySelector('[name="unit_value"]');
+                valInput.value = data.unit_value;
+                // Add a subtle highlight to show it changed
+                valInput.classList.add('bg-green-50', 'ring-1', 'ring-green-500');
+                setTimeout(() => valInput.classList.remove('bg-green-50', 'ring-1', 'ring-green-500'), 1500);
+                form.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        } catch (e) {
+            console.error('Failed to fetch unit value', e);
+        }
+    }
+
     // Initialize listeners for all forms (inline and modals)
+    document.addEventListener('change', function(e) {
+        if (e.target.name === 'rpta_actual_use_id') {
+            const landForm = e.target.closest('#land-form form') || e.target.closest('#addLandModal form') || e.target.closest('#editLandModal form');
+            if (landForm) {
+                updateLandUnitValue(landForm);
+            }
+        }
+    });
+
     document.addEventListener('input', function(e) {
         // Find the closest form or container
         const bldgForm = e.target.closest('.building-calc-container');
@@ -167,7 +199,7 @@
     // Global state for spatial filtering
     let currentLandId = undefined;
 
-    function openEditLandModal(id, useId, area, unitVal, astLvl, lot, blk, lat, lng, polygon) {
+    function openEditLandModal(id, useId, area, unitVal, astLvl, mva, lot, blk, lat, lng, polygon) {
         currentLandId = id;
         const modal = document.getElementById('editLandModal');
         const form = modal.querySelector('form');
@@ -176,6 +208,9 @@
         form.querySelector('[name="area_sqm"]').value = area;
         form.querySelector('[name="unit_value"]').value = unitVal;
         form.querySelector('[name="assessment_level"]').value = astLvl;
+        if (form.querySelector('[name="market_value_adjustments"]')) {
+            form.querySelector('[name="market_value_adjustments"]').value = mva || 0;
+        }
         form.querySelector('[name="lot_no"]').value = lot;
         form.querySelector('[name="blk_no"]').value = blk;
         form.querySelector('[name="latitude"]').value = lat;

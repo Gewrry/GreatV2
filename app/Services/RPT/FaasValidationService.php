@@ -82,7 +82,7 @@ class FaasValidationService extends ValidationService
             }
         }
 
-        if ($faas->totalMarketValue() <= 0) {
+        if ($faas->is_taxable && $faas->totalMarketValue() <= 0) {
             $this->fail('total_market_value', 'Cannot submit for review: Total Market Value must be greater than zero.');
         }
 
@@ -164,6 +164,11 @@ class FaasValidationService extends ValidationService
             $this->fail('status', 'Target FAAS is already inactive.');
         }
 
+        // Block if pending or accepted children revisions already exist
+        if ($faas->revisions()->exists()) {
+            $this->fail('revisions', 'Cannot subdivide: A successor transaction already exists for this property. Please finalize or cancel pending drafts first.');
+        }
+
         // Compliance Guard: Tax Clearance required for Subdivision (Sec. 209 R.A. 7160)
         $this->assertHasTaxClearance($faas);
     }
@@ -205,6 +210,10 @@ class FaasValidationService extends ValidationService
      */
     public function assertHasTaxClearance(FaasProperty $faas)
     {
+        // 0. Compliance Guard: Exempt properties skip tax clearance requirement 
+        // (Sec. 234 R.A. 7160 - non-taxable entities)
+        if (!$faas->is_taxable) return;
+
         // Check all associated Tax Declarations
         foreach ($faas->taxDeclarations as $td) {
             // 1. Workflow Guard: Must be forwarded to Treasury first 

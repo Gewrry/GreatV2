@@ -11,7 +11,7 @@
                 {{ $faas->lands->count() }} added
             </span>
         </h3>
-        @if($faas->isEditable())
+        @if($faas->isEditable() && strtoupper(trim($faas->revision_type)) !== 'TRANSFER')
             <button onclick="toggleForm('land-form')" class="text-xs font-semibold text-emerald-700 border border-emerald-200 rounded-lg px-3 py-1 hover:bg-emerald-100 transition" id="land-toggle-btn">
                 <i class="fas fa-plus mr-1"></i> Add Parcel
             </button>
@@ -52,14 +52,16 @@
                             <i class="fas fa-map-marker-alt"></i>
                         </a>
                         @endif
-                        <button onclick="openEditLandModal({{ $land->id }}, {{ $land->rpta_actual_use_id }}, {{ $land->area_sqm }}, {{ $land->unit_value }}, {{ $land->assessment_level }}, '{{ addslashes($land->lot_no) }}', '{{ addslashes($land->blk_no) }}', {{ $land->latitude ?? 'null' }}, {{ $land->longitude ?? 'null' }}, '{{ $land->polygon_coordinates ? addslashes(json_encode($land->polygon_coordinates)) : '' }}')" 
-                                class="text-emerald-600 hover:text-emerald-800 text-xs transition">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <form action="{{ route('rpt.faas.land.destroy', [$faas, $land]) }}" method="POST" onsubmit="return confirm('Remove this land parcel?')">
-                            @csrf @method('DELETE')
-                            <button class="text-red-300 hover:text-red-500 text-xs transition"><i class="fas fa-trash-alt"></i></button>
-                        </form>
+                        @if(strtoupper(trim($faas->revision_type)) !== 'TRANSFER')
+                            <button onclick="openEditLandModal({{ $land->id }}, {{ $land->rpta_actual_use_id }}, {{ $land->area_sqm }}, {{ $land->unit_value }}, {{ $land->assessment_level }}, {{ $land->market_value_adjustments ?? 0 }}, '{{ addslashes($land->lot_no) }}', '{{ addslashes($land->blk_no) }}', {{ $land->latitude ?? 'null' }}, {{ $land->longitude ?? 'null' }}, '{{ $land->polygon_coordinates ? addslashes(json_encode($land->polygon_coordinates)) : '' }}')" 
+                                    class="text-emerald-600 hover:text-emerald-800 text-xs transition">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <form action="{{ route('rpt.faas.land.destroy', [$faas, $land]) }}" method="POST" onsubmit="return confirm('Remove this land parcel?')">
+                                @csrf @method('DELETE')
+                                <button class="text-red-300 hover:text-red-500 text-xs transition"><i class="fas fa-trash-alt"></i></button>
+                            </form>
+                        @endif
                     </td>
                     @endif
                     @if($faas->isApproved())

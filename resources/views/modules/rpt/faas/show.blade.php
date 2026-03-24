@@ -168,6 +168,42 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Global Utility: Check for Spatial Overlaps
+        function checkOverlap(layer, referenceLayer, drawnGroup, updateFn) {
+            if (!referenceLayer || typeof turf === 'undefined') return false;
+            const newFeature = layer.toGeoJSON();
+            let hasOverlap = false;
+            let overlappingWith = '';
+
+            referenceLayer.eachLayer(existingLayer => {
+                if (existingLayer.toGeoJSON) {
+                    const existingFeature = existingLayer.toGeoJSON();
+                    try {
+                        const intersection = turf.intersect(newFeature, existingFeature);
+                        if (intersection && turf.area(intersection) > 0.001) {
+                            hasOverlap = true;
+                            overlappingWith = existingLayer.getPopup() ? existingLayer.getPopup().getContent() : 'Existing Parcel';
+                        }
+                    } catch (e) {}
+                }
+            });
+
+            if (hasOverlap) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Spatial Overlap Violation',
+                    html: `<div class="text-sm">This boundary overlaps with an existing parcel. Overlapping shapes are not allowed.<br><br><div class="p-2 bg-red-50 rounded border text-left">${overlappingWith}</div></div>`,
+                    confirmButtonColor: '#ef4444'
+                }).then(() => {
+                    if (drawnGroup && layer) {
+                        if (drawnGroup.removeLayer) drawnGroup.removeLayer(layer);
+                        if (updateFn) updateFn();
+                    }
+                });
+            }
+            return hasOverlap;
+        }
+
         try {
             console.log('FAAS Show Scripts Initializing...');
         if(document.getElementById('headerSpatialMap')) {
@@ -253,40 +289,19 @@
 
             // ─── Load Existing Mapped Parcels as Reference Layer ───────────────
             const currentPropertyId = {{ $faas->id }};
+            const excludePropertyIds = [currentPropertyId];
+            @php
+                $pIds = collect([$faas->previous_faas_property_id, $faas->parent_land_faas_id]);
+                if(method_exists($faas, 'predecessors')) {
+                    $pIds = $pIds->merge($faas->predecessors()->pluck('faas_properties.id'));
+                }
+            @endphp
+            const parentFaasIds = {!! $pIds->filter()->values()->toJson() !!};
+            parentFaasIds.forEach(id => excludePropertyIds.push(id));
+
             const existingParcelsLayer = L.layerGroup().addTo(inlineMap);
             
-            function checkOverlap(layer, referenceLayer, drawnGroup, updateFn) {
-                if (!referenceLayer) return false;
-                const newFeature = layer.toGeoJSON();
-                let hasOverlap = false;
-                let overlappingWith = '';
 
-                referenceLayer.eachLayer(existingLayer => {
-                    const existingFeature = existingLayer.toGeoJSON();
-                    try {
-                        const intersection = turf.intersect(newFeature, existingFeature);
-                        if (intersection && turf.area(intersection) > 0.001) {
-                            hasOverlap = true;
-                            overlappingWith = existingLayer.getPopup() ? existingLayer.getPopup().getContent() : 'Existing Parcel';
-                        }
-                    } catch (e) {}
-                });
-
-                if (hasOverlap) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Spatial Overlap Violation',
-                        html: `<div class="text-sm">This boundary overlaps with an existing parcel. Overlapping shapes are not allowed.<br><br><div class="p-2 bg-red-50 rounded border text-left">${overlappingWith}</div></div>`,
-                        confirmButtonColor: '#ef4444'
-                    }).then(() => {
-                        if (drawnGroup && layer) {
-                            drawnGroup.removeLayer(layer);
-                            if (updateFn) updateFn();
-                        }
-                    });
-                }
-                return hasOverlap;
-            }
 
             fetch('{{ route("rpt.gis.data") }}')
                 .then(res => res.json())
@@ -295,15 +310,16 @@
                         const otherParcels = {
                             type: 'FeatureCollection',
                             features: data.features.filter(f => {
-                                // Exclude the specific land parcel being worked on (if applicable)
-                                if (f.properties.type === 'faas_land' && typeof currentLandId !== 'undefined') {
-                                    return f.properties.land_id !== currentLandId;
+                                if (f.properties.type === 'faas_land') {
+                                    if (typeof currentLandId !== 'undefined' && currentLandId !== null && f.properties.land_id === currentLandId) return false;
+                                    return !excludePropertyIds.includes(f.properties.id);
                                 }
-                                return f.properties.id !== currentPropertyId || f.properties.type === 'registration';
+                                return f.properties.type === 'registration' || !excludePropertyIds.includes(f.properties.id);
                             })
                         };
                         if (otherParcels.features.length > 0) {
                             L.geoJSON(otherParcels, {
+                                interactive: false,
                                 style: function(feature) {
                                     const isDraft = feature.properties.type === 'registration';
                                     return { 
@@ -435,6 +451,17 @@
                 });
             }
 
+            // Sync uncommitted Leaflet Draw geometries directly on form submit
+            const addForm = document.querySelector('#land-form form');
+            if (addForm) {
+                addForm.addEventListener('submit', function() {
+                    if (inlineDrawControl && inlineDrawControl._toolbars && inlineDrawControl._toolbars.edit) {
+                        inlineDrawControl._toolbars.edit._save();
+                    }
+                    updateInlineCoords();
+                });
+            }
+
             // Handle toggle resize + auto-import from Registration
             const landToggleBtn = document.getElementById('land-toggle-btn');
             if (landToggleBtn) {
@@ -486,6 +513,7 @@
                             return f.properties.id !== currentPropertyId;
                         });
                         L.geoJSON({ type: 'FeatureCollection', features: others }, {
+                            interactive: false,
                             style: { color: '#f59e0b', weight: 1, fillOpacity: 0.1, dashArray: '3, 3' }
                         }).eachLayer(l => l.addTo(addReferenceLayer));
                     }
@@ -500,6 +528,7 @@
                     @if(!empty($pl->polygon_coordinates))
                         try {
                             L.geoJSON({!! json_encode($pl->polygon_coordinates) !!}, { 
+                                interactive: false,
                                 style: { 
                                     color: '#6366f1', 
                                     weight: 2, 
@@ -648,15 +677,16 @@
                 editReferenceLayer.clearLayers();
                 
                 const others = editCachedGisData.features.filter(f => {
-                    const type = f.properties.type;
-                    if (type === 'faas_land' && typeof currentLandId !== 'undefined' && currentLandId !== null) {
-                        return f.properties.land_id !== currentLandId;
+                    if (f.properties.type === 'faas_land') {
+                        if (typeof currentLandId !== 'undefined' && currentLandId !== null && f.properties.land_id === currentLandId) return false;
+                        return typeof excludePropertyIds !== 'undefined' ? !excludePropertyIds.includes(f.properties.id) : f.properties.id !== currentPropertyId;
                     }
-                    return type === 'registration' || f.properties.id !== currentPropertyId;
+                    return f.properties.type === 'registration' || (typeof excludePropertyIds !== 'undefined' ? !excludePropertyIds.includes(f.properties.id) : f.properties.id !== currentPropertyId);
                 });
                 
                 if (others.length > 0) {
                     L.geoJSON({ type: 'FeatureCollection', features: others }, {
+                        interactive: false,
                         style: function(feature) {
                             const isDraft = feature.properties.type === 'registration';
                             return { 
@@ -694,6 +724,7 @@
                         @if(!empty($pl->polygon_coordinates))
                             try {
                                 L.geoJSON({!! json_encode($pl->polygon_coordinates) !!}, { 
+                                    interactive: false,
                                     style: { 
                                         color: '#6366f1', 
                                         weight: 2, 
@@ -785,6 +816,17 @@
             if (clearEditBtn) {
                 clearEditBtn.addEventListener('click', function() {
                     editDrawnItems.clearLayers();
+                    updateEditCoords();
+                });
+            }
+
+            // Sync uncommitted Leaflet Draw geometries directly on form submit
+            const editForm = document.getElementById('edit-land-form');
+            if (editForm) {
+                editForm.addEventListener('submit', function() {
+                    if (editDrawControl && editDrawControl._toolbars && editDrawControl._toolbars.edit) {
+                        editDrawControl._toolbars.edit._save();
+                    }
                     updateEditCoords();
                 });
             }

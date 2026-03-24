@@ -235,7 +235,11 @@ class FaasProperty extends Model
         foreach ($tds as $td) {
             if ($td->status === 'approved') return false;
 
-            // 3. For every forwarded TD, check for outstanding balances
+            // 3. Must have at least one generated billing, otherwise it's pending Treasury processing
+            $hasAnyBilling = $td->billings()->exists();
+            if (!$hasAnyBilling) return false;
+
+            // 4. For every forwarded TD, check for outstanding balances
             $hasBalance = $td->billings()
                 ->where('balance', '>', 0)
                 ->exists();
@@ -378,8 +382,11 @@ class FaasProperty extends Model
             if (empty($land->rpta_actual_use_id)) {
                 $issues[] = ['type' => 'error', 'msg' => "Land parcel (Lot: " . ($land->lot_no ?: '?') . ") is missing Actual Use."];
             }
-            if ($land->area_sqm <= 0 || $land->unit_value <= 0) {
-                $issues[] = ['type' => 'error', 'msg' => "Land parcel (Lot: " . ($land->lot_no ?: '?') . ") has zero area or unit value."];
+            if ($land->area_sqm <= 0) {
+                $issues[] = ['type' => 'error', 'msg' => "Land parcel (Lot: " . ($land->lot_no ?: '?') . ") has zero area."];
+            }
+            if ($this->is_taxable && $land->unit_value <= 0) {
+                $issues[] = ['type' => 'error', 'msg' => "Land parcel (Lot: " . ($land->lot_no ?: '?') . ") has zero unit value."];
             }
         }
         foreach ($this->buildings as $bldg) {
@@ -447,7 +454,13 @@ class FaasProperty extends Model
         $brgy = $faas->barangay;
         $district = str_pad($brgy->brgy_district ?? '00', 2, '0', STR_PAD_LEFT);
         $brgyCode = str_pad($brgy->brgy_code ?? '0000', 4, '0', STR_PAD_LEFT);
-        $latest = self::withTrashed()->whereNotNull('arp_no')->orderByDesc('id')->first();
+        
+        $prefix = "{$district}-{$brgyCode}-";
+        $latest = self::withTrashed()
+            ->where('arp_no', 'like', $prefix . '%')
+            ->orderByDesc('arp_no')
+            ->first();
+
         $seq = 1;
         if ($latest && preg_match('/-(\d+)$/', $latest->arp_no, $matches)) {
             $seq = (int) $matches[1] + 1;

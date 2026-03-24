@@ -84,4 +84,45 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const revisionType = document.querySelector('select[name="revision_type"]');
+            const effectivityDate = document.querySelector('input[name="effectivity_date"]');
+            const revisionYear = @json($revision?->year);
+
+            if (revisionType && effectivityDate) {
+                revisionType.addEventListener('change', function() {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = today.getMonth(); // 0-11
+
+                    if (this.value === 'General Revision' && revisionYear) {
+                        // Rule: Effective Jan 1 of the year following the Revision Year
+                        const nextYear = parseInt(revisionYear) + 1;
+                        effectivityDate.value = `${nextYear}-01-01`;
+                    } else if (this.value === 'Reassessment') {
+                        // Rule: Effective in the quarter next following the date the reassessment is made (Sec 220 RA 7160)
+                        let nextQDay, nextQMonth, nextQYear = year;
+                        
+                        if (month < 3) { // Q1 -> Next is Apr 1
+                            nextQMonth = '04'; nextQDay = '01';
+                        } else if (month < 6) { // Q2 -> Next is Jul 1
+                            nextQMonth = '07'; nextQDay = '01';
+                        } else if (month < 9) { // Q3 -> Next is Oct 1
+                            nextQMonth = '10'; nextQDay = '01';
+                        } else { // Q4 -> Next is Jan 1 of Next Year
+                            nextQYear = year + 1; nextQMonth = '01'; nextQDay = '01';
+                        }
+                        effectivityDate.value = `${nextQYear}-${nextQMonth}-${nextQDay}`;
+                    } else if (this.value === 'New Discovery' || this.value === 'Transfer') {
+                        // Default to today for other transactions
+                        effectivityDate.value = today.toISOString().split('T')[0];
+                    }
+                });
+            }
+        });
+    </script>
+    @endpush
 </x-admin.app>

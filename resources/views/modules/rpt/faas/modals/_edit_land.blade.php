@@ -131,11 +131,8 @@
             document.getElementById('land-edit-av-preview').innerText = fmt(av);
         };
 
-        ['rpta_actual_use_id','area_sqm','unit_value','market_value_adjustments','assessment_level']
-            .forEach(n => {
-                const input = form.querySelector(`[name="${n}"]`);
-                if (input) input.addEventListener('input', recalc);
-            });
+        // Listen for input on the form itself so bubbled events from specific inputs or the form trigger recalc
+        form.addEventListener('input', recalc);
             
         // Trigger once for initial state
         setTimeout(recalc, 300);

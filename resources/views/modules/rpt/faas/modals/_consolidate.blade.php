@@ -132,7 +132,6 @@
 
 <script>
     function openConsolidateModal() {
-        const checked = document.querySelectorAll('.row-checkbox:checked text-land'); // Filter for land in JS if needed
         const mothers = Array.from(document.querySelectorAll('.row-checkbox:checked'));
         
         if (mothers.length < 2) {
@@ -148,18 +147,14 @@
         hiddenIds.innerHTML = '';
         let totalArea = 0;
         let firstOwner = '';
-        let firstAddress = '';
 
         mothers.forEach((cb, index) => {
-            const tr = cb.closest('tr');
-            const arp = tr.querySelector('.font-bold.text-gray-800').innerText;
-            const owner = tr.querySelector('.text-xs.font-bold.text-gray-700').innerText;
-            const address = ''; // Should we fetch address?
+            const arp = cb.dataset.arp || 'N/A';
+            const owner = cb.dataset.owner || 'N/A';
+            const area = parseFloat(cb.dataset.area || 0);
             
-            // For now, satisfy owner/address preview from first one
             if (index === 0) {
                 firstOwner = owner;
-                // address = ... (maybe add data-address attribute to checkbox)
             }
 
             // Create card
@@ -181,8 +176,6 @@
             input.value = cb.value;
             hiddenIds.appendChild(input);
 
-            // Fetch area (assuming it's in a data attribute we add)
-            const area = parseFloat(cb.dataset.area || 0);
             totalArea += area;
         });
 

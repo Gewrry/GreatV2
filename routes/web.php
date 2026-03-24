@@ -578,8 +578,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/{faas}/submit-review', [FaasPropertyController::class, 'submitReview'])->name('submit-review');
             Route::post('/{faas}/recommend', [FaasPropertyController::class, 'recommendApproval'])->name('recommend');
             Route::post('/{faas}/approve', [FaasPropertyController::class, 'approve'])->name('approve');
+            Route::get('/check-unit-value', [FaasPropertyController::class, 'getUnitValue'])->name('check-unit-value');
+
             Route::post('/{faas}/return', [FaasPropertyController::class, 'returnToDraft'])->name('return');
             Route::post('/{faas}/revoke-approval', [FaasPropertyController::class, 'revokeApproval'])->name('revoke-approval');
+            Route::get('/{faas}/generate-arp-td', [FaasPropertyController::class, 'generateArpAndTd'])->name('generate-arp-td');
             // Land
             Route::post('/{faas}/land', [FaasPropertyController::class, 'storeLand'])->name('land.store');
             Route::put('/{faas}/land/{land}', [FaasPropertyController::class, 'updateLand'])->name('land.update');

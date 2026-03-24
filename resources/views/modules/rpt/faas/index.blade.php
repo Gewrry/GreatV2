@@ -194,6 +194,15 @@
                                 Apply
                             </button>
 
+                            {{-- Consolidate Button (Hidden by default) --}}
+                            <button type="button" 
+                                    id="consolidate-btn"
+                                    onclick="openConsolidateModal()"
+                                    class="hidden px-4 py-2 bg-pink-600 text-white text-xs font-bold rounded-xl hover:bg-pink-700 transition-colors shadow-sm shadow-pink-200 flex items-center gap-2">
+                                <i class="fas fa-object-group"></i>
+                                Consolidate Selected (<span id="selected-count">0</span>)
+                            </button>
+
                             {{-- Clear --}}
                             @if(request()->anyFilled(['search','status','property_type','barangay_id','date_from','date_to']))
                                 <a href="{{ route('rpt.faas.index') }}"
@@ -223,17 +232,33 @@
                         <table class="w-full text-sm">
                             <thead>
                                 <tr class="bg-bluebody/60 border-b border-lumot/20">
+                                    <th class="px-4 py-3 w-10">
+                                        <input type="checkbox" id="check-all" class="rounded border-lumot/30 text-logo-teal focus:ring-logo-teal/40">
+                                    </th>
                                     <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">ARP No.</th>
                                     <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">Owner Name</th>
-                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">Type</th>
-                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">Barangay</th>
-                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">Status</th>
-                                    <th class="text-right text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">Actions</th>
+                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">Transaction</th>
+                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3">Prop. Type</th>
+                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3 uppercase tracking-wider">Barangay</th>
+                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3 uppercase tracking-wider">Tax Status</th>
+                                    <th class="text-left text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3 uppercase tracking-wider">Status</th>
+                                    <th class="text-right text-[10px] font-extrabold text-gray/70 uppercase tracking-wider px-4 py-3 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-lumot/10">
                                 @forelse($properties as $property)
                                     <tr class="hover:bg-bluebody/30 transition-colors">
+                                        <td class="px-4 py-3">
+                                            @if($property->status === 'approved' && $property->property_type === 'land')
+                                            @php $isPaid = $property->isFullyPaid(); @endphp
+                                            <input type="checkbox" name="selected_faas[]" value="{{ $property->id }}" 
+                                                   class="row-checkbox rounded border-lumot/30 text-logo-teal focus:ring-logo-teal/40 {{ !$isPaid ? 'opacity-30 cursor-not-allowed' : '' }}"
+                                                   {{ !$isPaid ? 'disabled' : '' }}
+                                                   data-arp="{{ $property->arp_no }}"
+                                                   data-owner="{{ $property->owner_name }}"
+                                                   data-area="{{ $property->lands()->sum('area_sqm') }}">
+                                            @endif
+                                        </td>
 
                                         {{-- ARP No. --}}
                                         <td class="px-4 py-3">
@@ -255,7 +280,27 @@
                                             </p>
                                         </td>
 
-                                        {{-- Type --}}
+                                        {{-- Transaction Type --}}
+                                        <td class="px-4 py-3">
+                                            @php
+                                                $txType = strtoupper(trim($property->revision_type ?? 'New Discovery'));
+                                                $txBadgeClasses = match($txType) {
+                                                    'GENERAL REVISION'      => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                                                    'TRANSFER'              => 'bg-blue-50 text-blue-700 border-blue-200',
+                                                    'TRANSFER OF OWNERSHIP' => 'bg-blue-50 text-blue-700 border-blue-200',
+                                                    'SUBDIVISION'           => 'bg-purple-50 text-purple-700 border-purple-200',
+                                                    'SPLIT'                 => 'bg-purple-50 text-purple-700 border-purple-200',
+                                                    'CONSOLIDATION'         => 'bg-pink-50 text-pink-700 border-pink-200',
+                                                    'REASSESSMENT'          => 'bg-amber-50 text-amber-700 border-amber-200',
+                                                    default                 => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                                };
+                                            @endphp
+                                            <span class="text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full border {{ $txBadgeClasses }}">
+                                                {{ ucwords(strtolower($txType)) }}
+                                            </span>
+                                        </td>
+
+                                        {{-- Prop Type --}}
                                         <td class="px-4 py-3">
                                             <span class="text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full border
                                                 {{ $property->property_type === 'land'
@@ -272,6 +317,23 @@
                                         {{-- Barangay --}}
                                         <td class="px-4 py-3 text-xs text-gray">
                                             {{ $property->barangay?->brgy_name ?? '—' }}
+                                        </td>
+                                        
+                                        {{-- Tax Status --}}
+                                        <td class="px-4 py-3">
+                                            @if(!$property->is_taxable)
+                                                <span class="text-[9px] font-extrabold uppercase bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 flex items-center gap-1 w-fit">
+                                                    <i class="fas fa-certificate text-[8px]"></i> Exempt
+                                                </span>
+                                            @elseif($property->isFullyPaid())
+                                                <span class="text-[9px] font-extrabold uppercase bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-100 flex items-center gap-1 w-fit">
+                                                    <i class="fas fa-check-circle text-[8px]"></i> Paid
+                                                </span>
+                                            @else
+                                                <span class="text-[9px] font-extrabold uppercase bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full border border-amber-100 flex items-center gap-1 w-fit shadow-inner shadow-amber-100" title="Check Treasury billings">
+                                                    <i class="fas fa-exclamation-circle text-[8px]"></i> Unpaid
+                                                </span>
+                                            @endif
                                         </td>
 
                                         {{-- Status --}}
@@ -309,7 +371,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="px-4 py-14 text-center">
+                                        <td colspan="7" class="px-4 py-14 text-center">
                                             <div class="w-14 h-14 bg-lumot/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                                 <svg class="w-7 h-7 text-gray/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -377,6 +439,48 @@
     @include('modules.rpt.faas.modals._consolidate')
     <script>
         (function () {
+            // Checkbox logic
+            const checkAll = document.getElementById('check-all');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            const consolidateBtn = document.getElementById('consolidate-btn');
+            const selectedCountDisp = document.getElementById('selected-count');
+
+            function updateConsolidateUI() {
+                const checked = document.querySelectorAll('.row-checkbox:checked');
+                const count = checked.length;
+                selectedCountDisp.innerText = count;
+                
+                if (count >= 2) {
+                    consolidateBtn.classList.remove('hidden');
+                } else {
+                    consolidateBtn.classList.add('hidden');
+                }
+            }
+
+            if (checkAll) {
+                checkAll.addEventListener('change', function() {
+                    rowCheckboxes.forEach(cb => {
+                        cb.checked = checkAll.checked;
+                    });
+                    updateConsolidateUI();
+                });
+            }
+
+            rowCheckboxes.forEach(cb => {
+                cb.addEventListener('change', updateConsolidateUI);
+            });
+
+            // Auto-select from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const selectId = urlParams.get('select_id');
+            if (selectId) {
+                const targetCb = document.querySelector(`.row-checkbox[value="${selectId}"]`);
+                if (targetCb) {
+                    targetCb.checked = true;
+                    updateConsolidateUI();
+                }
+            }
+
             const POLL_URL = '{{ route("rpt.faas.status-counts") }}';
             const INTERVAL = 5000; // 5 seconds — real-time feel
 

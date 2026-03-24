@@ -8,9 +8,11 @@ use App\Models\RPT\FaasLand;
 use App\Models\RPT\FaasBuilding;
 use App\Models\RPT\FaasMachinery;
 use App\Models\RPT\FaasAttachment;
+use App\Models\RPT\FaasOwner;
 use App\Models\RPT\TaxDeclaration;
 use App\Models\RPT\FaasActivityLog;
 use App\Models\RPT\RptaActualUse;
+use App\Models\RPT\RptBilling;
 use App\Models\RPT\RptaBldgType;
 use App\Models\Barangay;
 use Illuminate\Http\Request;
@@ -87,6 +89,8 @@ public function index(Request $request)
             'cancelled'   => $counts->get('cancelled', 0),
         ]);
     }
+
+
     
 
     public function createDraft(\App\Models\RPT\RptPropertyRegistration $registration)
@@ -99,6 +103,29 @@ public function index(Request $request)
         return view('modules.rpt.faas.create-draft', compact('registration', 'actualUses', 'bldgTypes', 'revision'));
     }
 
+    public function getUnitValue(Request $request)
+    {
+        $request->validate([
+            'actual_use_id'    => 'required|integer',
+            'barangay_id'     => 'required|integer',
+            'revision_year_id' => 'required|integer',
+        ]);
+
+        $revision = \App\Models\RPT\RptaRevisionYear::find($request->revision_year_id);
+        if (!$revision) return response()->json(['unit_value' => 0]);
+
+        $value = \App\Models\RPT\RptaUnitValue::where('rpta_actual_use_id', $request->actual_use_id)
+            ->where('effectivity_year', $revision->year)
+            ->where(function($q) use ($request) {
+                $q->where('barangay_id', $request->barangay_id)
+                  ->orWhereNull('barangay_id');
+            })
+            ->orderByRaw('barangay_id DESC') // Specific barangay first
+            ->value('value_per_sqm');
+
+        return response()->json(['unit_value' => (float)$value ?: 0]);
+    }
+    
     public function storeDraft(Request $request, \App\Models\RPT\RptPropertyRegistration $registration)
     {
         $request->validate([
@@ -323,12 +350,19 @@ public function index(Request $request)
         }
 
         // ── Duplicate Land Parcel Validation ──
+        $excludeFaasIds = [$faas->id];
+        if ($faas->previous_faas_property_id) $excludeFaasIds[] = $faas->previous_faas_property_id;
+        if ($faas->parent_land_faas_id) $excludeFaasIds[] = $faas->parent_land_faas_id;
+        if (method_exists($faas, 'predecessors')) {
+            $excludeFaasIds = array_merge($excludeFaasIds, $faas->predecessors()->pluck('faas_properties.id')->toArray());
+        }
+
         // 1. Check lot_no + barangay uniqueness (if lot_no is provided)
         if (!empty($data['lot_no'])) {
             $duplicateLot = FaasLand::where('lot_no', $data['lot_no'])
-                ->whereHas('property', function ($q) use ($faas) {
+                ->whereHas('property', function ($q) use ($faas, $excludeFaasIds) {
                     $q->where('barangay_id', $faas->barangay_id)
-                      ->where('id', '!=', $faas->id)
+                      ->whereNotIn('id', $excludeFaasIds)
                       ->whereNotIn('status', ['cancelled', 'inactive']);
                 })
                 ->with('property')
@@ -372,7 +406,9 @@ public function index(Request $request)
         abort_if(!$faas->isEditable(), 403, 'Action Blocked: Property record is locked.');
 
         $data = $request->validate([
-            'rpta_actual_use_id'       => 'required|exists:rpta_actual_uses,id',
+            'rpta_actual_use_id'        => 'required|exists:rpta_actual_uses,id',
+            'lot_no'                    => 'nullable|string|max:50',
+            'blk_no'                    => 'nullable|string|max:50',
             'area_sqm'                  => 'required|numeric|min:0.0001',
             'unit_value'                => 'required|numeric|min:0',
             'market_value_adjustments'  => 'nullable|numeric',
@@ -385,13 +421,20 @@ public function index(Request $request)
             $data['polygon_coordinates'] = json_decode($data['polygon_coordinates'], true);
         }
 
-        // ── Duplicate Land Parcel Validation (exclude current record) ──
+        // ── Duplicate Land Parcel Validation (exclude current record and predecessors) ──
+        $excludeFaasIds = [$faas->id];
+        if ($faas->previous_faas_property_id) $excludeFaasIds[] = $faas->previous_faas_property_id;
+        if ($faas->parent_land_faas_id) $excludeFaasIds[] = $faas->parent_land_faas_id;
+        if (method_exists($faas, 'predecessors')) {
+            $excludeFaasIds = array_merge($excludeFaasIds, $faas->predecessors()->pluck('faas_properties.id')->toArray());
+        }
+
         if (!empty($data['lot_no'])) {
             $duplicateLot = FaasLand::where('lot_no', $data['lot_no'])
                 ->where('id', '!=', $land->id)
-                ->whereHas('property', function ($q) use ($faas) {
+                ->whereHas('property', function ($q) use ($faas, $excludeFaasIds) {
                     $q->where('barangay_id', $faas->barangay_id)
-                      ->where('id', '!=', $faas->id)
+                      ->whereNotIn('id', $excludeFaasIds)
                       ->whereNotIn('status', ['cancelled', 'inactive']);
                 })
                 ->with('property')
@@ -698,51 +741,63 @@ public function index(Request $request)
     {
         $validator->assertCanApprove($faas);
 
-        DB::transaction(function () use ($faas, $request) {
-            // Re-fetch with lock for atomic ARP generation
-            $lockedFaas = FaasProperty::where('id', $faas->id)->lockForUpdate()->first();
-            
-            $isOverride = $request->has('manual_override') && ($request->filled('manual_arp_no') || $request->filled('manual_td_no'));
+        $targetArp = $request->filled('manual_arp_no') ? $request->manual_arp_no : FaasProperty::generateArpNo($faas);
+        $targetTd  = $request->filled('manual_td_no')  ? $request->manual_td_no  : \App\Models\RPT\TaxDeclaration::generateTdNo();
 
-            $lockedFaas->update([
-                'status'      => 'approved',
-                'arp_no'      => $request->filled('manual_arp_no') ? $request->manual_arp_no : FaasProperty::generateArpNo($lockedFaas),
-                'pin'         => $lockedFaas->pin ?: $lockedFaas->generateStructuredPin(),
-                'approved_by' => Auth::id(),
-                'approved_at' => now(),
-            ]);
 
-            FaasActivityLog::create([
-                'faas_property_id' => $lockedFaas->id, 
-                'user_id'          => Auth::id(), 
-                'action'           => 'approved', 
-                'description'      => ($isOverride ? '[MANUAL OVERRIDE] ' : '') . 'Record approved and ARP No. ' . $lockedFaas->arp_no . ' assigned.'
-            ]);
 
-            // General Revision Cascade: If this FAAS supersedes an older record,
-            // NOW is the right time to mark the old one as inactive.
-            if ($lockedFaas->previous_faas_property_id) {
-                $predecessor = FaasProperty::find($lockedFaas->previous_faas_property_id);
-                if ($predecessor && ($predecessor->status === 'approved' || $predecessor->status === 'forwarded')) {
-                    // 1. Deactivate the FAAS record
-                    $predecessor->update(['status' => 'inactive', 'inactive_at' => now()]);
-                    
-                    // 2. Deactivate ALL associated Tax Declarations for this predecessor
-                    $predecessor->taxDeclarations()->update(['status' => 'inactive', 'inactive_at' => now()]);
+        try {
+            DB::transaction(function () use ($faas, $request) {
+                // Re-fetch with lock for atomic ARP generation
+                $lockedFaas = FaasProperty::where('id', $faas->id)->lockForUpdate()->first();
+                
+                $isOverride = $request->has('manual_override') && ($request->filled('manual_arp_no') || $request->filled('manual_td_no'));
 
-                    FaasActivityLog::create([
-                        'faas_property_id' => $predecessor->id,
-                        'user_id'          => Auth::id(),
-                        'action'           => 'deactivated_by_revision',
-                        'description'      => 'Superseded and set to INACTIVE (including TDs) upon approval of new ARP ' . $lockedFaas->arp_no . '.',
-                    ]);
+                $lockedFaas->update([
+                    'status'      => 'approved',
+                    'arp_no'      => $request->filled('manual_arp_no') ? $request->manual_arp_no : FaasProperty::generateArpNo($lockedFaas),
+                    'pin'         => $lockedFaas->pin ?: $lockedFaas->generateStructuredPin(),
+                    'approved_by' => Auth::id(),
+                    'approved_at' => now(),
+                ]);
+
+                FaasActivityLog::create([
+                    'faas_property_id' => $lockedFaas->id, 
+                    'user_id'          => Auth::id(), 
+                    'action'           => 'approved', 
+                    'description'      => ($isOverride ? '[MANUAL OVERRIDE] ' : '') . 'Record approved and ARP No. ' . $lockedFaas->arp_no . ' assigned.'
+                ]);
+
+                // General Revision Cascade: If this FAAS supersedes an older record,
+                // NOW is the right time to mark the old one as inactive.
+                if ($lockedFaas->previous_faas_property_id) {
+                    $predecessor = FaasProperty::find($lockedFaas->previous_faas_property_id);
+                    if ($predecessor && ($predecessor->status === 'approved' || $predecessor->status === 'forwarded')) {
+                        // 1. Deactivate the FAAS record
+                        $predecessor->update(['status' => 'inactive', 'inactive_at' => now()]);
+                        
+                        // 2. Deactivate ALL associated Tax Declarations for this predecessor
+                        $predecessor->taxDeclarations()->update(['status' => 'inactive', 'inactive_at' => now()]);
+
+                        FaasActivityLog::create([
+                            'faas_property_id' => $predecessor->id,
+                            'user_id'          => Auth::id(),
+                            'action'           => 'deactivated_by_revision',
+                            'description'      => 'Superseded and set to INACTIVE (including TDs) upon approval of new ARP ' . $lockedFaas->arp_no . '.',
+                        ]);
+                    }
                 }
-            }
 
-            // [NEW] MRPAAO-Compliant Automation:
-            // Generate Tax Declarations for all components on approval.
-            \App\Models\RPT\TaxDeclaration::autoGenerateFromFaas($lockedFaas, $request->manual_td_no);
-        });
+                // [NEW] MRPAAO-Compliant Automation:
+                // Generate Tax Declarations for all components on approval.
+                \App\Models\RPT\TaxDeclaration::autoGenerateFromFaas($lockedFaas, $request->manual_td_no);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() == 23000) {
+                return redirect()->route('rpt.faas.show', $faas)->withInput()->with('error', 'Integrity Error: The ARP Number or TD Number you entered is already in use by another property. Please use a unique sequence.');
+            }
+            throw $e;
+        }
 
         return back()->with('success', 'Property record approved. Tax Declarations have been auto-generated for all components.');
     }
@@ -968,6 +1023,7 @@ public function index(Request $request)
                 'previous_owner'           => $faas->primary_owner_name,
                 'previous_assessed_value'  => $faas->total_assessed_value,
                 'status'                   => 'draft',
+                'revision_type'            => 'General Revision',
                 'created_by'               => Auth::id(),
                 'remarks'                  => 'General Revision of FAAS ARP ' . $faas->arp_no,
             ]);
@@ -994,6 +1050,13 @@ public function index(Request $request)
                 $newMach = $mach->replicate();
                 $newMach->faas_property_id = $newFaas->id;
                 $newMach->save();
+            }
+
+            // Sync Attachments
+            foreach ($faas->attachments as $attachment) {
+                $newAttachment = $attachment->replicate();
+                $newAttachment->faas_property_id = $newFaas->id;
+                $newAttachment->save();
             }
 
             FaasActivityLog::create([
@@ -1043,6 +1106,7 @@ public function index(Request $request)
                 'previous_owner'           => $faas->primary_owner_name,
                 'previous_assessed_value'  => $faas->total_assessed_value,
                 'status'                   => 'draft',
+                'revision_type'            => 'Reassessment',
                 'created_by'               => Auth::id(),
                 'remarks'                  => 'Reassessment of FAAS ARP ' . $faas->arp_no,
             ]);
@@ -1068,6 +1132,13 @@ public function index(Request $request)
                 $newMach = $mach->replicate();
                 $newMach->faas_property_id = $newFaas->id;
                 $newMach->save();
+            }
+
+            // Sync Attachments
+            foreach ($faas->attachments as $attachment) {
+                $newAttachment = $attachment->replicate();
+                $newAttachment->faas_property_id = $newFaas->id;
+                $newAttachment->save();
             }
 
             FaasActivityLog::create([
@@ -1234,6 +1305,7 @@ public function index(Request $request)
             'children.*.property_kind'  => 'nullable|string|in:land,road_lot,open_space,alley',
             'children.*.is_corner_lot'  => 'nullable',
             'children.*.is_exempt'      => 'nullable',
+            'children.*.polygon_coordinates' => 'nullable|string',
             'remarks'                   => 'nullable|string|max:500',
             // Inspection Metadata (eRPTA Compliance)
             'inspector_name'            => 'nullable|string|max:255',
@@ -1244,6 +1316,16 @@ public function index(Request $request)
             'doc_title'                 => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'doc_clearance'             => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'doc_deed'                  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            // Surveyor Metadata
+            'surveyor_name'             => 'nullable|string|max:255',
+            'surveyor_license'          => 'nullable|string|max:100',
+            'survey_no'                 => 'nullable|string|max:100',
+            'survey_date'               => 'nullable|date',
+            // Boundary requirements for children
+            'children.*.boundary_north' => 'nullable|string|max:500',
+            'children.*.boundary_south' => 'nullable|string|max:500',
+            'children.*.boundary_east'  => 'nullable|string|max:500',
+            'children.*.boundary_west'  => 'nullable|string|max:500',
         ]);
 
         $motherArea = $faas->lands()->sum('area_sqm');
@@ -1271,14 +1353,8 @@ public function index(Request $request)
                     }
                 }
 
-                // Compose new FAAS record for each child
+                // 1. Compose new FAAS record for each child
                 $childFaas = FaasProperty::create([
-                    'owner_name'               => $childOwner,
-                    'owner_tin'                => !empty($childData['owner_name']) ? null : $faas->owner_tin,
-                    'owner_address'            => !empty($childData['owner_address']) ? $childData['owner_address'] : $faas->owner_address,
-                    'owner_contact'            => !empty($childData['owner_name']) ? null : $faas->owner_contact,
-                    'administrator_name'       => $faas->administrator_name,
-                    'administrator_address'    => $faas->administrator_address,
                     'barangay_id'              => $faas->barangay_id,
                     'street'                   => $faas->street,
                     'municipality'             => $faas->municipality,
@@ -1290,8 +1366,35 @@ public function index(Request $request)
                     'previous_owner'           => $faas->primary_owner_name,
                     'previous_assessed_value'  => $faas->total_assessed_value,
                     'status'                   => 'draft',
+                    'is_taxable'               => !$isExempt,
+                    'exemption_basis'          => $isExempt ? ($childData['exemption_basis'] ?? ($propertyKind !== 'land' ? ucfirst(str_replace('_', ' ', $propertyKind)) : null)) : null,
+                    'revision_type'            => 'Split',
+                    'survey_no'                => $request->survey_no ?: $faas->survey_no,
+                    'boundary_north'           => $childData['boundary_north'] ?? null,
+                    'boundary_south'           => $childData['boundary_south'] ?? null,
+                    'boundary_east'            => $childData['boundary_east'] ?? null,
+                    'boundary_west'            => $childData['boundary_west'] ?? null,
                     'created_by'               => Auth::id(),
                     'remarks'                  => $request->remarks ?: "Subdivision from Mother ARP: {$faas->arp_no}" . ($propertyKind !== 'land' ? " [{$propertyKind}]" : ''),
+                ]);
+
+
+                // 2. Create Primary Owner for this child (eRPTA Compliance)
+                FaasOwner::create([
+                    'faas_property_id' => $childFaas->id,
+                    'owner_name'       => $childOwner,
+                    'owner_tin'        => !empty($childData['owner_name']) ? null : $faas->owner_tin,
+                    'owner_address'    => !empty($childData['owner_address']) ? $childData['owner_address'] : $faas->owner_address,
+                    'owner_contact'    => !empty($childData['owner_name']) ? null : $faas->owner_contact,
+                    'email'            => !empty($childData['owner_name']) ? null : $faas->owner_email,
+                    'is_primary'       => true,
+                ]);
+
+                // 3. Inherit Administrator info on the main record
+                $childFaas->update([
+                    'administrator_name'    => $faas->administrator_name,
+                    'administrator_address' => $faas->administrator_address,
+                    'administrator_tin'     => $faas->administrator_tin,
                 ]);
 
                 // Copy original land details but with new Lot No, Area, and characteristics
@@ -1303,6 +1406,9 @@ public function index(Request $request)
                     $newLand->area_sqm = $childData['area_sqm'];
                     $newLand->is_corner_lot = !empty($childData['is_corner_lot']);
                     $newLand->land_type = $propertyKind;
+                    
+                    // Spatial mapping extraction
+                    $newLand->polygon_coordinates = !empty($childData['polygon_coordinates']) ? json_decode($childData['polygon_coordinates'], true) : null;
 
                     // If exempt (road lot etc), zero out the valuation
                     if ($isExempt) {
@@ -1334,6 +1440,19 @@ public function index(Request $request)
                 ]);
 
                 $drafts[] = $childFaas;
+            }
+
+            // --- SURVEYOR METADATA LOG ---
+            if ($request->surveyor_name || $request->surveyor_license || $request->survey_no || $request->survey_date) {
+                FaasActivityLog::create([
+                    'faas_property_id' => $faas->id,
+                    'user_id'          => Auth::id(),
+                    'action'           => 'subdivision_survey_details',
+                    'description'      => "Survey Details — Surveyor: " . ($request->surveyor_name ?? 'N/A') 
+                                        . " (License: " . ($request->surveyor_license ?? 'N/A') . ")"
+                                        . ". Survey No: " . ($request->survey_no ?? 'N/A') 
+                                        . ". Survey Date: " . ($request->survey_date ?? 'N/A') . ".",
+                ]);
             }
 
             // --- FIELD INSPECTION LOG (eRPTA Compliance - Sec. 223) ---
@@ -1373,16 +1492,10 @@ public function index(Request $request)
                 }
             }
 
-            // --- PARENT CANCELLATION (Workflow Guard) ---
-            $faas->taxDeclarations()->whereIn('status', ['approved', 'forwarded'])->update([
-                'status'  => 'cancelled',
-                'remarks' => 'SUBDIVIDED/SPLIT: Lineage maintained through successor ARPs. Base Area: ' . $motherArea . ' sqm.',
-            ]);
-
+            // --- DEFERRED PARENT CANCELLATION ---
+            // Mother property remains ACTIVE until child parcels are approved via usual cascade.
             $faas->update([
-                'status'      => 'inactive',
-                'inactive_at' => now(),
-                'remarks'     => $faas->remarks . " | SUBDIVIDED into " . count($drafts) . " parcels."
+                'remarks'     => $faas->remarks . " | [PENDING SUBDIVISION] into " . count($drafts) . " child parcels."
             ]);
 
             FaasActivityLog::create([
@@ -1447,7 +1560,7 @@ public function index(Request $request)
                 'property_type'         => 'land',
                 'barangay_id'           => $barangayId,
                 'effectivity_date'      => $request->effectivity_date,
-                'revision_type'         => 'consolidation',
+                'revision_type'         => 'Consolidation',
                 'previous_arp_no'       => $firstMother->arp_no,
                 'previous_owner'        => $firstMother->primary_owner_name,
                 'previous_assessed_value' => $mothers->sum(fn($m) => $m->total_assessed_value),
@@ -1486,6 +1599,15 @@ public function index(Request $request)
                     'inactive_at' => now(),
                     'remarks'     => "Consolidated into Successor [Draft]"
                 ]);
+
+                // Ensure associated Tax Declarations are also marked as inactive/retired
+                \App\Models\RPT\TaxDeclaration::where('faas_property_id', $mother->id)
+                    ->whereIn('status', ['approved', 'forwarded'])
+                    ->update([
+                        'status'      => 'inactive',
+                        'inactive_at' => now(),
+                        'remarks'     => "Consolidated into Successor FAAS Draft."
+                    ]);
 
                 FaasActivityLog::create([
                     'faas_property_id' => $mother->id,
@@ -1747,10 +1869,36 @@ public function index(Request $request)
         $newVertices = $this->extractVertices($newCoords);
         if (!$newVertices) return null;
         
+        $excludeFaasIds = [];
+        if ($excludePropertyId) {
+            $excludeFaasIds[] = (int) $excludePropertyId;
+            $faas = FaasProperty::find($excludePropertyId);
+            if ($faas) {
+                // 1. Exclude direct relatives
+                if ($faas->previous_faas_property_id) $excludeFaasIds[] = (int) $faas->previous_faas_property_id;
+                if ($faas->parent_land_faas_id)       $excludeFaasIds[] = (int) $faas->parent_land_faas_id;
+                
+                // 2. Exclude SIBLINGS (Other children from the same subdivision/split)
+                if ($faas->previous_faas_property_id) {
+                    $siblingIds = FaasProperty::where('previous_faas_property_id', $faas->previous_faas_property_id)
+                        ->pluck('id')->toArray();
+                    $excludeFaasIds = array_merge($excludeFaasIds, array_map('intval', $siblingIds));
+                }
+
+                // 3. Add predecessors if `predecessors` relationship exists (for Consolidations)
+                if (method_exists($faas, 'predecessors')) {
+                    $excludeFaasIds = array_merge($excludeFaasIds, $faas->predecessors()->pluck('faas_properties.id')->toArray());
+                }
+            }
+        }
+
+        $excludeFaasIds = array_unique($excludeFaasIds);
+        Log::info("[SPATIAL_DEBUG] Checking overlap for FAAS #{$excludePropertyId}. Excluded FAAS IDs: " . implode(',', $excludeFaasIds));
+
         // 1. Check against Official Parcels (FaasLand)
         $existingLands = FaasLand::whereNotNull('polygon_coordinates')
             ->when($excludeLandId, fn($q) => $q->where('id', '!=', $excludeLandId))
-            ->when($excludePropertyId, fn($q) => $q->where('faas_property_id', '!=', $excludePropertyId))
+            ->when(!empty($excludeFaasIds), fn($q) => $q->whereNotIn('faas_property_id', $excludeFaasIds))
             ->whereHas('property', function ($q) {
                 $q->whereNotIn('status', ['cancelled', 'inactive']);
             })
@@ -1797,17 +1945,19 @@ public function index(Request $request)
     {
         if (empty($geojson)) return null;
         if (is_string($geojson)) $geojson = json_decode($geojson, true);
+        if (!is_array($geojson)) return null;
 
         // If it's a FeatureCollection
-        if (isset($geojson['type']) && $geojson['type'] === 'FeatureCollection' && !empty($geojson['features'])) {
-            $geometry = $geojson['features'][0]['geometry'] ?? null;
+        if (isset($geojson['type']) && $geojson['type'] === 'FeatureCollection' && !empty($geojson['features']) && is_array($geojson['features'])) {
+            $feature = $geojson['features'][0];
+            $geometry = is_array($feature) ? ($feature['geometry'] ?? null) : null;
         } else if (isset($geojson['geometry'])) {
             $geometry = $geojson['geometry'];
         } else {
             $geometry = $geojson;
         }
 
-        if (!$geometry || !isset($geometry['coordinates'][0])) return null;
+        if (!is_array($geometry) || !isset($geometry['type']) || !isset($geometry['coordinates']) || !is_array($geometry['coordinates']) || !isset($geometry['coordinates'][0])) return null;
         
         // Handle Polygon vs MultiPolygon (simplistic)
         if ($geometry['type'] === 'Polygon') {
@@ -1862,38 +2012,90 @@ public function index(Request $request)
      */
     public function generateTransferTaxBill(FaasProperty $faas, Request $request)
     {
-        // 1. Calculate
-        $calc = $this->calculateTransferTax($faas, $request)->getData();
-        
-        // 2. We need a "Primary" Tax Declaration to anchor the bill
-        // Standard practice: Link to the latest active TD of the property
-        $td = $faas->taxDeclarations()->whereNotIn('status', ['cancelled'])->latest()->first();
-        
-        if (!$td) {
-            return response()->json(['error' => 'No active Tax Declaration found to anchor this bill.'], 422);
+        try {
+            // 1. Calculate
+            $consideration = (float) $request->input('consideration_amount', 0);
+            $marketValue   = (float) $faas->total_market_value;
+            $basis         = max($consideration, $marketValue);
+            $rate = 0.005;
+            $taxDue = round($basis * $rate, 2);
+
+            if ($taxDue <= 0) {
+                return response()->json(['error' => 'Tax due cannot be zero. Please enter a valid Consideration/Sale Price or Market Value.'], 422);
+            }
+
+            // 2. Find the best TD to anchor the bill
+            $td = $faas->taxDeclarations()
+                ->whereNotIn('status', ['cancelled', 'draft'])
+                ->latest()
+                ->first();
+            
+            if (!$td) {
+                // Fallback: try any non-cancelled TD
+                $td = $faas->taxDeclarations()
+                    ->whereNotIn('status', ['cancelled'])
+                    ->latest()
+                    ->first();
+            }
+
+            if (!$td) {
+                return response()->json(['error' => 'No active Tax Declaration found for this property. Please ensure a Tax Declaration exists before generating a bill.'], 422);
+            }
+
+            // 3. Check for existing unpaid Transfer Tax billing (prevent duplicates)
+            $existing = RptBilling::where('tax_declaration_id', $td->id)
+                ->where('billing_type', RptBilling::TYPE_TRANSFER_TAX)
+                ->whereIn('status', ['unpaid', 'partial'])
+                ->first();
+
+            if ($existing) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'A Transfer Tax bill already exists (₱' . number_format($existing->total_tax_due, 2) . '). Please proceed to Treasury to pay it.',
+                    'billing' => $existing
+                ]);
+            }
+
+            // 4. Update the FAAS with the consideration amount for persistence
+            $faas->update(['consideration_amount' => $consideration]);
+
+            // 5. Create Billing
+            $billing = RptBilling::create([
+                'tax_declaration_id' => $td->id,
+                'tax_year'           => now()->year,
+                'billing_type'       => RptBilling::TYPE_TRANSFER_TAX,
+                'basic_tax'          => $taxDue,
+                'sef_tax'            => 0,
+                'total_tax_due'      => $taxDue,
+                'total_amount_due'   => $taxDue,
+                'balance'            => $taxDue,
+                'status'             => 'unpaid',
+                'due_date'           => now()->addDays(30),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transfer Tax Bill generated successfully: ₱' . number_format($taxDue, 2) . ' (Linked to TD: ' . $td->td_no . ')',
+                'billing' => $billing
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Transfer Tax Bill Generation Failed', [
+                'faas_id' => $faas->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => 'System error generating bill: ' . $e->getMessage()], 500);
         }
-
-        // 3. Update the FAAS with the consideration amount for persistence
-        $faas->update(['consideration_amount' => $calc->consideration_amount]);
-
-        // 4. Create Billing
-        $billing = RptBilling::create([
-            'tax_declaration_id' => $td->id,
-            'tax_year'           => now()->year,
-            'billing_type'       => RptBilling::TYPE_TRANSFER_TAX,
-            'basic_tax'          => $calc->tax_due,
-            'sef_tax'            => 0,
-            'total_tax_due'      => $calc->tax_due,
-            'total_amount_due'   => $calc->tax_due,
-            'balance'            => $calc->tax_due,
-            'status'             => 'unpaid',
-            'due_date'           => now()->addDays(30), // Optional deadline
-        ]);
-
+    }
+    /**
+     * AJAX Endpoint: Generate next available ARP and TD numbers.
+     */
+    public function generateArpAndTd(FaasProperty $faas)
+    {
         return response()->json([
-            'success' => true,
-            'message' => 'Transfer Tax Bill generated successfully: ₱' . number_format($calc->tax_due, 2),
-            'billing' => $billing
+            'arp_no' => FaasProperty::generateArpNo($faas),
+            'td_no'  => TaxDeclaration::generateTdNo(),
         ]);
     }
 }

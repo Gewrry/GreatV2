@@ -75,6 +75,23 @@
                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $badge }}">
                     {{ str_replace('_',' ',$faas->status) }}
                 </span>
+                @if($faas->revision_type)
+                    @php
+                        $revType = trim($faas->revision_type);
+                        $revBadge = match(strtolower($revType)) {
+                            'general revision' => 'bg-indigo-600 text-white',
+                            'transfer', 'transfer ownership' => 'bg-blue-600 text-white',
+                            'reassessment' => 'bg-amber-600 text-white',
+                            'split', 'subdivision' => 'bg-purple-600 text-white',
+                            'consolidation' => 'bg-pink-600 text-white',
+                            'new discovery' => 'bg-emerald-600 text-white text-[9px]',
+                            default => 'bg-cyan-600 text-white'
+                        };
+                    @endphp
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider {{ $revBadge }} shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fas fa-tag text-[8px] opacity-70"></i> {{ $revType }}
+                    </span>
+                @endif
             </div>
             <p class="text-xs text-gray-500 font-medium mt-1">
                 <span class="bg-gray-100 px-2 py-0.5 rounded">ARP: {{ $faas->arp_no ?? 'UNASSIGNED' }}</span>
@@ -155,12 +172,9 @@
                 <a href="{{ route('rpt.faas.preview-td', $faas) }}" target="_blank" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all hover:scale-105">
                     <i class="fas fa-file-invoice mr-1.5 opacity-70"></i> Preview TD
                 </a>
-                <form action="{{ route('rpt.faas.approve', $faas) }}" method="POST">
-                    @csrf
-                    <button type="submit" onclick="return confirm('Confirming FINAL APPROVAL. This will generate an ARP and lock the record.')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all hover:scale-105">
-                        <i class="fas fa-check-circle mr-1.5 opacity-70"></i> Approve & Issue ARP
-                    </button>
-                </form>
+                <button onclick="document.getElementById('approveArpModal').classList.remove('hidden')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all hover:scale-105">
+                    <i class="fas fa-check-circle mr-1.5 opacity-70"></i> Approve & Issue ARP
+                </button>
                 <button onclick="document.getElementById('returnModal').classList.remove('hidden')" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
                     Return to Draft
                 </button>
@@ -234,9 +248,10 @@
                                     class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-emerald-50 flex items-center gap-3 transition-colors uppercase tracking-wider">
                                 <i class="fas fa-object-ungroup text-emerald-500 w-4"></i> Subdivision
                             </button>
-                            <button disabled class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-400 flex items-center gap-3 uppercase tracking-wider cursor-not-allowed">
-                                <i class="fas fa-object-group w-4"></i> Consolidation
-                            </button>
+                            <a href="{{ route('rpt.faas.index', ['select_id' => $faas->id]) }}" 
+                               class="w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-pink-50 flex items-center gap-3 transition-colors uppercase tracking-wider">
+                                <i class="fas fa-object-group text-pink-500 w-4"></i> Consolidation
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -333,4 +348,150 @@
             </div>
         </div>
     </div>
+    <!-- Approve & Issue ARP Modal -->
+    <div id="approveArpModal" class="fixed inset-0 bg-black/50 z-50 {{ ($errors->has('manual_arp_no') || $errors->has('manual_td_no') || old('manual_arp_no')) ? '' : 'hidden' }} flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden transform transition-all">
+            <div class="px-6 py-4 bg-green-50 border-b flex justify-between items-center">
+                <h3 class="text-sm font-bold text-green-800"><i class="fas fa-check-circle mr-2 opacity-70"></i> Approve & Issue ARP</h3>
+                <button onclick="document.getElementById('approveArpModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 transition"><i class="fas fa-times"></i></button>
+            </div>
+            
+            @php
+                $dynamicArp = \App\Models\RPT\FaasProperty::generateArpNo($faas);
+                $dynamicTd  = \App\Models\RPT\TaxDeclaration::generateTdNo();
+            @endphp
+
+            <form action="{{ route('rpt.faas.approve', $faas) }}" method="POST" class="p-6 space-y-4">
+                @csrf
+
+                @if(session('error'))
+                    <div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-xs flex items-start gap-3 mb-2 animate-pulse">
+                        <i class="fas fa-exclamation-triangle mt-0.5"></i>
+                        <div>
+                            <span class="font-bold">Approval Failed:</span>
+                            <p class="mt-1">{{ session('error') }}</p>
+                        </div>
+                    </div>
+                @endif
+
+                @if(in_array($faas->revision_type, ['General Revision', 'Reassessment']) && $faas->previous_assessed_value > 0)
+                    @php
+                        $isGR = $faas->revision_type === 'General Revision';
+                        $themeColor = $isGR ? 'indigo' : 'blue';
+                        $label = $isGR ? 'General Revision' : 'Reassessment';
+                        $icon = $isGR ? 'calculator' : 'sync-alt';
+                    @endphp
+                    <div class="bg-{{ $themeColor }}-50/50 border border-{{ $themeColor }}-100 rounded-xl p-4 mb-4">
+                        <div class="flex items-center justify-between text-[10px] font-bold text-{{ $themeColor }}-400 uppercase mb-3">
+                            <span class="flex items-center gap-1.5"><i class="fas fa-{{ $icon }} text-{{ $themeColor }}-300"></i> Valuation Change</span>
+                            <span class="px-2 py-0.5 bg-{{ $themeColor }}-100 text-{{ $themeColor }}-600 rounded-full">{{ $label }}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[9px] font-bold text-gray-400 uppercase mb-1">Previous Assessed Value</p>
+                                <p class="text-sm font-black text-gray-500">₱ {{ number_format($faas->previous_assessed_value, 2) }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[9px] font-bold text-{{ $themeColor }}-400 uppercase mb-1">New Assessed Value</p>
+                                <p class="text-sm font-black text-{{ $themeColor }}-700">₱ {{ number_format($faas->total_assessed_value, 2) }}</p>
+                            </div>
+                        </div>
+                        @php
+                            $diff = $faas->total_assessed_value - $faas->previous_assessed_value;
+                            $pct = ($faas->previous_assessed_value > 0) ? ($diff / $faas->previous_assessed_value) * 100 : 0;
+                        @endphp
+                        <div class="mt-3 pt-3 border-t border-{{ $themeColor }}-100/50 flex items-center justify-between">
+                             <span class="text-[10px] font-bold text-{{ $themeColor }}-400/70 uppercase">Total Variance:</span>
+                             <span class="text-xs font-black px-2 py-1 rounded-lg {{ $diff >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
+                                <i class="fas fa-arrow-{{ $diff >= 0 ? 'up' : 'down' }} mr-1 text-[10px]"></i>
+                                {{ number_format(abs($pct), 1) }}%
+                             </span>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg border border-blue-100 mb-4">
+                    <i class="fas fa-info-circle mr-1"></i> You can use the auto-generated ARP Number or input your own.
+                </div>
+
+                <input type="hidden" name="manual_override" value="1">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 flex justify-between items-center">
+                        <span>Issue ARP No. <span class="text-red-500">*</span></span>
+                        <button type="button" onclick="refreshArpAndTd()" class="text-[9px] text-blue-600 font-black hover:text-blue-800 transition-colors flex items-center gap-1 uppercase tracking-tighter">
+                            <i class="fas fa-sync-alt"></i> Force Generate
+                        </button>
+                    </label>
+                    <div class="relative group">
+                        <input type="text" name="manual_arp_no" id="approve_modal_arp" value="{{ old('manual_arp_no', $dynamicArp) }}" required 
+                               class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm font-bold text-gray-700 bg-gray-50 uppercase shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 flex justify-between items-center">
+                        <span>Issue TD No. (Series) <span class="text-red-500">*</span></span>
+                    </label>
+                    <div class="relative group">
+                        <input type="text" name="manual_td_no" id="approve_modal_td" value="{{ old('manual_td_no', $dynamicTd) }}" required 
+                               class="w-full border-gray-200 border rounded-xl px-4 py-2.5 text-sm font-bold text-gray-700 bg-gray-50 uppercase shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+                    <button type="button" onclick="document.getElementById('approveArpModal').classList.add('hidden')" class="px-5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 shadow-sm">Cancel</button>
+                    <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-md transition-all">Confirm Approval</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+    async function refreshArpAndTd() {
+        const btn = event?.currentTarget;
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (icon) icon.classList.add('animate-spin');
+            btn.disabled = true;
+        }
+
+        try {
+            const response = await fetch('{{ route("rpt.faas.generate-arp-td", $faas) }}');
+            if (!response.ok) throw new Error('API Error');
+            const data = await response.json();
+
+            if (data.arp_no) {
+                document.getElementById('approve_modal_arp').value = data.arp_no;
+            }
+            if (data.td_no) {
+                document.getElementById('approve_modal_td').value = data.td_no;
+            }
+            
+            // Subtle flash effect
+            [document.getElementById('approve_modal_arp'), document.getElementById('approve_modal_td')].forEach(el => {
+                if (!el) return;
+                el.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50'), 500);
+            });
+
+        } catch (error) {
+            console.error('Failed to generate numbers:', error);
+            alert('Failed to generate fresh numbers. Please try again or type manually.');
+        } finally {
+            if (btn) {
+                const icon = btn.querySelector('i');
+                if (icon) icon.classList.remove('animate-spin');
+                btn.disabled = false;
+            }
+        }
+    }
+</script>
+
+
