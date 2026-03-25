@@ -34,6 +34,8 @@
                             'approved' => 'bg-logo-green/5 text-logo-green border-logo-green/20 ring-logo-green/10',
                             'renewal_requested' => 'bg-amber-50 text-amber-600 border-amber-200 ring-amber-500/10',
                             'approved_for_renewal' => 'bg-logo-teal/5 text-logo-teal border-logo-teal/20 ring-logo-teal/10',
+                            'retirement_requested' => 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/10',
+                            'retired' => 'bg-gray-100 text-gray-700 border-gray-300 ring-gray-500/10',
                             'rejected' => 'bg-red-50 text-red-600 border-red-200 ring-red-500/10',
                         ][$app->workflow_status] ?? 'bg-gray-50 text-gray-600 border-gray-200 ring-gray-500/10';
 

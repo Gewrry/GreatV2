@@ -145,6 +145,7 @@ class FeeRuleController extends Controller
             'business_scale' => 'nullable|string',
             'mode_of_payment' => 'required|in:annual,semi_annual,quarterly',
             'entry_id' => 'nullable|integer',
+            'is_online' => 'nullable|boolean',
             'is_solo_parent' => 'nullable|boolean',
             'is_4ps' => 'nullable|boolean',
             'is_bmbe' => 'nullable|boolean',
@@ -194,7 +195,7 @@ class FeeRuleController extends Controller
         };
 
         // ── Resolve permit year ───────────────────────────────────────────────
-        $permitYear = $this->resolvePermitYear($request->input('entry_id'));
+        $permitYear = $this->resolvePermitYear($request->input('entry_id'), $request->boolean('is_online'));
 
         // ── FIX: resolve approved_at and isRenewal from entry ────────────────
         // For a brand-new entry (no entry_id yet), approved_at = now and
@@ -203,12 +204,23 @@ class FeeRuleController extends Controller
         $isRenewal = false;
 
         if ($request->filled('entry_id')) {
-            $entry = BusinessEntry::find($request->input('entry_id'));
+            $isOnline = $request->boolean('is_online');
+            $model = $isOnline ? \App\Models\onlineBPLS\BplsOnlineApplication::class : BusinessEntry::class;
+            $entry = $model::find($request->input('entry_id'));
+            
             if ($entry) {
-                $isRenewal = ((int) ($entry->renewal_cycle ?? 0)) > 0;
-                $approvedAt = $entry->approved_at
-                    ? Carbon::parse($entry->approved_at, 'Asia/Manila')
-                    : Carbon::now('Asia/Manila');
+                // For online apps, renewal is determined by application_type
+                if ($isOnline) {
+                    $isRenewal = ($entry->application_type === 'renewal' || (int)($entry->renewal_cycle ?? 0) > 0);
+                    $approvedAt = $entry->approved_at
+                        ? Carbon::parse($entry->approved_at, 'Asia/Manila')
+                        : Carbon::now('Asia/Manila');
+                } else {
+                    $isRenewal = ((int) ($entry->renewal_cycle ?? 0)) > 0;
+                    $approvedAt = $entry->approved_at
+                        ? Carbon::parse($entry->approved_at, 'Asia/Manila')
+                        : Carbon::now('Asia/Manila');
+                }
             }
         }
 
@@ -457,10 +469,11 @@ class FeeRuleController extends Controller
     //
     // Without entry_id → original Oct/Nov/Dec heuristic (unchanged).
     // ─────────────────────────────────────────────────────────────────────────
-    private function resolvePermitYear(?int $entryId): int
+    private function resolvePermitYear(?int $entryId, bool $isOnline = false): int
     {
         if ($entryId) {
-            $entry = BusinessEntry::find($entryId);
+            $model = $isOnline ? \App\Models\onlineBPLS\BplsOnlineApplication::class : BusinessEntry::class;
+            $entry = $model::find($entryId);
             if ($entry) {
                 return app(BplsPaymentController::class)->resolveNextPermitYear($entry);
             }

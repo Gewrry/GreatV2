@@ -74,6 +74,9 @@ class BplsOnlineApplication extends Model
         'retirement_remarks',
         'renewal_cycle',
         'renewal_total_due',
+        'capital_investment',
+        'business_scale',
+        'business_nature',
     ];
 
     protected $casts = [
@@ -311,9 +314,7 @@ class BplsOnlineApplication extends Model
      */
     public function getOutstandingBalanceAttribute(): float
     {
-        $totalAssessed = (float)(($this->renewal_cycle ?? 0) > 0 
-            ? ($this->renewal_total_due ?? 0) 
-            : ($this->assessment_amount ?? 0));
+        $totalAssessed = (float)($this->assessment_amount ?? 0);
             
         if ($totalAssessed <= 0) return 0;
 

@@ -74,7 +74,7 @@ class BplsPaymentController extends Controller
         // Fetch online applications
         $onlineQuery = \App\Models\onlineBPLS\BplsOnlineApplication::query()
             ->with(['business', 'owner'])
-            ->whereIn('workflow_status', ['assessed', 'paid', 'approved']);
+            ->whereIn('workflow_status', ['assessed', 'paid', 'approved', 'for_renewal_payment']);
 
         if ($search) {
             $onlineQuery->where(function ($q) use ($search) {
@@ -90,7 +90,7 @@ class BplsPaymentController extends Controller
 
         if ($status !== 'all') {
             if ($status === 'for_payment') {
-                $onlineQuery->where('workflow_status', 'assessed');
+                $onlineQuery->whereIn('workflow_status', ['assessed', 'for_renewal_payment']);
             } elseif ($status === 'approved') {
                 $onlineQuery->whereIn('workflow_status', ['paid', 'approved']);
             }
@@ -108,9 +108,9 @@ class BplsPaymentController extends Controller
             $obj->last_name = $app->owner?->last_name ?? 'N/A';
             $obj->mobile_no = $app->owner?->mobile_no ?? 'N/A';
             $obj->tin_no = $app->business?->tin_no ?? 'N/A';
-            $obj->renewal_cycle = 0;
+            $obj->renewal_cycle = $app->business?->renewal_cycle ?? 0;
             $obj->status = match ($app->workflow_status) {
-                'assessed' => 'for_payment',
+                'assessed', 'for_renewal_payment' => 'for_payment',
                 'paid', 'approved' => 'approved',
                 default => 'for_payment'
             };
@@ -159,7 +159,7 @@ class BplsPaymentController extends Controller
     {
         $q = \App\Models\onlineBPLS\BplsOnlineApplication::query()
             ->with(['business', 'owner'])
-            ->whereIn('workflow_status', ['assessed', 'paid']);
+            ->whereIn('workflow_status', ['assessed', 'paid', 'for_renewal_payment']);
 
         if ($search) {
             $q->whereHas('business', fn($query) => $query
@@ -181,11 +181,11 @@ class BplsPaymentController extends Controller
         $app->unified_id = 'online_' . $app->id;
         $app->display_status = $app->workflow_status;
         $app->status = match ($app->workflow_status) {
-            'assessed' => 'for_payment',
+            'assessed', 'for_renewal_payment' => 'for_payment',
             'paid', 'approved' => 'approved',
             default => 'for_payment'
         };
-        $app->renewal_cycle = 0;
+        $app->renewal_cycle = $app->business?->renewal_cycle ?? 0;
         $app->permit_year = $app->permit_year ?? now()->year;
         $app->active_total_due = $app->assessment_amount;
         $app->mode_of_payment = $app->mode_of_payment ?? 'annual';
@@ -198,6 +198,8 @@ class BplsPaymentController extends Controller
         $feeSum = collect($fees)->sum('amount');
         if ($feeSum > 0) {
             $app->active_total_due = $feeSum;
+        } else {
+            $app->active_total_due = $app->assessment_amount ?? 0;
         }
 
         // Critical: prevent virtual fields from being saved if update() is called later
@@ -216,7 +218,7 @@ class BplsPaymentController extends Controller
         $entry = $this->resolveUnifiedEntry($unifiedId);
 
         if ($entry->is_online) {
-            if (!in_array($entry->workflow_status, ['assessed', 'paid', 'approved'])) {
+            if (!in_array($entry->workflow_status, ['assessed', 'paid', 'approved', 'for_renewal_payment'])) {
                 return redirect()->route('treasury.bpls_payment')->with('error', 'This online application is not ready for payment.');
             }
         } else {
@@ -229,7 +231,9 @@ class BplsPaymentController extends Controller
         $entry->load('benefits');
 
         $fees = $this->computeFees($entry);
-        $activeTotalDue = collect($fees)->sum('amount'); // USE GROSS FROM FEES
+        $feesSum = collect($fees)->sum('amount');
+        // USE GROSS FROM FEES, fallback to assessment_amount for online renewals
+        $activeTotalDue = $feesSum > 0 ? $feesSum : ($entry->active_total_due ?? 0); 
         $paidQuarters = $this->getPaidQuarters($entry);
         $modeCount = $this->modeInstallments($entry->mode_of_payment);
 
@@ -1066,12 +1070,15 @@ class BplsPaymentController extends Controller
         if ($isOnline) {
             $entry = \App\Models\onlineBPLS\BplsOnlineApplication::findOrFail($id);
             $entry->status = match ($entry->workflow_status) {
-                'assessed' => 'for_payment', 'paid' => 'approved', default => 'for_payment'
+                'assessed' => 'for_payment', 
+                'paid' => 'approved', 
+                'for_renewal_payment' => 'for_renewal_payment',
+                default => 'for_payment'
             };
             $entry->is_online = true;
             $entry->business_name = $entry->business?->business_name ?? 'N/A';
             $entry->trade_name = $entry->business?->trade_name;
-            $entry->renewal_cycle = 0;
+            $entry->renewal_cycle = $entry->business?->renewal_cycle ?? 0;
             $entry->permit_year = $entry->permit_year ?? now()->year;
             $entry->active_total_due = $entry->assessment_amount;
             $entry->mode_of_payment = $entry->mode_of_payment ?? 'annual';
@@ -1124,8 +1131,12 @@ class BplsPaymentController extends Controller
             default => [1, 2, 3, 4],
         };
 
+        $column = ($entry instanceof \App\Models\onlineBPLS\BplsOnlineApplication || ($entry->is_online ?? false)) 
+            ? 'bpls_application_id' 
+            : 'business_entry_id';
+
         $latestFullyPaidYear = null;
-        $yearGroups = BplsPayment::where('business_entry_id', $entry->id)
+        $yearGroups = BplsPayment::where($column, $entry->id)
             ->selectRaw('payment_year, quarters_paid')->get()->groupBy('payment_year');
 
         foreach ($yearGroups as $year => $payments) {

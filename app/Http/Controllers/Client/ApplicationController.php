@@ -118,7 +118,7 @@ class ApplicationController extends Controller
         // ── If already approved for renewal, proceed to the create form ──
         if ($application->workflow_status === 'approved_for_renewal') {
             return redirect()->route('client.applications.create', ['from' => $application->id])
-                ->with('info', "Starting your renewal for {$currentYear}. Previous data has been pre-filled.");
+                ->with('info', "Starting your renewal for {$targetYear}. Previous data has been pre-filled.");
         }
 
         // ── Otherwise, submit a RENEWAL REQUEST ──

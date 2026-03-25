@@ -1270,8 +1270,8 @@
                                     class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
                                     <svg class="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" fill="none"
                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                     <p class="text-[11px] text-yellow-700 font-semibold">No active fee rules found.
                                         Check fee rules manager.</p>
@@ -1667,7 +1667,7 @@
                                         </select>
                                         <textarea x-show="retireModal.form.retirement_reason === 'Other'"
                                             x-model="retireModal.form.retirement_reason_custom" rows="2" placeholder="Please specify reason..."
-                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none mt-2"></textarea>
+                                            class="w-full text-sm border border-lumot/30 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400/40 placeholder-gray/30 resize-none"></textarea>
                                     </div>
 
                                     <div>
@@ -1777,7 +1777,7 @@
                                     class="p-1.5 rounded-lg text-gray hover:text-green hover:bg-lumot/20 transition-colors">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                                         stroke="currentColor" stroke-width="2.5">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                    <path stroke-linecap="round" stroke-linejoin="round"
                                             d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
@@ -2768,7 +2768,7 @@
 
                                                     {{-- Renew button --}}
                                                     <button type="button"
-                                                        x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
+                                                        x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment' || entry.status === 'approved_for_renewal' || entry.status === 'for_renewal_payment'"
                                                         @click="openRenewModal(entry)"
                                                         :disabled="entry.outstanding_balance > 0.01"
                                                         :class="entry.outstanding_balance > 0.01 ?
@@ -2777,7 +2777,7 @@
                                                         :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' +
                                                             Number(entry.outstanding_balance).toLocaleString() +
                                                             ') must be settled before renewal.' : 'Renew Business'"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
+                                                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -2808,7 +2808,7 @@
                                                     </button>
                                                     {{-- Retire button: visible for approved, completed, retirement_requested (not retired) --}}
                                                     <button type="button"
-                                                        x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
+                                                        x-show="entry.status !== 'retired' && entry.status !== 'pending' && entry.status !== 'rejected'"
                                                         @click="openRetireModal(entry)"
                                                         :disabled="entry.outstanding_balance > 0.01"
                                                         :class="entry.outstanding_balance > 0.01 ?
@@ -2818,7 +2818,7 @@
                                                             'Settlement of outstanding balance (₱' + Number(entry
                                                                 .outstanding_balance).toLocaleString() +
                                                             ') is required before retirement.' : 'Retire Business'"
-                                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
+                                                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor" stroke-width="2.5">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -2922,14 +2922,14 @@
                                     </button>
                                     {{-- Renew button: visible for completed (walkin) or paid (online) or fully paid balance --}}
                                     <button type="button"
-                                        x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment'"
+                                        x-show="entry.status === 'completed' || entry.status === 'paid' || entry.status === 'for_payment' || entry.status === 'approved' || entry.status === 'for_renewal_payment' || entry.status === 'approved_for_renewal' || entry.status === 'for_renewal_payment'"
                                         @click="openRenewModal(entry)" :disabled="entry.outstanding_balance > 0.01"
                                         :class="entry.outstanding_balance > 0.01 ? 'opacity-50 cursor-not-allowed bg-blue-300' :
                                             'bg-logo-blue hover:bg-blue-700'"
                                         :title="entry.outstanding_balance > 0.01 ? 'Outstanding balance (₱' + Number(entry
                                                 .outstanding_balance).toLocaleString() +
                                             ') must be settled before renewal.' : 'Renew Business'"
-                                        class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors whitespace-nowrap">
+                                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors">
                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24"
                                             stroke="currentColor" stroke-width="2.5">
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -2939,7 +2939,7 @@
                                     </button>
                                     {{-- Retire button: visible for approved, completed, retirement_requested (not retired) --}}
                                     <button type="button"
-                                        x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed'"
+                                        x-show="entry.status === 'retirement_requested' || entry.status === 'approved' || entry.status === 'completed' || entry.status === 'approved_for_renewal' || entry.status === 'for_renewal_payment' || entry.status === 'paid' || entry.status === 'for_payment'"
                                         @click="openRetireModal(entry)" :disabled="entry.outstanding_balance > 0.01"
                                         :class="entry.outstanding_balance > 0.01 ?
                                             'opacity-50 cursor-not-allowed bg-orange-300' :
@@ -3471,6 +3471,13 @@
                         this.viewModal.open = true;
                         this.viewModal.loading = true;
                         this.viewModal.entry = entry;
+
+                        // If online, don't fetch from business-list (ID collision risk)
+                        if (entry.is_online) {
+                            this.viewModal.loading = false;
+                            return;
+                        }
+
                         try {
                             const res = await window.fetch(`{{ url('bpls/business-list') }}/${entry.id}`, {
                                 headers: {
@@ -3668,6 +3675,7 @@
                                     business_scale: this.renewModal.form.business_scale || '',
                                     mode_of_payment: mode,
                                     entry_id: this.renewModal.entry?.id ?? null,
+                                    is_online: !!(this.renewModal.entry?.is_online || this.renewModal.entry?.source === 'online'),
                                 }),
                             });
                             const data = await res.json();
@@ -3725,6 +3733,19 @@
                     // ── CERTIFICATE modal ─────────────────────────────────────────────
                     async openCertModal(entry) {
                         try {
+                            // If online, we don't have a specific JSON certificate endpoint via BusinessListController yet
+                            // and we want to avoid ID collisions with walk-in entries.
+                            if (entry.is_online) {
+                                this.certModal.entry = entry;
+                                this.certModal.issuedAt = new Date().toLocaleDateString('en-PH', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                });
+                                this.certModal.open = true;
+                                return;
+                            }
+
                             const res = await window.fetch(
                                 `{{ url('bpls/business-list') }}/${entry.id}/retirement-certificate`);
                             const data = await res.json();

@@ -165,8 +165,8 @@ class BusinessListController extends Controller
                 'middle_name' => $app->owner?->middle_name,
                 'mobile_no' => $app->owner?->mobile_no,
                 'business_nature' => $app->business?->business_nature ?? null,
-                'business_scale' => $app->business?->business_scale ?? null,
-                'capital_investment' => null,
+                'business_scale' => strtolower($app->business?->business_scale ?? ''),
+                'capital_investment' => $app->business?->capital_investment ?? 0,
                 'mode_of_payment' => $app->mode_of_payment,
                 'business_barangay' => $app->business?->barangay,
                 'business_municipality' => $app->business?->municipality,
@@ -610,21 +610,29 @@ class BusinessListController extends Controller
 
         $entry = BplsOnlineApplication::findOrFail($id);
 
-        $totalDue    = (float) $request->total_due;
-        $permitYear  = (int) now()->year;
-        $newCycle    = (int) ($entry->renewal_cycle ?? 0) + 1;
+        $totalDue = (float) $request->total_due;
+        
+        // For back-office renewals of online apps, we push the permit year forward.
+        $currentAppYear = (int) ($entry->permit_year ?? now()->year);
+        $newPermitYear = $currentAppYear + 1;
 
         $entry->update([
-            'capital_investment'  => $request->capital_investment,
+            'assessment_amount'   => $totalDue,
             'mode_of_payment'     => $request->mode_of_payment,
-            'business_scale'      => $request->business_scale ?? $entry->business_scale,
-            'business_nature'     => $request->business_nature ?? $entry->business_nature,
-            'renewal_cycle'       => $newCycle,
-            'renewal_total_due'   => $totalDue,
-            'permit_year'         => $permitYear,
+            'permit_year'         => $newPermitYear,
             'workflow_status'     => 'for_renewal_payment',
             'approved_at'         => now(),
         ]);
+
+        // Also sync to the master business record
+        if ($entry->business) {
+            $entry->business->update([
+                'capital_investment' => $request->capital_investment,
+                'business_scale'     => $request->business_scale ?? $entry->business->business_scale,
+                'business_nature'    => $request->business_nature ?? $entry->business->business_nature,
+                'status'             => 'active'
+            ]);
+        }
 
         $message = 'Online business approved for renewal.';
 
@@ -632,7 +640,7 @@ class BusinessListController extends Controller
             return response()->json([
                 'success'      => true,
                 'message'      => $message,
-                'redirect_url' => url("bpls/payment/online/{$entry->id}"),
+                'redirect_url' => route('bpls.payment.show', 'online_' . $entry->id),
                 'entry'        => $entry->fresh(),
             ]);
         }
